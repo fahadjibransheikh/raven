@@ -714,7 +714,7 @@ function refreshEmailLinkHandler() {
   } else if (state === "requested") {
     status.textContent = "Registration was requested on this browser. Test an email link to confirm it."
   } else {
-    status.textContent = "Your browser will ask you to confirm. Installed Gofer apps can also handle links from other applications."
+    status.textContent = "Your browser will ask you to confirm. Installed Raven apps can also handle links from other applications."
   }
 }
 
