@@ -1,0 +1,16 @@
+# Rust/Cargo build output
+/src-tauri/target/
+
+# Built Tauri config/gen artifacts
+/src-tauri/gen/
+
+# The staged Gofer sidecar binary(ies) -- build output, not source.
+# Keep the placeholder note so the directory itself still exists in git.
+/src-tauri/binaries/*
+!/src-tauri/binaries/.gitkeep
+
+# Generated icon set (produced by `tauri icon`); icon.png (the source) is kept
+/src-tauri/icons/*.icns
+/src-tauri/icons/icon.ico
+/src-tauri/icons/*.png
+!/src-tauri/icons/icon.png

@@ -1,0 +1,104 @@
+name: Build Raven desktop app
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            target_triple: aarch64-apple-darwin
+            ext: ""
+            bundles: app,dmg
+          - os: ubuntu-22.04
+            target_triple: x86_64-unknown-linux-gnu
+            ext: ""
+            bundles: deb,rpm,appimage
+          - os: windows-latest
+            target_triple: x86_64-pc-windows-msvc
+            ext: ".exe"
+            bundles: msi,nsis
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev \
+            librsvg2-dev patchelf
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: tauri-wrapper/src-tauri
+
+      - name: Put Go and Cargo bins on PATH
+        shell: bash
+        run: |
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
+      - name: Install task, templ, and tauri-cli
+        shell: bash
+        run: |
+          go install github.com/go-task/task/v3/cmd/task@latest
+          go install github.com/a-h/[email protected]
+          cargo install tauri-cli --version "^2" --locked
+
+      - name: Install standalone Tailwind CSS CLI
+        shell: bash
+        run: |
+          case "${{ runner.os }}" in
+            macOS)   TW_ASSET=tailwindcss-macos-arm64 ;;
+            Linux)   TW_ASSET=tailwindcss-linux-x64 ;;
+            Windows) TW_ASSET=tailwindcss-windows-x64.exe ;;
+          esac
+          mkdir -p "$HOME/.local/bin"
+          curl -sL -o "$HOME/.local/bin/tailwindcss" \
+            "https://github.com/tailwindlabs/tailwindcss/releases/latest/download/${TW_ASSET}"
+          chmod +x "$HOME/.local/bin/tailwindcss"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Build the Go sidecar (native to this runner)
+        shell: bash
+        run: |
+          task generate
+          go build -tags embedded_assets -trimpath \
+            -o "tauri-wrapper/src-tauri/binaries/gofer-${{ matrix.target_triple }}${{ matrix.ext }}" .
+
+      - name: Regenerate app icon set from the source PNG
+        shell: bash
+        working-directory: tauri-wrapper/src-tauri
+        run: cargo tauri icon icons/icon.png
+
+      - name: Build the desktop app
+        shell: bash
+        working-directory: tauri-wrapper
+        run: cargo tauri build --bundles ${{ matrix.bundles }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: raven-${{ runner.os }}-${{ matrix.target_triple }}
+          path: |
+            tauri-wrapper/src-tauri/target/release/bundle/**
+          if-no-files-found: error

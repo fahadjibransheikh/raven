@@ -1,0 +1,9 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Baseline capability for the main window. Note: spawning/killing the Gofer sidecar and navigating the window to http://127.0.0.1:8090 are both done from Rust (src/lib.rs), calling tauri-plugin-shell and WebviewWindow::navigate() directly as Rust functions -- not via invoke() from frontend JS. Tauri's permission system only gates the JS->Rust IPC bridge, so no shell/navigate permissions are required here for that to work. This file only grants the standard 'core:default' baseline so the window itself behaves normally; it can be tightened further (or even emptied) later since the Gofer page never calls any Tauri API.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default"
+  ]
+}
