@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "Gofer",
-  "short_name": "Gofer",
+  "name": "Raven",
+  "short_name": "Raven",
   "description": "A self-hosted email client",
   "start_url": "/",
   "scope": "/",

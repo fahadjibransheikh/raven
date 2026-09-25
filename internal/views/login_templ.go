@@ -54,7 +54,7 @@ func LoginPage(showGoogle, showMicrosoft bool, oidcName string, errorMessage str
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<!doctype html><html lang=\"en\" class=\"dark\" data-theme=\"classic\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Gofer — Sign In</title>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<!doctype html><html lang=\"en\" class=\"dark\" data-theme=\"classic\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Raven — Sign In</title>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -62,7 +62,7 @@ func LoginPage(showGoogle, showMicrosoft bool, oidcName string, errorMessage str
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<link rel=\"stylesheet\" href=\"/assets/css/output.css\"></head><body class=\"bg-background text-foreground antialiased surface-desk\"><div class=\"min-h-screen flex items-center justify-center p-4\"><div class=\"w-full max-w-sm\"><div class=\"text-center mb-10\"><img src=\"/assets/logo.svg\" alt=\"Gofer\" class=\"h-12 w-auto mx-auto\"><p class=\"text-muted-foreground mt-2 text-sm\">A self-hosted email client</p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<link rel=\"stylesheet\" href=\"/assets/css/output.css\"></head><body class=\"bg-background text-foreground antialiased surface-desk\"><div class=\"min-h-screen flex items-center justify-center p-4\"><div class=\"w-full max-w-sm\"><div class=\"text-center mb-10\"><img src=\"/assets/logo.svg\" alt=\"Raven\" class=\"h-12 w-auto mx-auto\"><p class=\"text-muted-foreground mt-2 text-sm\">A self-hosted email client</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -292,7 +292,7 @@ func LoginPage(showGoogle, showMicrosoft bool, oidcName string, errorMessage str
 			}
 		}
 		if len(personal) > 0 && personal[0] {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<p class=\"mt-6 text-center text-sm text-muted-foreground\">Lost access? Use the local Gofer recovery command to reset your password.</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<p class=\"mt-6 text-center text-sm text-muted-foreground\">Lost access? Use the local Raven recovery command to reset your password.</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -338,7 +338,7 @@ func LoginMFAContinuationPage(errorMessage string, factors LoginMFAFactors) temp
 			templ_7745c5c3_Var10 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<!doctype html><html lang=\"en\" class=\"dark\" data-theme=\"classic\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Gofer — Additional verification</title>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<!doctype html><html lang=\"en\" class=\"dark\" data-theme=\"classic\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Raven — Additional verification</title>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -346,7 +346,7 @@ func LoginMFAContinuationPage(errorMessage string, factors LoginMFAFactors) temp
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<link rel=\"stylesheet\" href=\"/assets/css/output.css\"></head><body class=\"bg-background text-foreground antialiased surface-desk\"><main class=\"min-h-screen flex items-center justify-center p-4\"><div class=\"w-full max-w-sm\"><div class=\"text-center\"><img src=\"/assets/logo.svg\" alt=\"Gofer\" class=\"h-12 w-auto mx-auto\"> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<link rel=\"stylesheet\" href=\"/assets/css/output.css\"></head><body class=\"bg-background text-foreground antialiased surface-desk\"><main class=\"min-h-screen flex items-center justify-center p-4\"><div class=\"w-full max-w-sm\"><div class=\"text-center\"><img src=\"/assets/logo.svg\" alt=\"Raven\" class=\"h-12 w-auto mx-auto\"> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -545,7 +545,7 @@ func RecoveryCodeLoginPage(errorMessage string) templ.Component {
 			templ_7745c5c3_Var17 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "<!doctype html><html lang=\"en\" class=\"dark\" data-theme=\"classic\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Gofer — Use a Recovery Code</title>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "<!doctype html><html lang=\"en\" class=\"dark\" data-theme=\"classic\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Raven — Use a Recovery Code</title>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -553,7 +553,7 @@ func RecoveryCodeLoginPage(errorMessage string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "<link rel=\"stylesheet\" href=\"/assets/css/output.css\"></head><body class=\"bg-background text-foreground antialiased surface-desk\"><main class=\"min-h-screen flex items-center justify-center p-4\"><div class=\"w-full max-w-sm\"><div class=\"text-center\"><img src=\"/assets/logo.svg\" alt=\"Gofer\" class=\"h-12 w-auto mx-auto\"><h1 class=\"mt-8 text-2xl font-semibold\">Use a recovery code</h1><p class=\"mt-3 text-sm text-muted-foreground\">Enter one of the recovery codes you saved during setup. A successful code starts required authenticator repair before Gofer grants access.</p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "<link rel=\"stylesheet\" href=\"/assets/css/output.css\"></head><body class=\"bg-background text-foreground antialiased surface-desk\"><main class=\"min-h-screen flex items-center justify-center p-4\"><div class=\"w-full max-w-sm\"><div class=\"text-center\"><img src=\"/assets/logo.svg\" alt=\"Raven\" class=\"h-12 w-auto mx-auto\"><h1 class=\"mt-8 text-2xl font-semibold\">Use a recovery code</h1><p class=\"mt-3 text-sm text-muted-foreground\">Enter one of the recovery codes you saved during setup. A successful code starts required authenticator repair before Raven grants access.</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -667,7 +667,7 @@ func RecoveryRepairMFAPage(data RecoveryRepairMFAData) templ.Component {
 			templ_7745c5c3_Var21 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 60, "<!doctype html><html lang=\"en\" class=\"dark\" data-theme=\"classic\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Gofer — Repair Your Authenticator</title>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 60, "<!doctype html><html lang=\"en\" class=\"dark\" data-theme=\"classic\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Raven — Repair Your Authenticator</title>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -675,7 +675,7 @@ func RecoveryRepairMFAPage(data RecoveryRepairMFAData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "<link rel=\"stylesheet\" href=\"/assets/css/output.css\"></head><body class=\"bg-background text-foreground antialiased surface-desk\"><main class=\"min-h-screen flex items-center justify-center p-4 py-10\"><div class=\"w-full max-w-lg\"><div class=\"text-center mb-8\"><img src=\"/assets/logo.svg\" alt=\"Gofer\" class=\"h-12 w-auto mx-auto\"><p class=\"mt-5 text-xs font-medium uppercase tracking-widest text-warning\">Recovery code accepted</p><h1 class=\"mt-2 text-2xl font-semibold\">Replace your authenticator</h1><p class=\"mt-2 text-sm text-muted-foreground\">Gofer has not created a session. Enroll this replacement authenticator and save a fresh recovery batch before access is restored.</p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "<link rel=\"stylesheet\" href=\"/assets/css/output.css\"></head><body class=\"bg-background text-foreground antialiased surface-desk\"><main class=\"min-h-screen flex items-center justify-center p-4 py-10\"><div class=\"w-full max-w-lg\"><div class=\"text-center mb-8\"><img src=\"/assets/logo.svg\" alt=\"Raven\" class=\"h-12 w-auto mx-auto\"><p class=\"mt-5 text-xs font-medium uppercase tracking-widest text-warning\">Recovery code accepted</p><h1 class=\"mt-2 text-2xl font-semibold\">Replace your authenticator</h1><p class=\"mt-2 text-sm text-muted-foreground\">Raven has not created a session. Enroll this replacement authenticator and save a fresh recovery batch before access is restored.</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -711,7 +711,7 @@ func RecoveryRepairMFAPage(data RecoveryRepairMFAData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "\" alt=\"QR code for the replacement Gofer authenticator\" class=\"h-56 w-56\"></div><div class=\"mt-5\"><p class=\"text-sm font-medium\">Manual setup key</p><p class=\"mt-2 break-all rounded-md border border-border bg-background px-3 py-2 text-center font-mono text-sm tracking-wider\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "\" alt=\"QR code for the replacement Raven authenticator\" class=\"h-56 w-56\"></div><div class=\"mt-5\"><p class=\"text-sm font-medium\">Manual setup key</p><p class=\"mt-2 break-all rounded-md border border-border bg-background px-3 py-2 text-center font-mono text-sm tracking-wider\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -844,7 +844,7 @@ func MFAEnrollmentPage(data MFAEnrollmentData) templ.Component {
 			templ_7745c5c3_Var30 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 74, "<!doctype html><html lang=\"en\" class=\"dark\" data-theme=\"classic\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Gofer — Set Up MFA</title>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 74, "<!doctype html><html lang=\"en\" class=\"dark\" data-theme=\"classic\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Raven — Set Up MFA</title>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -852,7 +852,7 @@ func MFAEnrollmentPage(data MFAEnrollmentData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 75, "<link rel=\"stylesheet\" href=\"/assets/css/output.css\"></head><body class=\"bg-background text-foreground antialiased surface-desk\"><main class=\"min-h-screen flex items-center justify-center p-4 py-10\"><div class=\"w-full max-w-lg\"><div class=\"text-center mb-8\"><img src=\"/assets/logo.svg\" alt=\"Gofer\" class=\"h-12 w-auto mx-auto\"><p class=\"mt-5 text-xs font-medium uppercase tracking-widest text-warning\">MFA required</p><h1 class=\"mt-2 text-2xl font-semibold\">Set up an authenticator</h1><p class=\"mt-2 text-sm text-muted-foreground\">Your primary sign-in succeeded, but Gofer has not created a session. Set up MFA before continuing to your mailbox.</p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 75, "<link rel=\"stylesheet\" href=\"/assets/css/output.css\"></head><body class=\"bg-background text-foreground antialiased surface-desk\"><main class=\"min-h-screen flex items-center justify-center p-4 py-10\"><div class=\"w-full max-w-lg\"><div class=\"text-center mb-8\"><img src=\"/assets/logo.svg\" alt=\"Raven\" class=\"h-12 w-auto mx-auto\"><p class=\"mt-5 text-xs font-medium uppercase tracking-widest text-warning\">MFA required</p><h1 class=\"mt-2 text-2xl font-semibold\">Set up an authenticator</h1><p class=\"mt-2 text-sm text-muted-foreground\">Your primary sign-in succeeded, but Raven has not created a session. Set up MFA before continuing to your mailbox.</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -888,7 +888,7 @@ func MFAEnrollmentPage(data MFAEnrollmentData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 79, "\" alt=\"QR code for a new Gofer authenticator\" class=\"h-56 w-56\"></div><div class=\"mt-5\"><p class=\"text-sm font-medium\">Manual setup key</p><p class=\"mt-2 break-all rounded-md border border-border bg-background px-3 py-2 text-center font-mono text-sm tracking-wider\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 79, "\" alt=\"QR code for a new Raven authenticator\" class=\"h-56 w-56\"></div><div class=\"mt-5\"><p class=\"text-sm font-medium\">Manual setup key</p><p class=\"mt-2 break-all rounded-md border border-border bg-background px-3 py-2 text-center font-mono text-sm tracking-wider\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1021,7 +1021,7 @@ func MFAEnrollmentCodesPage(data MFAEnrollmentCodesData) templ.Component {
 			templ_7745c5c3_Var39 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 88, "<!doctype html><html lang=\"en\" class=\"dark\" data-theme=\"classic\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Gofer — Save Recovery Codes</title>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 88, "<!doctype html><html lang=\"en\" class=\"dark\" data-theme=\"classic\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Raven — Save Recovery Codes</title>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1029,7 +1029,7 @@ func MFAEnrollmentCodesPage(data MFAEnrollmentCodesData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 89, "<link rel=\"stylesheet\" href=\"/assets/css/output.css\"></head><body class=\"bg-background text-foreground antialiased surface-desk\"><main class=\"min-h-screen flex items-center justify-center p-4 py-10\"><div class=\"w-full max-w-lg\"><div class=\"text-center mb-8\"><img src=\"/assets/logo.svg\" alt=\"Gofer\" class=\"h-12 w-auto mx-auto\"><p class=\"mt-5 text-xs font-medium uppercase tracking-widest text-success\">Authenticator verified</p><h1 class=\"mt-2 text-2xl font-semibold\">Save your recovery codes</h1><p class=\"mt-2 text-sm text-muted-foreground\">Save a recovery batch before Gofer commits the authenticator and creates your signed-in session.</p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 89, "<link rel=\"stylesheet\" href=\"/assets/css/output.css\"></head><body class=\"bg-background text-foreground antialiased surface-desk\"><main class=\"min-h-screen flex items-center justify-center p-4 py-10\"><div class=\"w-full max-w-lg\"><div class=\"text-center mb-8\"><img src=\"/assets/logo.svg\" alt=\"Raven\" class=\"h-12 w-auto mx-auto\"><p class=\"mt-5 text-xs font-medium uppercase tracking-widest text-success\">Authenticator verified</p><h1 class=\"mt-2 text-2xl font-semibold\">Save your recovery codes</h1><p class=\"mt-2 text-sm text-muted-foreground\">Save a recovery batch before Raven commits the authenticator and creates your signed-in session.</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1217,7 +1217,7 @@ func RecoveryRepairCodesPage(data RecoveryRepairCodesData) templ.Component {
 			templ_7745c5c3_Var46 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 107, "<!doctype html><html lang=\"en\" class=\"dark\" data-theme=\"classic\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Gofer — Save New Recovery Codes</title>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 107, "<!doctype html><html lang=\"en\" class=\"dark\" data-theme=\"classic\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Raven — Save New Recovery Codes</title>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1225,7 +1225,7 @@ func RecoveryRepairCodesPage(data RecoveryRepairCodesData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 108, "<link rel=\"stylesheet\" href=\"/assets/css/output.css\"></head><body class=\"bg-background text-foreground antialiased surface-desk\"><main class=\"min-h-screen flex items-center justify-center p-4 py-10\"><div class=\"w-full max-w-lg\"><div class=\"text-center mb-8\"><img src=\"/assets/logo.svg\" alt=\"Gofer\" class=\"h-12 w-auto mx-auto\"><p class=\"mt-5 text-xs font-medium uppercase tracking-widest text-success\">Replacement authenticator verified</p><h1 class=\"mt-2 text-2xl font-semibold\">Save fresh recovery codes</h1><p class=\"mt-2 text-sm text-muted-foreground\">Completing this page replaces the old authenticator and remaining old recovery codes, revokes earlier sessions, and signs you in.</p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 108, "<link rel=\"stylesheet\" href=\"/assets/css/output.css\"></head><body class=\"bg-background text-foreground antialiased surface-desk\"><main class=\"min-h-screen flex items-center justify-center p-4 py-10\"><div class=\"w-full max-w-lg\"><div class=\"text-center mb-8\"><img src=\"/assets/logo.svg\" alt=\"Raven\" class=\"h-12 w-auto mx-auto\"><p class=\"mt-5 text-xs font-medium uppercase tracking-widest text-success\">Replacement authenticator verified</p><h1 class=\"mt-2 text-2xl font-semibold\">Save fresh recovery codes</h1><p class=\"mt-2 text-sm text-muted-foreground\">Completing this page replaces the old authenticator and remaining old recovery codes, revokes earlier sessions, and signs you in.</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

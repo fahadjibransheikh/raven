@@ -31,7 +31,7 @@ templ LoginPage(showGoogle, showMicrosoft bool, oidcName string, errorMessage st
 		<head>
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-			<title>Gofer — Sign In</title>
+			<title>Raven — Sign In</title>
 			@AppIcon()
 			<link rel="stylesheet" href="/assets/css/output.css"/>
 		</head>
@@ -39,7 +39,7 @@ templ LoginPage(showGoogle, showMicrosoft bool, oidcName string, errorMessage st
 			<div class="min-h-screen flex items-center justify-center p-4">
 				<div class="w-full max-w-sm">
 					<div class="text-center mb-10">
-						<img src="/assets/logo.svg" alt="Gofer" class="h-12 w-auto mx-auto"/>
+						<img src="/assets/logo.svg" alt="Raven" class="h-12 w-auto mx-auto"/>
 						<p class="text-muted-foreground mt-2 text-sm">A self-hosted email client</p>
 					</div>
 					if errorMessage != "" {
@@ -156,7 +156,7 @@ templ LoginPage(showGoogle, showMicrosoft bool, oidcName string, errorMessage st
 						</div>
 					}
 					if len(personal) > 0 && personal[0] {
- <p class="mt-6 text-center text-sm text-muted-foreground">Lost access? Use the local Gofer recovery command to reset your password.</p>
+ <p class="mt-6 text-center text-sm text-muted-foreground">Lost access? Use the local Raven recovery command to reset your password.</p>
 } else {
 <p class="mt-6 text-center text-sm text-muted-foreground">
 						Have an invitation?
@@ -183,7 +183,7 @@ templ LoginMFAContinuationPage(errorMessage string, factors LoginMFAFactors) {
 		<head>
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-			<title>Gofer — Additional verification</title>
+			<title>Raven — Additional verification</title>
 			@AppIcon()
 			<link rel="stylesheet" href="/assets/css/output.css"/>
 		</head>
@@ -191,7 +191,7 @@ templ LoginMFAContinuationPage(errorMessage string, factors LoginMFAFactors) {
 			<main class="min-h-screen flex items-center justify-center p-4">
 				<div class="w-full max-w-sm">
 					<div class="text-center">
-						<img src="/assets/logo.svg" alt="Gofer" class="h-12 w-auto mx-auto"/>
+						<img src="/assets/logo.svg" alt="Raven" class="h-12 w-auto mx-auto"/>
 						if factors.HasPasskey && !factors.HasTOTP {
 							<h1 class="mt-8 text-2xl font-semibold">Verify with your passkey</h1>
 							<p class="mt-3 text-sm text-muted-foreground">Your passkey is your only registered MFA method. Verify with your passkey to finish signing in.</p>
@@ -266,7 +266,7 @@ templ RecoveryCodeLoginPage(errorMessage string) {
 		<head>
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-			<title>Gofer — Use a Recovery Code</title>
+			<title>Raven — Use a Recovery Code</title>
 			@AppIcon()
 			<link rel="stylesheet" href="/assets/css/output.css"/>
 		</head>
@@ -274,9 +274,9 @@ templ RecoveryCodeLoginPage(errorMessage string) {
 			<main class="min-h-screen flex items-center justify-center p-4">
 				<div class="w-full max-w-sm">
 					<div class="text-center">
-						<img src="/assets/logo.svg" alt="Gofer" class="h-12 w-auto mx-auto"/>
+						<img src="/assets/logo.svg" alt="Raven" class="h-12 w-auto mx-auto"/>
 						<h1 class="mt-8 text-2xl font-semibold">Use a recovery code</h1>
-						<p class="mt-3 text-sm text-muted-foreground">Enter one of the recovery codes you saved during setup. A successful code starts required authenticator repair before Gofer grants access.</p>
+						<p class="mt-3 text-sm text-muted-foreground">Enter one of the recovery codes you saved during setup. A successful code starts required authenticator repair before Raven grants access.</p>
 					</div>
 					if errorMessage != "" {
 						<div id="recovery-code-error" role="alert" aria-live="polite" class="mt-6 rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">{ errorMessage }</div>
@@ -322,7 +322,7 @@ templ RecoveryRepairMFAPage(data RecoveryRepairMFAData) {
 		<head>
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-			<title>Gofer — Repair Your Authenticator</title>
+			<title>Raven — Repair Your Authenticator</title>
 			@AppIcon()
 			<link rel="stylesheet" href="/assets/css/output.css"/>
 		</head>
@@ -330,17 +330,17 @@ templ RecoveryRepairMFAPage(data RecoveryRepairMFAData) {
 			<main class="min-h-screen flex items-center justify-center p-4 py-10">
 				<div class="w-full max-w-lg">
 					<div class="text-center mb-8">
-						<img src="/assets/logo.svg" alt="Gofer" class="h-12 w-auto mx-auto"/>
+						<img src="/assets/logo.svg" alt="Raven" class="h-12 w-auto mx-auto"/>
 						<p class="mt-5 text-xs font-medium uppercase tracking-widest text-warning">Recovery code accepted</p>
 						<h1 class="mt-2 text-2xl font-semibold">Replace your authenticator</h1>
-						<p class="mt-2 text-sm text-muted-foreground">Gofer has not created a session. Enroll this replacement authenticator and save a fresh recovery batch before access is restored.</p>
+						<p class="mt-2 text-sm text-muted-foreground">Raven has not created a session. Enroll this replacement authenticator and save a fresh recovery batch before access is restored.</p>
 					</div>
 					if data.ErrorMessage != "" {
 						<div id="recovery-repair-mfa-error" role="alert" aria-live="polite" class="mb-4 rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">{ data.ErrorMessage }</div>
 					}
 					<div class="rounded-xl border border-border bg-card p-6">
 						<div class="flex justify-center rounded-lg bg-white p-4">
-							<img src={ data.QRCodeDataURL } alt="QR code for the replacement Gofer authenticator" class="h-56 w-56"/>
+							<img src={ data.QRCodeDataURL } alt="QR code for the replacement Raven authenticator" class="h-56 w-56"/>
 						</div>
 						<div class="mt-5">
 							<p class="text-sm font-medium">Manual setup key</p>
@@ -377,7 +377,7 @@ templ MFAEnrollmentPage(data MFAEnrollmentData) {
 		<head>
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-			<title>Gofer — Set Up MFA</title>
+			<title>Raven — Set Up MFA</title>
 			@AppIcon()
 			<link rel="stylesheet" href="/assets/css/output.css"/>
 		</head>
@@ -385,17 +385,17 @@ templ MFAEnrollmentPage(data MFAEnrollmentData) {
 			<main class="min-h-screen flex items-center justify-center p-4 py-10">
 				<div class="w-full max-w-lg">
 					<div class="text-center mb-8">
-						<img src="/assets/logo.svg" alt="Gofer" class="h-12 w-auto mx-auto"/>
+						<img src="/assets/logo.svg" alt="Raven" class="h-12 w-auto mx-auto"/>
 						<p class="mt-5 text-xs font-medium uppercase tracking-widest text-warning">MFA required</p>
 						<h1 class="mt-2 text-2xl font-semibold">Set up an authenticator</h1>
-						<p class="mt-2 text-sm text-muted-foreground">Your primary sign-in succeeded, but Gofer has not created a session. Set up MFA before continuing to your mailbox.</p>
+						<p class="mt-2 text-sm text-muted-foreground">Your primary sign-in succeeded, but Raven has not created a session. Set up MFA before continuing to your mailbox.</p>
 					</div>
 					if data.ErrorMessage != "" {
 						<div id="mfa-enrollment-error" role="alert" aria-live="polite" class="mb-4 rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">{ data.ErrorMessage }</div>
 					}
 					<div class="rounded-xl border border-border bg-card p-6">
 						<div class="flex justify-center rounded-lg bg-white p-4">
-							<img src={ data.QRCodeDataURL } alt="QR code for a new Gofer authenticator" class="h-56 w-56"/>
+							<img src={ data.QRCodeDataURL } alt="QR code for a new Raven authenticator" class="h-56 w-56"/>
 						</div>
 						<div class="mt-5">
 							<p class="text-sm font-medium">Manual setup key</p>
@@ -432,7 +432,7 @@ templ MFAEnrollmentCodesPage(data MFAEnrollmentCodesData) {
 		<head>
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-			<title>Gofer — Save Recovery Codes</title>
+			<title>Raven — Save Recovery Codes</title>
 			@AppIcon()
 			<link rel="stylesheet" href="/assets/css/output.css"/>
 		</head>
@@ -440,10 +440,10 @@ templ MFAEnrollmentCodesPage(data MFAEnrollmentCodesData) {
 			<main class="min-h-screen flex items-center justify-center p-4 py-10">
 				<div class="w-full max-w-lg">
 					<div class="text-center mb-8">
-						<img src="/assets/logo.svg" alt="Gofer" class="h-12 w-auto mx-auto"/>
+						<img src="/assets/logo.svg" alt="Raven" class="h-12 w-auto mx-auto"/>
 						<p class="mt-5 text-xs font-medium uppercase tracking-widest text-success">Authenticator verified</p>
 						<h1 class="mt-2 text-2xl font-semibold">Save your recovery codes</h1>
-						<p class="mt-2 text-sm text-muted-foreground">Save a recovery batch before Gofer commits the authenticator and creates your signed-in session.</p>
+						<p class="mt-2 text-sm text-muted-foreground">Save a recovery batch before Raven commits the authenticator and creates your signed-in session.</p>
 					</div>
 					if data.ErrorMessage != "" {
 						<div id="mfa-enrollment-codes-error" role="alert" aria-live="polite" class="mb-4 rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">{ data.ErrorMessage }</div>
@@ -503,7 +503,7 @@ templ RecoveryRepairCodesPage(data RecoveryRepairCodesData) {
 		<head>
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-			<title>Gofer — Save New Recovery Codes</title>
+			<title>Raven — Save New Recovery Codes</title>
 			@AppIcon()
 			<link rel="stylesheet" href="/assets/css/output.css"/>
 		</head>
@@ -511,7 +511,7 @@ templ RecoveryRepairCodesPage(data RecoveryRepairCodesData) {
 			<main class="min-h-screen flex items-center justify-center p-4 py-10">
 				<div class="w-full max-w-lg">
 					<div class="text-center mb-8">
-						<img src="/assets/logo.svg" alt="Gofer" class="h-12 w-auto mx-auto"/>
+						<img src="/assets/logo.svg" alt="Raven" class="h-12 w-auto mx-auto"/>
 						<p class="mt-5 text-xs font-medium uppercase tracking-widest text-success">Replacement authenticator verified</p>
 						<h1 class="mt-2 text-2xl font-semibold">Save fresh recovery codes</h1>
 						<p class="mt-2 text-sm text-muted-foreground">Completing this page replaces the old authenticator and remaining old recovery codes, revokes earlier sessions, and signs you in.</p>

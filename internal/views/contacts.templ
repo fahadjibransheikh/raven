@@ -398,7 +398,7 @@ func contactSyncSetupConflictHelp(kind string) string {
 	case "phone":
 		return "This number becomes primary. Every other number shown below remains an additional phone number and is synchronized to every location."
 	default:
-		return "This value is written to every synchronized location. The other values stop being active there, but remain stored in Gofer as source history."
+		return "This value is written to every synchronized location. The other values stop being active there, but remain stored in Raven as source history."
 	}
 }
 
@@ -876,7 +876,7 @@ func contactCardAccountLabel(card models.ContactCard, accounts []models.Account)
 	if card.AddressBookID != "" {
 		return "Address book " + card.AddressBookID
 	}
-	return "Gofer"
+	return "Raven"
 }
 
 func contactFieldKindLabel(kind string) string {
@@ -1063,13 +1063,13 @@ func contactInsightDisplayTitle(insight models.ContactInsight) string {
 func contactInsightDisplayMessage(insight models.ContactInsight) string {
 	switch insight.Kind {
 	case "observed_only":
-		return "Save this contact to let Gofer manage it and optionally sync it to address books."
+		return "Save this contact to let Raven manage it and optionally sync it to address books."
 	case "provider_only_field":
-		return "Save changes here if you want Gofer to become the version that syncs back out."
+		return "Save changes here if you want Raven to become the version that syncs back out."
 	case "field_conflict":
-		return "Gofer found more than one possible value. Choose a primary value if one should be preferred."
+		return "Raven found more than one possible value. Choose a primary value if one should be preferred."
 	case "manual_override":
-		return "Gofer is keeping your manual value while preserving synced data for review."
+		return "Raven is keeping your manual value while preserving synced data for review."
 	default:
 		return insight.Message
 	}
@@ -1111,9 +1111,9 @@ func contactFieldSourceDisplay(source string, accounts []models.Account) string 
 func contactSourceDescription(card models.ContactCard, accounts []models.Account) string {
 	switch card.Kind {
 	case "observed":
-		return "Gofer found this person while indexing email."
+		return "Raven found this person while indexing email."
 	case "local":
-		return "Editable values stored by Gofer."
+		return "Editable values stored by Raven."
 	case "provider":
 		return "A remote copy exists in " + contactCardAccountLabel(card, accounts) + "."
 	case "target":
@@ -1553,11 +1553,11 @@ templ ContactsImportDialog(accounts []models.Account) {
 					<label class="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Sync imported contacts with</label>
 					@selectbox.SelectBox(selectbox.Props{Multiple: true}) {
 						@selectbox.Trigger(selectbox.TriggerProps{Name: "save_targets", Class: "h-10 bg-background", Multiple: true, ShowPills: true, DisableClear: true, SelectedCountText: "{n} accounts selected"}) {
-							@selectbox.Value(selectbox.ValueProps{Placeholder: "Gofer local", Multiple: true, Class: "text-left"})
+							@selectbox.Value(selectbox.ValueProps{Placeholder: "Raven local", Multiple: true, Class: "text-left"})
 						}
 						@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
 							@selectbox.Item(selectbox.ItemProps{Value: "local", Selected: true}) {
-								Gofer local
+								Raven local
 							}
 							for _, account := range accounts {
 								if !account.IsDeleting && accountContactSyncCapable(account) {
@@ -1682,7 +1682,7 @@ templ ContactReadOnlySyncInfo(contact models.Contact, profile *models.ContactPro
 		<div class="flex flex-wrap items-center justify-between gap-3 border-b border-ink/10 px-4 py-3">
 			<div class="flex flex-wrap items-center gap-2">
 				@icon.Route(icon.Props{Class: "size-3.5 text-ink/40"})
-				<h2 class="text-xs font-semibold uppercase tracking-wider text-ink/55">Gofer Sync</h2>
+				<h2 class="text-xs font-semibold uppercase tracking-wider text-ink/55">Raven Sync</h2>
 				<span class={ contactSyncEnabledBadgeClass(contactProfileSyncEnabled(profile)) } data-contact-sync-enabled-status>{ contactProfileSyncLabel(profile) }</span>
 			</div>
 			@button.Button(button.Props{
@@ -1715,7 +1715,7 @@ templ ContactReadOnlyActivityInfo(contact models.Contact) {
 		<div class="grid gap-x-6 px-4 sm:grid-cols-2 xl:grid-cols-4">
 			@ContactReadOnlyTextField("Messages", fmt.Sprintf("%d", contact.MessageCount))
 			@ContactReadOnlyTextField("Last seen", contact.LastSeenAt)
-			@ContactReadOnlyTextField("Added to Gofer", contact.CreatedAt)
+			@ContactReadOnlyTextField("Added to Raven", contact.CreatedAt)
 			@ContactReadOnlyTextField("Contact updated", contact.UpdatedAt)
 		</div>
 	</section>
@@ -2033,7 +2033,7 @@ templ ContactEditSyncPanel(contact *models.Contact, profile *models.ContactProfi
 		<div class="flex flex-wrap items-center justify-between gap-3 border-b border-ink/10 px-4 py-3">
 			<div class="inline-flex items-center gap-2">
 				@icon.Route(icon.Props{Class: "size-3.5 text-ink/40"})
-				<h2 class="text-xs font-semibold uppercase tracking-wider text-ink/55">Gofer Sync</h2>
+				<h2 class="text-xs font-semibold uppercase tracking-wider text-ink/55">Raven Sync</h2>
 			</div>
 			<div class="flex items-center gap-2">
 				<span class={ contactSyncEnabledBadgeClass(contactProfileSyncEnabled(profile)) } data-contact-sync-state-label>
@@ -2043,7 +2043,7 @@ templ ContactEditSyncPanel(contact *models.Contact, profile *models.ContactProfi
 					ID: contactSyncEnabledID(contact),
 					Name: "sync_enabled",
 					Checked: contactProfileSyncEnabled(profile),
-					Attributes: templ.Attributes{"aria-label": "Enable Gofer Sync", "data-contact-sync-enabled": ""},
+					Attributes: templ.Attributes{"aria-label": "Enable Raven Sync", "data-contact-sync-enabled": ""},
 				})
 			</div>
 		</div>
@@ -2136,7 +2136,7 @@ templ ContactLegacySourcePanel(contact *models.Contact, accounts []models.Accoun
 		<div class="flex flex-wrap items-center justify-between gap-3 border-b border-ink/10 px-4 py-3">
 			<div class="inline-flex items-center gap-2">
 				@icon.Route(icon.Props{Class: "size-3.5 text-ink/40"})
-				<h2 class="text-xs font-semibold uppercase tracking-wider text-ink/55">Gofer Sync</h2>
+				<h2 class="text-xs font-semibold uppercase tracking-wider text-ink/55">Raven Sync</h2>
 			</div>
 			<div class="flex items-center gap-2">
 				<span class={ contactSyncEnabledBadgeClass(contact != nil && contact.GoferSyncEnabled) } data-contact-sync-state-label>
@@ -2146,7 +2146,7 @@ templ ContactLegacySourcePanel(contact *models.Contact, accounts []models.Accoun
 					ID: contactSyncEnabledID(contact),
 					Name: "sync_enabled",
 					Checked: contact != nil && contact.GoferSyncEnabled,
-					Attributes: templ.Attributes{"aria-label": "Enable Gofer Sync", "data-contact-sync-enabled": ""},
+					Attributes: templ.Attributes{"aria-label": "Enable Raven Sync", "data-contact-sync-enabled": ""},
 				})
 			</div>
 		</div>
@@ -2160,7 +2160,7 @@ templ ContactLegacySourcePanel(contact *models.Contact, accounts []models.Accoun
 						}
 					</div>
 				} else {
-					<div class="mt-1 text-sm font-medium text-ink">Gofer</div>
+					<div class="mt-1 text-sm font-medium text-ink">Raven</div>
 					<div class="mt-0.5 text-xs text-ink/40">Local editable contact</div>
 				}
 			</div>
@@ -2176,7 +2176,7 @@ templ ContactProfileInsight(profile models.ContactProfile, contact *models.Conta
 		<div class="flex flex-wrap items-center justify-between gap-3 border-b border-ink/10 px-4 py-3">
 			<div class="inline-flex items-center gap-2">
 				@icon.Route(icon.Props{Class: "size-3.5 text-ink/40"})
-				<h2 class="text-xs font-semibold uppercase tracking-wider text-ink/55">Gofer Sync</h2>
+				<h2 class="text-xs font-semibold uppercase tracking-wider text-ink/55">Raven Sync</h2>
 			</div>
 			<span class={ contactSyncEnabledBadgeClass(profile.SyncEnabled) }>{ contactUnifiedStatusLabel(profile) }</span>
 		</div>
@@ -2232,7 +2232,7 @@ templ ContactSyncTargetsSelect(contact *models.Contact, accounts []models.Accoun
 				}
 			}
 		}
-		<p class="mt-1.5 text-xs leading-relaxed text-ink/40">Selected locations participate in Gofer Sync. Turning sync off keeps this selection for later.</p>
+		<p class="mt-1.5 text-xs leading-relaxed text-ink/40">Selected locations participate in Raven Sync. Turning sync off keeps this selection for later.</p>
 	</div>
 }
 
@@ -2244,10 +2244,10 @@ templ ContactSyncSetupDialog(setup models.ContactSyncSetup) {
 					<div class="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink/35">
 						{ contactSyncSetupStep(setup.Phase) }
 					</div>
-					@dialog.Title(dialog.TitleProps{Class: "mt-1 text-lg text-ink"}) { Set up Gofer Sync }
+					@dialog.Title(dialog.TitleProps{Class: "mt-1 text-lg text-ink"}) { Set up Raven Sync }
 					@dialog.Description(dialog.DescriptionProps{Class: "mt-1 max-w-2xl text-sm leading-relaxed text-ink/50"}) {
 						if setup.Phase == "resolve" {
-							Choose which conflicting values Gofer should use across every synchronized copy.
+							Choose which conflicting values Raven should use across every synchronized copy.
 						} else {
 							Find existing copies of this contact and decide which ones should join the synchronized profile.
 						}
@@ -2277,7 +2277,7 @@ templ ContactSyncSetupSearching(setup models.ContactSyncSetup) {
 				@icon.LoaderCircle(icon.Props{Class: "size-5 animate-spin"})
 			</div>
 			<div class="mt-4 text-sm font-semibold text-ink">Searching sync locations</div>
-			<p class="mt-1 text-xs leading-relaxed text-ink/45">Gofer is comparing email addresses, phone numbers, and names. You can refine or replace this search when the findings appear.</p>
+			<p class="mt-1 text-xs leading-relaxed text-ink/45">Raven is comparing email addresses, phone numbers, and names. You can refine or replace this search when the findings appear.</p>
 		</div>
 	</div>
 }
@@ -2379,7 +2379,7 @@ templ ContactSyncSetupResolve(setup models.ContactSyncSetup) {
 				<div class="rounded-lg border border-emerald-500/20 bg-emerald-500/[0.07] px-4 py-5 text-center">
 					@icon.CircleCheck(icon.Props{Class: "mx-auto size-6 text-emerald-700"})
 					<div class="mt-2 text-sm font-semibold text-ink">No conflicting values found</div>
-					<p class="mt-1 text-xs text-ink/45">The selected copies agree, so Gofer can enable synchronization safely.</p>
+					<p class="mt-1 text-xs text-ink/45">The selected copies agree, so Raven can enable synchronization safely.</p>
 				</div>
 			} else {
 				<div class="space-y-3">
@@ -2506,7 +2506,7 @@ templ ContactProfileSyncTargetRow(card models.ContactCard, accounts []models.Acc
 			@icon.CloudUpload(icon.Props{Class: "size-3.5 shrink-0 text-ink/40"})
 			<div class="truncate text-sm font-semibold text-ink">{ contactCardAccountLabel(card, accounts) }</div>
 		</div>
-		<div class="mt-1 text-xs leading-relaxed text-ink/45">Changes saved in Gofer will be queued here.</div>
+		<div class="mt-1 text-xs leading-relaxed text-ink/45">Changes saved in Raven will be queued here.</div>
 	</div>
 }
 

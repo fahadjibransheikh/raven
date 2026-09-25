@@ -1,17 +1,19 @@
 <h1>
-  <img src="./assets/logo.svg" width="48" align="absmiddle" alt="Gofer logo" />
-  Gofer
+  <img src="./assets/logo.svg" width="48" align="absmiddle" alt="Raven logo" />
+  Raven
 </h1>
 
 | Minimal light | Classic dark |
 | --- | --- |
 | <img alt="Gofer email card view in the minimal light theme" src="./screenshots/emails-card-minimal-light.png" /> | <img alt="Gofer email card view in the classic dark theme" src="./screenshots/emails-card-classic-dark.png" /> |
 
+> Raven is a fork of [Gofer](https://github.com/cristianadrielbraun/gofer) by Cristián Braun, used under the MIT License. It is not affiliated with or endorsed by the Gofer project. Much of this README is carried over from Gofer's; first-person notes ("I", "my machine") are from Gofer's author.
+
 [View all screenshots](./screenshots/README.md)
 
 <br>
 
-Gofer is a local-first email client I work on as a side project. It's built with Go, templ views, HTMX-style interactions, and SQLite storage.
+Raven is a local-first email client, based on Gofer. It's built with Go, templ views, HTMX-style interactions, and SQLite storage.
 
 It is meant to run on your own machine, keep mail and related data local, and talk directly to mail and contact providers. Generic accounts use IMAP/SMTP. Gmail uses the Gmail API and Google People API. Outlook uses Microsoft Graph.
 
@@ -60,7 +62,7 @@ With the development server running, open `http://local.localhost:8090`. See the
 
 ## setup and configuration
 
-Gofer runs locally without a login by default. It also supports personal mode (one protected profile with multiple mailboxes) and managed mode (separate administrators and webmail users). See [`.env.example`](./.env.example) for configuration options. Authenticated modes guide you through first-run setup using a token printed in the terminal.
+Raven runs locally without a login by default. It also supports personal mode (one protected profile with multiple mailboxes) and managed mode (separate administrators and webmail users). See [`.env.example`](./.env.example) for configuration options. Authenticated modes guide you through first-run setup using a token printed in the terminal.
 
 Generic IMAP/SMTP accounts need no OAuth application credentials. Gmail and Outlook currently require your own provider client ID and secret. Mailbox authorization and optional Google/Microsoft application sign-in use separate clients and callbacks.
 
@@ -72,14 +74,14 @@ In managed mode, `/admin` provides user administration, invitations, security po
 
 ## built with
 
-Some of the main libraries and tools Gofer leans on, because pretending I wrote the whole mail stack from scratch would be absurd:
+Some of the main libraries and tools Raven leans on, because pretending I wrote the whole mail stack from scratch would be absurd:
 
 - [templ](https://templ.guide/) for Go-based views
 - [templUI](https://templui.io/) for several UI components
 - [HTMX](https://htmx.org/) for server-driven interactions
 - [Tailwind CSS](https://tailwindcss.com/) for styling
 - [modernc.org/sqlite](https://pkg.go.dev/modernc.org/sqlite) for SQLite storage
-- [emersion](https://github.com/emersion)'s Go mail libraries, including [go-imap](https://github.com/emersion/go-imap), [go-smtp](https://github.com/emersion/go-smtp), [go-message](https://github.com/emersion/go-message), [go-sasl](https://github.com/emersion/go-sasl), and [go-vcard](https://github.com/emersion/go-vcard), which provide much of Gofer's mail, MIME, auth, and contact-format foundation
+- [emersion](https://github.com/emersion)'s Go mail libraries, including [go-imap](https://github.com/emersion/go-imap), [go-smtp](https://github.com/emersion/go-smtp), [go-message](https://github.com/emersion/go-message), [go-sasl](https://github.com/emersion/go-sasl), and [go-vcard](https://github.com/emersion/go-vcard), which provide much of Raven's mail, MIME, auth, and contact-format foundation
 - [golang.org/x/oauth2](https://pkg.go.dev/golang.org/x/oauth2) for OAuth flows
 - [webpush-go](https://github.com/SherClockHolmes/webpush-go) for Web Push notifications
 - [Lucide](https://lucide.dev/) icons through templUI's icon component

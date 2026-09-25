@@ -406,7 +406,7 @@ func contactSyncSetupConflictHelp(kind string) string {
 	case "phone":
 		return "This number becomes primary. Every other number shown below remains an additional phone number and is synchronized to every location."
 	default:
-		return "This value is written to every synchronized location. The other values stop being active there, but remain stored in Gofer as source history."
+		return "This value is written to every synchronized location. The other values stop being active there, but remain stored in Raven as source history."
 	}
 }
 
@@ -884,7 +884,7 @@ func contactCardAccountLabel(card models.ContactCard, accounts []models.Account)
 	if card.AddressBookID != "" {
 		return "Address book " + card.AddressBookID
 	}
-	return "Gofer"
+	return "Raven"
 }
 
 func contactFieldKindLabel(kind string) string {
@@ -1073,13 +1073,13 @@ func contactInsightDisplayTitle(insight models.ContactInsight) string {
 func contactInsightDisplayMessage(insight models.ContactInsight) string {
 	switch insight.Kind {
 	case "observed_only":
-		return "Save this contact to let Gofer manage it and optionally sync it to address books."
+		return "Save this contact to let Raven manage it and optionally sync it to address books."
 	case "provider_only_field":
-		return "Save changes here if you want Gofer to become the version that syncs back out."
+		return "Save changes here if you want Raven to become the version that syncs back out."
 	case "field_conflict":
-		return "Gofer found more than one possible value. Choose a primary value if one should be preferred."
+		return "Raven found more than one possible value. Choose a primary value if one should be preferred."
 	case "manual_override":
-		return "Gofer is keeping your manual value while preserving synced data for review."
+		return "Raven is keeping your manual value while preserving synced data for review."
 	default:
 		return insight.Message
 	}
@@ -1121,9 +1121,9 @@ func contactFieldSourceDisplay(source string, accounts []models.Account) string 
 func contactSourceDescription(card models.ContactCard, accounts []models.Account) string {
 	switch card.Kind {
 	case "observed":
-		return "Gofer found this person while indexing email."
+		return "Raven found this person while indexing email."
 	case "local":
-		return "Editable values stored by Gofer."
+		return "Editable values stored by Raven."
 	case "provider":
 		return "A remote copy exists in " + contactCardAccountLabel(card, accounts) + "."
 	case "target":
@@ -3632,7 +3632,7 @@ func ContactsImportDialog(accounts []models.Account) templ.Component {
 							}()
 						}
 						ctx = templ.InitializeContext(ctx)
-						templ_7745c5c3_Err = selectbox.Value(selectbox.ValueProps{Placeholder: "Gofer local", Multiple: true, Class: "text-left"}).Render(ctx, templ_7745c5c3_Buffer)
+						templ_7745c5c3_Err = selectbox.Value(selectbox.ValueProps{Placeholder: "Raven local", Multiple: true, Class: "text-left"}).Render(ctx, templ_7745c5c3_Buffer)
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -3670,7 +3670,7 @@ func ContactsImportDialog(accounts []models.Account) templ.Component {
 								}()
 							}
 							ctx = templ.InitializeContext(ctx)
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 159, "Gofer local")
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 159, "Raven local")
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
@@ -4233,7 +4233,7 @@ func ContactReadOnlySyncInfo(contact models.Contact, profile *models.ContactProf
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 192, "<h2 class=\"text-xs font-semibold uppercase tracking-wider text-ink/55\">Gofer Sync</h2>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 192, "<h2 class=\"text-xs font-semibold uppercase tracking-wider text-ink/55\">Raven Sync</h2>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -4377,7 +4377,7 @@ func ContactReadOnlyActivityInfo(contact models.Contact) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = ContactReadOnlyTextField("Added to Gofer", contact.CreatedAt).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = ContactReadOnlyTextField("Added to Raven", contact.CreatedAt).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -5788,7 +5788,7 @@ func ContactEditSyncPanel(contact *models.Contact, profile *models.ContactProfil
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 316, "<h2 class=\"text-xs font-semibold uppercase tracking-wider text-ink/55\">Gofer Sync</h2></div><div class=\"flex items-center gap-2\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 316, "<h2 class=\"text-xs font-semibold uppercase tracking-wider text-ink/55\">Raven Sync</h2></div><div class=\"flex items-center gap-2\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -5831,7 +5831,7 @@ func ContactEditSyncPanel(contact *models.Contact, profile *models.ContactProfil
 			ID:         contactSyncEnabledID(contact),
 			Name:       "sync_enabled",
 			Checked:    contactProfileSyncEnabled(profile),
-			Attributes: templ.Attributes{"aria-label": "Enable Gofer Sync", "data-contact-sync-enabled": ""},
+			Attributes: templ.Attributes{"aria-label": "Enable Raven Sync", "data-contact-sync-enabled": ""},
 		}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -6312,7 +6312,7 @@ func ContactLegacySourcePanel(contact *models.Contact, accounts []models.Account
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 351, "<h2 class=\"text-xs font-semibold uppercase tracking-wider text-ink/55\">Gofer Sync</h2></div><div class=\"flex items-center gap-2\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 351, "<h2 class=\"text-xs font-semibold uppercase tracking-wider text-ink/55\">Raven Sync</h2></div><div class=\"flex items-center gap-2\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -6355,7 +6355,7 @@ func ContactLegacySourcePanel(contact *models.Contact, accounts []models.Account
 			ID:         contactSyncEnabledID(contact),
 			Name:       "sync_enabled",
 			Checked:    contact != nil && contact.GoferSyncEnabled,
-			Attributes: templ.Attributes{"aria-label": "Enable Gofer Sync", "data-contact-sync-enabled": ""},
+			Attributes: templ.Attributes{"aria-label": "Enable Raven Sync", "data-contact-sync-enabled": ""},
 		}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -6406,7 +6406,7 @@ func ContactLegacySourcePanel(contact *models.Contact, accounts []models.Account
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 361, "<div class=\"mt-1 text-sm font-medium text-ink\">Gofer</div><div class=\"mt-0.5 text-xs text-ink/40\">Local editable contact</div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 361, "<div class=\"mt-1 text-sm font-medium text-ink\">Raven</div><div class=\"mt-0.5 text-xs text-ink/40\">Local editable contact</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -6456,7 +6456,7 @@ func ContactProfileInsight(profile models.ContactProfile, contact *models.Contac
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 365, "<h2 class=\"text-xs font-semibold uppercase tracking-wider text-ink/55\">Gofer Sync</h2></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 365, "<h2 class=\"text-xs font-semibold uppercase tracking-wider text-ink/55\">Raven Sync</h2></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -6841,7 +6841,7 @@ func ContactSyncTargetsSelect(contact *models.Contact, accounts []models.Account
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 386, "<p class=\"mt-1.5 text-xs leading-relaxed text-ink/40\">Selected locations participate in Gofer Sync. Turning sync off keeps this selection for later.</p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 386, "<p class=\"mt-1.5 text-xs leading-relaxed text-ink/40\">Selected locations participate in Raven Sync. Turning sync off keeps this selection for later.</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -6935,7 +6935,7 @@ func ContactSyncSetupDialog(setup models.ContactSyncSetup) templ.Component {
 							}()
 						}
 						ctx = templ.InitializeContext(ctx)
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 389, "Set up Gofer Sync ")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 389, "Set up Raven Sync ")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -6958,7 +6958,7 @@ func ContactSyncSetupDialog(setup models.ContactSyncSetup) templ.Component {
 						}
 						ctx = templ.InitializeContext(ctx)
 						if setup.Phase == "resolve" {
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 390, "Choose which conflicting values Gofer should use across every synchronized copy.")
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 390, "Choose which conflicting values Raven should use across every synchronized copy.")
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
@@ -7088,7 +7088,7 @@ func ContactSyncSetupSearching(setup models.ContactSyncSetup) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 397, "</div><div class=\"mt-4 text-sm font-semibold text-ink\">Searching sync locations</div><p class=\"mt-1 text-xs leading-relaxed text-ink/45\">Gofer is comparing email addresses, phone numbers, and names. You can refine or replace this search when the findings appear.</p></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 397, "</div><div class=\"mt-4 text-sm font-semibold text-ink\">Searching sync locations</div><p class=\"mt-1 text-xs leading-relaxed text-ink/45\">Raven is comparing email addresses, phone numbers, and names. You can refine or replace this search when the findings appear.</p></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -7616,7 +7616,7 @@ func ContactSyncSetupResolve(setup models.ContactSyncSetup) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 442, "<div class=\"mt-2 text-sm font-semibold text-ink\">No conflicting values found</div><p class=\"mt-1 text-xs text-ink/45\">The selected copies agree, so Gofer can enable synchronization safely.</p></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 442, "<div class=\"mt-2 text-sm font-semibold text-ink\">No conflicting values found</div><p class=\"mt-1 text-xs text-ink/45\">The selected copies agree, so Raven can enable synchronization safely.</p></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -8299,7 +8299,7 @@ func ContactProfileSyncTargetRow(card models.ContactCard, accounts []models.Acco
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 489, "</div></div><div class=\"mt-1 text-xs leading-relaxed text-ink/45\">Changes saved in Gofer will be queued here.</div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 489, "</div></div><div class=\"mt-1 text-xs leading-relaxed text-ink/45\">Changes saved in Raven will be queued here.</div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

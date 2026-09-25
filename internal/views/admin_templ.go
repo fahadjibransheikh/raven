@@ -175,7 +175,7 @@ func adminUserInvitationCopyText(data *AdminUserInvitationData) string {
 		return ""
 	}
 	return fmt.Sprintf(
-		"Gofer invitation for %s\nOpen: %s\nInvitation token: %s\nExpires: %s",
+		"Raven invitation for %s\nOpen: %s\nInvitation token: %s\nExpires: %s",
 		data.Username, data.RedemptionURL, data.Token,
 		data.ExpiresAt.Local().Format("Jan 2, 2006 15:04 MST"),
 	)
@@ -186,7 +186,7 @@ func adminUserCredentialResetCopyText(data *AdminUserCredentialResetData) string
 		return ""
 	}
 	return fmt.Sprintf(
-		"Gofer password reset for %s\nOpen: %s\nReset token: %s\nExpires: %s",
+		"Raven password reset for %s\nOpen: %s\nReset token: %s\nExpires: %s",
 		data.Username, data.RedemptionURL, data.Token,
 		data.ExpiresAt.Local().Format("Jan 2, 2006 15:04 MST"),
 	)
@@ -737,7 +737,7 @@ func AdminSidebar(activeSection string) templ.Component {
 			templ_7745c5c3_Var29 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<aside class=\"hidden lg:flex w-64 shrink-0 flex-col border-r border-border bg-card/75 backdrop-blur-sm\"><div class=\"px-5 py-5 border-b border-border\"><a href=\"/admin\" class=\"inline-flex items-center gap-2.5 text-foreground hover:text-primary transition-colors\"><img src=\"/assets/logo.svg\" alt=\"Gofer\" class=\"h-8 w-8 shrink-0 p-1\"> <span class=\"text-lg font-bold tracking-tight\" style=\"font-family: var(--font-serif)\">Gofer Admin</span></a><p class=\"mt-2 text-xs text-muted-foreground leading-relaxed\">Operational controls and diagnostics.</p></div><nav class=\"flex-1 px-3 py-4 space-y-1\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<aside class=\"hidden lg:flex w-64 shrink-0 flex-col border-r border-border bg-card/75 backdrop-blur-sm\"><div class=\"px-5 py-5 border-b border-border\"><a href=\"/admin\" class=\"inline-flex items-center gap-2.5 text-foreground hover:text-primary transition-colors\"><img src=\"/assets/logo.svg\" alt=\"Raven\" class=\"h-8 w-8 shrink-0 p-1\"> <span class=\"text-lg font-bold tracking-tight\" style=\"font-family: var(--font-serif)\">Raven Admin</span></a><p class=\"mt-2 text-xs text-muted-foreground leading-relaxed\">Operational controls and diagnostics.</p></div><nav class=\"flex-1 px-3 py-4 space-y-1\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1110,7 +1110,7 @@ func AdminSecurityActivityPage(data AdminSecurityActivityData, verification ...A
 			templ_7745c5c3_Var46 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 70, "<div class=\"flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden\" data-admin-security-activity><div class=\"min-h-0 flex-1 overflow-y-auto\" data-admin-security-activity-scroll><div class=\"max-w-7xl px-6 py-8 lg:px-8 lg:py-10\"><div class=\"flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between\"><div><h2 class=\"text-2xl font-bold text-foreground\" style=\"font-family: var(--font-serif)\">Admin security activity</h2><p class=\"mt-1 max-w-3xl text-sm text-muted-foreground\">Review sanitized authentication and account-security events across this Gofer instance.</p></div><div class=\"flex shrink-0 items-center gap-3\"><span class=\"w-fit shrink-0 rounded-full border border-border bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 70, "<div class=\"flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden\" data-admin-security-activity><div class=\"min-h-0 flex-1 overflow-y-auto\" data-admin-security-activity-scroll><div class=\"max-w-7xl px-6 py-8 lg:px-8 lg:py-10\"><div class=\"flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between\"><div><h2 class=\"text-2xl font-bold text-foreground\" style=\"font-family: var(--font-serif)\">Admin security activity</h2><p class=\"mt-1 max-w-3xl text-sm text-muted-foreground\">Review sanitized authentication and account-security events across this Raven instance.</p></div><div class=\"flex shrink-0 items-center gap-3\"><span class=\"w-fit shrink-0 rounded-full border border-border bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1214,12 +1214,12 @@ func AdminSecurityActivityPage(data AdminSecurityActivityData, verification ...A
 			}
 		}
 		if !data.ManagedMode {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 79, "<div role=\"status\" class=\"mt-6 rounded-lg border border-border bg-card px-5 py-8 text-center\"><p class=\"text-sm font-semibold text-foreground\">Managed authentication is not enabled</p><p class=\"mt-1 text-sm text-muted-foreground\">Instance-wide authentication activity is available when Gofer is running with user management enabled.</p></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 79, "<div role=\"status\" class=\"mt-6 rounded-lg border border-border bg-card px-5 py-8 text-center\"><p class=\"text-sm font-semibold text-foreground\">Managed authentication is not enabled</p><p class=\"mt-1 text-sm text-muted-foreground\">Instance-wide authentication activity is available when Raven is running with user management enabled.</p></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else if data.StepUpRequired {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 80, "<div role=\"alert\" class=\"mt-6 rounded-lg border border-amber-500/30 bg-amber-500/10 px-5 py-5 text-amber-900 dark:text-amber-100\" data-admin-security-activity-locked><p class=\"font-semibold\">Recent administrator verification required</p><p class=\"mt-1 text-sm\">Verify with a passkey or authenticator before Gofer requests any instance security events.</p><div class=\"mt-4\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 80, "<div role=\"alert\" class=\"mt-6 rounded-lg border border-amber-500/30 bg-amber-500/10 px-5 py-5 text-amber-900 dark:text-amber-100\" data-admin-security-activity-locked><p class=\"font-semibold\">Recent administrator verification required</p><p class=\"mt-1 text-sm\">Verify with a passkey or authenticator before Raven requests any instance security events.</p><div class=\"mt-4\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1908,7 +1908,7 @@ func AdminUsersPage(data AdminUsersData, verification ...AdminSecurityVerificati
 			templ_7745c5c3_Var82 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 138, "<div class=\"flex-1 flex flex-col min-w-0 overflow-hidden\" data-admin-users><div class=\"flex-1 overflow-y-auto\"><div class=\"max-w-6xl px-6 py-8 lg:px-8 lg:py-10\"><div class=\"flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between\"><div><h2 class=\"text-2xl font-bold text-foreground\" style=\"font-family: var(--font-serif)\">Users</h2><p class=\"mt-1 max-w-3xl text-sm text-muted-foreground\">Review Gofer application users, account state, and role. Invite a new standard user without setting their credentials.</p></div><div class=\"flex flex-wrap items-center gap-2\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 138, "<div class=\"flex-1 flex flex-col min-w-0 overflow-hidden\" data-admin-users><div class=\"flex-1 overflow-y-auto\"><div class=\"max-w-6xl px-6 py-8 lg:px-8 lg:py-10\"><div class=\"flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between\"><div><h2 class=\"text-2xl font-bold text-foreground\" style=\"font-family: var(--font-serif)\">Users</h2><p class=\"mt-1 max-w-3xl text-sm text-muted-foreground\">Review Raven application users, account state, and role. Invite a new standard user without setting their credentials.</p></div><div class=\"flex flex-wrap items-center gap-2\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2098,7 +2098,7 @@ func AdminUsersPage(data AdminUsersData, verification ...AdminSecurityVerificati
 			return templ_7745c5c3_Err
 		}
 		if len(data.Users) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 153, "<div class=\"px-4 py-10 text-center text-sm text-muted-foreground\">No Gofer users are available.</div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 153, "<div class=\"px-4 py-10 text-center text-sm text-muted-foreground\">No Raven users are available.</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -2451,7 +2451,7 @@ func AdminUsersPage(data AdminUsersData, verification ...AdminSecurityVerificati
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 190, "</section><p class=\"mt-4 text-xs leading-relaxed text-muted-foreground\">This page loads Gofer application-login profile metadata and bounded invitation lifecycle state. Mailboxes, messages, contacts, credentials, authentication factors, linked-provider subjects, sessions, raw tokens, and token hashes are not displayed.</p></div></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 190, "</section><p class=\"mt-4 text-xs leading-relaxed text-muted-foreground\">This page loads Raven application-login profile metadata and bounded invitation lifecycle state. Mailboxes, messages, contacts, credentials, authentication factors, linked-provider subjects, sessions, raw tokens, and token hashes are not displayed.</p></div></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -3265,7 +3265,7 @@ func AdminUserInvitationActions(user AdminUserData, stepUpRequired bool) templ.C
 								if templ_7745c5c3_Err != nil {
 									return templ_7745c5c3_Err
 								}
-								templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 230, " will stop working. Gofer will show the replacement token only once.")
+								templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 230, " will stop working. Raven will show the replacement token only once.")
 								if templ_7745c5c3_Err != nil {
 									return templ_7745c5c3_Err
 								}
@@ -3669,7 +3669,7 @@ func AdminUserStatusAction(user AdminUserData, stepUpRequired bool) templ.Compon
 									return templ_7745c5c3_Err
 								}
 							} else {
-								templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 253, "The user will be signed out everywhere immediately. Gofer will pause mailbox sync, sending, and other provider activity. Their mail, accounts, credentials, and settings remain stored.")
+								templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 253, "The user will be signed out everywhere immediately. Raven will pause mailbox sync, sending, and other provider activity. Their mail, accounts, credentials, and settings remain stored.")
 								if templ_7745c5c3_Err != nil {
 									return templ_7745c5c3_Err
 								}
@@ -4022,7 +4022,7 @@ func AdminUserDeletionAction(user AdminUserData, stepUpRequired bool) templ.Comp
 								}()
 							}
 							ctx = templ.InitializeContext(ctx)
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 270, "This removes the user's Gofer account and local data. It cannot be undone.")
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 270, "This removes the user's Raven account and local data. It cannot be undone.")
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
@@ -4038,7 +4038,7 @@ func AdminUserDeletionAction(user AdminUserData, stepUpRequired bool) templ.Comp
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 271, " <div class=\"space-y-4 text-sm text-foreground\"><div class=\"rounded-lg border border-destructive/25 bg-destructive/5 px-4 py-3\"><p class=\"font-semibold text-destructive\">Gofer will permanently remove</p><ul class=\"mt-2 list-disc space-y-1 pl-5 text-muted-foreground\"><li>The local sign-in profile, password, passkeys, authenticator, recovery codes, sessions, and linked sign-in identities.</li><li>Configured mailboxes and stored mailbox credentials.</li><li>Locally cached mail and attachments, contacts, signatures, settings, drafts, queued sends, and pending operations.</li></ul></div><div class=\"rounded-lg border border-border bg-muted/35 px-4 py-3 text-muted-foreground\"><p><span class=\"font-semibold text-foreground\">Remote provider data is not changed.</span> Gofer does not delete messages, contacts, calendars, or the account at Gmail, Outlook, or another mail provider.</p><p class=\"mt-2\">Redacted security-event records are retained for administration and audit history.</p></div><div class=\"rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-amber-900 dark:text-amber-100\"><p class=\"font-semibold\">Back up or export first</p><p class=\"mt-1\">This screen cannot export another user's private mail. Re-enable the user before deletion if they need to export Gofer-only data, or stop Gofer and take a verified service backup.</p></div></div><form method=\"post\" action=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 271, " <div class=\"space-y-4 text-sm text-foreground\"><div class=\"rounded-lg border border-destructive/25 bg-destructive/5 px-4 py-3\"><p class=\"font-semibold text-destructive\">Raven will permanently remove</p><ul class=\"mt-2 list-disc space-y-1 pl-5 text-muted-foreground\"><li>The local sign-in profile, password, passkeys, authenticator, recovery codes, sessions, and linked sign-in identities.</li><li>Configured mailboxes and stored mailbox credentials.</li><li>Locally cached mail and attachments, contacts, signatures, settings, drafts, queued sends, and pending operations.</li></ul></div><div class=\"rounded-lg border border-border bg-muted/35 px-4 py-3 text-muted-foreground\"><p><span class=\"font-semibold text-foreground\">Remote provider data is not changed.</span> Raven does not delete messages, contacts, calendars, or the account at Gmail, Outlook, or another mail provider.</p><p class=\"mt-2\">Redacted security-event records are retained for administration and audit history.</p></div><div class=\"rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-amber-900 dark:text-amber-100\"><p class=\"font-semibold\">Back up or export first</p><p class=\"mt-1\">This screen cannot export another user's private mail. Re-enable the user before deletion if they need to export Raven-only data, or stop Raven and take a verified service backup.</p></div></div><form method=\"post\" action=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -4429,7 +4429,7 @@ func AdminUserCredentialResetAction(user AdminUserData, stepUpRequired bool) tem
 								}()
 							}
 							ctx = templ.InitializeContext(ctx)
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 291, "This does not change the password or sign the user out yet. Any previous unused reset token will stop working, and Gofer will show the new token only once.")
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 291, "This does not change the password or sign the user out yet. Any previous unused reset token will stop working, and Raven will show the new token only once.")
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
@@ -4657,7 +4657,7 @@ func AdminUserInvitationDialog(data AdminUsersData) templ.Component {
 							}()
 						}
 						ctx = templ.InitializeContext(ctx)
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 300, "Invite a Gofer user")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 300, "Invite a Raven user")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -4768,7 +4768,7 @@ func AdminUserInvitationDialog(data AdminUsersData) templ.Component {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 312, "</div><div class=\"space-y-1.5\"><div class=\"space-y-1.5\"><label for=\"admin-invitation-username\" class=\"block text-sm font-semibold text-foreground\">Gofer username</label> <input id=\"admin-invitation-username\" name=\"username\" type=\"text\" value=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 312, "</div><div class=\"space-y-1.5\"><div class=\"space-y-1.5\"><label for=\"admin-invitation-username\" class=\"block text-sm font-semibold text-foreground\">Raven username</label> <input id=\"admin-invitation-username\" name=\"username\" type=\"text\" value=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -4819,7 +4819,7 @@ func AdminUserInvitationDialog(data AdminUsersData) templ.Component {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 319, "</div></div><div class=\"rounded-md border border-border bg-muted/35 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground\">This creates only a Gofer application account. It does not create, connect, or authorize a mailbox. The invitation expires after 24 hours.</div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 319, "</div></div><div class=\"rounded-md border border-border bg-muted/35 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground\">This creates only a Raven application account. It does not create, connect, or authorize a mailbox. The invitation expires after 24 hours.</div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -5033,7 +5033,7 @@ func AdminUserInvitationResultDialog(data *AdminUserInvitationData) templ.Compon
 							}()
 						}
 						ctx = templ.InitializeContext(ctx)
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 327, "Copy these details now. Gofer stores only a hash of the token and cannot display it again.")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 327, "Copy these details now. Raven stores only a hash of the token and cannot display it again.")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -5305,7 +5305,7 @@ func AdminUserCredentialResetResultDialog(data *AdminUserCredentialResetData) te
 							}()
 						}
 						ctx = templ.InitializeContext(ctx)
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 339, "Copy these details now. Gofer stores only a hash of the token and cannot display it again.")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 339, "Copy these details now. Raven stores only a hash of the token and cannot display it again.")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -5559,7 +5559,7 @@ func AdminSecurityPage(data models.MailSecurityAdminData, verification ...AdminS
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 354, "<div><div class=\"text-sm font-bold text-amber-900 dark:text-amber-100\">These exceptions weaken Gofer's normal security guarantees</div><p class=\"mt-1 text-sm leading-relaxed text-amber-800 dark:text-amber-200\">HTTP discovery can be modified in transit. Plaintext IMAP or SMTP can expose passwords and message contents to anyone who can observe the network. Only approve endpoints you control.</p></div></div></div><div class=\"grid gap-5 xl:grid-cols-2\"><section class=\"rounded-lg border border-border bg-card p-5\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 354, "<div><div class=\"text-sm font-bold text-amber-900 dark:text-amber-100\">These exceptions weaken Raven's normal security guarantees</div><p class=\"mt-1 text-sm leading-relaxed text-amber-800 dark:text-amber-200\">HTTP discovery can be modified in transit. Plaintext IMAP or SMTP can expose passwords and message contents to anyone who can observe the network. Only approve endpoints you control.</p></div></div></div><div class=\"grid gap-5 xl:grid-cols-2\"><section class=\"rounded-lg border border-border bg-card p-5\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -5581,7 +5581,7 @@ func AdminSecurityPage(data models.MailSecurityAdminData, verification ...AdminS
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 356, "\">HTTP discovery</div><p class=\"mt-1 text-sm text-muted-foreground\">Allow Gofer to try HTTP autoconfig for one exact email domain after all HTTPS sources fail.</p><form method=\"post\" action=\"/admin/security/http-discovery\" class=\"mt-5 space-y-4\" onsubmit=\"return confirm('Allow HTTP mail discovery for this domain? The response can be changed in transit.')\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 356, "\">HTTP discovery</div><p class=\"mt-1 text-sm text-muted-foreground\">Allow Raven to try HTTP autoconfig for one exact email domain after all HTTPS sources fail.</p><form method=\"post\" action=\"/admin/security/http-discovery\" class=\"mt-5 space-y-4\" onsubmit=\"return confirm('Allow HTTP mail discovery for this domain? The response can be changed in transit.')\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -5691,7 +5691,7 @@ func AdminSecurityPage(data models.MailSecurityAdminData, verification ...AdminS
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 370, "\">Private discovery or mail target</div><p class=\"mt-1 max-w-3xl text-sm text-muted-foreground\">Allow one exact loopback, private, link-local, or otherwise internal target after Gofer validates the hostname. This is for local test servers and controlled lab environments only.</p><form method=\"post\" action=\"/admin/security/private-target\" class=\"mt-5 space-y-4\" onsubmit=\"return confirm('Allow autodiscovery or mail probing to this exact private target?')\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 370, "\">Private discovery or mail target</div><p class=\"mt-1 max-w-3xl text-sm text-muted-foreground\">Allow one exact loopback, private, link-local, or otherwise internal target after Raven validates the hostname. This is for local test servers and controlled lab environments only.</p><form method=\"post\" action=\"/admin/security/private-target\" class=\"mt-5 space-y-4\" onsubmit=\"return confirm('Allow autodiscovery or mail probing to this exact private target?')\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -5714,7 +5714,7 @@ func AdminSecurityPage(data models.MailSecurityAdminData, verification ...AdminS
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 373, "<div class=\"grid gap-3 sm:grid-cols-[8rem_minmax(0,1fr)_7rem]\"><div><label class=\"mb-1.5 block text-xs font-semibold text-muted-foreground\">Protocol</label> <select name=\"protocol\" required class=\"h-9 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground shadow-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30\"><option value=\"http\">HTTP</option> <option value=\"https\">HTTPS</option> <option value=\"imap\">IMAP</option> <option value=\"smtp\">SMTP</option></select></div><div><label class=\"mb-1.5 block text-xs font-semibold text-muted-foreground\">Exact host</label> <input name=\"host\" type=\"text\" required placeholder=\"127.0.0.1 or mail.lab.test\" class=\"h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30\"></div><div><label class=\"mb-1.5 block text-xs font-semibold text-muted-foreground\">Port</label> <input name=\"port\" type=\"number\" min=\"1\" max=\"65535\" required placeholder=\"8080\" class=\"h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30\"></div></div><label class=\"flex items-start gap-2.5 rounded-md border border-red-500/20 bg-red-500/5 p-3 text-xs leading-relaxed text-muted-foreground\"><input type=\"checkbox\" name=\"acknowledge\" value=\"yes\" required class=\"mt-0.5 size-4 shrink-0 accent-red-600\"> <span>I understand that this exact target is reachable from the Gofer server and that the exception does not approve any other host or port.</span></label> <button type=\"submit\" class=\"rounded-md border border-red-500/35 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-800 transition-colors hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50 dark:text-red-200\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 373, "<div class=\"grid gap-3 sm:grid-cols-[8rem_minmax(0,1fr)_7rem]\"><div><label class=\"mb-1.5 block text-xs font-semibold text-muted-foreground\">Protocol</label> <select name=\"protocol\" required class=\"h-9 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground shadow-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30\"><option value=\"http\">HTTP</option> <option value=\"https\">HTTPS</option> <option value=\"imap\">IMAP</option> <option value=\"smtp\">SMTP</option></select></div><div><label class=\"mb-1.5 block text-xs font-semibold text-muted-foreground\">Exact host</label> <input name=\"host\" type=\"text\" required placeholder=\"127.0.0.1 or mail.lab.test\" class=\"h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30\"></div><div><label class=\"mb-1.5 block text-xs font-semibold text-muted-foreground\">Port</label> <input name=\"port\" type=\"number\" min=\"1\" max=\"65535\" required placeholder=\"8080\" class=\"h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30\"></div></div><label class=\"flex items-start gap-2.5 rounded-md border border-red-500/20 bg-red-500/5 p-3 text-xs leading-relaxed text-muted-foreground\"><input type=\"checkbox\" name=\"acknowledge\" value=\"yes\" required class=\"mt-0.5 size-4 shrink-0 accent-red-600\"> <span>I understand that this exact target is reachable from the Raven server and that the exception does not approve any other host or port.</span></label> <button type=\"submit\" class=\"rounded-md border border-red-500/35 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-800 transition-colors hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50 dark:text-red-200\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -6021,7 +6021,7 @@ func adminScopeURL(path string, scope models.AdminWebmailScope) string {
 
 func adminScopeDescription(scope models.AdminWebmailScope) string {
 	if scope.SelectedUsername == "" {
-		return "Metrics include every Gofer webmail user and all mailbox accounts they own."
+		return "Metrics include every Raven webmail user and all mailbox accounts they own."
 	}
 	return "Metrics include every mailbox account owned by " + scope.SelectedUsername + "."
 }
@@ -11177,7 +11177,7 @@ func AdminMailOperationsPage(status models.MailOperationsAdminStatus) templ.Comp
 			return templ_7745c5c3_Err
 		}
 		if status.Scope.SelectedUserID == "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 730, "<section class=\"mt-5 rounded-lg border border-border/70 bg-background/35 p-4\"><div class=\"flex items-baseline justify-between gap-3\"><div class=\"text-xs font-semibold text-foreground\">SMTP baseline</div><div class=\"text-[11px] text-muted-foreground\">Process lifetime</div></div><p class=\"mt-1 text-xs text-muted-foreground\">Timing data for generic SMTP only. These counters reset when Gofer restarts and are used to decide whether connection reuse is worth the extra state.</p><div class=\"mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-6\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 730, "<section class=\"mt-5 rounded-lg border border-border/70 bg-background/35 p-4\"><div class=\"flex items-baseline justify-between gap-3\"><div class=\"text-xs font-semibold text-foreground\">SMTP baseline</div><div class=\"text-[11px] text-muted-foreground\">Process lifetime</div></div><p class=\"mt-1 text-xs text-muted-foreground\">Timing data for generic SMTP only. These counters reset when Raven restarts and are used to decide whether connection reuse is worth the extra state.</p><div class=\"mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-6\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

@@ -423,7 +423,7 @@ templ SettingsAppearanceTab(uiSettings map[string]string) {
 				<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 					<div>
 						<h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-1">Visual Style</h3>
-						<p class="text-xs text-muted-foreground">Choose the overall look and feel of Gofer.</p>
+						<p class="text-xs text-muted-foreground">Choose the overall look and feel of Raven.</p>
 					</div>
 					<div class="space-y-1 sm:text-right" data-mode-picker>
 						<h4 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Color Mode</h4>
@@ -557,7 +557,7 @@ templ SettingsRegionalTab(uiSettings map[string]string) {
 			<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 				<div class="min-w-0">
 					<h4 class="text-sm font-medium text-foreground">Timezone</h4>
-					<p class="text-xs text-muted-foreground mt-1">Used for email timestamps, scheduled sends, and date labels across Gofer.</p>
+					<p class="text-xs text-muted-foreground mt-1">Used for email timestamps, scheduled sends, and date labels across Raven.</p>
 				</div>
 				<div class="w-full shrink-0 sm:w-64" data-timezone-picker data-current-timezone={ uiSettingGet(uiSettings, "timezone", "local") }>
 					@selectbox.SelectBox(selectbox.Props{Class: "settings-select"}) {
@@ -667,7 +667,7 @@ templ SettingsAdvancedTab(uiSettings map[string]string) {
 			<div class="flex items-start justify-between gap-6 rounded-lg border border-border/60 bg-background/40 p-4">
 				<div class="min-w-0">
 					<label for="desktop-notifications" class="text-sm font-medium text-foreground">Desktop notifications</label>
-					<p class="text-xs text-muted-foreground mt-1 leading-relaxed">Show notifications for new unread mail. Auto uses Web Push when possible, then browser-tab notifications while Gofer is open.</p>
+					<p class="text-xs text-muted-foreground mt-1 leading-relaxed">Show notifications for new unread mail. Auto uses Web Push when possible, then browser-tab notifications while Raven is open.</p>
 					<p class="text-xs text-muted-foreground mt-2" data-desktop-notifications-status>Browser permission will be requested when enabled.</p>
 					<p class="text-xs font-medium text-muted-foreground mt-1" data-notification-active-method>Active method: Off</p>
 				</div>
@@ -699,7 +699,7 @@ templ SettingsAdvancedTab(uiSettings map[string]string) {
 			<div class="flex flex-col gap-4 rounded-lg border border-border/60 bg-background/40 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
 				<div class="min-w-0">
 					<h4 class="text-sm font-medium text-foreground">Email links</h4>
-					<p class="text-xs text-muted-foreground mt-1 leading-relaxed">Open <span class="font-mono">mailto:</span> links from websites in a new Gofer message.</p>
+					<p class="text-xs text-muted-foreground mt-1 leading-relaxed">Open <span class="font-mono">mailto:</span> links from websites in a new Raven message.</p>
 					<p id="mailto-handler-status" class="text-xs text-muted-foreground mt-2" data-mailto-handler-status>Your browser will ask you to confirm.</p>
 				</div>
 				<div class="flex w-full shrink-0 flex-col gap-2 sm:w-auto">
@@ -708,7 +708,7 @@ templ SettingsAdvancedTab(uiSettings map[string]string) {
 							<circle cx="12" cy="12" r="4"></circle>
 							<path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"></path>
 						</svg>
-						Use Gofer
+						Use Raven
 					</button>
 					<button type="button" class="inline-flex h-8 w-full shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-input bg-background px-3 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 sm:w-auto" data-mailto-handler-test-button aria-describedby="mailto-handler-status">
 						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true">
@@ -737,7 +737,7 @@ templ SettingsContactsTab(accounts []models.Account, uiSettings map[string]strin
 		<div class="bg-card rounded-lg border p-6 space-y-5">
 			<div>
 				<h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-1">Local contacts</h3>
-				<p class="text-xs text-muted-foreground">Control how Gofer builds and maintains your local address book from mail you already have.</p>
+				<p class="text-xs text-muted-foreground">Control how Raven builds and maintains your local address book from mail you already have.</p>
 			</div>
 			<div class="rounded-lg border border-border/60 bg-background/40 p-4 space-y-5">
 				<div class="flex items-start justify-between gap-6">
@@ -821,7 +821,7 @@ templ SettingsContactsTab(accounts []models.Account, uiSettings map[string]strin
 					@dialog.Content(dialog.ContentProps{Class: "sm:max-w-md"}) {
 						@dialog.Header() {
 							@dialog.Title() { Delete discovered contacts }
-							@dialog.Description() { Remove contacts Gofer created through discovery. Manually saved contacts will be kept. }
+							@dialog.Description() { Remove contacts Raven created through discovery. Manually saved contacts will be kept. }
 						}
 						<div class="rounded-lg border border-destructive/15 bg-destructive/5 p-3 text-sm text-muted-foreground">
 							This action deletes all discovered contacts. Deleted addresses may be suppressed from automatic recreation depending on your contact settings.
@@ -1236,7 +1236,7 @@ templ SettingsSyncTab(settings models.SyncSettings, uiSettings map[string]string
 			<div class="bg-card rounded-lg border p-6 space-y-5">
 				<div>
 					<h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-1">Unified folders</h3>
-					<p class="text-xs text-muted-foreground leading-relaxed">Control how Gofer groups matching folders across connected mail accounts.</p>
+					<p class="text-xs text-muted-foreground leading-relaxed">Control how Raven groups matching folders across connected mail accounts.</p>
 				</div>
 				<div class="rounded-lg border border-border/60 bg-background/40 p-4">
 					<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -1310,7 +1310,7 @@ templ SettingsSyncTab(settings models.SyncSettings, uiSettings map[string]string
 			if (!isNaN(retryAt) && retryAt > Date.now()) {
 				var remaining = retryAt - Date.now();
 				var minutes = Math.max(1, Math.ceil(remaining / 60000));
-				return message + ' Gofer will try again in ' + minutes + (minutes === 1 ? ' minute.' : ' minutes.');
+				return message + ' Raven will try again in ' + minutes + (minutes === 1 ? ' minute.' : ' minutes.');
 			}
 			return message;
 		}
@@ -1758,9 +1758,9 @@ func idleFallbackTooltip(f models.FolderSyncStatus) string {
 		remaining := time.Until(retryAt)
 		minutes := max(1, int((remaining+time.Minute-1)/time.Minute))
 		if minutes == 1 {
-			return message + " Gofer will try again in 1 minute."
+			return message + " Raven will try again in 1 minute."
 		}
-		return fmt.Sprintf("%s Gofer will try again in %d minutes.", message, minutes)
+		return fmt.Sprintf("%s Raven will try again in %d minutes.", message, minutes)
 	}
 	return message
 }
@@ -1892,7 +1892,7 @@ templ SettingsAccountCard(account models.Account) {
 						Delete Account
 					}
 					@dialog.Description() {
-						This removes <strong>{ account.Email }</strong> and its locally stored mail, contacts, scheduled sends, and account settings from Gofer. It does not delete anything from your mail provider.
+						This removes <strong>{ account.Email }</strong> and its locally stored mail, contacts, scheduled sends, and account settings from Raven. It does not delete anything from your mail provider.
 					}
 				}
 				<div class="flex items-center gap-3 p-3 rounded-lg bg-destructive/5 border border-destructive/15">
@@ -2177,7 +2177,7 @@ func accountContactSyncConfigurable(account models.Account) bool {
 
 func accountContactSyncStatusDescription(account models.Account) string {
 	if account.ContactSyncEnabled {
-		return "Syncs provider contacts into Gofer."
+		return "Syncs provider contacts into Raven."
 	}
 	if accountContactSyncConfigurable(account) {
 		return "Not used for contacts."
@@ -2622,7 +2622,7 @@ templ GmailAccountDialog() {
 					Connect Gmail
 				}
 				@dialog.Description() {
-					Authorize Gofer to access your Gmail account
+					Authorize Raven to access your Gmail account
 				}
 			}
 			<form id="gmail-form" method="POST" action="/api/accounts/oauth2/authorize" class="px-1 pt-2 pb-4 space-y-4">
@@ -2658,7 +2658,7 @@ templ GmailAccountDialog() {
 				<div class="rounded-lg bg-accent/50 border border-border p-3">
 					<div class="flex items-start gap-2.5">
 						<svg class="size-4 text-muted-foreground mt-0.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-						<p class="text-xs text-muted-foreground leading-relaxed">You will be redirected to Google to grant Gofer access to read and send email on your behalf.</p>
+						<p class="text-xs text-muted-foreground leading-relaxed">You will be redirected to Google to grant Raven access to read and send email on your behalf.</p>
 					</div>
 				</div>
 				<button type="submit" class="w-full inline-flex items-center justify-center gap-2.5 text-sm font-medium px-4 py-2.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
@@ -2685,7 +2685,7 @@ templ OutlookAccountDialog() {
 					Connect Outlook
 				}
 				@dialog.Description() {
-					Authorize Gofer to access your Microsoft mailbox
+					Authorize Raven to access your Microsoft mailbox
 				}
 			}
 			<form id="outlook-form" method="POST" action="/api/accounts/oauth2/authorize" class="px-1 pt-2 pb-4 space-y-4">
@@ -2712,7 +2712,7 @@ templ OutlookAccountDialog() {
 				<div class="rounded-lg bg-accent/50 border border-border p-3">
 					<div class="flex items-start gap-2.5">
 						<svg class="size-4 text-muted-foreground mt-0.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-						<p class="text-xs text-muted-foreground leading-relaxed">You will be redirected to Microsoft to grant Gofer Microsoft Graph access for reading, organizing, and sending email.</p>
+						<p class="text-xs text-muted-foreground leading-relaxed">You will be redirected to Microsoft to grant Raven Microsoft Graph access for reading, organizing, and sending email.</p>
 					</div>
 				</div>
 				<button type="submit" class="w-full inline-flex items-center justify-center gap-2.5 text-sm font-medium px-4 py-2.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
