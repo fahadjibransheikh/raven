@@ -5,48 +5,36 @@
 
 | Minimal light | Classic dark |
 | --- | --- |
-| <img alt="Gofer email card view in the minimal light theme" src="./screenshots/emails-card-minimal-light.png" /> | <img alt="Gofer email card view in the classic dark theme" src="./screenshots/emails-card-classic-dark.png" /> |
+| <img alt="Raven email card view in the minimal light theme" src="./screenshots/emails-card-minimal-light.png" /> | <img alt="Raven email card view in the classic dark theme" src="./screenshots/emails-card-classic-dark.png" /> |
 
-> Raven is a fork of [Gofer](https://github.com/cristianadrielbraun/gofer) by Cristián Braun, used under the MIT License. It is not affiliated with or endorsed by the Gofer project. Much of this README is carried over from Gofer's; first-person notes ("I", "my machine") are from Gofer's author.
-
-[View all screenshots](./screenshots/README.md)
+[View all screenshots](./screenshots/README.md) · Screenshots use made-up demo data.
 
 <br>
 
-Raven is a local-first email client, based on Gofer. It's built with Go, templ views, HTMX-style interactions, and SQLite storage.
+Raven is a local-first email client. I maintain it as a fork of [Gofer](https://github.com/cristianadrielbraun/gofer), built by Cristián Braun, and use it under the MIT License. Raven isn't affiliated with or endorsed by the Gofer project. Most of the mail engine, sync and UI is Cristián's work. I follow upstream closely and send general fixes back to Gofer.
 
-It is meant to run on your own machine, keep mail and related data local, and talk directly to mail and contact providers. Generic accounts use IMAP/SMTP. Gmail uses the Gmail API and Google People API. Outlook uses Microsoft Graph.
+It's built with Go, templ views, HTMX-style interactions, and SQLite storage. It runs on your own machine, keeps mail and related data local, and talks directly to mail and contact providers. Generic accounts use IMAP/SMTP. Gmail uses the Gmail API and Google People API. Outlook uses Microsoft Graph.
 
-The project is in alpha, but it is already useful for real local mail. It started as a small mail thing and then, predictably, became a slightly larger mail thing. I'm keeping it light for now, so expect things to keep changing as the app settles.
+## what Raven adds
 
-For reference, I'm using it actively with 6 configured accounts and about 100k emails in total. So far not a single performance issue or increased memory consumption
+- **Raven branding:** name, logo, and app manifest.
+- **Desktop app:** a Tauri wrapper in [`tauri-wrapper/`](./tauri-wrapper) that runs the server in its own native window, with a GitHub Actions workflow that builds macOS, Linux, and Windows bundles.
 
 ## features
 
-Things that already work (well, they work on my machine):
+Everything below comes from Gofer and works in Raven:
 
 - **Accounts and sync:** multiple IMAP/SMTP, Gmail, and Outlook accounts, with mail cached locally in SQLite.
 - **Reading and sending:** threads, attachments, drafts with autosave, signatures, scheduled send, and translation.
 - **Organization and search:** folders, stars, archive, spam controls, and advanced search filters.
-- **Contacts:** local address books, vCard import/export, Google, Outlook, and CardDAV sync, plus Gofer Sync for automatic contact syncing between accounts.
+- **Contacts:** local address books, vCard import/export, Google, Outlook, and CardDAV sync, plus automatic contact syncing between accounts.
 - **Security:** encrypted stored credentials, remote content blocked by default, and optional authentication with passwords, TOTP, passkeys, or external sign-in.
 - **Access modes:** no-login local use, one protected personal profile, or managed users with separate administrators.
 - **Customization:** themes, layouts, account colors, regional settings, and browser/Web Push notifications.
 
-## still moving
+## status
 
-Things I'm still improving, in no particular order:
-
-- smoother first-run setup and OAuth credential guidance
-- proper, public implementation of the oauth integration, so you as end user don't need to create your own provider
-- clearer diagnostics and reconnect flows
-- broader test coverage around provider sync behavior
-- deeper labels/tags workflows beyond filtering
-- calendar support
-- richer regional and language settings
-- more keyboard shortcuts, bulk actions, and cleanup flows
-
-Local use is the default. Personal and managed modes also support authenticated remote access with HTTPS and explicit configuration; the project is still alpha.
+Raven is alpha software, like Gofer. Expect things to change. For upstream plans, see the [Gofer repository](https://github.com/cristianadrielbraun/gofer).
 
 ## running and building
 
@@ -74,7 +62,7 @@ In managed mode, `/admin` provides user administration, invitations, security po
 
 ## built with
 
-Some of the main libraries and tools Raven leans on, because pretending I wrote the whole mail stack from scratch would be absurd:
+Raven and Gofer are built on these libraries and tools:
 
 - [templ](https://templ.guide/) for Go-based views
 - [templUI](https://templui.io/) for several UI components
