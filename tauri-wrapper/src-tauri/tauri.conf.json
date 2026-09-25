@@ -10,6 +10,7 @@
     "windows": [
       {
         "label": "main",
+        "create": false,
         "title": "Raven",
         "url": "index.html",
         "width": 1280,

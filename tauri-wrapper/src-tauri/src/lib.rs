@@ -25,7 +25,7 @@ use tauri_plugin_shell::process::CommandChild;
 use tauri_plugin_shell::ShellExt;
 
 /// Host/port Gofer listens on. This matches `GOFER_ADDR=127.0.0.1:8090` in
-/// the repo's `.env` (see gofer/.env / gofer/.env.example). If you change
+/// the repo's `.env` (see .env / .env.example). If you change
 /// GOFER_ADDR, update these two constants to match.
 const GOFER_HOST: &str = "127.0.0.1";
 const GOFER_PORT: u16 = 8090;
@@ -36,7 +36,7 @@ const GOFER_URL: &str = "http://127.0.0.1:8090";
 /// working directory, so this must point at the real repo root -- the same
 /// place `.env` and `data/` already live from running `task build`/
 /// `./tmp/main` by hand. Update this if the repo is ever moved again.
-const GOFER_WORKING_DIR: &str = "/Users/fahad/code/raven/gofer";
+const GOFER_WORKING_DIR: &str = "/Users/fahad/code/raven";
 
 /// How long to wait for Gofer to come up before giving up and leaving the
 /// "Starting Gofer..." placeholder on screen.
@@ -83,6 +83,31 @@ pub fn run() {
         .manage(SidecarState(Arc::new(Mutex::new(None))))
         .setup(|app| {
             let app_handle = app.handle().clone();
+
+            // The main window is built here rather than auto-created from
+            // tauri.conf.json ("create": false) because on_new_window is only
+            // available on the builder. Email links carry target="_blank"
+            // (see emailExternalLinksScript in internal/handler/handler.go);
+            // the webview silently drops those by default, so hand them to
+            // the system browser instead.
+            let window_config = app
+                .config()
+                .app
+                .windows
+                .iter()
+                .find(|w| w.label == "main")
+                .expect("main window config missing from tauri.conf.json")
+                .clone();
+            tauri::WebviewWindowBuilder::from_config(&app_handle, &window_config)?
+                .on_new_window(|url, _features| {
+                    if matches!(url.scheme(), "http" | "https" | "mailto") {
+                        if let Err(err) = tauri_plugin_opener::open_url(url.as_str(), None::<&str>) {
+                            eprintln!("failed to open {url} externally: {err}");
+                        }
+                    }
+                    tauri::webview::NewWindowResponse::Deny
+                })
+                .build()?;
 
             // If Gofer is already listening (previous run, or started by
             // hand), don't spawn a second copy -- just adopt it.
