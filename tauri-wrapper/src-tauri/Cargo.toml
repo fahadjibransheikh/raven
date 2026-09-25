@@ -1,0 +1,32 @@
+[package]
+name = "gofer-desktop"
+version = "0.1.0"
+description = "Native desktop wrapper for the Raven email client"
+edition = "2021"
+rust-version = "1.77.2"
+
+# See https://v2.tauri.app/reference/config/ for tauri.conf.json.
+# See https://v2.tauri.app/develop/sidecar/ for the sidecar mechanism used here.
+
+[lib]
+# The library name (crate-type) is required by Tauri's mobile entry-point
+# macro even though this app is desktop-only; `staticlib`/`cdylib` are what
+# `cargo tauri` expects to find when it links the final binary.
+name = "gofer_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

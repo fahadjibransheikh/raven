@@ -1,0 +1,10 @@
+Place the built Gofer sidecar binary(ies) here, named with the Rust target
+triple suffix Tauri expects, e.g.:
+
+    binaries/gofer-aarch64-apple-darwin      (Apple Silicon Mac)
+    binaries/gofer-x86_64-apple-darwin       (Intel Mac)
+
+See tauri-wrapper/README.md for the exact commands. This file itself is just
+a placeholder so the (otherwise empty) binaries/ directory exists in the
+repo; the actual gofer-<target-triple> file(s) are build output and should
+not be committed to git.
