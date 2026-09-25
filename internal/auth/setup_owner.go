@@ -486,7 +486,7 @@ func setupOwnerIdentifierCollisions(ctx context.Context, tx *sql.Tx, draft *Setu
 	if err != nil {
 		return nil, fmt.Errorf("check setup owner username collision: %w", err)
 	}
-	fields["username"] = "That username is already used by another Gofer user."
+	fields["username"] = "That username is already used by another Raven user."
 	return fields, nil
 }
 

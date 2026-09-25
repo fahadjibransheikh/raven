@@ -276,7 +276,7 @@ func TestPasswordSecuritySettingsRendersAccessibleFactorManagementAndEscapesSecr
 	html := output.String()
 	for _, want := range []string{
 		`data-totp-management`,
-		`alt="QR code containing the replacement Gofer authenticator key"`,
+		`alt="QR code containing the replacement Raven authenticator key"`,
 		`aria-label="Replacement authenticator manual setup key"`,
 		`action="/settings/security/totp/confirm"`,
 		`autocomplete="one-time-code"`,
@@ -336,7 +336,7 @@ func TestPasswordSecuritySettingsRendersFirstTimeTOTPEnrollmentWithoutReplacemen
 	html := output.String()
 	for _, want := range []string{
 		`data-totp-management`, "Verify the new authenticator",
-		`alt="QR code containing the new Gofer authenticator key"`,
+		`alt="QR code containing the new Raven authenticator key"`,
 		`aria-label="New authenticator manual setup key"`,
 		"authenticator is not enabled until the code is verified", "Enable authenticator",
 		`&lt;first-authenticator-key&gt;`,
@@ -482,7 +482,7 @@ func TestPasswordSecuritySettingsRendersConnectedGoogleIdentityWithoutMailboxCon
 		"last used Aug 16, 2026",
 		`action="` + unlinkPath + `"`, "Disconnect", "removes only this identity",
 		`name="_csrf" value="` + csrf + `"`, `&lt;person&amp;family@gmail.example&gt;`,
-		"For Gofer sign-in only", "does not connect a Gmail or Outlook mailbox", "mail, contacts, calendars",
+		"For Raven sign-in only", "does not connect a Gmail or Outlook mailbox", "mail, contacts, calendars",
 	} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("Google identity settings missing %q", want)
@@ -606,8 +606,8 @@ func TestPasswordSecuritySettingsRendersMicrosoftIdentityWithoutOutlookMailboxCo
 	for _, want := range []string{
 		"Microsoft · connected Aug 18, 2026", "person@microsoft.example",
 		`action="` + unlinkPath + `"`,
-		"For Gofer sign-in only", "does not connect a Gmail or Outlook mailbox",
-		"grant Gofer access to mail, contacts, calendars",
+		"For Raven sign-in only", "does not connect a Gmail or Outlook mailbox",
+		"grant Raven access to mail, contacts, calendars",
 		`name="_csrf" value="` + csrf + `"`,
 	} {
 		if !strings.Contains(html, want) {
@@ -640,7 +640,7 @@ func TestPasswordSecuritySettingsRendersConfiguredOIDCIdentityWithoutMailboxConf
 	for _, want := range []string{
 		"Company SSO · connected Aug 18, 2026", "person@identity.example",
 		`action="` + linkPath + `"`, `action="` + unlinkPath + `"`,
-		"Connect Company SSO sign-in", "For Gofer sign-in only", "other provider resources",
+		"Connect Company SSO sign-in", "For Raven sign-in only", "other provider resources",
 		`name="_csrf" value="` + csrf + `"`,
 	} {
 		if !strings.Contains(html, want) {

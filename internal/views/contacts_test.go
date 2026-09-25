@@ -42,7 +42,7 @@ func TestContactActivityLabelsDescribeProfileTimestamps(t *testing.T) {
 		t.Fatalf("ContactReadOnlyActivityInfo.Render() error = %v", err)
 	}
 	html := out.String()
-	for _, expected := range []string{"Added to Gofer", "Jan 2, 2025", "Contact updated", "Mar 4, 2025"} {
+	for _, expected := range []string{"Added to Raven", "Jan 2, 2025", "Contact updated", "Mar 4, 2025"} {
 		if !strings.Contains(html, expected) {
 			t.Fatalf("rendered activity section missing %q: %s", expected, html)
 		}
@@ -100,7 +100,7 @@ func TestContactsDetailRendersGoferSyncHeaderAndFullWidthLocations(t *testing.T)
 	html := out.String()
 	for _, expected := range []string{
 		`data-contact-detail-id="contact-1"`,
-		`>Gofer Sync<`,
+		`>Raven Sync<`,
 		`data-contact-sync-enabled-status`,
 		`border-emerald-500/20`,
 		`data-contact-sync-now`,
@@ -115,7 +115,7 @@ func TestContactsDetailRendersGoferSyncHeaderAndFullWidthLocations(t *testing.T)
 		`>Sync pending<`,
 	} {
 		if !strings.Contains(html, expected) {
-			t.Fatalf("rendered Gofer Sync section missing %q: %s", expected, html)
+			t.Fatalf("rendered Raven Sync section missing %q: %s", expected, html)
 		}
 	}
 }
@@ -207,12 +207,12 @@ func TestContactSyncSetupDialogRendersDiscoveryAndConflictSteps(t *testing.T) {
 	if err := ContactSyncSetupDialog(setup).Render(context.Background(), &discovery); err != nil {
 		t.Fatal(err)
 	}
-	for _, expected := range []string{"Set up Gofer Sync", "1 possible match", "Search manually", "Search this account", `data-contact-sync-location-search-url="/api/contacts/contact-1/sync-setup/findings?mode=custom&amp;account_id=acc"`, "Recommended", "Email + phone + name match", "None of these contacts are the same person", `id="contact-sync-setup-selection-contact-1"`, `form="contact-sync-setup-selection-contact-1"`, "Review values"} {
+	for _, expected := range []string{"Set up Raven Sync", "1 possible match", "Search manually", "Search this account", `data-contact-sync-location-search-url="/api/contacts/contact-1/sync-setup/findings?mode=custom&amp;account_id=acc"`, "Recommended", "Email + phone + name match", "None of these contacts are the same person", `id="contact-sync-setup-selection-contact-1"`, `form="contact-sync-setup-selection-contact-1"`, "Review values"} {
 		if !strings.Contains(discovery.String(), expected) {
 			t.Fatalf("discovery dialog missing %q: %s", expected, discovery.String())
 		}
 	}
-	if strings.Contains(discovery.String(), "How should Gofer search?") {
+	if strings.Contains(discovery.String(), "How should Raven search?") {
 		t.Fatalf("discovery dialog still contains the global search controls: %s", discovery.String())
 	}
 

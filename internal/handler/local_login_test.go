@@ -74,7 +74,7 @@ func postLocalLogin(t *testing.T, handler *Handler, identifier, password string,
 	form := url.Values{"identifier": {identifier}, "password": {password}}
 	request := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(form.Encode()))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("User-Agent", "Gofer Login Test/1.0")
+	request.Header.Set("User-Agent", "Raven Login Test/1.0")
 	request.RemoteAddr = "198.51.100.70:43120"
 	for _, cookie := range cookies {
 		request.AddCookie(cookie)
@@ -89,7 +89,7 @@ func postAdminLogin(t *testing.T, handler *Handler, identifier, password string,
 	form := url.Values{"identifier": {identifier}, "password": {password}}
 	request := httptest.NewRequest(http.MethodPost, "/admin/login", strings.NewReader(form.Encode()))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("User-Agent", "Gofer Admin Login Test/1.0")
+	request.Header.Set("User-Agent", "Raven Admin Login Test/1.0")
 	request.RemoteAddr = "198.51.100.71:43120"
 	for _, cookie := range cookies {
 		request.AddCookie(cookie)
@@ -129,7 +129,7 @@ func TestLocalLoginSuccessSetsSessionAndUsesSafeReturnTarget(t *testing.T) {
 	if err != nil || session == nil {
 		t.Fatalf("GetSessionByToken() = %#v, %v", session, err)
 	}
-	if session.AuthenticationMethod != auth.AuthenticationMethodPassword || session.AssuranceLevel != auth.AssuranceLevelSingleFactor || session.UserAgent != "Gofer Login Test/1.0" {
+	if session.AuthenticationMethod != auth.AuthenticationMethodPassword || session.AssuranceLevel != auth.AssuranceLevelSingleFactor || session.UserAgent != "Raven Login Test/1.0" {
 		t.Fatalf("password session = %#v", session)
 	}
 	clearedReturnTo := responseCookie(recorder, "gofer_auth_return_to", false)
@@ -313,7 +313,7 @@ func TestLocalLoginCompletesRequiredMFAEnrollmentBeforeCreatingSession(t *testin
 	postEnrollment := func(path string, form url.Values) *httptest.ResponseRecorder {
 		request := httptest.NewRequest(http.MethodPost, path, strings.NewReader(form.Encode()))
 		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-		request.Header.Set("User-Agent", "Gofer Enrollment Test/1.0")
+		request.Header.Set("User-Agent", "Raven Enrollment Test/1.0")
 		request.RemoteAddr = "198.51.100.72:43120"
 		request.AddCookie(challengeCookie)
 		recorder := httptest.NewRecorder()
@@ -538,7 +538,7 @@ func TestLocalLoginMFAPostIsProtectedByCanonicalOriginGuard(t *testing.T) {
 func TestLocalLoginMFARejectsMissingCookieAndOversizedForm(t *testing.T) {
 	handler, _, db := newLocalLoginHandler(t, auth.UserStatusActive, false, true, true, false)
 	// This exercises the enrolled-factor challenge, not first-time enrollment.
-	if _, err := db.Write().ExecContext(t.Context(), `INSERT INTO totp_credentials (id,user_id,encrypted_seed,key_version,algorithm,digits,period,issuer,enabled) VALUES ('totp','person',x'01',1,'SHA1',6,30,'Gofer',1)`); err != nil {
+	if _, err := db.Write().ExecContext(t.Context(), `INSERT INTO totp_credentials (id,user_id,encrypted_seed,key_version,algorithm,digits,period,issuer,enabled) VALUES ('totp','person',x'01',1,'SHA1',6,30,'Raven',1)`); err != nil {
 		t.Fatal(err)
 	}
 
@@ -612,7 +612,7 @@ func TestLocalLoginMFAOffersOnlyRegisteredFactors(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			handler, manager, db := newLocalLoginHandler(t, auth.UserStatusActive, false, !tc.totp && (!tc.passkey || tc.rp != "gofer.example"), true, false)
 			if tc.totp {
-				if _, err := db.Write().ExecContext(t.Context(), `INSERT INTO totp_credentials (id,user_id,encrypted_seed,key_version,algorithm,digits,period,issuer,enabled) VALUES ('totp','person',x'01',1,'SHA1',6,30,'Gofer',1)`); err != nil {
+				if _, err := db.Write().ExecContext(t.Context(), `INSERT INTO totp_credentials (id,user_id,encrypted_seed,key_version,algorithm,digits,period,issuer,enabled) VALUES ('totp','person',x'01',1,'SHA1',6,30,'Raven',1)`); err != nil {
 					t.Fatal(err)
 				}
 			}

@@ -507,7 +507,7 @@ func (h *Handler) handleSetupOwner(w http.ResponseWriter, r *http.Request) {
 		}
 		if errors.Is(err, auth.ErrSetupOwnerBlocked) {
 			h.renderSetupOwnerPage(w, r, http.StatusConflict, views.SetupOwnerData{
-				BlockedMessage: "Gofer found an ambiguous or unbounded existing-user topology.",
+				BlockedMessage: "Raven found an ambiguous or unbounded existing-user topology.",
 			})
 			return
 		}
@@ -560,7 +560,7 @@ func (h *Handler) handleSetupOwnerSubmit(w http.ResponseWriter, r *http.Request)
 			http.Redirect(w, r, setupPath, http.StatusSeeOther)
 		case errors.Is(err, auth.ErrSetupOwnerBlocked):
 			h.renderSetupOwnerPage(w, r, http.StatusConflict, views.SetupOwnerData{
-				BlockedMessage: "Gofer found an ambiguous or unbounded existing-user topology.",
+				BlockedMessage: "Raven found an ambiguous or unbounded existing-user topology.",
 			})
 		case errors.As(err, &validationErr):
 			form.Errors = validationErr.Fields
@@ -586,7 +586,7 @@ func (h *Handler) renderSubmittedSetupOwner(w http.ResponseWriter, r *http.Reque
 		}
 		if errors.Is(err, auth.ErrSetupOwnerBlocked) {
 			h.renderSetupOwnerPage(w, r, http.StatusConflict, views.SetupOwnerData{
-				BlockedMessage: "Gofer found an ambiguous or unbounded existing-user topology.",
+				BlockedMessage: "Raven found an ambiguous or unbounded existing-user topology.",
 			})
 			return
 		}

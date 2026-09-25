@@ -124,7 +124,7 @@ func TestCredentialRedemptionRouteContainsOnlyPasswordResetContent(t *testing.T)
 	}
 	body := recorder.Body.String()
 	for _, required := range []string{
-		`action="/account/redeem"`, "Reset your Gofer password", "Reset token",
+		`action="/account/redeem"`, "Reset your Raven password", "Reset token",
 		`name="new_password"`, `name="confirm_password"`, "Reset password",
 	} {
 		if !strings.Contains(body, required) {

@@ -139,7 +139,7 @@ func TestAdminUsersPageRendersProtectedInvitationLifecycleActions(t *testing.T) 
 		"Invitation", "Active", "Expires Aug 21, 12:30", "Revoke", "Rotate",
 		`action="` + revokePath + `"`, `action="` + rotatePath + `"`,
 		strings.Repeat("b", 64), strings.Repeat("c", 64),
-		"will stop working immediately", "Gofer will show the replacement token only once",
+		"will stop working immediately", "Raven will show the replacement token only once",
 	} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("administrator invitation lifecycle view missing %q: %s", want, html)
@@ -264,8 +264,8 @@ func TestAdminUsersPageRendersProtectedCredentialResetActionAndOneTimeResult(t *
 		`action="/admin/users/webmail-user/credential-reset"`, csrfToken,
 		"does not change the password or sign the user out yet", "Generate reset token",
 		"Password-reset token created", "Reset token ready for webmail.user",
-		"Gofer password reset for webmail.user", "https://gofer.example/account/redeem",
-		"Reset token: private-reset-token", "Gofer stores only a hash of the token",
+		"Raven password reset for webmail.user", "https://gofer.example/account/redeem",
+		"Reset token: private-reset-token", "Raven stores only a hash of the token",
 		"Successful redemption signs the user out everywhere, preserves MFA, and does not enable a disabled account",
 		"I saved the reset token",
 	} {
@@ -329,7 +329,7 @@ func TestAdminUsersPageRendersProtectedInvitationFormAndOneTimeResult(t *testing
 		`&lt;Admin &amp; helper&gt;`, `Username &lt;already&gt; exists`,
 		"does not create, connect, or authorize a mailbox", "Invitation created",
 		`data-tui-dialog-disable-click-away="true"`, `data-tui-dialog-disable-esc="true"`,
-		"Gofer stores only a hash of the token", "https://gofer.example/account/enroll",
+		"Raven stores only a hash of the token", "https://gofer.example/account/enroll",
 		"Copy invitation details", "deliberately not placed in the URL",
 		`private-token&lt;/textarea&gt;&lt;script&gt;alert(&#34;token&#34;)&lt;/script&gt;`,
 	} {

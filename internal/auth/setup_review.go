@@ -108,7 +108,7 @@ func (m *Manager) GetSetupReview(ctx context.Context, token, origin string) (*Se
 	}
 	if review.UnassignedMailboxCount > 0 {
 		review.BlockedMessage = fmt.Sprintf(
-			"Gofer found %d mail account(s) without a valid user owner. Repair those ownership records locally before completing setup.",
+			"Raven found %d mail account(s) without a valid user owner. Repair those ownership records locally before completing setup.",
 			review.UnassignedMailboxCount,
 		)
 	}

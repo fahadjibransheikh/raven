@@ -159,7 +159,7 @@ func (h *Handler) handleOutgoingSendRetry(w http.ResponseWriter, r *http.Request
 		return
 	}
 	if errors.Is(err, storage.ErrOutgoingSendAmbiguousConfirmation) {
-		writeOutgoingSendError(w, http.StatusConflict, "Gofer lost the connection after sending this message, so it may already have been delivered. Check Sent before retrying. Retrying can send a duplicate.", true)
+		writeOutgoingSendError(w, http.StatusConflict, "Raven lost the connection after sending this message, so it may already have been delivered. Check Sent before retrying. Retrying can send a duplicate.", true)
 		return
 	}
 	if errors.Is(err, storage.ErrOutgoingSendNotRetryable) {

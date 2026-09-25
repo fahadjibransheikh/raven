@@ -68,7 +68,7 @@ func TestPasswordResetRequestRouteIsPublicLocalAndNoStore(t *testing.T) {
 	body := recorder.Body.String()
 	for _, want := range []string{
 		`action="/account/recover"`, `name="identifier"`, "Request password reset token",
-		"Gofer will not send one by email", `href="/account/redeem"`, "I already have a reset token", `href="/login"`,
+		"Raven will not send one by email", `href="/account/redeem"`, "I already have a reset token", `href="/login"`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("password reset request page missing %q: %q", want, body)

@@ -13,7 +13,7 @@ import (
 const (
 	totpCredentialKeyVersion = 1
 	totpCredentialKeyContext = "gofer/auth/totp-credential/v1"
-	setupTOTPIssuer          = "Gofer"
+	setupTOTPIssuer          = "Raven"
 )
 
 func (m *Manager) totpCredentialAEAD() (cipher.AEAD, error) {

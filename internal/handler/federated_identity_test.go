@@ -150,7 +150,7 @@ func TestGoogleIdentityLinkRouteRequiresCSRFAndRendersConnectedIdentity(t *testi
 	confirmation := getSecuritySettingsPath(t, stack, "/settings/security?google_linked=1", sessionCookie)
 	for _, want := range []string{
 		"Google sign-in connected.", "person@gmail.example", "Connected",
-		"For Gofer sign-in only", "does not connect a Gmail or Outlook mailbox",
+		"For Raven sign-in only", "does not connect a Gmail or Outlook mailbox",
 	} {
 		if confirmation.Code != http.StatusOK || !strings.Contains(confirmation.Body.String(), want) {
 			t.Fatalf("connected identity page missing %q: %d %q", want, confirmation.Code, confirmation.Body.String())
@@ -191,7 +191,7 @@ func TestGoogleIdentityUnlinkRouteRequiresCSRFRotatesSessionAndPreservesGmailMai
 	}
 	unlinkPath := securityGoogleIdentityUnlinkPath(identityID)
 	page := getSecuritySettingsPath(t, stack, "/settings/security", sessionCookie)
-	for _, want := range []string{`action="` + unlinkPath + `"`, "Disconnect", "For Gofer sign-in only", "does not connect a Gmail or Outlook mailbox"} {
+	for _, want := range []string{`action="` + unlinkPath + `"`, "Disconnect", "For Raven sign-in only", "does not connect a Gmail or Outlook mailbox"} {
 		if page.Code != http.StatusOK || !strings.Contains(page.Body.String(), want) {
 			t.Fatalf("unlink settings missing %q: %d %q", want, page.Code, page.Body.String())
 		}
@@ -324,7 +324,7 @@ func TestGoogleIdentityLinkConflictReturnsGenericSettingsFailure(t *testing.T) {
 		t.Fatal("Google identity conflict exposed owning-account details")
 	}
 	failed := getSecuritySettingsPath(t, stack, completed.Header().Get("Location"), sessionCookie)
-	if failed.Code != http.StatusOK || !strings.Contains(failed.Body.String(), "must not belong to another Gofer account") ||
+	if failed.Code != http.StatusOK || !strings.Contains(failed.Body.String(), "must not belong to another Raven account") ||
 		strings.Contains(failed.Body.String(), "owner@example.com") {
 		t.Fatalf("generic Google identity conflict page = %d %q", failed.Code, failed.Body.String())
 	}

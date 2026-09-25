@@ -266,7 +266,7 @@ func (h *Handler) pushContactToOutlookAccount(ctx context.Context, userID string
 			return fmt.Errorf("preflight Outlook contact: %w", err)
 		}
 		if len(matches) > 1 {
-			return fmt.Errorf("Outlook has multiple contacts with %s; choose the copy to use before enabling Gofer Sync", contact.Email)
+			return fmt.Errorf("Outlook has multiple contacts with %s; choose the copy to use before enabling Raven Sync", contact.Email)
 		}
 		if len(matches) == 1 && strings.TrimSpace(matches[0].ID) != "" {
 			source = &storage.ContactSource{ContactID: contact.ID, UserID: userID, Provider: providers.ProviderOutlook, AccountID: accountID, RemoteID: matches[0].ID, Etag: outlookContactVersion(matches[0])}

@@ -199,17 +199,17 @@ func (h *Handler) signalOutgoingWorker() {
 
 func (h *Handler) StartOutgoingSendWorker(ctx context.Context) {
 	go func() {
-		if count, err := h.db.MarkInterruptedOutgoingSendsAmbiguous(ctx, "Gofer stopped while this message was being sent. It may have been delivered."); err != nil {
+		if count, err := h.db.MarkInterruptedOutgoingSendsAmbiguous(ctx, "Raven stopped while this message was being sent. It may have been delivered."); err != nil {
 			log.Printf("outgoing-send: recover interrupted sends: %v", err)
 		} else if count > 0 {
 			log.Printf("outgoing-send: marked %d interrupted send(s) ambiguous", count)
 		}
-		if count, err := h.db.MarkInterruptedSentCopiesAmbiguous(ctx, "Gofer stopped while copying this message to Sent. The remote copy may already exist."); err != nil {
+		if count, err := h.db.MarkInterruptedSentCopiesAmbiguous(ctx, "Raven stopped while copying this message to Sent. The remote copy may already exist."); err != nil {
 			log.Printf("outgoing-send: recover interrupted Sent copies: %v", err)
 		} else if count > 0 {
 			log.Printf("outgoing-send: marked %d interrupted Sent copy operation(s) ambiguous", count)
 		}
-		if count, err := h.db.MarkInterruptedIMAPDraftOperationsAmbiguous(ctx, "Gofer stopped while syncing this draft. The remote revision may already exist."); err != nil {
+		if count, err := h.db.MarkInterruptedIMAPDraftOperationsAmbiguous(ctx, "Raven stopped while syncing this draft. The remote revision may already exist."); err != nil {
 			log.Printf("imap-draft: recover interrupted operations: %v", err)
 		} else if count > 0 {
 			log.Printf("imap-draft: marked %d interrupted operation(s) ambiguous", count)
@@ -462,7 +462,7 @@ func (h *Handler) completeSentCopy(ctx context.Context, send storage.OutgoingSen
 	if err := h.db.CompleteSentCopy(ctx, send.ID, uid, uidValidity); err != nil {
 		log.Printf("outgoing-send: complete Sent copy %s: %v", send.ID, err)
 		nextAttempt := h.outgoingNowUTC().Add(sentCopyRetryDelayWithJitter(send.SentCopyAttempts, h.outgoingRandomValue()))
-		if retryErr := h.db.FinishSentCopyWithError(context.Background(), send.ID, storage.SentCopyAmbiguous, "The remote Sent copy exists, but Gofer could not save its result: "+err.Error(), nextAttempt); retryErr != nil {
+		if retryErr := h.db.FinishSentCopyWithError(context.Background(), send.ID, storage.SentCopyAmbiguous, "The remote Sent copy exists, but Raven could not save its result: "+err.Error(), nextAttempt); retryErr != nil {
 			log.Printf("outgoing-send: schedule Sent copy reconciliation %s: %v", send.ID, retryErr)
 		}
 	}

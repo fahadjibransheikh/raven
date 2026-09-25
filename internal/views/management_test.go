@@ -16,7 +16,7 @@ func TestManagementLoginUsesDedicatedLocalOnlySurface(t *testing.T) {
 	}
 	html := out.String()
 	for _, want := range []string{
-		"Sign in to Gofer Admin",
+		"Sign in to Raven Admin",
 		"Management accounts are separate from webmail accounts.",
 		`action="/admin/login"`,
 		`href="/login"`,
@@ -176,7 +176,7 @@ func TestSeparatedSetupOwnerExplainsManagementOnlyAccount(t *testing.T) {
 	html := out.String()
 	for _, want := range []string{
 		"Create the management owner",
-		"used only for Gofer administration",
+		"used only for Raven administration",
 		"Management users cannot own mailboxes",
 		`name="owner_target" value="create"`,
 	} {

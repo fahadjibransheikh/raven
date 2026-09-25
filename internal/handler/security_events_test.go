@@ -250,7 +250,7 @@ func TestSecurityActivityDialogPaginatesOnlyCurrentUsersEventsWithoutAuditIntern
 		"Session signed out", "Requested from this account.", "Chrome on Linux",
 		`&lt;script&gt;event-client&lt;/script&gt;`,
 		fmt.Sprintf("Page 1 of %d", totalPages), `hx-get="/settings/security/activity?page=2"`, "Next",
-		"Only events affecting this Gofer account are shown",
+		"Only events affecting this Raven account are shown",
 	} {
 		if !strings.Contains(firstHTML, want) {
 			t.Fatalf("first security activity page missing %q: %q", want, firstHTML)

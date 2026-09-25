@@ -696,7 +696,7 @@ function refreshEmailLinkHandler() {
   if (!window.isSecureContext) {
     button.disabled = true
     if (testButton) testButton.disabled = true
-    status.textContent = "Available when Gofer is served over HTTPS or from localhost."
+    status.textContent = "Available when Raven is served over HTTPS or from localhost."
     return
   }
   if (!navigator.registerProtocolHandler) {
@@ -766,7 +766,7 @@ function setupEmailLinkHandler() {
         showGoferToast({
           id: "mailto-handler-registration",
           title: "Email-link registration requested",
-          description: "Confirm the request in your browser to open mail links with Gofer.",
+          description: "Confirm the request in your browser to open mail links with Raven.",
           variant: "success",
           icon: "success",
           position: "bottom-right",
@@ -775,11 +775,11 @@ function setupEmailLinkHandler() {
         })
       }
     } catch (error) {
-      if (status) status.textContent = "Gofer could not request registration in this browser."
+      if (status) status.textContent = "Raven could not request registration in this browser."
       if (typeof showGoferToast === "function") {
         showGoferToast({
           id: "mailto-handler-registration",
-          title: "Could not register Gofer",
+          title: "Could not register Raven",
           description: error && error.message ? error.message : "Check your browser's protocol-handler settings and try again.",
           variant: "error",
           icon: "error",

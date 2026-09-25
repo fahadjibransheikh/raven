@@ -1184,7 +1184,7 @@ func TestLegacyDefaultSetupCreatesSeparateManagementOwnerWithoutMovingData(t *te
 	request.AddCookie(setupCookie)
 	page := httptest.NewRecorder()
 	stack.ServeHTTP(page, request)
-	for _, want := range []string{"Create the management owner", "used only for Gofer administration", "Existing webmail users"} {
+	for _, want := range []string{"Create the management owner", "used only for Raven administration", "Existing webmail users"} {
 		if page.Code != http.StatusOK || !strings.Contains(page.Body.String(), want) {
 			t.Fatalf("legacy owner page missing %q: %d %q", want, page.Code, page.Body.String())
 		}
@@ -1236,7 +1236,7 @@ func TestExistingSetupUsersRemainSeparateFromNewManagementOwner(t *testing.T) {
 	collision := postSetupOwner(stack, setupCookie, url.Values{
 		"owner_target": {"create"}, "name": {"Owner"}, "username": {"person-b"},
 	})
-	if collision.Code != http.StatusUnprocessableEntity || !strings.Contains(collision.Body.String(), "already used by another Gofer user") {
+	if collision.Code != http.StatusUnprocessableEntity || !strings.Contains(collision.Body.String(), "already used by another Raven user") {
 		t.Fatalf("owner collision = %d %q", collision.Code, collision.Body.String())
 	}
 
@@ -1516,7 +1516,7 @@ func TestPersonalSetupUsesTokenAndSingleProfileWithoutAdminRoutes(t *testing.T) 
 	if setupCookie == nil {
 		t.Fatalf("setup start: %d %s", start.Code, start.Body.String())
 	}
-	if page := get("/setup/owner", setupCookie); page.Code != http.StatusOK || !strings.Contains(page.Body.String(), "Protect your personal Gofer") || strings.Contains(page.Body.String(), "Create Management") {
+	if page := get("/setup/owner", setupCookie); page.Code != http.StatusOK || !strings.Contains(page.Body.String(), "Protect your personal Raven") || strings.Contains(page.Body.String(), "Create Management") {
 		t.Fatalf("personal setup: %d %s", page.Code, page.Body.String())
 	}
 	form := url.Values{"name": {"Personal User"}, "username": {"person"}, "password": {"correct horse battery staple 874!"}, "password_confirmation": {"correct horse battery staple 874!"}}

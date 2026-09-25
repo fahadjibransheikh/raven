@@ -3293,25 +3293,25 @@ func (h *Handler) renderPasswordSecurityTab(w http.ResponseWriter, r *http.Reque
 		case r.URL.Query().Get("session_unavailable") == "1":
 			data.Message = "That session is no longer active."
 		case r.URL.Query().Get("google_linked") == "1":
-			data.Message = "Google sign-in connected. You can now use that Google identity to sign in to this Gofer account."
+			data.Message = "Google sign-in connected. You can now use that Google identity to sign in to this Raven account."
 		case r.URL.Query().Get("google_unlinked") == "1":
-			data.Message = "Google sign-in disconnected. That identity can no longer sign in to this Gofer account."
+			data.Message = "Google sign-in disconnected. That identity can no longer sign in to this Raven account."
 		case r.URL.Query().Get("google_link_failed") == "1":
-			data.Message = "Google sign-in could not be connected. Disconnect your current Google identity before choosing another. The selected identity must not belong to another Gofer account, and the request must still be valid."
+			data.Message = "Google sign-in could not be connected. Disconnect your current Google identity before choosing another. The selected identity must not belong to another Raven account, and the request must still be valid."
 			data.MessageIsError = true
 		case r.URL.Query().Get("microsoft_linked") == "1":
-			data.Message = "Microsoft sign-in connected. You can now use that Microsoft identity to sign in to this Gofer account."
+			data.Message = "Microsoft sign-in connected. You can now use that Microsoft identity to sign in to this Raven account."
 		case r.URL.Query().Get("microsoft_unlinked") == "1":
-			data.Message = "Microsoft sign-in disconnected. That identity can no longer sign in to this Gofer account."
+			data.Message = "Microsoft sign-in disconnected. That identity can no longer sign in to this Raven account."
 		case r.URL.Query().Get("microsoft_link_failed") == "1":
-			data.Message = "Microsoft sign-in could not be connected. Disconnect your current Microsoft identity before choosing another. The selected identity must not belong to another Gofer account, and the request must still be valid."
+			data.Message = "Microsoft sign-in could not be connected. Disconnect your current Microsoft identity before choosing another. The selected identity must not belong to another Raven account, and the request must still be valid."
 			data.MessageIsError = true
 		case r.URL.Query().Get("oidc_linked") == "1":
-			data.Message = data.OIDCLoginName + " sign-in connected. You can now use that identity to sign in to this Gofer account."
+			data.Message = data.OIDCLoginName + " sign-in connected. You can now use that identity to sign in to this Raven account."
 		case r.URL.Query().Get("oidc_unlinked") == "1":
-			data.Message = data.OIDCLoginName + " sign-in disconnected. That identity can no longer sign in to this Gofer account."
+			data.Message = data.OIDCLoginName + " sign-in disconnected. That identity can no longer sign in to this Raven account."
 		case r.URL.Query().Get("oidc_link_failed") == "1":
-			data.Message = data.OIDCLoginName + " sign-in could not be connected. It may already belong to another Gofer account, or the request may have expired."
+			data.Message = data.OIDCLoginName + " sign-in could not be connected. It may already belong to another Raven account, or the request may have expired."
 			data.MessageIsError = true
 		case r.URL.Query().Get("challenge_expired") == "1":
 			data.Message = "That security change expired or was replaced. Start again when you are ready."

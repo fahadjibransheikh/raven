@@ -147,7 +147,7 @@ func TestOIDCApplicationLoginHandlerCreatesOnlyGoferSession(t *testing.T) {
 		}
 	}
 	if !foundSessionCookie {
-		t.Fatal("OIDC callback omitted the Gofer session cookie")
+		t.Fatal("OIDC callback omitted the Raven session cookie")
 	}
 	for table, want := range map[string]int{"accounts": 0, "oauth_accounts": 0, "sessions": 1, "auth_identities": 1} {
 		var count int

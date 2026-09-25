@@ -4,7 +4,7 @@ self.addEventListener("push", function (event) {
     try { data = event.data.json() || {} } catch (_) { data = { body: event.data.text() } }
   }
 
-  var title = data.title || "Gofer"
+  var title = data.title || "Raven"
   var icon = data.icon || data.avatar_url || "/assets/logo.png"
   var options = {
     body: data.body || "New notification",

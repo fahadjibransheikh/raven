@@ -280,7 +280,7 @@ func TestSecuritySettingsStartsAndRejectsPasskeyRegistrationThroughBoundJSONEndp
 		t.Fatalf("start passkey registration = %d headers:%v body:%q", started.Code, started.Header(), started.Body.String())
 	}
 	for _, want := range []string{
-		`"name":"Gofer"`, `"id":"gofer.example"`, `"residentKey":"preferred"`,
+		`"name":"Raven"`, `"id":"gofer.example"`, `"residentKey":"preferred"`,
 		`"userVerification":"required"`, `"attestation":"none"`,
 	} {
 		if !strings.Contains(started.Body.String(), want) {
@@ -452,7 +452,7 @@ func TestSecuritySettingsEnrollsFirstAuthenticatorThroughSessionBoundChallenge(t
 	enrollmentPage := getSecuritySettingsPath(t, stack, "/settings/security", sessionCookie, challengeCookie)
 	for _, want := range []string{
 		"Verify the new authenticator", "authenticator is not enabled until the code is verified",
-		`alt="QR code containing the new Gofer authenticator key"`, "Enable authenticator",
+		`alt="QR code containing the new Raven authenticator key"`, "Enable authenticator",
 		`action="/settings/security/totp/confirm"`,
 	} {
 		if enrollmentPage.Code != http.StatusOK || !strings.Contains(enrollmentPage.Body.String(), want) {

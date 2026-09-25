@@ -45,7 +45,7 @@ func TestSetupOwnerPageIsAccessibleAndLocal(t *testing.T) {
 	}
 	html := output.String()
 	for _, want := range []string{
-		"Setup access verified", "Choose the Gofer owner", `action="/setup/owner"`,
+		"Setup access verified", "Choose the Raven owner", `action="/setup/owner"`,
 		`name="owner_target"`, `value="existing:person-id"`, "2 mail accounts", "1 legacy sessions",
 		`autocomplete="username"`, `role="alert"`, `&lt;script&gt;alert`,
 		"No user, role, credential, or owned data has been changed yet", `href="/setup/password"`,
@@ -102,7 +102,7 @@ func TestSetupMFAPageIsAccessibleLocalAndEscapesErrors(t *testing.T) {
 	html := output.String()
 	for _, want := range []string{
 		"Secure the owner account", `src="data:image/png;base64,ZmFrZS1wbmc="`,
-		`alt="QR code containing the Gofer authenticator setup key"`, "ABCD EFGH IJKL MNOP",
+		`alt="QR code containing the Raven authenticator setup key"`, "ABCD EFGH IJKL MNOP",
 		`action="/setup/mfa"`, `name="action" value="confirm"`, `name="code" type="text"`,
 		`inputmode="numeric"`, `autocomplete="one-time-code"`, `pattern="[0-9]{6}"`,
 		`aria-describedby="setup-mfa-code-help setup-mfa-code-error"`, `role="alert"`, `&lt;script&gt;alert`,
@@ -313,7 +313,7 @@ func TestSetupOwnerLegacyPageExplainsInPlaceClaim(t *testing.T) {
 	}
 	html := output.String()
 	for _, want := range []string{
-		"Claim your existing Gofer data", `value="existing:default"`, "keep using user ID", "Nothing is copied or reassigned",
+		"Claim your existing Raven data", `value="existing:default"`, "keep using user ID", "Nothing is copied or reassigned",
 	} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("legacy owner page missing %q", want)

@@ -382,13 +382,13 @@ document.addEventListener("DOMContentLoaded", function () {
         method: "POST",
         headers: { "Accept": "application/json" },
       }).then(function (res) {
-        if (!res.ok) return res.text().then(function (text) { throw new Error((text || "Could not start Gofer Sync").trim()) })
+        if (!res.ok) return res.text().then(function (text) { throw new Error((text || "Could not start Raven Sync").trim()) })
         return res.json()
       }).then(function (data) {
         updateContactSyncLiveState({ contact_id: contactID, status: (data && data.status) || "pending" })
         showGoferToast({
           id: "contact-sync-toast",
-          title: "Gofer Sync queued",
+          title: "Raven Sync queued",
           description: "The selected locations will be synchronized now.",
           variant: "info",
           icon: "spinner",
@@ -400,7 +400,7 @@ document.addEventListener("DOMContentLoaded", function () {
         setContactSyncButtonsBusy(contactID, false)
         showGoferToast({
           id: "contact-sync-toast",
-          title: "Could not start Gofer Sync",
+          title: "Could not start Raven Sync",
           description: err && err.message ? err.message : "The contact could not be queued for synchronization.",
           variant: "error",
           icon: "error",
@@ -530,7 +530,7 @@ document.addEventListener("DOMContentLoaded", function () {
         var syncQueued = !!data.contact_sync_queued
         if (data.contact_id) refreshContactsDetail(data.contact_id, null, syncQueued)
         if (syncQueued) setupSSE()
-        showGoferToast({ id: "contact-sync-toast", title: "Gofer Sync enabled", description: syncQueued ? "The resolved contact is being synchronized across all selected locations." : "Sync is enabled for the selected locations.", variant: "success", icon: "success", position: "bottom-right", duration: 5000, dismissible: true })
+        showGoferToast({ id: "contact-sync-toast", title: "Raven Sync enabled", description: syncQueued ? "The resolved contact is being synchronized across all selected locations." : "Sync is enabled for the selected locations.", variant: "success", icon: "success", position: "bottom-right", duration: 5000, dismissible: true })
       }).catch(function (err) {
         showGoferToast({ id: "contact-sync-setup-error", title: "Sync setup failed", description: err.message || "Could not finish sync setup.", variant: "error", icon: "error", position: "bottom-right", duration: 8000, dismissible: true })
       }).finally(function () {
@@ -684,7 +684,7 @@ document.addEventListener("DOMContentLoaded", function () {
           showGoferToast({
             id: "contact-sync-toast",
             title: "Contact saved",
-            description: "Gofer Sync is updating the selected locations...",
+            description: "Raven Sync is updating the selected locations...",
             variant: "info",
             icon: "spinner",
             position: "bottom-right",
@@ -3005,7 +3005,7 @@ document.addEventListener("DOMContentLoaded", function () {
         showGoferToast({
           id: deletionToastId(accountId),
           title: "Account deleted",
-          description: email + " and its local data were removed from Gofer.",
+          description: email + " and its local data were removed from Raven.",
           variant: "success",
           icon: "success",
           position: "bottom-right",
@@ -3095,7 +3095,7 @@ document.addEventListener("DOMContentLoaded", function () {
         showGoferToast({
           id: deletionToastId(accountId),
           title: "Could not delete account",
-          description: "Gofer could not start account cleanup. Please try again.",
+          description: "Raven could not start account cleanup. Please try again.",
           variant: "error",
           icon: "error",
           position: "bottom-right",
@@ -3331,7 +3331,7 @@ document.addEventListener("DOMContentLoaded", function () {
         var retrySeconds = Math.max(1, Number(data.retry_in_seconds) || 60)
         var retryMinutes = Math.max(1, Math.ceil(retrySeconds / 60))
         var retryText = data.error || "The provider could not send the message yet."
-        retryText += " Gofer will try again in " + retryMinutes + (retryMinutes === 1 ? " minute." : " minutes.")
+        retryText += " Raven will try again in " + retryMinutes + (retryMinutes === 1 ? " minute." : " minutes.")
         showSendStatus("retrying", retryText)
         handleComposeSendResult("retrying", data)
       } else if (data.status === "ambiguous") {
@@ -3607,7 +3607,7 @@ document.addEventListener("DOMContentLoaded", function () {
       if (!enabled || mode === "off") labels[j].textContent = "Notifications are off."
       else if (permission === "denied") labels[j].textContent = "Notifications are blocked in this browser."
       else if (supported) labels[j].textContent = "Web Push is available in this browser."
-      else if (browserNotificationsSupported()) labels[j].textContent = "Browser-tab notifications are available while Gofer is open."
+      else if (browserNotificationsSupported()) labels[j].textContent = "Browser-tab notifications are available while Raven is open."
       else labels[j].textContent = "No notification method is available for this browser/origin."
     }
   }
@@ -3891,31 +3891,31 @@ document.addEventListener("DOMContentLoaded", function () {
     if (["contact_sync_queued", "contact_sync_started", "contact_synced", "contact_sync_failed"].indexOf(eventType) === -1) return
     if (!updateContactSyncLiveState(data)) return
     var retryScheduled = eventType === "contact_sync_failed" && data.status === "pending"
-    var title = "Gofer Sync queued"
+    var title = "Raven Sync queued"
     var description = data.message || "The contact is waiting to be synchronized."
     var variant = "info"
     var icon = "spinner"
     var duration = 0
     var dismissible = false
     if (eventType === "contact_sync_started") {
-      title = "Gofer Sync in progress"
+      title = "Raven Sync in progress"
       description = data.message || "The selected locations are being synchronized."
     } else if (eventType === "contact_synced") {
-      title = "Gofer Sync complete"
+      title = "Raven Sync complete"
       description = data.message || "The contact is synchronized across all selected locations."
       variant = "success"
       icon = "success"
       duration = 3500
       dismissible = true
     } else if (retryScheduled) {
-      title = "Gofer Sync will retry"
-      description = data.error || data.message || "A location could not be updated yet. Gofer will retry automatically."
+      title = "Raven Sync will retry"
+      description = data.error || data.message || "A location could not be updated yet. Raven will retry automatically."
       variant = "warning"
       icon = "spinner"
       duration = 7000
       dismissible = true
     } else if (eventType === "contact_sync_failed") {
-      title = "Gofer Sync failed"
+      title = "Raven Sync failed"
       description = data.error || data.message || "The selected locations could not be synchronized."
       variant = "error"
       icon = "error"
@@ -4684,8 +4684,8 @@ document.addEventListener("DOMContentLoaded", function () {
         }
       }
 
-      if (mode === "contacts") document.title = "Contacts — Gofer"
-      else if (mode === "mail") document.title = "Gofer"
+      if (mode === "contacts") document.title = "Contacts — Raven"
+      else if (mode === "mail") document.title = "Raven"
 
       if (!href) return
       var hrefPath = href
@@ -5326,7 +5326,7 @@ document.addEventListener("DOMContentLoaded", function () {
               '<div class="flex flex-wrap items-center justify-between gap-3 border-b border-ink/10 px-4 py-3">' +
                 '<div class="flex flex-wrap items-center gap-2 text-ink/40">' +
                   pendingIcon("size-3.5") +
-                  '<h2 class="text-xs font-semibold uppercase tracking-wider text-ink/55">Gofer Sync</h2>' +
+                  '<h2 class="text-xs font-semibold uppercase tracking-wider text-ink/55">Raven Sync</h2>' +
                   '<div class="h-6 w-16 rounded-md border border-ink/10 bg-ink/[0.03] animate-pulse"></div>' +
                 '</div>' +
                 '<div class="h-7 w-24 rounded-md border border-ink/10 bg-ink/[0.025] animate-pulse"></div>' +
@@ -5344,7 +5344,7 @@ document.addEventListener("DOMContentLoaded", function () {
               '<div class="grid gap-x-6 px-4 sm:grid-cols-2 xl:grid-cols-4">' +
                 contactDetailSkeletonField("Messages", "w-10") +
                 contactDetailSkeletonField("Last seen", "w-28") +
-                contactDetailSkeletonField("Added to Gofer", "w-24") +
+                contactDetailSkeletonField("Added to Raven", "w-24") +
                 contactDetailSkeletonField("Contact updated", "w-24") +
               '</div>' +
             '</section>' +
@@ -5702,7 +5702,7 @@ function outgoingSendAction(action, id, button) {
   var summary = _outgoingSendStatusByID[id]
   var confirm = false
   if (action === "retry" && summary && summary.ambiguous_warning_required) {
-    confirm = window.confirm("Gofer lost the connection after sending this message, so it may already have been delivered. Check Sent before retrying. Retrying can send a duplicate. Continue?")
+    confirm = window.confirm("Raven lost the connection after sending this message, so it may already have been delivered. Check Sent before retrying. Retrying can send a duplicate. Continue?")
     if (!confirm) return
   }
   if (button) button.disabled = true
@@ -5787,7 +5787,7 @@ function setupMailOperationActions() {
         window.location.reload()
       }
       if (typeof showGoferToast === "function") {
-        showGoferToast({ id: "mail-operation-toast", title: "Mail operation queued", description: "Gofer will try the provider operation again.", variant: "success", icon: "success", position: "bottom-right", duration: 4500, dismissible: true })
+        showGoferToast({ id: "mail-operation-toast", title: "Mail operation queued", description: "Raven will try the provider operation again.", variant: "success", icon: "success", position: "bottom-right", duration: 4500, dismissible: true })
       }
     }).catch(function (error) {
       if (typeof showGoferToast === "function") {
@@ -10536,7 +10536,7 @@ function setupMailtoIntent() {
     if (typeof showGoferToast === "function") {
       showGoferToast({
         id: "mailto-handler-confirmed",
-        title: "Gofer opened the email link",
+        title: "Raven opened the email link",
         description: "Email-link handling was confirmed on this browser.",
         variant: "success",
         icon: "success",

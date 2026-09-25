@@ -90,7 +90,7 @@ func TestGoogleInvitationEnrollmentActivatesOnlyGoferIdentityAndSession(t *testi
 		t.Fatal(err)
 	}
 	if status != UserStatusActive || username != "invitee" || used != 1 || consumed != 1 {
-		t.Fatalf("enrolled Gofer user = status:%q username:%q invitation-used:%d challenge-consumed:%d", status, username, used, consumed)
+		t.Fatalf("enrolled Raven user = status:%q username:%q invitation-used:%d challenge-consumed:%d", status, username, used, consumed)
 	}
 	var identityUserID, identityEmail, identitySubject string
 	if err := manager.db.Read().QueryRowContext(t.Context(), `

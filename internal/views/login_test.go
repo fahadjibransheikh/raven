@@ -124,7 +124,7 @@ func TestRecoveryLoginAndRepairPagesAreAccessibleLocalAndExplicit(t *testing.T) 
 		t.Fatal(err)
 	}
 	for _, required := range []string{
-		"Replace your authenticator", "Gofer has not created a session",
+		"Replace your authenticator", "Raven has not created a session",
 		`src="data:image/png;base64,cXItZGF0YQ=="`, "ABCD EFGH",
 		`action="/login/recovery/mfa"`, `value="confirm"`, `value="restart"`,
 		`role="alert"`, "stay active until repair completes",
@@ -167,7 +167,7 @@ func TestRequiredMFAEnrollmentPagesRemainSessionlessAndLocal(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, required := range []string{
-		"Set up an authenticator", "Gofer has not created a session",
+		"Set up an authenticator", "Raven has not created a session",
 		`src="data:image/png;base64,cXItZGF0YQ=="`, "ABCD EFGH",
 		`action="/login/mfa/enroll"`, `value="confirm"`, `value="restart"`,
 		"Completing MFA enrollment signs out other sessions",

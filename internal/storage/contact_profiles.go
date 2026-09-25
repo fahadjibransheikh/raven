@@ -308,7 +308,7 @@ func ContactProfileInsights(profile models.ContactProfile) []models.ContactInsig
 				Kind:     "provider_only_field",
 				Severity: "info",
 				Title:    fmt.Sprintf("%s only exists in synced data", contactInsightFieldLabel(kind)),
-				Message:  fmt.Sprintf("No manual %s is set; Gofer is currently using provider or observed data.", contactInsightFieldLabel(kind)),
+				Message:  fmt.Sprintf("No manual %s is set; Raven is currently using provider or observed data.", contactInsightFieldLabel(kind)),
 				Field:    kind,
 				Count:    len(providerValues),
 			})
@@ -323,7 +323,7 @@ func ContactProfileInsights(profile models.ContactProfile) []models.ContactInsig
 						Kind:     "manual_override",
 						Severity: "notice",
 						Title:    fmt.Sprintf("Manual %s differs from synced data", contactInsightFieldLabel(kind)),
-						Message:  fmt.Sprintf("Gofer keeps the manual %s while preserving the provider value for review.", contactInsightFieldLabel(kind)),
+						Message:  fmt.Sprintf("Raven keeps the manual %s while preserving the provider value for review.", contactInsightFieldLabel(kind)),
 						Field:    kind,
 						Source:   providerField.Source,
 						Count:    len(manualValues) + len(providerValues),
