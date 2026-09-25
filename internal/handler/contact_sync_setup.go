@@ -175,7 +175,7 @@ func (h *Handler) handleConfirmContactSyncSetup(w http.ResponseWriter, r *http.R
 		return
 	}
 	if err := h.db.SetContactProfileSyncEnabled(ctx, userID, contactID, true); err != nil {
-		http.Error(w, "Could not enable Gofer Sync", http.StatusBadRequest)
+		http.Error(w, "Could not enable Raven Sync", http.StatusBadRequest)
 		return
 	}
 	contact, err = h.db.GetContact(ctx, userID, contactID)

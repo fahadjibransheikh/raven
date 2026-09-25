@@ -216,7 +216,7 @@ func TestAdministratorSecurityActivityRejectsMalformedPageAndLocksBeforeQuerying
 	html := locked.Body.String()
 	for _, want := range []string{
 		`data-admin-security-activity-locked`, "Recent administrator verification required",
-		"before Gofer requests any instance security events", `data-admin-security-verification`,
+		"before Raven requests any instance security events", `data-admin-security-verification`,
 		`action="/settings/security/step-up"`,
 		`name="return_to" value="/admin/activity?filter=sessions&amp;page=2"`,
 	} {
@@ -324,7 +324,7 @@ func TestAdministratorSecurityActivityExplainsLocalModeWithoutQueryingAuthentica
 	html := page.Body.String()
 	for _, want := range []string{
 		"Managed authentication is not enabled",
-		"available when Gofer is running with user management enabled",
+		"available when Raven is running with user management enabled",
 	} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("local-mode security activity omitted %q", want)

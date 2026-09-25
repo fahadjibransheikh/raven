@@ -100,7 +100,7 @@ func TestAdministratorCanPermanentlyDeleteDisabledWebmailUserAndLocalData(t *tes
 	}
 	for _, want := range []string{
 		"Delete permanently", "Permanently delete Delete.Target?", `action="` + path + `"`,
-		"Gofer will permanently remove", "Remote provider data is not changed",
+		"Raven will permanently remove", "Remote provider data is not changed",
 		"This screen cannot export another user's private mail", "Redacted security-event records are retained",
 		`name="confirmation"`, "Delete user and local data",
 	} {
@@ -651,7 +651,7 @@ func TestAdministratorCanIssueAndRedeemWebmailUserCredentialReset(t *testing.T) 
 	rawToken := match[1]
 	for _, want := range []string{
 		"Password-reset token created", "Reset token ready for reset-target",
-		"Gofer stores only a hash of the token", "https://gofer.example/account/redeem",
+		"Raven stores only a hash of the token", "https://gofer.example/account/redeem",
 		"Successful redemption signs the user out everywhere, preserves MFA",
 	} {
 		if !strings.Contains(issued.Body.String(), want) {
@@ -1102,7 +1102,7 @@ func TestAdministratorUserInvitationReturnsSafeFieldErrorsWithoutMutation(t *tes
 	html := rejected.Body.String()
 	for _, want := range []string{
 		"Correct the highlighted invitation details.",
-		"That username is already used by another Gofer user.",
+		"That username is already used by another Raven user.",
 		`value="&lt;Conflicting Person&gt;"`, `data-tui-dialog-open="true"`, `aria-invalid="true"`,
 	} {
 		if !strings.Contains(html, want) {

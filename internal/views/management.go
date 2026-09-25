@@ -23,7 +23,7 @@ func escaped(value string) string { return templ.EscapeString(value) }
 
 func ManagementLoginPage(errorMessage, identifier string) templ.Component {
 	return templ.ComponentFunc(func(_ context.Context, w io.Writer) error {
-		if err := writeHTML(w, `<!DOCTYPE html><html lang="en" class="dark" data-theme="classic"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Gofer Admin — Sign In</title><link rel="icon" type="image/svg+xml" href="/assets/logo.svg"><link rel="stylesheet" href="/assets/css/output.css"></head><body class="bg-background text-foreground antialiased surface-desk"><main class="min-h-screen flex items-center justify-center p-4"><div class="w-full max-w-sm"><div class="text-center mb-8"><img src="/assets/logo.svg" alt="Gofer" class="h-12 w-auto mx-auto"><p class="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-primary">Management</p><h1 class="mt-2 text-2xl font-semibold">Sign in to Gofer Admin</h1><p class="mt-2 text-sm text-muted-foreground">Management accounts are separate from webmail accounts.</p></div>`); err != nil {
+		if err := writeHTML(w, `<!DOCTYPE html><html lang="en" class="dark" data-theme="classic"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Raven Admin — Sign In</title><link rel="icon" type="image/svg+xml" href="/assets/logo.svg"><link rel="stylesheet" href="/assets/css/output.css"></head><body class="bg-background text-foreground antialiased surface-desk"><main class="min-h-screen flex items-center justify-center p-4"><div class="w-full max-w-sm"><div class="text-center mb-8"><img src="/assets/logo.svg" alt="Raven" class="h-12 w-auto mx-auto"><p class="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-primary">Management</p><h1 class="mt-2 text-2xl font-semibold">Sign in to Raven Admin</h1><p class="mt-2 text-sm text-muted-foreground">Management accounts are separate from webmail accounts.</p></div>`); err != nil {
 			return err
 		}
 		if errorMessage != "" {
@@ -37,7 +37,7 @@ func ManagementLoginPage(errorMessage, identifier string) templ.Component {
 
 func ManagementMFAContinuationPage(errorMessage string) templ.Component {
 	return templ.ComponentFunc(func(_ context.Context, w io.Writer) error {
-		if err := writeHTML(w, `<!DOCTYPE html><html lang="en" class="dark" data-theme="classic"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Gofer Admin — Verify</title><link rel="icon" type="image/svg+xml" href="/assets/logo.svg"><link rel="stylesheet" href="/assets/css/output.css"></head><body class="bg-background text-foreground antialiased surface-desk"><main class="min-h-screen flex items-center justify-center p-4"><div class="w-full max-w-sm"><div class="text-center"><img src="/assets/logo.svg" alt="Gofer" class="h-12 w-auto mx-auto"><p class="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-primary">Management</p><h1 class="mt-2 text-2xl font-semibold">Verify your authenticator</h1><p class="mt-3 text-sm text-muted-foreground">Enter the six-digit code from your authenticator app to finish signing in.</p></div>`); err != nil {
+		if err := writeHTML(w, `<!DOCTYPE html><html lang="en" class="dark" data-theme="classic"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Raven Admin — Verify</title><link rel="icon" type="image/svg+xml" href="/assets/logo.svg"><link rel="stylesheet" href="/assets/css/output.css"></head><body class="bg-background text-foreground antialiased surface-desk"><main class="min-h-screen flex items-center justify-center p-4"><div class="w-full max-w-sm"><div class="text-center"><img src="/assets/logo.svg" alt="Raven" class="h-12 w-auto mx-auto"><p class="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-primary">Management</p><h1 class="mt-2 text-2xl font-semibold">Verify your authenticator</h1><p class="mt-3 text-sm text-muted-foreground">Enter the six-digit code from your authenticator app to finish signing in.</p></div>`); err != nil {
 			return err
 		}
 		if errorMessage != "" {
@@ -113,7 +113,7 @@ func renderManagementSidebar(ctx context.Context, w io.Writer, active string, sc
 	if !managedAuthentication {
 		workspaceDescription = "Local administration workspace."
 	}
-	if err := writeHTML(w, `<aside class="hidden lg:flex w-64 shrink-0 flex-col border-r border-border bg-card/75 backdrop-blur-sm"><div class="border-b border-border px-5 py-5"><a href="/admin" class="inline-flex items-center gap-2.5 text-foreground hover:text-primary"><img src="/assets/logo.svg" alt="Gofer" class="h-8 w-8 shrink-0 p-1"><span class="text-lg font-bold tracking-tight" style="font-family:var(--font-serif)">Gofer Admin</span></a><p class="mt-2 text-xs leading-relaxed text-muted-foreground">`, escaped(workspaceDescription), `</p></div><nav class="flex-1 space-y-1 px-3 py-4">`); err != nil {
+	if err := writeHTML(w, `<aside class="hidden lg:flex w-64 shrink-0 flex-col border-r border-border bg-card/75 backdrop-blur-sm"><div class="border-b border-border px-5 py-5"><a href="/admin" class="inline-flex items-center gap-2.5 text-foreground hover:text-primary"><img src="/assets/logo.svg" alt="Raven" class="h-8 w-8 shrink-0 p-1"><span class="text-lg font-bold tracking-tight" style="font-family:var(--font-serif)">Raven Admin</span></a><p class="mt-2 text-xs leading-relaxed text-muted-foreground">`, escaped(workspaceDescription), `</p></div><nav class="flex-1 space-y-1 px-3 py-4">`); err != nil {
 		return err
 	}
 	for _, item := range items {
@@ -139,7 +139,7 @@ func renderManagementMobileNav(ctx context.Context, w io.Writer, active string, 
 	if !managedAuthentication {
 		modeLabel = "Local"
 	}
-	if err := writeHTML(w, `<header class="lg:hidden shrink-0 border-b border-border bg-card"><div class="flex items-center justify-between px-4 py-3"><a href="/admin" class="font-bold text-foreground" style="font-family:var(--font-serif)">Gofer Admin</a><span class="text-xs font-semibold uppercase tracking-wider text-primary">`, escaped(modeLabel), `</span></div><nav class="flex gap-1 overflow-x-auto px-3 pb-3" aria-label="Admin sections">`); err != nil {
+	if err := writeHTML(w, `<header class="lg:hidden shrink-0 border-b border-border bg-card"><div class="flex items-center justify-between px-4 py-3"><a href="/admin" class="font-bold text-foreground" style="font-family:var(--font-serif)">Raven Admin</a><span class="text-xs font-semibold uppercase tracking-wider text-primary">`, escaped(modeLabel), `</span></div><nav class="flex gap-1 overflow-x-auto px-3 pb-3" aria-label="Admin sections">`); err != nil {
 		return err
 	}
 	for _, item := range items {
@@ -184,7 +184,7 @@ func ManagementAdminActivityLayout(uiSettings map[string]string, data AdminSecur
 
 func managementAdminLayout(uiSettings map[string]string, activeSection string, scope models.AdminWebmailScope, content templ.Component) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		if err := writeHTML(w, `<!DOCTYPE html><html lang="en" class="`, escaped(themeClass(uiSettings)), `" data-theme="`, escaped(themeStyle(uiSettings)), `"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Admin — Gofer</title><link rel="icon" type="image/svg+xml" href="/assets/logo.svg"><link rel="stylesheet" href="/assets/css/output.css">`); err != nil {
+		if err := writeHTML(w, `<!DOCTYPE html><html lang="en" class="`, escaped(themeClass(uiSettings)), `" data-theme="`, escaped(themeStyle(uiSettings)), `"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Admin — Raven</title><link rel="icon" type="image/svg+xml" href="/assets/logo.svg"><link rel="stylesheet" href="/assets/css/output.css">`); err != nil {
 			return err
 		}
 		if err := SettingsComponentScripts().Render(ctx, w); err != nil {
@@ -217,7 +217,7 @@ func managementAdminLayout(uiSettings map[string]string, activeSection string, s
 
 func ManagementSecurityLayout(uiSettings map[string]string, content templ.Component) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		if err := writeHTML(w, `<!DOCTYPE html><html lang="en" class="`, escaped(themeClass(uiSettings)), `" data-theme="`, escaped(themeStyle(uiSettings)), `"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Account security — Gofer Admin</title><link rel="icon" type="image/svg+xml" href="/assets/logo.svg"><link rel="stylesheet" href="/assets/css/output.css">`); err != nil {
+		if err := writeHTML(w, `<!DOCTYPE html><html lang="en" class="`, escaped(themeClass(uiSettings)), `" data-theme="`, escaped(themeStyle(uiSettings)), `"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Account security — Raven Admin</title><link rel="icon" type="image/svg+xml" href="/assets/logo.svg"><link rel="stylesheet" href="/assets/css/output.css">`); err != nil {
 			return err
 		}
 		if err := SettingsComponentScripts().Render(ctx, w); err != nil {
@@ -247,7 +247,7 @@ func ManagementSecurityLayout(uiSettings map[string]string, content templ.Compon
 
 func SeparatedSetupOwnerPage(data SetupOwnerData) templ.Component {
 	return templ.ComponentFunc(func(_ context.Context, w io.Writer) error {
-		if err := writeHTML(w, `<!DOCTYPE html><html lang="en" class="dark" data-theme="classic"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Gofer — Create Management Owner</title><link rel="icon" type="image/svg+xml" href="/assets/logo.svg"><link rel="stylesheet" href="/assets/css/output.css"></head><body class="bg-background text-foreground antialiased surface-desk"><main class="min-h-screen flex items-center justify-center p-4 py-10"><div class="w-full max-w-2xl"><div class="text-center mb-8"><img src="/assets/logo.svg" alt="Gofer" class="h-12 w-auto mx-auto"><p class="mt-5 text-xs font-medium uppercase tracking-widest text-success">Setup access verified</p><h1 class="mt-2 text-2xl font-semibold">Create the management owner</h1><p class="mt-2 text-sm text-muted-foreground">This identity is used only for Gofer administration. Existing webmail users, mailboxes, and their data remain attached to their current owners.</p></div>`); err != nil {
+		if err := writeHTML(w, `<!DOCTYPE html><html lang="en" class="dark" data-theme="classic"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Raven — Create Management Owner</title><link rel="icon" type="image/svg+xml" href="/assets/logo.svg"><link rel="stylesheet" href="/assets/css/output.css"></head><body class="bg-background text-foreground antialiased surface-desk"><main class="min-h-screen flex items-center justify-center p-4 py-10"><div class="w-full max-w-2xl"><div class="text-center mb-8"><img src="/assets/logo.svg" alt="Raven" class="h-12 w-auto mx-auto"><p class="mt-5 text-xs font-medium uppercase tracking-widest text-success">Setup access verified</p><h1 class="mt-2 text-2xl font-semibold">Create the management owner</h1><p class="mt-2 text-sm text-muted-foreground">This identity is used only for Raven administration. Existing webmail users, mailboxes, and their data remain attached to their current owners.</p></div>`); err != nil {
 			return err
 		}
 		if data.DraftSaved {

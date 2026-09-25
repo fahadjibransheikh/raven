@@ -140,7 +140,7 @@ func (h *Handler) applyQueuedMessageMutation(parent context.Context, mutation st
 	if err := complete(context.Background(), mutation.ID); err != nil {
 		log.Printf("message-mutation: mark applied id=%s: %v", mutation.ID, err)
 		nextAttempt := time.Now().Add(sentCopyRetryDelay(mutation.AttemptCount))
-		if dbErr := h.db.FinishMessageMutationWithError(context.Background(), mutation.ID, "Provider update succeeded, but Gofer could not save the result: "+err.Error(), nextAttempt); dbErr != nil {
+		if dbErr := h.db.FinishMessageMutationWithError(context.Background(), mutation.ID, "Provider update succeeded, but Raven could not save the result: "+err.Error(), nextAttempt); dbErr != nil {
 			log.Printf("message-mutation: schedule applied-state retry id=%s: %v", mutation.ID, dbErr)
 		}
 		return

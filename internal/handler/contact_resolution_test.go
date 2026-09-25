@@ -221,14 +221,14 @@ func TestUnifyContactCreatesGoferManagedFields(t *testing.T) {
 		t.Fatalf("count manual fields: %v", err)
 	}
 	if manualFields == 0 {
-		t.Fatalf("manual fields = 0, want Gofer-managed fields")
+		t.Fatalf("manual fields = 0, want Raven-managed fields")
 	}
 	updated, err := db.GetContact(ctx, "default", profile.ID)
 	if err != nil {
 		t.Fatalf("GetContact() error = %v", err)
 	}
 	if updated == nil || !updated.IsManual {
-		t.Fatalf("updated contact = %#v, want manual Gofer contact", updated)
+		t.Fatalf("updated contact = %#v, want manual Raven contact", updated)
 	}
 }
 

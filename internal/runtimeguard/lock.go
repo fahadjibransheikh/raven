@@ -6,7 +6,7 @@ import (
 	"os"
 )
 
-var ErrAlreadyLocked = errors.New("Gofer is already using this database")
+var ErrAlreadyLocked = errors.New("Raven is already using this database")
 
 type Lock struct {
 	file *os.File

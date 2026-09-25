@@ -343,7 +343,7 @@ func (h *Handler) scheduleInboundContactFanout(ctx context.Context, userID, cont
 	if opID == "" {
 		return nil
 	}
-	_ = h.db.LogContactSyncActivity(ctx, userID, contact.ID, "contact_sync_queued", contact.Email, "pending", "Gofer Sync queued", "")
+	_ = h.db.LogContactSyncActivity(ctx, userID, contact.ID, "contact_sync_queued", contact.Email, "pending", "Raven Sync queued", "")
 	h.signalContactSyncOperationWorker()
 	return nil
 }
@@ -556,7 +556,7 @@ func (h *Handler) preflightNewContactSyncTargets(ctx context.Context, userID str
 				return fmt.Errorf("preflight Gmail contact: %w", err)
 			}
 			if len(matches) > 1 {
-				return fmt.Errorf("Gmail has multiple contacts with %s; resolve those copies before enabling Gofer Sync", contact.Email)
+				return fmt.Errorf("Gmail has multiple contacts with %s; resolve those copies before enabling Raven Sync", contact.Email)
 			}
 			if len(matches) == 1 && contact.ID != "" && matches[0].ResourceName != "" {
 				if err := h.db.UpsertContactSource(ctx, storage.ContactSource{ContactID: contact.ID, UserID: userID, Provider: providers.ProviderGmail, AccountID: accountID, RemoteID: matches[0].ResourceName, Etag: matches[0].Etag}); err != nil {
@@ -576,7 +576,7 @@ func (h *Handler) preflightNewContactSyncTargets(ctx context.Context, userID str
 				return fmt.Errorf("preflight Outlook contact: %w", err)
 			}
 			if len(matches) > 1 {
-				return fmt.Errorf("Outlook has multiple contacts with %s; resolve those copies before enabling Gofer Sync", contact.Email)
+				return fmt.Errorf("Outlook has multiple contacts with %s; resolve those copies before enabling Raven Sync", contact.Email)
 			}
 			if len(matches) == 1 && contact.ID != "" && matches[0].ID != "" {
 				if err := h.db.UpsertContactSource(ctx, storage.ContactSource{ContactID: contact.ID, UserID: userID, Provider: providers.ProviderOutlook, AccountID: accountID, RemoteID: matches[0].ID, Etag: outlookContactVersion(matches[0])}); err != nil {
@@ -600,7 +600,7 @@ func (h *Handler) scheduleContactAccountSync(ctx context.Context, userID string,
 	if opID == "" {
 		return false
 	}
-	_ = h.db.LogContactSyncActivity(ctx, userID, contact.ID, "contact_sync_queued", contact.Email, "pending", "Gofer Sync queued", "")
+	_ = h.db.LogContactSyncActivity(ctx, userID, contact.ID, "contact_sync_queued", contact.Email, "pending", "Raven Sync queued", "")
 	h.signalContactSyncOperationWorker()
 	return true
 }
@@ -623,7 +623,7 @@ func (h *Handler) handleSyncContactNow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !contact.GoferSyncEnabled {
-		http.Error(w, "Gofer Sync is disabled for this contact", http.StatusConflict)
+		http.Error(w, "Raven Sync is disabled for this contact", http.StatusConflict)
 		return
 	}
 	if !h.scheduleContactAccountSync(ctx, userID, *contact, nil) {
@@ -720,7 +720,7 @@ func (h *Handler) processContactSyncOperation(parent context.Context, op storage
 		defer logCancel()
 		_ = h.db.LogContactSyncActivity(logCtx, op.UserID, contact.ID, eventType, contact.Email, status, message, syncError)
 	}
-	logSyncResult("contact_sync_started", "running", "Gofer Sync started", "")
+	logSyncResult("contact_sync_started", "running", "Raven Sync started", "")
 	if err := h.syncContactToAccountTargets(ctx, op.UserID, contact, previous, op.Payload.ExcludedAccountID); err != nil {
 		retry := op.AttemptCount < 3
 		if markErr := h.db.MarkContactSyncOperationError(context.Background(), op.ID, err.Error(), retry); markErr != nil {
@@ -730,7 +730,7 @@ func (h *Handler) processContactSyncOperation(parent context.Context, op storage
 		if retry {
 			status = "pending"
 		}
-		logSyncResult("contact_sync_failed", status, "Gofer Sync failed: "+err.Error(), err.Error())
+		logSyncResult("contact_sync_failed", status, "Raven Sync failed: "+err.Error(), err.Error())
 		if retry {
 			h.signalContactSyncOperationWorker()
 		}
@@ -739,7 +739,7 @@ func (h *Handler) processContactSyncOperation(parent context.Context, op storage
 	if err := h.db.MarkContactSyncOperationSuccess(context.Background(), op.ID); err != nil {
 		log.Printf("contacts sync operation %s: mark success: %v", op.ID, err)
 	}
-	logSyncResult("contact_synced", "done", "Gofer Sync complete", "")
+	logSyncResult("contact_synced", "done", "Raven Sync complete", "")
 }
 
 func (h *Handler) contactNeedsAccountSync(ctx context.Context, userID string, contact models.Contact, previous *models.Contact) bool {
@@ -890,7 +890,7 @@ func (h *Handler) pushContactToGmailAccount(ctx context.Context, userID string, 
 			return fmt.Errorf("preflight Gmail contact: %w", err)
 		}
 		if len(matches) > 1 {
-			return fmt.Errorf("Gmail has multiple contacts with %s; choose the copy to use before enabling Gofer Sync", contact.Email)
+			return fmt.Errorf("Gmail has multiple contacts with %s; choose the copy to use before enabling Raven Sync", contact.Email)
 		}
 		if len(matches) == 1 && strings.TrimSpace(matches[0].ResourceName) != "" {
 			source = &storage.ContactSource{ContactID: contact.ID, UserID: userID, Provider: providers.ProviderGmail, AccountID: accountID, RemoteID: matches[0].ResourceName, Etag: matches[0].Etag}

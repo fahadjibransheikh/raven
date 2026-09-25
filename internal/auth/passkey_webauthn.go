@@ -87,7 +87,7 @@ func newPasskeyWebAuthn(origin string) (*webauthn.WebAuthn, error) {
 		return nil, err
 	}
 	instance, err := webauthn.New(&webauthn.Config{
-		RPDisplayName:         "Gofer",
+		RPDisplayName:         "Raven",
 		RPID:                  rpID,
 		RPOrigins:             []string{canonicalOrigin},
 		AttestationPreference: protocol.PreferNoAttestation,

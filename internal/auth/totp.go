@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	totpIssuer           = "Gofer"
+	totpIssuer           = "Raven"
 	totpAlgorithm        = "SHA1"
 	totpDigits           = 6
 	totpPeriodSeconds    = 30

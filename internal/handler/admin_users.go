@@ -448,10 +448,10 @@ func (h *Handler) handleDeleteAdminUser(w http.ResponseWriter, r *http.Request) 
 	}(result.TargetUserID, currentSession.ID)
 
 	if result.Resumed {
-		redirectAdminUsers(w, r, "User deletion resumed. Gofer is retrying the local data cleanup.")
+		redirectAdminUsers(w, r, "User deletion resumed. Raven is retrying the local data cleanup.")
 		return
 	}
-	redirectAdminUsers(w, r, "User deletion started. Gofer is permanently removing the user's local data.")
+	redirectAdminUsers(w, r, "User deletion started. Raven is permanently removing the user's local data.")
 }
 
 func redirectAdminUsers(w http.ResponseWriter, r *http.Request, notice string) {

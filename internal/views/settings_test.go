@@ -49,7 +49,7 @@ func TestSettingsAdvancedTabIncludesEmailLinkRegistration(t *testing.T) {
 		`data-mailto-handler-test-button`,
 		`data-mailto-handler-status`,
 		"Test email link",
-		"Use Gofer",
+		"Use Raven",
 	} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("rendered advanced settings missing %q: %s", want, html)
@@ -140,7 +140,7 @@ func TestSettingsAccountCardKeepsPrimaryActionsVisibleAndMovesSecondaryActionsTo
 			if strings.Contains(html, `data-account-test-summary`) {
 				t.Errorf("account test dialog should render only provider service cards: %s", html)
 			}
-			if strings.Contains(html, "Gofer will check the configured mail services") {
+			if strings.Contains(html, "Raven will check the configured mail services") {
 				t.Errorf("account test dialog should not render the removed subtitle: %s", html)
 			}
 			switch tt.account.Provider {
@@ -413,7 +413,7 @@ func TestIdleFallbackTooltipIncludesTemporaryRetry(t *testing.T) {
 		IDLEFallbackReason: "the IDLE connection was closed",
 		IDLERetryAt:        time.Now().Add(2 * time.Minute).UTC().Format(time.RFC3339),
 	})
-	if !strings.Contains(text, "INBOX was moved to polling because the IDLE connection was closed.") || !strings.Contains(text, "Gofer will try again in") {
+	if !strings.Contains(text, "INBOX was moved to polling because the IDLE connection was closed.") || !strings.Contains(text, "Raven will try again in") {
 		t.Fatalf("idleFallbackTooltip() = %q", text)
 	}
 }

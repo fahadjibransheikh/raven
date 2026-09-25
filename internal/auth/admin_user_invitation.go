@@ -195,7 +195,7 @@ func administratorInvitationIdentifierCollisions(ctx context.Context, tx *sql.Tx
 	if err != nil {
 		return nil, fmt.Errorf("check invited user username collision: %w", err)
 	}
-	fields["username"] = "That username is already used by another Gofer user."
+	fields["username"] = "That username is already used by another Raven user."
 	return fields, nil
 }
 

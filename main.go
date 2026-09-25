@@ -74,7 +74,7 @@ func runServer() {
 		log.Fatalf("unsafe HTTP configuration: %v", err)
 	}
 	if httpConfig.WarnUnauthenticatedRemote(authConfig.Enabled) {
-		log.Printf("WARNING: unauthenticated remote access is explicitly enabled; anyone who can reach %s can control Gofer", httpConfig.BaseURL)
+		log.Printf("WARNING: unauthenticated remote access is explicitly enabled; anyone who can reach %s can control Raven", httpConfig.BaseURL)
 	}
 
 	dbPath := configuredDatabasePath()
@@ -183,7 +183,7 @@ func runServer() {
 	handler = httpConfig.Middleware(handler)
 	handler = httpConfig.ClientNetworkMiddleware(authConfig.Enabled, handler)
 
-	fmt.Printf("Gofer running on %s\n", httpConfig.BaseURL)
+	fmt.Printf("Raven running on %s\n", httpConfig.BaseURL)
 	fmt.Printf("listening on %s\n", httpConfig.ListenAddr)
 	fmt.Printf("database: %s\n", db.Path())
 	if authConfig.Enabled {
@@ -239,7 +239,7 @@ func provisionInitialSetupToken(ctx context.Context, manager *auth.Manager, conf
 	if provision.State.TokenExpiresAt != nil {
 		fmt.Fprintf(&notice, " Expires: %s (server local time)\n", provision.State.TokenExpiresAt.Local().Format("2006-01-02 15:04:05 MST (UTC-07:00)"))
 	}
-	notice.WriteString("\n Lost or expired token? Stop Gofer, then run:\n ./gofer auth setup-token rotate\n Use the same GOFER_DB_PATH, then restart Gofer.\n────────────────────────────────────────────────────────────\n\n")
+	notice.WriteString("\n Lost or expired token? Stop Raven, then run:\n ./gofer auth setup-token rotate\n Use the same GOFER_DB_PATH, then restart Raven.\n────────────────────────────────────────────────────────────\n\n")
 	if _, err := io.WriteString(console, notice.String()); err != nil {
 		return fmt.Errorf("write setup notice to local console: %w", err)
 	}
