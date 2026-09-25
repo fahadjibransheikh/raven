@@ -11,3 +11,13 @@ gofer
 data/
 
 assets/css/output.css
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/
+
+# Local tooling, not part of Raven
+.DS_Store
+.claude/
+.serena/
+.mcp.json
+.ignore

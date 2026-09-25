@@ -17,7 +17,7 @@ templ InvitationEnrollmentPage(data InvitationEnrollmentData) {
 		<head>
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-			<title>Gofer — Accept Invitation</title>
+			<title>Raven — Accept Invitation</title>
 			@AppIcon()
 			<link rel="stylesheet" href="/assets/css/output.css"/>
 		</head>
@@ -25,8 +25,8 @@ templ InvitationEnrollmentPage(data InvitationEnrollmentData) {
 			<main class="min-h-screen flex items-center justify-center p-4">
 				<div class="w-full max-w-sm">
 					<div class="text-center mb-8">
-						<img src="/assets/logo.svg" alt="Gofer" class="h-12 w-auto mx-auto"/>
-						<h1 class="mt-6 text-2xl font-semibold">Accept your Gofer invitation</h1>
+						<img src="/assets/logo.svg" alt="Raven" class="h-12 w-auto mx-auto"/>
+						<h1 class="mt-6 text-2xl font-semibold">Accept your Raven invitation</h1>
 						<p class="mt-2 text-sm text-muted-foreground">Use the private invitation token provided by your administrator. It can be used only once.</p>
 					</div>
 					if data.Message != "" {
@@ -100,7 +100,7 @@ templ InvitationEnrollmentPage(data InvitationEnrollmentData) {
 								Accept invitation with Google
 							}
 							<p class="text-xs leading-relaxed text-muted-foreground">
-								This uses the invitation token entered above. Google is used only to sign in to Gofer; it does not connect your Gmail mailbox or grant Gofer access to mail, contacts, or calendars.
+								This uses the invitation token entered above. Google is used only to sign in to Raven; it does not connect your Gmail mailbox or grant Raven access to mail, contacts, or calendars.
 							</p>
 						}
 					</form>
@@ -122,7 +122,7 @@ templ CredentialRedemptionPage(data CredentialRedemptionData) {
 		<head>
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-			<title>Gofer — Reset Password</title>
+			<title>Raven — Reset Password</title>
 			@AppIcon()
 			<link rel="stylesheet" href="/assets/css/output.css"/>
 		</head>
@@ -130,8 +130,8 @@ templ CredentialRedemptionPage(data CredentialRedemptionData) {
 			<main class="min-h-screen flex items-center justify-center p-4">
 				<div class="w-full max-w-sm">
 					<div class="text-center mb-8">
-						<img src="/assets/logo.svg" alt="Gofer" class="h-12 w-auto mx-auto"/>
-						<h1 class="mt-6 text-2xl font-semibold">Reset your Gofer password</h1>
+						<img src="/assets/logo.svg" alt="Raven" class="h-12 w-auto mx-auto"/>
+						<h1 class="mt-6 text-2xl font-semibold">Reset your Raven password</h1>
 						<p class="mt-2 text-sm text-muted-foreground">Use the private reset token provided by your administrator. It can be used only once.</p>
 					</div>
 					if data.Message != "" {
@@ -203,7 +203,7 @@ templ CredentialRedemptionPage(data CredentialRedemptionData) {
 }
 
 templ InvitationEnrollmentCompletePage() {
-	@passwordTokenCompletePage("Invitation accepted", "Your invitation has been consumed and your Gofer account is ready. Sign in with your new password.")
+	@passwordTokenCompletePage("Invitation accepted", "Your invitation has been consumed and your Raven account is ready. Sign in with your new password.")
 }
 
 templ CredentialRedemptionCompletePage() {
@@ -216,14 +216,14 @@ templ passwordTokenCompletePage(title string, message string) {
 		<head>
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-			<title>Gofer — { title }</title>
+			<title>Raven — { title }</title>
 			@AppIcon()
 			<link rel="stylesheet" href="/assets/css/output.css"/>
 		</head>
 		<body class="bg-background text-foreground antialiased surface-desk">
 			<main class="min-h-screen flex items-center justify-center p-4">
 				<div class="w-full max-w-sm text-center">
-					<img src="/assets/logo.svg" alt="Gofer" class="h-12 w-auto mx-auto"/>
+					<img src="/assets/logo.svg" alt="Raven" class="h-12 w-auto mx-auto"/>
 					<div role="status" class="mt-8 rounded-lg border border-success/25 bg-success/10 px-5 py-6">
 						<h1 class="text-2xl font-semibold">{ title }</h1>
 						<p class="mt-3 text-sm text-muted-foreground">{ message }</p>

@@ -161,9 +161,9 @@ func totpManagementDescription(isReplacement bool) string {
 
 func totpManagementQRCodeAlt(isReplacement bool) string {
 	if isReplacement {
-		return "QR code containing the replacement Gofer authenticator key"
+		return "QR code containing the replacement Raven authenticator key"
 	}
-	return "QR code containing the new Gofer authenticator key"
+	return "QR code containing the new Raven authenticator key"
 }
 
 func totpManagementManualKeyLabel(isReplacement bool) string {
@@ -263,7 +263,7 @@ func PasswordSecurityVerificationLayout(uiSettings map[string]string, data Passw
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Security settings — Gofer</title>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Security settings — Raven</title>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -447,7 +447,7 @@ func PasswordSecurityVerification(data PasswordSecurityVerificationData) templ.C
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<div class=\"rounded-lg border border-amber-500/30 bg-amber-500/5 p-6\" data-security-step-up><div class=\"mb-5\"><h3 class=\"text-base font-semibold text-foreground\">Verify it’s you</h3><p class=\"mt-1 text-sm text-muted-foreground\">For your protection, Gofer has not loaded your security details yet. Verify this session to request and view them.</p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<div class=\"rounded-lg border border-amber-500/30 bg-amber-500/5 p-6\" data-security-step-up><div class=\"mb-5\"><h3 class=\"text-base font-semibold text-foreground\">Verify it’s you</h3><p class=\"mt-1 text-sm text-muted-foreground\">For your protection, Raven has not loaded your security details yet. Verify this session to request and view them.</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -637,7 +637,7 @@ func PasswordSecurityLayout(uiSettings map[string]string, data PasswordSecurityD
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Security settings — Gofer</title>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Security settings — Raven</title>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -821,7 +821,7 @@ func PasswordSecuritySettings(data PasswordSecurityData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "<div class=\"rounded-lg border bg-card p-6\" data-local-login-identifiers><div class=\"mb-5\"><h3 class=\"text-base font-semibold text-foreground\">Local sign-in</h3><p class=\"mt-1 text-sm text-muted-foreground\">This identifies the Gofer account for local sign-in. It is separate from mailbox addresses and external sign-in identities.</p></div><dl aria-label=\"Local sign-in identifier\"><div class=\"rounded-md border border-border bg-background/60 px-4 py-3\"><dt class=\"text-xs font-medium uppercase tracking-wide text-muted-foreground\">Username</dt><dd class=\"mt-1 break-all text-sm font-semibold text-foreground\" data-local-login-username>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "<div class=\"rounded-lg border bg-card p-6\" data-local-login-identifiers><div class=\"mb-5\"><h3 class=\"text-base font-semibold text-foreground\">Local sign-in</h3><p class=\"mt-1 text-sm text-muted-foreground\">This identifies the Raven account for local sign-in. It is separate from mailbox addresses and external sign-in identities.</p></div><dl aria-label=\"Local sign-in identifier\"><div class=\"rounded-md border border-border bg-background/60 px-4 py-3\"><dt class=\"text-xs font-medium uppercase tracking-wide text-muted-foreground\">Username</dt><dd class=\"mt-1 break-all text-sm font-semibold text-foreground\" data-local-login-username>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -834,7 +834,7 @@ func PasswordSecuritySettings(data PasswordSecurityData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "</dd></div></dl><p class=\"mt-3 text-xs text-muted-foreground\">A username is not a credential. Local sign-in still requires this account’s password or passkey.</p></div><div class=\"rounded-lg border bg-card p-6\"><div class=\"mb-5\"><h3 class=\"text-base font-semibold text-foreground\">Password</h3><p class=\"mt-1 text-sm text-muted-foreground\">Change the password used to sign in to this Gofer account.</p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "</dd></div></dl><p class=\"mt-3 text-xs text-muted-foreground\">A username is not a credential. Local sign-in still requires this account’s password or passkey.</p></div><div class=\"rounded-lg border bg-card p-6\"><div class=\"mb-5\"><h3 class=\"text-base font-semibold text-foreground\">Password</h3><p class=\"mt-1 text-sm text-muted-foreground\">Change the password used to sign in to this Raven account.</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -872,7 +872,7 @@ func PasswordSecuritySettings(data PasswordSecurityData) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, " class=\"h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/25\"></div><div class=\"space-y-1.5\"><label for=\"new-password\" class=\"text-sm font-medium text-foreground\">New password</label> <input id=\"new-password\" name=\"new_password\" type=\"password\" autocomplete=\"new-password\" minlength=\"15\" maxlength=\"256\" required aria-describedby=\"new-password-help\" class=\"h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/25\"><p id=\"new-password-help\" class=\"text-xs text-muted-foreground\">Use at least 15 characters. Gofer checks common and account-related passwords locally.</p></div><div class=\"space-y-1.5\"><label for=\"confirm-password\" class=\"text-sm font-medium text-foreground\">Confirm new password</label> <input id=\"confirm-password\" name=\"confirm_password\" type=\"password\" autocomplete=\"new-password\" minlength=\"15\" maxlength=\"256\" required class=\"h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/25\"></div><div class=\"rounded-md border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-xs leading-relaxed text-amber-900 dark:text-amber-100\">Changing your password signs out every other browser and device. This browser receives a fresh session.</div><button type=\"submit\" class=\"inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2\">Change password</button></form>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, " class=\"h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/25\"></div><div class=\"space-y-1.5\"><label for=\"new-password\" class=\"text-sm font-medium text-foreground\">New password</label> <input id=\"new-password\" name=\"new_password\" type=\"password\" autocomplete=\"new-password\" minlength=\"15\" maxlength=\"256\" required aria-describedby=\"new-password-help\" class=\"h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/25\"><p id=\"new-password-help\" class=\"text-xs text-muted-foreground\">Use at least 15 characters. Raven checks common and account-related passwords locally.</p></div><div class=\"space-y-1.5\"><label for=\"confirm-password\" class=\"text-sm font-medium text-foreground\">Confirm new password</label> <input id=\"confirm-password\" name=\"confirm_password\" type=\"password\" autocomplete=\"new-password\" minlength=\"15\" maxlength=\"256\" required class=\"h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/25\"></div><div class=\"rounded-md border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-xs leading-relaxed text-amber-900 dark:text-amber-100\">Changing your password signs out every other browser and device. This browser receives a fresh session.</div><button type=\"submit\" class=\"inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2\">Change password</button></form>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -887,7 +887,7 @@ func PasswordSecuritySettings(data PasswordSecurityData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, "</div><div class=\"rounded-lg border bg-card p-6\" data-federated-identity-settings><div class=\"mb-5 flex flex-wrap items-start justify-between gap-3\"><div><h3 class=\"text-base font-semibold text-foreground\">Application sign-in</h3><p class=\"mt-1 text-sm text-muted-foreground\">Connect up to one Google and one Microsoft identity to sign in to this Gofer account.</p></div></div><ul class=\"divide-y divide-border rounded-md border border-border\" aria-label=\"Sign-in providers\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, "</div><div class=\"rounded-lg border bg-card p-6\" data-federated-identity-settings><div class=\"mb-5 flex flex-wrap items-start justify-between gap-3\"><div><h3 class=\"text-base font-semibold text-foreground\">Application sign-in</h3><p class=\"mt-1 text-sm text-muted-foreground\">Connect up to one Google and one Microsoft identity to sign in to this Raven account.</p></div></div><ul class=\"divide-y divide-border rounded-md border border-border\" aria-label=\"Sign-in providers\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -989,7 +989,7 @@ func PasswordSecuritySettings(data PasswordSecurityData) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 70, "\" onsubmit=\"return confirm('Disconnect this sign-in identity? This removes only this identity as a way to sign in to Gofer and does not disconnect any mailbox.')\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 70, "\" onsubmit=\"return confirm('Disconnect this sign-in identity? This removes only this identity as a way to sign in to Raven and does not disconnect any mailbox.')\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -1099,7 +1099,7 @@ func PasswordSecuritySettings(data PasswordSecurityData) templ.Component {
 			}
 		}
 		if !data.GoogleLoginAvailable && !data.MicrosoftLoginAvailable && !data.OIDCLoginAvailable {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 85, "<p class=\"text-xs text-muted-foreground\">External application sign-in is not configured for this Gofer installation.</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 85, "<p class=\"text-xs text-muted-foreground\">External application sign-in is not configured for this Raven installation.</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1132,7 +1132,7 @@ func PasswordSecuritySettings(data PasswordSecurityData) templ.Component {
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 87, "<button type=\"button\" class=\"inline-flex items-center gap-1.5 rounded-sm text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2\" aria-label=\"Learn what application sign-in authorizes\"><span>For Gofer sign-in only</span>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 87, "<button type=\"button\" class=\"inline-flex items-center gap-1.5 rounded-sm text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2\" aria-label=\"Learn what application sign-in authorizes\"><span>For Raven sign-in only</span>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -1166,7 +1166,7 @@ func PasswordSecuritySettings(data PasswordSecurityData) templ.Component {
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 90, "Connecting Google, Microsoft, or another OpenID Connect identity adds only a way to sign in to Gofer. It does not connect a Gmail or Outlook mailbox or grant Gofer access to mail, contacts, calendars, or other provider resources.")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 90, "Connecting Google, Microsoft, or another OpenID Connect identity adds only a way to sign in to Raven. It does not connect a Gmail or Outlook mailbox or grant Raven access to mail, contacts, calendars, or other provider resources.")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -1857,7 +1857,7 @@ func PasswordSecuritySettings(data PasswordSecurityData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 174, "</div><div class=\"rounded-lg border bg-card p-6\" data-security-sessions><div class=\"mb-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start\"><div class=\"min-w-0\"><h3 class=\"text-base font-semibold text-foreground\">Sessions</h3><p class=\"mt-1 text-sm text-muted-foreground\">Review browsers and devices currently or recently signed in to this Gofer account.</p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 174, "</div><div class=\"rounded-lg border bg-card p-6\" data-security-sessions><div class=\"mb-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start\"><div class=\"min-w-0\"><h3 class=\"text-base font-semibold text-foreground\">Sessions</h3><p class=\"mt-1 text-sm text-muted-foreground\">Review browsers and devices currently or recently signed in to this Raven account.</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2024,7 +2024,7 @@ func PasswordSecuritySettings(data PasswordSecurityData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 185, "<p class=\"mt-3 text-xs text-muted-foreground\">Signed-out sessions are retained for up to 30 days. Session tokens and internal identifiers are never shown. Signing out another session does not change its credentials.</p></div><div class=\"rounded-lg border bg-card p-6\" data-security-events><div class=\"flex items-start justify-between gap-4\"><div class=\"min-w-0\"><h3 class=\"text-base font-semibold text-foreground\">Your security activity</h3><p class=\"mt-1 text-sm text-muted-foreground\">Review authentication and account-security events affecting this Gofer account.</p></div><span class=\"shrink-0 rounded-full border border-border bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 185, "<p class=\"mt-3 text-xs text-muted-foreground\">Signed-out sessions are retained for up to 30 days. Session tokens and internal identifiers are never shown. Signing out another session does not change its credentials.</p></div><div class=\"rounded-lg border bg-card p-6\" data-security-events><div class=\"flex items-start justify-between gap-4\"><div class=\"min-w-0\"><h3 class=\"text-base font-semibold text-foreground\">Your security activity</h3><p class=\"mt-1 text-sm text-muted-foreground\">Review authentication and account-security events affecting this Raven account.</p></div><span class=\"shrink-0 rounded-full border border-border bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2141,7 +2141,7 @@ func PasswordSecuritySettings(data PasswordSecurityData) templ.Component {
 							}()
 						}
 						ctx = templ.InitializeContext(ctx)
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 191, "Authentication and account-security events affecting this Gofer account.")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 191, "Authentication and account-security events affecting this Raven account.")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -2412,7 +2412,7 @@ func SecurityActivityDialogPage(data SecurityActivityPageData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 220, "<p class=\"text-xs text-muted-foreground\">Only events affecting this Gofer account are shown. Raw audit metadata and internal identifiers are not displayed.</p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 220, "<p class=\"text-xs text-muted-foreground\">Only events affecting this Raven account are shown. Raw audit metadata and internal identifiers are not displayed.</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -3163,7 +3163,7 @@ func applicationSignInProviderRow(data PasswordSecurityData, provider, label, ic
 				return templ_7745c5c3_Err
 			}
 			if data.StepUpFresh && identity.CanUnlink && identity.UnlinkPath != "" {
-				templ_7745c5c3_Err = securityActionConfirmationDialog(fmt.Sprintf("security-%s-disconnect-%d", provider, index), identity.UnlinkPath, data.CSRFTokens[identity.UnlinkPath], "Disconnect", "Disconnect this sign-in identity? This removes only this identity as a way to sign in to Gofer and does not disconnect any mailbox.").Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = securityActionConfirmationDialog(fmt.Sprintf("security-%s-disconnect-%d", provider, index), identity.UnlinkPath, data.CSRFTokens[identity.UnlinkPath], "Disconnect", "Disconnect this sign-in identity? This removes only this identity as a way to sign in to Raven and does not disconnect any mailbox.").Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

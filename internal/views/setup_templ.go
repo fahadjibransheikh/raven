@@ -126,7 +126,7 @@ func SetupTokenPage(data SetupTokenData) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<!doctype html><html lang=\"en\" class=\"dark\" data-theme=\"classic\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Gofer — Initial Setup</title>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<!doctype html><html lang=\"en\" class=\"dark\" data-theme=\"classic\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Raven — Initial Setup</title>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -134,7 +134,7 @@ func SetupTokenPage(data SetupTokenData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<link rel=\"stylesheet\" href=\"/assets/css/output.css\"></head><body class=\"bg-background text-foreground antialiased surface-desk\"><main class=\"min-h-screen flex items-center justify-center p-4\"><div class=\"w-full max-w-sm\"><div class=\"text-center mb-8\"><img src=\"/assets/logo.svg\" alt=\"Gofer\" class=\"h-12 w-auto mx-auto\"><h1 class=\"mt-6 text-2xl font-semibold\">Set up Gofer</h1><p class=\"mt-2 text-sm text-muted-foreground\">Enter the private token shown on the machine running Gofer.</p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<link rel=\"stylesheet\" href=\"/assets/css/output.css\"></head><body class=\"bg-background text-foreground antialiased surface-desk\"><main class=\"min-h-screen flex items-center justify-center p-4\"><div class=\"w-full max-w-sm\"><div class=\"text-center mb-8\"><img src=\"/assets/logo.svg\" alt=\"Raven\" class=\"h-12 w-auto mx-auto\"><h1 class=\"mt-6 text-2xl font-semibold\">Set up Raven</h1><p class=\"mt-2 text-sm text-muted-foreground\">Enter the private token shown on the machine running Raven.</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -193,7 +193,7 @@ func SetupTokenPage(data SetupTokenData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</form><p class=\"mt-6 text-center text-xs text-muted-foreground\">The token is sent only when you submit this form. It is never included in the page URL or saved by Gofer in browser storage.</p></div></main></body></html>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</form><p class=\"mt-6 text-center text-xs text-muted-foreground\">The token is sent only when you submit this form. It is never included in the page URL or saved by Raven in browser storage.</p></div></main></body></html>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -222,7 +222,7 @@ func SetupOwnerPage(data SetupOwnerData) templ.Component {
 			templ_7745c5c3_Var4 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<!doctype html><html lang=\"en\" class=\"dark\" data-theme=\"classic\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Gofer — Set Up Owner</title>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<!doctype html><html lang=\"en\" class=\"dark\" data-theme=\"classic\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Raven — Set Up Owner</title>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -230,22 +230,22 @@ func SetupOwnerPage(data SetupOwnerData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<link rel=\"stylesheet\" href=\"/assets/css/output.css\"></head><body class=\"bg-background text-foreground antialiased surface-desk\"><main class=\"min-h-screen flex items-center justify-center p-4 py-10\"><div class=\"w-full max-w-2xl\"><div class=\"text-center mb-8\"><img src=\"/assets/logo.svg\" alt=\"Gofer\" class=\"h-12 w-auto mx-auto\"><p class=\"mt-5 text-xs font-medium uppercase tracking-widest text-success\">Setup access verified</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<link rel=\"stylesheet\" href=\"/assets/css/output.css\"></head><body class=\"bg-background text-foreground antialiased surface-desk\"><main class=\"min-h-screen flex items-center justify-center p-4 py-10\"><div class=\"w-full max-w-2xl\"><div class=\"text-center mb-8\"><img src=\"/assets/logo.svg\" alt=\"Raven\" class=\"h-12 w-auto mx-auto\"><p class=\"mt-5 text-xs font-medium uppercase tracking-widest text-success\">Setup access verified</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if data.Kind == "fresh" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<h1 class=\"mt-2 text-2xl font-semibold\">Create the first owner</h1><p class=\"mt-2 text-sm text-muted-foreground\">This installation has no Gofer users yet.</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<h1 class=\"mt-2 text-2xl font-semibold\">Create the first owner</h1><p class=\"mt-2 text-sm text-muted-foreground\">This installation has no Raven users yet.</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else if data.Kind == "legacy_default" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<h1 class=\"mt-2 text-2xl font-semibold\">Claim your existing Gofer data</h1><p class=\"mt-2 text-sm text-muted-foreground\">The legacy local user will become the real owner without changing its stable ID.</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<h1 class=\"mt-2 text-2xl font-semibold\">Claim your existing Raven data</h1><p class=\"mt-2 text-sm text-muted-foreground\">The legacy local user will become the real owner without changing its stable ID.</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<h1 class=\"mt-2 text-2xl font-semibold\">Choose the Gofer owner</h1><p class=\"mt-2 text-sm text-muted-foreground\">Select an existing user explicitly, or create a separate owner.</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<h1 class=\"mt-2 text-2xl font-semibold\">Choose the Raven owner</h1><p class=\"mt-2 text-sm text-muted-foreground\">Select an existing user explicitly, or create a separate owner.</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -280,7 +280,7 @@ func SetupOwnerPage(data SetupOwnerData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</p><p class=\"mt-3 text-sm text-muted-foreground\">Stop Gofer, run <code class=\"font-mono\">gofer auth users list</code> locally, and resolve duplicate or excessive user records before rotating the setup token and trying again. Gofer will not guess an owner or merge records.</p></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</p><p class=\"mt-3 text-sm text-muted-foreground\">Stop Raven, run <code class=\"font-mono\">gofer auth users list</code> locally, and resolve duplicate or excessive user records before rotating the setup token and trying again. Raven will not guess an owner or merge records.</p></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -381,7 +381,7 @@ func SetupOwnerPage(data SetupOwnerData) templ.Component {
 							return templ_7745c5c3_Err
 						}
 					} else {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<span class=\"block text-sm font-medium\">Unnamed Gofer user</span> ")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<span class=\"block text-sm font-medium\">Unnamed Raven user</span> ")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -474,7 +474,7 @@ func SetupOwnerPage(data SetupOwnerData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if data.Kind == "fresh" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "<p class=\"mt-1 text-xs text-muted-foreground\">These values identify the first real Gofer user.</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "<p class=\"mt-1 text-xs text-muted-foreground\">These values identify the first real Raven user.</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -681,7 +681,7 @@ func SetupPasswordPage(data SetupPasswordData) templ.Component {
 			templ_7745c5c3_Var22 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 66, "<!doctype html><html lang=\"en\" class=\"dark\" data-theme=\"classic\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Gofer — Set Owner Password</title>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 66, "<!doctype html><html lang=\"en\" class=\"dark\" data-theme=\"classic\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Raven — Set Owner Password</title>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -689,7 +689,7 @@ func SetupPasswordPage(data SetupPasswordData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 67, "<link rel=\"stylesheet\" href=\"/assets/css/output.css\"></head><body class=\"bg-background text-foreground antialiased surface-desk\"><main class=\"min-h-screen flex items-center justify-center p-4 py-10\"><div class=\"w-full max-w-md\"><div class=\"text-center mb-8\"><img src=\"/assets/logo.svg\" alt=\"Gofer\" class=\"h-12 w-auto mx-auto\"><p class=\"mt-5 text-xs font-medium uppercase tracking-widest text-success\">Owner profile ready</p><h1 class=\"mt-2 text-2xl font-semibold\">Choose the owner password</h1><p class=\"mt-2 text-sm text-muted-foreground\">Use a unique passphrase that is not used for your email account or another service.</p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 67, "<link rel=\"stylesheet\" href=\"/assets/css/output.css\"></head><body class=\"bg-background text-foreground antialiased surface-desk\"><main class=\"min-h-screen flex items-center justify-center p-4 py-10\"><div class=\"w-full max-w-md\"><div class=\"text-center mb-8\"><img src=\"/assets/logo.svg\" alt=\"Raven\" class=\"h-12 w-auto mx-auto\"><p class=\"mt-5 text-xs font-medium uppercase tracking-widest text-success\">Owner profile ready</p><h1 class=\"mt-2 text-2xl font-semibold\">Choose the owner password</h1><p class=\"mt-2 text-sm text-muted-foreground\">Use a unique passphrase that is not used for your email account or another service.</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -918,7 +918,7 @@ func SetupMFAPage(data SetupMFAData) templ.Component {
 			templ_7745c5c3_Var32 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 90, "<!doctype html><html lang=\"en\" class=\"dark\" data-theme=\"classic\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Gofer — Set Up Owner MFA</title>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 90, "<!doctype html><html lang=\"en\" class=\"dark\" data-theme=\"classic\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Raven — Set Up Owner MFA</title>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -926,12 +926,12 @@ func SetupMFAPage(data SetupMFAData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 91, "<link rel=\"stylesheet\" href=\"/assets/css/output.css\"></head><body class=\"bg-background text-foreground antialiased surface-desk\"><main class=\"min-h-screen flex items-center justify-center p-4 py-10\"><div class=\"w-full max-w-lg\"><div class=\"text-center mb-8\"><img src=\"/assets/logo.svg\" alt=\"Gofer\" class=\"h-12 w-auto mx-auto\"><p class=\"mt-5 text-xs font-medium uppercase tracking-widest text-success\">Password ready</p><h1 class=\"mt-2 text-2xl font-semibold\">Secure the owner account</h1><p class=\"mt-2 text-sm text-muted-foreground\">Add Gofer to an authenticator app, then confirm one current code.</p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 91, "<link rel=\"stylesheet\" href=\"/assets/css/output.css\"></head><body class=\"bg-background text-foreground antialiased surface-desk\"><main class=\"min-h-screen flex items-center justify-center p-4 py-10\"><div class=\"w-full max-w-lg\"><div class=\"text-center mb-8\"><img src=\"/assets/logo.svg\" alt=\"Raven\" class=\"h-12 w-auto mx-auto\"><p class=\"mt-5 text-xs font-medium uppercase tracking-widest text-success\">Password ready</p><h1 class=\"mt-2 text-2xl font-semibold\">Secure the owner account</h1><p class=\"mt-2 text-sm text-muted-foreground\">Add Raven to an authenticator app, then confirm one current code.</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if data.TOTPReady {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 92, "<div role=\"status\" aria-live=\"polite\" class=\"rounded-xl border border-success/25 bg-success/10 px-5 py-4\"><p class=\"text-sm font-medium text-success\">Authenticator verified for final enrollment</p><p class=\"mt-1 text-xs text-muted-foreground\">The encrypted setup draft now contains the seed and accepted time step. No authenticator, user, or session has been created yet.</p></div><div class=\"mt-4 rounded-xl border border-border bg-card p-5\"><p class=\"text-sm font-medium\">Next: recovery codes</p><p class=\"mt-1 text-xs text-muted-foreground\">Gofer will generate a single-use recovery batch and require acknowledgement before final setup can commit.</p></div><a href=\"/setup/recovery\" class=\"mt-4 flex h-10 w-full items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90\">Continue to recovery codes</a><form method=\"post\" action=\"/setup/mfa\" class=\"mt-2\"><input type=\"hidden\" name=\"action\" value=\"restart\"> <button type=\"submit\" class=\"flex h-9 w-full items-center justify-center rounded-md px-4 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground\">Replace this authenticator setup</button></form>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 92, "<div role=\"status\" aria-live=\"polite\" class=\"rounded-xl border border-success/25 bg-success/10 px-5 py-4\"><p class=\"text-sm font-medium text-success\">Authenticator verified for final enrollment</p><p class=\"mt-1 text-xs text-muted-foreground\">The encrypted setup draft now contains the seed and accepted time step. No authenticator, user, or session has been created yet.</p></div><div class=\"mt-4 rounded-xl border border-border bg-card p-5\"><p class=\"text-sm font-medium\">Next: recovery codes</p><p class=\"mt-1 text-xs text-muted-foreground\">Raven will generate a single-use recovery batch and require acknowledgement before final setup can commit.</p></div><a href=\"/setup/recovery\" class=\"mt-4 flex h-10 w-full items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90\">Continue to recovery codes</a><form method=\"post\" action=\"/setup/mfa\" class=\"mt-2\"><input type=\"hidden\" name=\"action\" value=\"restart\"> <button type=\"submit\" class=\"flex h-9 w-full items-center justify-center rounded-md px-4 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground\">Replace this authenticator setup</button></form>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -949,7 +949,7 @@ func SetupMFAPage(data SetupMFAData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 94, "\" alt=\"QR code containing the Gofer authenticator setup key\" width=\"192\" height=\"192\" class=\"h-48 w-48\"></div><div class=\"space-y-3\"><div><p class=\"text-sm font-medium\">1. Scan the QR code</p><p class=\"mt-1 text-xs text-muted-foreground\">Use any RFC 6238-compatible authenticator app.</p></div><div><p class=\"text-sm font-medium\">Or enter this setup key</p><code class=\"mt-2 block break-all rounded-md bg-muted px-3 py-2 font-mono text-xs\" aria-label=\"Manual authenticator setup key\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 94, "\" alt=\"QR code containing the Raven authenticator setup key\" width=\"192\" height=\"192\" class=\"h-48 w-48\"></div><div class=\"space-y-3\"><div><p class=\"text-sm font-medium\">1. Scan the QR code</p><p class=\"mt-1 text-xs text-muted-foreground\">Use any RFC 6238-compatible authenticator app.</p></div><div><p class=\"text-sm font-medium\">Or enter this setup key</p><code class=\"mt-2 block break-all rounded-md bg-muted px-3 py-2 font-mono text-xs\" aria-label=\"Manual authenticator setup key\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1133,7 +1133,7 @@ func SetupRecoveryPage(data SetupRecoveryData) templ.Component {
 			templ_7745c5c3_Var43 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 110, "<!doctype html><html lang=\"en\" class=\"dark\" data-theme=\"classic\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Gofer — Save Owner Recovery Codes</title>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 110, "<!doctype html><html lang=\"en\" class=\"dark\" data-theme=\"classic\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Raven — Save Owner Recovery Codes</title>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1141,7 +1141,7 @@ func SetupRecoveryPage(data SetupRecoveryData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 111, "<link rel=\"stylesheet\" href=\"/assets/css/output.css\"></head><body class=\"bg-background text-foreground antialiased surface-desk\"><main class=\"min-h-screen flex items-center justify-center p-4 py-10\"><div class=\"w-full max-w-lg\"><div class=\"text-center mb-8\"><img src=\"/assets/logo.svg\" alt=\"Gofer\" class=\"h-12 w-auto mx-auto\"><p class=\"mt-5 text-xs font-medium uppercase tracking-widest text-success\">Authenticator verified</p><h1 class=\"mt-2 text-2xl font-semibold\">Save the owner recovery codes</h1><p class=\"mt-2 text-sm text-muted-foreground\">Each code can recover access once if the authenticator is unavailable.</p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 111, "<link rel=\"stylesheet\" href=\"/assets/css/output.css\"></head><body class=\"bg-background text-foreground antialiased surface-desk\"><main class=\"min-h-screen flex items-center justify-center p-4 py-10\"><div class=\"w-full max-w-lg\"><div class=\"text-center mb-8\"><img src=\"/assets/logo.svg\" alt=\"Raven\" class=\"h-12 w-auto mx-auto\"><p class=\"mt-5 text-xs font-medium uppercase tracking-widest text-success\">Authenticator verified</p><h1 class=\"mt-2 text-2xl font-semibold\">Save the owner recovery codes</h1><p class=\"mt-2 text-sm text-muted-foreground\">Each code can recover access once if the authenticator is unavailable.</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1170,7 +1170,7 @@ func SetupRecoveryPage(data SetupRecoveryData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		} else if len(data.Codes) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 115, "<div role=\"alert\" class=\"rounded-lg border border-warning/30 bg-warning/10 px-4 py-3\"><p class=\"text-sm font-medium text-warning\">These codes are shown only in this response</p><p class=\"mt-1 text-xs text-muted-foreground\">Copy them to a password manager or print this page now. Gofer cannot display this batch again.</p></div><div class=\"mt-4 grid gap-2 rounded-xl border border-border bg-card p-5 sm:grid-cols-2\" aria-label=\"Owner recovery codes\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 115, "<div role=\"alert\" class=\"rounded-lg border border-warning/30 bg-warning/10 px-4 py-3\"><p class=\"text-sm font-medium text-warning\">These codes are shown only in this response</p><p class=\"mt-1 text-xs text-muted-foreground\">Copy them to a password manager or print this page now. Raven cannot display this batch again.</p></div><div class=\"mt-4 grid gap-2 rounded-xl border border-border bg-card p-5 sm:grid-cols-2\" aria-label=\"Owner recovery codes\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1211,7 +1211,7 @@ func SetupRecoveryPage(data SetupRecoveryData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 120, "<div class=\"rounded-xl border border-border bg-card p-6\"><p class=\"text-sm font-medium\">Create an offline fallback</p><p class=\"mt-1 text-xs text-muted-foreground\">Gofer will generate ten 120-bit pseudorandom codes locally. Their plaintext will appear once; only hashes enter the encrypted setup draft.</p><form method=\"post\" action=\"/setup/recovery\" class=\"mt-5\"><input type=\"hidden\" name=\"action\" value=\"generate\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 120, "<div class=\"rounded-xl border border-border bg-card p-6\"><p class=\"text-sm font-medium\">Create an offline fallback</p><p class=\"mt-1 text-xs text-muted-foreground\">Raven will generate ten 120-bit pseudorandom codes locally. Their plaintext will appear once; only hashes enter the encrypted setup draft.</p><form method=\"post\" action=\"/setup/recovery\" class=\"mt-5\"><input type=\"hidden\" name=\"action\" value=\"generate\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1271,7 +1271,7 @@ func SetupReviewPage(data SetupReviewData) templ.Component {
 			templ_7745c5c3_Var47 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 124, "<!doctype html><html lang=\"en\" class=\"dark\" data-theme=\"classic\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Gofer — Review Owner Setup</title>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 124, "<!doctype html><html lang=\"en\" class=\"dark\" data-theme=\"classic\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Raven — Review Owner Setup</title>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1279,7 +1279,7 @@ func SetupReviewPage(data SetupReviewData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 125, "<link rel=\"stylesheet\" href=\"/assets/css/output.css\"></head><body class=\"bg-background text-foreground antialiased surface-desk\"><main class=\"min-h-screen flex justify-center p-4 py-10\"><div class=\"w-full max-w-2xl\"><div class=\"text-center mb-8\"><img src=\"/assets/logo.svg\" alt=\"Gofer\" class=\"h-12 w-auto mx-auto\"><p class=\"mt-5 text-xs font-medium uppercase tracking-widest text-success\">Security enrollment ready</p><h1 class=\"mt-2 text-2xl font-semibold\">Review owner setup</h1><p class=\"mt-2 text-sm text-muted-foreground\">Confirm exactly what the final transaction will change before mandatory authentication is initialized.</p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 125, "<link rel=\"stylesheet\" href=\"/assets/css/output.css\"></head><body class=\"bg-background text-foreground antialiased surface-desk\"><main class=\"min-h-screen flex justify-center p-4 py-10\"><div class=\"w-full max-w-2xl\"><div class=\"text-center mb-8\"><img src=\"/assets/logo.svg\" alt=\"Raven\" class=\"h-12 w-auto mx-auto\"><p class=\"mt-5 text-xs font-medium uppercase tracking-widest text-success\">Security enrollment ready</p><h1 class=\"mt-2 text-2xl font-semibold\">Review owner setup</h1><p class=\"mt-2 text-sm text-muted-foreground\">Confirm exactly what the final transaction will change before mandatory authentication is initialized.</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1297,7 +1297,7 @@ func SetupReviewPage(data SetupReviewData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 127, "</p><p class=\"mt-2 text-xs text-muted-foreground\">Gofer will not guess, delete, merge, or reassign private mailbox data. Repair the ownership records locally from a backup before retrying.</p></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 127, "</p><p class=\"mt-2 text-xs text-muted-foreground\">Raven will not guess, delete, merge, or reassign private mailbox data. Repair the ownership records locally from a backup before retrying.</p></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

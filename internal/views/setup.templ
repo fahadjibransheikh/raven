@@ -103,7 +103,7 @@ templ SetupTokenPage(data SetupTokenData) {
 		<head>
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-			<title>Gofer — Initial Setup</title>
+			<title>Raven — Initial Setup</title>
 			@AppIcon()
 			<link rel="stylesheet" href="/assets/css/output.css"/>
 		</head>
@@ -111,9 +111,9 @@ templ SetupTokenPage(data SetupTokenData) {
 			<main class="min-h-screen flex items-center justify-center p-4">
 				<div class="w-full max-w-sm">
 					<div class="text-center mb-8">
-						<img src="/assets/logo.svg" alt="Gofer" class="h-12 w-auto mx-auto"/>
-						<h1 class="mt-6 text-2xl font-semibold">Set up Gofer</h1>
-						<p class="mt-2 text-sm text-muted-foreground">Enter the private token shown on the machine running Gofer.</p>
+						<img src="/assets/logo.svg" alt="Raven" class="h-12 w-auto mx-auto"/>
+						<h1 class="mt-6 text-2xl font-semibold">Set up Raven</h1>
+						<p class="mt-2 text-sm text-muted-foreground">Enter the private token shown on the machine running Raven.</p>
 					</div>
 					if data.Message != "" {
 						<div id="setup-token-error" role="alert" aria-live="polite" class="bg-destructive/10 border border-destructive/20 text-destructive rounded-lg px-4 py-3 text-sm mb-6">
@@ -143,7 +143,7 @@ templ SetupTokenPage(data SetupTokenData) {
 							Continue securely
 						}
 					</form>
-					<p class="mt-6 text-center text-xs text-muted-foreground">The token is sent only when you submit this form. It is never included in the page URL or saved by Gofer in browser storage.</p>
+					<p class="mt-6 text-center text-xs text-muted-foreground">The token is sent only when you submit this form. It is never included in the page URL or saved by Raven in browser storage.</p>
 				</div>
 			</main>
 		</body>
@@ -156,7 +156,7 @@ templ SetupOwnerPage(data SetupOwnerData) {
 		<head>
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-			<title>Gofer — Set Up Owner</title>
+			<title>Raven — Set Up Owner</title>
 			@AppIcon()
 			<link rel="stylesheet" href="/assets/css/output.css"/>
 		</head>
@@ -164,16 +164,16 @@ templ SetupOwnerPage(data SetupOwnerData) {
 			<main class="min-h-screen flex items-center justify-center p-4 py-10">
 				<div class="w-full max-w-2xl">
 					<div class="text-center mb-8">
-						<img src="/assets/logo.svg" alt="Gofer" class="h-12 w-auto mx-auto"/>
+						<img src="/assets/logo.svg" alt="Raven" class="h-12 w-auto mx-auto"/>
 						<p class="mt-5 text-xs font-medium uppercase tracking-widest text-success">Setup access verified</p>
 						if data.Kind == "fresh" {
 							<h1 class="mt-2 text-2xl font-semibold">Create the first owner</h1>
-							<p class="mt-2 text-sm text-muted-foreground">This installation has no Gofer users yet.</p>
+							<p class="mt-2 text-sm text-muted-foreground">This installation has no Raven users yet.</p>
 						} else if data.Kind == "legacy_default" {
-							<h1 class="mt-2 text-2xl font-semibold">Claim your existing Gofer data</h1>
+							<h1 class="mt-2 text-2xl font-semibold">Claim your existing Raven data</h1>
 							<p class="mt-2 text-sm text-muted-foreground">The legacy local user will become the real owner without changing its stable ID.</p>
 						} else {
-							<h1 class="mt-2 text-2xl font-semibold">Choose the Gofer owner</h1>
+							<h1 class="mt-2 text-2xl font-semibold">Choose the Raven owner</h1>
 							<p class="mt-2 text-sm text-muted-foreground">Select an existing user explicitly, or create a separate owner.</p>
 						}
 					</div>
@@ -192,7 +192,7 @@ templ SetupOwnerPage(data SetupOwnerData) {
 						<div role="alert" class="rounded-xl border border-destructive/25 bg-destructive/10 p-6">
 							<h2 class="text-lg font-semibold">Owner setup needs local repair</h2>
 							<p class="mt-2 text-sm text-muted-foreground">{ data.BlockedMessage }</p>
-							<p class="mt-3 text-sm text-muted-foreground">Stop Gofer, run <code class="font-mono">gofer auth users list</code> locally, and resolve duplicate or excessive user records before rotating the setup token and trying again. Gofer will not guess an owner or merge records.</p>
+							<p class="mt-3 text-sm text-muted-foreground">Stop Raven, run <code class="font-mono">gofer auth users list</code> locally, and resolve duplicate or excessive user records before rotating the setup token and trying again. Raven will not guess an owner or merge records.</p>
 						</div>
 					}
 					if data.BlockedMessage == "" {
@@ -223,7 +223,7 @@ templ SetupOwnerPage(data SetupOwnerData) {
 											if candidate.Name != "" {
 												<span class="block text-sm font-medium">{ candidate.Name }</span>
 											} else {
-												<span class="block text-sm font-medium">Unnamed Gofer user</span>
+												<span class="block text-sm font-medium">Unnamed Raven user</span>
 											}
 											<span class="mt-1 block break-all text-xs text-muted-foreground">{ "@" + candidate.Username } · ID <code class="font-mono">{ candidate.ID }</code></span>
 											<span class="mt-1 block text-xs text-muted-foreground">
@@ -245,7 +245,7 @@ templ SetupOwnerPage(data SetupOwnerData) {
 						<div>
 							<h2 class="text-sm font-medium">Owner profile and login identifier</h2>
 							if data.Kind == "fresh" {
-								<p class="mt-1 text-xs text-muted-foreground">These values identify the first real Gofer user.</p>
+								<p class="mt-1 text-xs text-muted-foreground">These values identify the first real Raven user.</p>
 							} else {
 								<p class="mt-1 text-xs text-muted-foreground">For an existing target, these values replace its current profile only when final enrollment succeeds.</p>
 							}
@@ -293,7 +293,7 @@ templ SetupPasswordPage(data SetupPasswordData) {
 		<head>
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-			<title>Gofer — Set Owner Password</title>
+			<title>Raven — Set Owner Password</title>
 			@AppIcon()
 			<link rel="stylesheet" href="/assets/css/output.css"/>
 		</head>
@@ -301,7 +301,7 @@ templ SetupPasswordPage(data SetupPasswordData) {
 			<main class="min-h-screen flex items-center justify-center p-4 py-10">
 				<div class="w-full max-w-md">
 					<div class="text-center mb-8">
-						<img src="/assets/logo.svg" alt="Gofer" class="h-12 w-auto mx-auto"/>
+						<img src="/assets/logo.svg" alt="Raven" class="h-12 w-auto mx-auto"/>
 						<p class="mt-5 text-xs font-medium uppercase tracking-widest text-success">Owner profile ready</p>
 						<h1 class="mt-2 text-2xl font-semibold">Choose the owner password</h1>
 						<p class="mt-2 text-sm text-muted-foreground">Use a unique passphrase that is not used for your email account or another service.</p>
@@ -362,7 +362,7 @@ templ SetupMFAPage(data SetupMFAData) {
 		<head>
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-			<title>Gofer — Set Up Owner MFA</title>
+			<title>Raven — Set Up Owner MFA</title>
 			@AppIcon()
 			<link rel="stylesheet" href="/assets/css/output.css"/>
 		</head>
@@ -370,10 +370,10 @@ templ SetupMFAPage(data SetupMFAData) {
 			<main class="min-h-screen flex items-center justify-center p-4 py-10">
 				<div class="w-full max-w-lg">
 					<div class="text-center mb-8">
-						<img src="/assets/logo.svg" alt="Gofer" class="h-12 w-auto mx-auto"/>
+						<img src="/assets/logo.svg" alt="Raven" class="h-12 w-auto mx-auto"/>
 						<p class="mt-5 text-xs font-medium uppercase tracking-widest text-success">Password ready</p>
 						<h1 class="mt-2 text-2xl font-semibold">Secure the owner account</h1>
-						<p class="mt-2 text-sm text-muted-foreground">Add Gofer to an authenticator app, then confirm one current code.</p>
+						<p class="mt-2 text-sm text-muted-foreground">Add Raven to an authenticator app, then confirm one current code.</p>
 					</div>
 					if data.TOTPReady {
 						<div role="status" aria-live="polite" class="rounded-xl border border-success/25 bg-success/10 px-5 py-4">
@@ -382,7 +382,7 @@ templ SetupMFAPage(data SetupMFAData) {
 						</div>
 						<div class="mt-4 rounded-xl border border-border bg-card p-5">
 							<p class="text-sm font-medium">Next: recovery codes</p>
-							<p class="mt-1 text-xs text-muted-foreground">Gofer will generate a single-use recovery batch and require acknowledgement before final setup can commit.</p>
+							<p class="mt-1 text-xs text-muted-foreground">Raven will generate a single-use recovery batch and require acknowledgement before final setup can commit.</p>
 						</div>
 						<a href="/setup/recovery" class="mt-4 flex h-10 w-full items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">Continue to recovery codes</a>
 						<form method="post" action="/setup/mfa" class="mt-2">
@@ -393,7 +393,7 @@ templ SetupMFAPage(data SetupMFAData) {
 						<div class="rounded-xl border border-border bg-card p-6">
 							<div class="grid gap-6 sm:grid-cols-[auto_1fr] sm:items-center">
 								<div class="rounded-lg bg-white p-3">
-									<img src={ data.QRCodeDataURL } alt="QR code containing the Gofer authenticator setup key" width="192" height="192" class="h-48 w-48"/>
+									<img src={ data.QRCodeDataURL } alt="QR code containing the Raven authenticator setup key" width="192" height="192" class="h-48 w-48"/>
 								</div>
 								<div class="space-y-3">
 									<div>
@@ -444,7 +444,7 @@ templ SetupRecoveryPage(data SetupRecoveryData) {
 		<head>
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-			<title>Gofer — Save Owner Recovery Codes</title>
+			<title>Raven — Save Owner Recovery Codes</title>
 			@AppIcon()
 			<link rel="stylesheet" href="/assets/css/output.css"/>
 		</head>
@@ -452,7 +452,7 @@ templ SetupRecoveryPage(data SetupRecoveryData) {
 			<main class="min-h-screen flex items-center justify-center p-4 py-10">
 				<div class="w-full max-w-lg">
 					<div class="text-center mb-8">
-						<img src="/assets/logo.svg" alt="Gofer" class="h-12 w-auto mx-auto"/>
+						<img src="/assets/logo.svg" alt="Raven" class="h-12 w-auto mx-auto"/>
 						<p class="mt-5 text-xs font-medium uppercase tracking-widest text-success">Authenticator verified</p>
 						<h1 class="mt-2 text-2xl font-semibold">Save the owner recovery codes</h1>
 						<p class="mt-2 text-sm text-muted-foreground">Each code can recover access once if the authenticator is unavailable.</p>
@@ -477,7 +477,7 @@ templ SetupRecoveryPage(data SetupRecoveryData) {
 					} else if len(data.Codes) > 0 {
 						<div role="alert" class="rounded-lg border border-warning/30 bg-warning/10 px-4 py-3">
 							<p class="text-sm font-medium text-warning">These codes are shown only in this response</p>
-							<p class="mt-1 text-xs text-muted-foreground">Copy them to a password manager or print this page now. Gofer cannot display this batch again.</p>
+							<p class="mt-1 text-xs text-muted-foreground">Copy them to a password manager or print this page now. Raven cannot display this batch again.</p>
 						</div>
 						<div class="mt-4 grid gap-2 rounded-xl border border-border bg-card p-5 sm:grid-cols-2" aria-label="Owner recovery codes">
 							for _, code := range data.Codes {
@@ -494,7 +494,7 @@ templ SetupRecoveryPage(data SetupRecoveryData) {
 					} else {
 						<div class="rounded-xl border border-border bg-card p-6">
 							<p class="text-sm font-medium">Create an offline fallback</p>
-							<p class="mt-1 text-xs text-muted-foreground">Gofer will generate ten 120-bit pseudorandom codes locally. Their plaintext will appear once; only hashes enter the encrypted setup draft.</p>
+							<p class="mt-1 text-xs text-muted-foreground">Raven will generate ten 120-bit pseudorandom codes locally. Their plaintext will appear once; only hashes enter the encrypted setup draft.</p>
 							<form method="post" action="/setup/recovery" class="mt-5">
 								<input type="hidden" name="action" value="generate"/>
 								@button.Button(button.Props{Type: button.TypeSubmit, FullWidth: true}) {
@@ -517,7 +517,7 @@ templ SetupReviewPage(data SetupReviewData) {
 		<head>
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-			<title>Gofer — Review Owner Setup</title>
+			<title>Raven — Review Owner Setup</title>
 			@AppIcon()
 			<link rel="stylesheet" href="/assets/css/output.css"/>
 		</head>
@@ -525,7 +525,7 @@ templ SetupReviewPage(data SetupReviewData) {
 			<main class="min-h-screen flex justify-center p-4 py-10">
 				<div class="w-full max-w-2xl">
 					<div class="text-center mb-8">
-						<img src="/assets/logo.svg" alt="Gofer" class="h-12 w-auto mx-auto"/>
+						<img src="/assets/logo.svg" alt="Raven" class="h-12 w-auto mx-auto"/>
 						<p class="mt-5 text-xs font-medium uppercase tracking-widest text-success">Security enrollment ready</p>
 						<h1 class="mt-2 text-2xl font-semibold">Review owner setup</h1>
 						<p class="mt-2 text-sm text-muted-foreground">Confirm exactly what the final transaction will change before mandatory authentication is initialized.</p>
@@ -534,7 +534,7 @@ templ SetupReviewPage(data SetupReviewData) {
 						<div role="alert" class="mb-5 rounded-xl border border-destructive/25 bg-destructive/10 p-5">
 							<p class="text-sm font-medium text-destructive">Setup completion is blocked</p>
 							<p class="mt-1 text-sm text-muted-foreground">{ data.BlockedMessage }</p>
-							<p class="mt-2 text-xs text-muted-foreground">Gofer will not guess, delete, merge, or reassign private mailbox data. Repair the ownership records locally from a backup before retrying.</p>
+							<p class="mt-2 text-xs text-muted-foreground">Raven will not guess, delete, merge, or reassign private mailbox data. Repair the ownership records locally from a backup before retrying.</p>
 						</div>
 					}
 					if data.CompletionError != "" {
