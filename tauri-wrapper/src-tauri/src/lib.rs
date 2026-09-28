@@ -20,9 +20,16 @@ use std::net::TcpStream;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use tauri::{Manager, RunEvent, WindowEvent};
+use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
+use tauri::tray::TrayIconBuilder;
+use tauri::{AppHandle, Manager, RunEvent, WindowEvent};
 use tauri_plugin_shell::process::CommandChild;
 use tauri_plugin_shell::ShellExt;
+
+/// Injected into the main window; polls Gofer's unread count and reflects it
+/// in `document.title` as a "(N) " prefix, which `on_document_title_changed`
+/// below parses back out into the Dock/taskbar badge.
+const UNREAD_BADGE_SCRIPT: &str = include_str!("unread_badge.js");
 
 /// Host/port Gofer listens on. This matches `GOFER_ADDR=127.0.0.1:8090` in
 /// the repo's `.env` (see .env / .env.example). If you change
@@ -76,10 +83,42 @@ fn kill_sidecar(app_handle: &tauri::AppHandle) {
     }
 }
 
+/// Shared by the tray "Show"/"Compose" items and the global shortcut: bring
+/// the main window to the front, and optionally trigger Gofer's own compose
+/// UI via its existing top-level `openNewCompose()` JS function (the page
+/// never calls Tauri IPC, so this is the only way in from the native side).
+fn show_main_window(app_handle: &AppHandle, open_compose: bool) {
+    let Some(window) = app_handle.get_webview_window("main") else {
+        eprintln!("main window not found; could not show it");
+        return;
+    };
+    let _ = window.unminimize();
+    let _ = window.show();
+    let _ = window.set_focus();
+    if open_compose {
+        let _ = window.eval("typeof openNewCompose==='function'&&openNewCompose()");
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(
+            // Rust-side registration only -- the page never calls Tauri IPC,
+            // so no capability entry is needed (the plugin's default
+            // permission set is empty; it only gates the JS invoke() bridge
+            // this app doesn't use).
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_shortcut("CmdOrCtrl+Shift+M")
+                .expect("invalid global shortcut accelerator")
+                .with_handler(|app, _shortcut, event| {
+                    if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
+                        show_main_window(app, true);
+                    }
+                })
+                .build(),
+        )
         .manage(SidecarState(Arc::new(Mutex::new(None))))
         .setup(|app| {
             let app_handle = app.handle().clone();
@@ -107,7 +146,46 @@ pub fn run() {
                     }
                     tauri::webview::NewWindowResponse::Deny
                 })
+                .initialization_script(UNREAD_BADGE_SCRIPT)
+                .on_document_title_changed(|window, title| {
+                    // unread_badge.js prefixes the title with "(N) " when
+                    // there's unread mail; parse that back out for the
+                    // Dock/taskbar badge. No prefix (or N == 0) clears it.
+                    let count = title
+                        .strip_prefix('(')
+                        .and_then(|rest| rest.split_once(')'))
+                        .and_then(|(n, _)| n.parse::<i64>().ok())
+                        .filter(|n| *n > 0);
+                    if let Err(err) = window.set_badge_count(count) {
+                        eprintln!("failed to set badge count: {err}");
+                    }
+                })
                 .build()?;
+
+            let show_item = MenuItem::with_id(app, "show", "Show Raven", true, None::<&str>)?;
+            let compose_item = MenuItem::with_id(app, "compose", "Compose", true, None::<&str>)?;
+            let quit_item = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+            let tray_menu = Menu::with_items(
+                app,
+                &[
+                    &show_item,
+                    &compose_item,
+                    &PredefinedMenuItem::separator(app)?,
+                    &quit_item,
+                ],
+            )?;
+            TrayIconBuilder::new()
+                .icon(app.default_window_icon().cloned().expect(
+                    "default window icon missing -- check tauri.conf.json bundle.icon",
+                ))
+                .menu(&tray_menu)
+                .on_menu_event(|app, event| match event.id.as_ref() {
+                    "show" => show_main_window(app, false),
+                    "compose" => show_main_window(app, true),
+                    "quit" => app.exit(0),
+                    _ => {}
+                })
+                .build(app)?;
 
             // If Gofer is already listening (previous run, or started by
             // hand), don't spawn a second copy -- just adopt it.

@@ -61,7 +61,7 @@ jobs:
         shell: bash
         run: |
           go install github.com/go-task/task/v3/cmd/task@latest
-          go install github.com/a-h/[email protected]
+          go install github.com/a-h/templ/cmd/templ@v0.3.1001
           cargo install tauri-cli --version "^2" --locked
 
       - name: Install standalone Tailwind CSS CLI

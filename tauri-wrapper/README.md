@@ -104,6 +104,25 @@ tauri-wrapper/src-tauri/target/release/bundle/dmg/Gofer_0.1.0_aarch64.dmg
 
 Drag the `.app` to `/Applications` (or double-click the `.dmg`) as usual.
 
+## Desktop-native features
+
+Beyond the plain window wrapper described above, this app adds a few things
+a browser tab can't give you:
+
+- **Dock/taskbar unread badge.** An init script (`src-tauri/src/unread_badge.js`)
+  polls Gofer's `/api/folders/unread` every 30s (plus on load and when the
+  window becomes visible again) and writes the inbox count into
+  `document.title` as a `(N) ` prefix. `on_document_title_changed` in
+  `lib.rs` reads that prefix back out and calls `set_badge_count` on the
+  window, so the count shows up on the Dock icon (macOS) / taskbar (Windows,
+  Linux). Clears itself when the count is 0.
+- **Tray icon.** A menu bar / system tray icon with "Show Raven", "Compose",
+  and "Quit". "Show" brings the window to the front; "Compose" does the same
+  and then calls Gofer's own `openNewCompose()` JS function; "Quit" exits the
+  app (which also kills the Gofer sidecar, same as closing the window).
+- **Global shortcut.** `Cmd/Ctrl+Shift+M` opens the composer from anywhere,
+  even when Raven isn't focused -- same behavior as the tray's "Compose".
+
 ## Troubleshooting
 
 - **Window opens but stays blank / stuck on "Starting Gofer...":** almost
