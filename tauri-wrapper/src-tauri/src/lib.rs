@@ -38,12 +38,30 @@ const GOFER_HOST: &str = "127.0.0.1";
 const GOFER_PORT: u16 = 8090;
 const GOFER_URL: &str = "http://127.0.0.1:8090";
 
-/// Working directory the sidecar is spawned with. Gofer reads its .env
-/// (OAuth credentials) and its data/ SQLite store relative to its process
-/// working directory, so this must point at the real repo root -- the same
-/// place `.env` and `data/` already live from running `task build`/
-/// `./tmp/main` by hand. Update this if the repo is ever moved again.
-const GOFER_WORKING_DIR: &str = "/Users/fahad/code/raven";
+/// Repo root of the checkout this binary was built from. Gofer reads its
+/// .env (OAuth credentials) and its data/ SQLite store relative to its
+/// process working directory, so on the machine that built the app we keep
+/// using the repo root, where `.env` and `data/` already live from running
+/// `task build`/`./tmp/main` by hand.
+const BUILD_REPO_ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../..");
+
+/// Working directory the sidecar is spawned with: the build machine's repo
+/// root if it exists here, otherwise the per-user app data folder
+/// (~/Library/Application Support/<identifier> on macOS,
+/// ~/.local/share/<identifier> on Linux), where a downloaded copy of the
+/// app keeps its .env and data/.
+fn gofer_working_dir(app: &AppHandle) -> std::path::PathBuf {
+    let repo = std::path::Path::new(BUILD_REPO_ROOT);
+    if repo.join(".env").exists() {
+        return repo.to_path_buf();
+    }
+    let dir = app
+        .path()
+        .app_data_dir()
+        .expect("failed to resolve the app data folder");
+    std::fs::create_dir_all(&dir).expect("failed to create the app data folder");
+    dir
+}
 
 /// How long to wait for Gofer to come up before giving up and leaving the
 /// "Starting Gofer..." placeholder on screen.
@@ -196,7 +214,7 @@ pub fn run() {
                 );
 
                 let (_rx, child) = sidecar_command
-                    .current_dir(GOFER_WORKING_DIR)
+                    .current_dir(gofer_working_dir(&app_handle))
                     .spawn()
                     .expect("failed to spawn the Gofer sidecar process");
 

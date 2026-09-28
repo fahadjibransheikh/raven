@@ -123,6 +123,20 @@ a browser tab can't give you:
 - **Global shortcut.** `Cmd/Ctrl+Shift+M` opens the composer from anywhere,
   even when Raven isn't focused -- same behavior as the tray's "Compose".
 
+## Where the app keeps its settings and mail
+
+Gofer reads `.env` and stores `data/` in its working directory. The app picks
+that directory at startup:
+
+- If the repo the app was built from is on this machine and has a `.env`,
+  it uses that repo root. Building from source keeps using your existing
+  `.env` and `data/`.
+- Otherwise (a downloaded release), it uses the per-user app data folder:
+  `~/Library/Application Support/com.fahadsheikh.raven` on macOS,
+  `~/.local/share/com.fahadsheikh.raven` on Linux. Without a `.env` there,
+  Gofer runs with its defaults (local, no login). To configure it, copy
+  `.env.example` into that folder as `.env`.
+
 ## Troubleshooting
 
 - **Window opens but stays blank / stuck on "Starting Gofer...":** almost
