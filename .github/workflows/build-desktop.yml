@@ -72,11 +72,12 @@ jobs:
             Linux)   TW_ASSET=tailwindcss-linux-x64 ;;
             Windows) TW_ASSET=tailwindcss-windows-x64.exe ;;
           esac
-          mkdir -p "$HOME/.local/bin"
-          curl -sL -o "$HOME/.local/bin/tailwindcss" \
+          # Go's bin dir is already on PATH (see above) in a form Windows
+          # understands, and Windows only finds the binary with its .exe suffix.
+          TW_BIN="$(go env GOPATH)/bin/tailwindcss${{ matrix.ext }}"
+          curl -sL -o "$TW_BIN" \
             "https://github.com/tailwindlabs/tailwindcss/releases/latest/download/${TW_ASSET}"
-          chmod +x "$HOME/.local/bin/tailwindcss"
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          chmod +x "$TW_BIN"
 
       - name: Build the Go sidecar (native to this runner)
         shell: bash
