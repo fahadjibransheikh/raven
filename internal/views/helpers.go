@@ -496,7 +496,7 @@ func themeClass(settings map[string]string) string {
 }
 
 func themeStyle(settings map[string]string) string {
-	return uiSettingGet(settings, "theme_style", "classic")
+	return uiSettingGet(settings, "theme_style", "raven")
 }
 
 func senderDisplay(contact models.Contact, mode string) string {

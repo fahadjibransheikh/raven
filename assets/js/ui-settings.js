@@ -32,7 +32,7 @@ var GoferSettings;
 
   function applyThemeStyle(style) {
     var html = document.documentElement;
-    html.setAttribute("data-theme", style || "classic");
+    html.setAttribute("data-theme", style || "raven");
   }
 
   function browserTimezone() {

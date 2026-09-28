@@ -1,0 +1,286 @@
+/* === RAVEN THEME === */
+/* Near-black, flat surfaces, hairline borders, one pink accent used as a
+   solid for actions and as low-alpha tints for hover/selection. System font. */
+
+[data-theme="raven"] {
+  --raven-pink: #d6246e;
+  --radius: 0.5rem;
+  --background: #ffffff;
+  --foreground: #0a0a0b;
+  --card: #fafafa;
+  --card-foreground: #0a0a0b;
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0b;
+  --primary: var(--raven-pink);
+  --primary-foreground: #ffffff;
+  --secondary: #f2f2f3;
+  --secondary-foreground: #0a0a0b;
+  --muted: #f2f2f3;
+  --muted-foreground: #6b6f76;
+  --accent: color-mix(in srgb, var(--raven-pink) 7%, #ffffff);
+  --accent-foreground: #0a0a0b;
+  --destructive: #dc2626;
+  --success: #2f855a;
+  --border: #e6e6e8;
+  --input: #e6e6e8;
+  --ring: var(--raven-pink);
+  --sidebar: #f7f7f8;
+  --sidebar-foreground: #55585e;
+  --sidebar-primary: var(--raven-pink);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: color-mix(in srgb, var(--raven-pink) 9%, #f7f7f8);
+  --sidebar-accent-foreground: #0a0a0b;
+  --sidebar-border: #e6e6e8;
+  --sidebar-ring: var(--raven-pink);
+  --paper: #ffffff;
+  --paper-foreground: #0a0a0b;
+  --copper: var(--raven-pink);
+  --brass: #6b6f76;
+  --ink: #0a0a0b;
+  --font-serif: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", system-ui, sans-serif;
+  --shadow-card: none;
+  --shadow-card-hover: none;
+  --shadow-raised: 0 12px 48px rgba(0,0,0,0.12);
+  --shadow-emboss: none;
+  --shadow-inset: none;
+  --shadow-paper: none;
+  --shadow-button: none;
+  --shadow-button-pressed: none;
+}
+
+[data-theme="raven"].dark {
+  --raven-pink: #ff4f9a;
+  --background: #0a0a0b;
+  --foreground: #ededee;
+  --card: #111113;
+  --card-foreground: #ededee;
+  --popover: #141416;
+  --popover-foreground: #ededee;
+  --primary: var(--raven-pink);
+  --primary-foreground: #0a0a0b;
+  --secondary: #17171a;
+  --secondary-foreground: #ededee;
+  --muted: #141416;
+  --muted-foreground: #8b8f96;
+  --accent: color-mix(in srgb, var(--raven-pink) 9%, #0a0a0b);
+  --accent-foreground: #ededee;
+  --destructive: #ff5a5f;
+  --success: #5fbf8a;
+  --border: #202024;
+  --input: #26262b;
+  --ring: var(--raven-pink);
+  --sidebar: #060607;
+  --sidebar-foreground: #8b8f96;
+  --sidebar-primary: var(--raven-pink);
+  --sidebar-primary-foreground: #0a0a0b;
+  --sidebar-accent: color-mix(in srgb, var(--raven-pink) 11%, #060607);
+  --sidebar-accent-foreground: #ededee;
+  --sidebar-border: #18181b;
+  --sidebar-ring: var(--raven-pink);
+  --paper: #0e0e10;
+  --paper-foreground: #ededee;
+  --copper: var(--raven-pink);
+  --brass: #8b8f96;
+  --ink: #ededee;
+  --shadow-raised: 0 12px 48px rgba(0,0,0,0.6);
+}
+
+/* === TYPE === */
+/* --font-sans is inlined by @theme inline, so override where it lands. */
+
+[data-theme="raven"] body,
+[data-theme="raven"] .font-sans,
+[data-theme="raven"] .font-serif {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", system-ui, sans-serif;
+}
+
+[data-theme="raven"] body {
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* === STRUCTURAL OVERRIDES (flat, like minimal, but rounded) === */
+
+[data-theme="raven"] .surface-desk {
+  background: var(--background);
+}
+
+[data-theme="raven"] .surface-leather {
+  background: var(--sidebar);
+}
+
+[data-theme="raven"] .surface-paper {
+  background: var(--paper);
+  color: var(--paper-foreground);
+  box-shadow: none;
+}
+
+[data-theme="raven"] .raised {
+  box-shadow: none;
+  border: 1px solid var(--border);
+}
+
+[data-theme="raven"] .btn-skeuo,
+[data-theme="raven"] .compose-send-btn,
+[data-theme="raven"] .compose-seal {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: none;
+}
+
+[data-theme="raven"] .btn-skeuo:hover,
+[data-theme="raven"] .compose-send-btn:hover {
+  background: color-mix(in srgb, var(--primary) 88%, var(--foreground));
+  box-shadow: none;
+}
+
+[data-theme="raven"] .btn-skeuo:active,
+[data-theme="raven"] .compose-send-btn:active {
+  box-shadow: none;
+  transform: none;
+}
+
+[data-theme="raven"] .envelope {
+  border: 1px solid var(--border);
+  box-shadow: none;
+}
+
+[data-theme="raven"] .envelope:hover {
+  box-shadow: none;
+  transform: none;
+  background: color-mix(in srgb, var(--primary) 4%, var(--card));
+  border-color: color-mix(in srgb, var(--primary) 25%, var(--border));
+}
+
+[data-theme="raven"] .envelope-active,
+[data-theme="raven"] [data-contact-list-shell] .mail-list-item > a.envelope-active {
+  border: 1px solid color-mix(in srgb, var(--primary) 40%, transparent);
+  background: color-mix(in srgb, var(--primary) 10%, var(--background));
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+
+[data-theme="raven"] .compose-titlebar {
+  background: var(--sidebar);
+  border-bottom: 1px solid var(--border);
+}
+
+[data-theme="raven"] .compose-body {
+  background: var(--background);
+}
+
+[data-theme="raven"] .compose-fields,
+[data-theme="raven"] .compose-field-row {
+  border-bottom: 1px solid var(--border);
+}
+
+[data-theme="raven"] .compose-field-label {
+  color: var(--muted-foreground);
+}
+
+[data-theme="raven"] .compose-toolbar {
+  background: var(--muted);
+  border-bottom: 1px solid var(--border);
+}
+
+[data-theme="raven"] .compose-footer {
+  border-top: 1px solid var(--border);
+  background: var(--muted);
+}
+
+[data-theme="raven"] .compose-draft-btn {
+  background: var(--muted);
+  box-shadow: none;
+}
+
+[data-theme="raven"] .compose-draft-btn:hover {
+  background: var(--accent);
+  box-shadow: none;
+}
+
+[data-theme="raven"] .divider-etched {
+  background: var(--border);
+}
+
+[data-theme="raven"] [data-folder-unread],
+[data-theme="raven"] #mail-folder-count {
+  box-shadow: none;
+}
+
+[data-theme="raven"] .empty-icon-box {
+  box-shadow: none;
+  border: 1px solid var(--border);
+  background: var(--card);
+}
+
+/* Floating menus get Marco's frosted look. */
+[data-theme="raven"] [data-tui-popover-content]:not(.bg-sidebar) {
+  background: color-mix(in srgb, var(--popover) 88%, transparent);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+/* === COMMAND PALETTE (assets/js/raven.js) — styled for every theme === */
+
+.raven-palette {
+  width: min(560px, calc(100vw - 32px));
+  margin: 14vh auto auto;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) + 4px);
+  background: color-mix(in srgb, var(--popover) 92%, transparent);
+  color: var(--popover-foreground);
+  box-shadow: 0 12px 48px rgba(0,0,0,0.45);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  overflow: hidden;
+}
+
+.raven-palette::backdrop {
+  background: rgba(0,0,0,0.35);
+}
+
+.raven-palette-input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: inherit;
+  font-size: 15px;
+  outline: none;
+}
+
+.raven-palette-list {
+  max-height: 50vh;
+  overflow-y: auto;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+}
+
+.raven-palette-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.raven-palette-list li[data-active] {
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
+  color: var(--foreground);
+}
+
+.raven-palette-list kbd {
+  font: inherit;
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+
+.raven-palette-list .raven-palette-empty {
+  color: var(--muted-foreground);
+  cursor: default;
+}

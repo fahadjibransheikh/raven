@@ -11142,7 +11142,7 @@ function oppositeEmailBodyTheme(theme) {
 }
 
 function readEmailBodyPalette(theme) {
-  var themeStyle = (window.GoferSettings && GoferSettings.get("theme_style")) || document.documentElement.getAttribute("data-theme") || "classic"
+  var themeStyle = (window.GoferSettings && GoferSettings.get("theme_style")) || document.documentElement.getAttribute("data-theme") || "raven"
   var probe = document.createElement("div")
   probe.setAttribute("data-theme", themeStyle)
   if (theme === "dark") probe.className = "dark"

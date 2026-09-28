@@ -7733,7 +7733,7 @@ func clampNonNegative(v int) int {
 func defaultUISettings() map[string]string {
 	return map[string]string{
 		"theme":                             "dark",
-		"theme_style":                       "classic",
+		"theme_style":                       "raven",
 		"prefetch_on_hover":                 "true",
 		"default_compose_view":              "dialog",
 		"default_new_compose_view":          "dialog",
