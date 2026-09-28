@@ -199,7 +199,7 @@ func TestAuthCommandSubprocessRemainsIsolatedFromServerRuntime(t *testing.T) {
 	if !strings.Contains(text, `"owner"`) || !strings.Contains(text, "USERNAME") {
 		t.Fatalf("auth command subprocess output = %q", text)
 	}
-	for _, forbidden := range []string{"server-started", "boot:", "Gofer running on", "listening on"} {
+	for _, forbidden := range []string{"server-started", "boot:", "Raven running on", "listening on"} {
 		if strings.Contains(text, forbidden) {
 			t.Fatalf("auth command subprocess entered server runtime (%q): %q", forbidden, text)
 		}
