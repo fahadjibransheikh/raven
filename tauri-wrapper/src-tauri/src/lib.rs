@@ -112,6 +112,17 @@ fn show_main_window(app_handle: &AppHandle, open_compose: bool) {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        // Remembers the main window's size, position and maximized state
+        // across launches (saved on close/quit, restored when the window is
+        // built in setup()). VISIBLE is left out so Raven always opens shown.
+        .plugin(
+            tauri_plugin_window_state::Builder::new()
+                .with_state_flags(
+                    tauri_plugin_window_state::StateFlags::all()
+                        - tauri_plugin_window_state::StateFlags::VISIBLE,
+                )
+                .build(),
+        )
         .plugin(
             // Rust-side registration only -- the page never calls Tauri IPC,
             // so no capability entry is needed (the plugin's default
