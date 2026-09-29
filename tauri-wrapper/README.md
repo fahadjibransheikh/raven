@@ -125,17 +125,13 @@ a browser tab can't give you:
 
 ## Where the app keeps its settings and mail
 
-Gofer reads `.env` and stores `data/` in its working directory. The app picks
-that directory at startup:
-
-- If the repo the app was built from is on this machine and has a `.env`,
-  it uses that repo root. Building from source keeps using your existing
-  `.env` and `data/`.
-- Otherwise (a downloaded release), it uses the per-user app data folder:
-  `~/Library/Application Support/com.fahadsheikh.raven` on macOS,
-  `~/.local/share/com.fahadsheikh.raven` on Linux. Without a `.env` there,
-  Gofer runs with its defaults (local, no login). To configure it, copy
-  `.env.example` into that folder as `.env`.
+Gofer reads `.env` and stores `data/` in its working directory. The app
+always uses the per-user app data folder for that, on every machine:
+`~/Library/Application Support/com.fahadsheikh.raven` on macOS,
+`~/.local/share/com.fahadsheikh.raven` on Linux. The repo is never used, even
+on the machine that built the app. Without a `.env` there, Gofer runs with its
+defaults (local, no login). To configure it, copy `.env.example` into that
+folder as `.env`.
 
 ## Troubleshooting
 

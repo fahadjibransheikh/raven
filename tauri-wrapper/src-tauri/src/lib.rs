@@ -38,23 +38,13 @@ const GOFER_HOST: &str = "127.0.0.1";
 const GOFER_PORT: u16 = 8090;
 const GOFER_URL: &str = "http://127.0.0.1:8090";
 
-/// Repo root of the checkout this binary was built from. Gofer reads its
-/// .env (OAuth credentials) and its data/ SQLite store relative to its
-/// process working directory, so on the machine that built the app we keep
-/// using the repo root, where `.env` and `data/` already live from running
-/// `task build`/`./tmp/main` by hand.
-const BUILD_REPO_ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../..");
-
-/// Working directory the sidecar is spawned with: the build machine's repo
-/// root if it exists here, otherwise the per-user app data folder
+/// Working directory the sidecar is spawned with. Gofer reads its .env
+/// (OAuth credentials) and its data/ SQLite store relative to its process
+/// working directory, so this is the per-user app data folder
 /// (~/Library/Application Support/<identifier> on macOS,
-/// ~/.local/share/<identifier> on Linux), where a downloaded copy of the
-/// app keeps its .env and data/.
+/// ~/.local/share/<identifier> on Linux) on every machine, including the
+/// one that builds the app. Never the repo: that is for development only.
 fn gofer_working_dir(app: &AppHandle) -> std::path::PathBuf {
-    let repo = std::path::Path::new(BUILD_REPO_ROOT);
-    if repo.join(".env").exists() {
-        return repo.to_path_buf();
-    }
     let dir = app
         .path()
         .app_data_dir()
