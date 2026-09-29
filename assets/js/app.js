@@ -273,14 +273,16 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!cancelForm) return
         var initialState = cancelForm.dataset.initialState || contactEditorState(cancelForm)
         var hasChanges = contactEditorState(cancelForm) !== initialState
-        if (hasChanges && !window.confirm("Discard unsaved contact changes?")) return
-        var cancelDialogID = cancelForm.getAttribute("data-contact-edit-dialog") || ""
-        if (cancelDialogID && window.tui && window.tui.dialog) window.tui.dialog.close(cancelDialogID)
-        if (hasChanges && cancelForm.dataset.contactId) {
-          window.setTimeout(function () {
-            refreshContactsDetail(cancelForm.dataset.contactId, null, false)
-          }, 220)
-        }
+        ;(hasChanges ? goferConfirm("Discard changes?", "Your unsaved contact changes will be lost.", "Discard") : Promise.resolve(true)).then(function (ok) {
+          if (!ok) return
+          var cancelDialogID = cancelForm.getAttribute("data-contact-edit-dialog") || ""
+          if (cancelDialogID && window.tui && window.tui.dialog) window.tui.dialog.close(cancelDialogID)
+          if (hasChanges && cancelForm.dataset.contactId) {
+            window.setTimeout(function () {
+              refreshContactsDetail(cancelForm.dataset.contactId, null, false)
+            }, 220)
+          }
+        })
         return
       }
 
@@ -5591,6 +5593,9 @@ function recoverComposeOutgoingSend(summary) {
         _setComposeSending(forms[i], false)
       }
       forms[i].dataset.composeDirty = "false"
+    } else if (_composeSendState && _composeSendState.sendID === summary.id && summary.status === "sent") {
+      showSendStatus("sent", "Message sent")
+      finishComposeSendSuccess(_composeSendState)
     } else if (_composeSendState && _composeSendState.sendID === summary.id) {
       _setComposeSending(forms[i], false)
       forms[i].dataset.composeOutgoingStatus = outgoingSendStatusLabel(summary)
@@ -5700,11 +5705,16 @@ function loadActiveOutgoingSends() {
 function outgoingSendAction(action, id, button) {
   if (!action || !id) return
   var summary = _outgoingSendStatusByID[id]
-  var confirm = false
   if (action === "retry" && summary && summary.ambiguous_warning_required) {
-    confirm = window.confirm("Raven lost the connection after sending this message, so it may already have been delivered. Check Sent before retrying. Retrying can send a duplicate. Continue?")
-    if (!confirm) return
+    goferConfirm("Retry sending?", "Raven lost the connection after sending this message, so it may already have been delivered. Check Sent before retrying. Retrying can send a duplicate.", "Retry anyway").then(function (ok) {
+      if (ok) _outgoingSendAction(action, id, button, true)
+    })
+    return
   }
+  _outgoingSendAction(action, id, button, false)
+}
+
+function _outgoingSendAction(action, id, button, confirm) {
   if (button) button.disabled = true
   var endpoint = "/api/outgoing-sends/" + encodeURIComponent(id) + "/" + action
   var options = { method: "POST", headers: { "Accept": "application/json" } }
@@ -9640,10 +9650,19 @@ function _showComposeOptionalFields(form, vals) {
   renderComposeAttachments(form, vals.attachments || [])
 }
 
+// Resolves true when the active compose may be overwritten. Uses the in-app
+// close choice instead of window.confirm, which the desktop app's WKWebView
+// answers with a silent false.
 function _activeComposeCanBeReplaced() {
   var form = document.querySelector("[data-compose-pane] #compose-pane-form") || document.getElementById("compose-form")
-  if (!form || form.dataset.composeDirty !== "true" || !_composeHasDraftContent(form)) return true
-  return window.confirm("Replace the current unsaved draft?")
+  if (!form || form.dataset.composeDirty !== "true" || !_composeHasDraftContent(form)) return Promise.resolve(true)
+  return chooseComposeCloseAction(form, null, null).then(function (action) {
+    if (action === "keep") return saveComposeDraft(form.id === "compose-pane-form", false)
+    if (action !== "discard") return false
+    cleanupComposeStagedUploads(form)
+    _deleteComposeDraft(form)
+    return true
+  })
 }
 
 function composeViewPreference(kind) {
@@ -9654,7 +9673,12 @@ function composeViewPreference(kind) {
 }
 
 function continueEditingDraft(emailId) {
-  if (!_activeComposeCanBeReplaced()) return
+  _activeComposeCanBeReplaced().then(function (ok) {
+    if (ok) _continueEditingDraft(emailId)
+  })
+}
+
+function _continueEditingDraft(emailId) {
   fetch("/api/drafts/" + encodeURIComponent(emailId))
     .then(function (r) {
       if (!r.ok) throw new Error("Failed to load draft")
@@ -9690,7 +9714,12 @@ function continueEditingDraft(emailId) {
 }
 
 function discardReadPaneDraft(emailId) {
-  if (!window.confirm("Discard this draft?")) return
+  goferConfirm("Discard draft?", "This draft will be deleted permanently.", "Discard").then(function (ok) {
+    if (ok) _discardReadPaneDraft(emailId)
+  })
+}
+
+function _discardReadPaneDraft(emailId) {
   fetch("/api/drafts/" + encodeURIComponent(emailId), { method: "DELETE" })
     .then(function (r) {
       if (!r.ok) throw new Error("Failed to discard draft")
@@ -9776,46 +9805,11 @@ function chooseComposeCloseAction(form, anchor, popoverId) {
       window.tui.popover.open(root.id)
     })
   }
-  return new Promise(function (resolve) {
-    var panel = document.createElement("div")
-    panel.className = "compose-close-choice compose-close-choice-floating"
-    panel.setAttribute("popover", "auto")
-    panel.innerHTML = '<h2>Close compose?</h2><p>Keep this message as a draft, discard it permanently, or continue editing.</p>'
-    var settled = false
-    function finish(action) {
-      if (settled) return
-      settled = true
-      panel.removeEventListener("toggle", onToggle)
-      if (panel.matches && panel.matches(":popover-open")) panel.hidePopover()
-      panel.remove()
-      resolve(action)
-    }
-    function onToggle(event) {
-      if (event.newState === "closed") finish("cancel")
-    }
-    function button(label, action, primary) {
-      var btn = document.createElement("button")
-      btn.type = "button"
-      btn.textContent = label
-      btn.dataset.composeCloseAction = action
-      if (primary) btn.className = "compose-close-choice-primary"
-      return btn
-    }
-    var actions = document.createElement("div")
-    actions.className = "compose-close-choice-actions"
-    actions.appendChild(button("Exit and keep draft", "keep", true))
-    actions.appendChild(button("Exit and discard", "discard", false))
-    actions.appendChild(button("Cancel", "cancel", false))
-    panel.appendChild(actions)
-    panel.addEventListener("click", function (event) {
-      var btn = event.target && event.target.closest ? event.target.closest("[data-compose-close-action]") : null
-      if (!btn) return
-      finish(btn.dataset.composeCloseAction)
-    })
-    panel.addEventListener("toggle", onToggle)
-    document.body.appendChild(panel)
-    if (panel.showPopover) panel.showPopover()
-  })
+  return goferChoice("Close compose?", "Keep this message as a draft, discard it permanently, or continue editing.", [
+    { label: "Exit and keep draft", action: "keep", primary: true },
+    { label: "Exit and discard", action: "discard" },
+    { label: "Cancel", action: "cancel" }
+  ])
 }
 
 function discardComposeDialog() {
@@ -10413,7 +10407,12 @@ function writeComposePrefill(form, vals, prefix, mode) {
 }
 
 function openComposePrefill(vals, mode) {
-  if (!_activeComposeCanBeReplaced()) return false
+  return _activeComposeCanBeReplaced().then(function (ok) {
+    return ok && _openComposePrefill(vals, mode)
+  })
+}
+
+function _openComposePrefill(vals, mode) {
   var activePane = document.querySelector("[data-compose-pane]")
   if (activePane) {
     writeComposePrefill(document.getElementById("compose-pane-form"), vals, "compose-pane-", mode)
@@ -10548,7 +10547,9 @@ function setupMailtoIntent() {
     return
   }
 
-  if (openComposePrefill(values, "new")) clearMailtoIntentFromURL()
+  openComposePrefill(values, "new").then(function (opened) {
+    if (opened) clearMailtoIntentFromURL()
+  })
 }
 
 function handleReply(el, mode) {
@@ -10675,6 +10676,7 @@ function openComposeInMain(fullWidth, instantFullWidth) {
   }
 
   var vals = _readComposeFormValues(document.getElementById("compose-form"))
+  resetComposeForm(false, true)
   var paneHTML = null
   var mainReady = false
 
@@ -11381,6 +11383,7 @@ function _writeComposeFormValues(form, vals, prefix) {
 function expandToPane(fullWidth, instantFullWidth) {
   var dialogForm = document.getElementById("compose-form")
   var vals = _readComposeFormValues(dialogForm)
+  resetComposeForm(false, true)
 
   if (window.tui && window.tui.dialog) {
     window.tui.dialog.close("compose-dialog")

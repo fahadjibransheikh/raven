@@ -408,6 +408,10 @@ function setupAccountSignaturesManager(manager) {
     }
   }
 
+  function confirmSignatureDelete(signatureName) {
+    return goferConfirm("Delete " + signatureName + "?", "Accounts using it will stop inserting it.", "Delete")
+  }
+
   function resetSignatureForm() {
     if (!form) return
     var id = form.querySelector("[data-signature-id]")
@@ -458,14 +462,17 @@ function setupAccountSignaturesManager(manager) {
 
     if (e.target.closest("[data-signature-delete]")) {
       var signatureName = row.getAttribute("data-signature-name") || "this signature"
-      if (!window.confirm("Delete " + signatureName + "? Accounts using it will stop inserting it.")) return
-      fetch("/api/signatures/" + encodeURIComponent(row.getAttribute("data-signature-id") || ""), { method: "DELETE" })
-        .then(function (r) { if (!r.ok) throw new Error("Failed to delete signature") })
-        .then(reloadDialog)
-        .catch(function (err) {
-          var status = form && form.querySelector("[data-signature-save-status]")
-          if (status) status.textContent = err && err.message ? err.message : "Failed to delete signature"
-        })
+      var rowSignatureID = row.getAttribute("data-signature-id") || ""
+      confirmSignatureDelete(signatureName).then(function (ok) {
+        if (!ok) return
+        fetch("/api/signatures/" + encodeURIComponent(rowSignatureID), { method: "DELETE" })
+          .then(function (r) { if (!r.ok) throw new Error("Failed to delete signature") })
+          .then(reloadDialog)
+          .catch(function (err) {
+            var status = form && form.querySelector("[data-signature-save-status]")
+            if (status) status.textContent = err && err.message ? err.message : "Failed to delete signature"
+          })
+      })
     }
   })
 
@@ -481,13 +488,15 @@ function setupAccountSignaturesManager(manager) {
       return
     }
     var signatureName = (name && name.value) || "this signature"
-    if (!window.confirm("Delete " + signatureName + "? Accounts using it will stop inserting it.")) return
-    fetch("/api/signatures/" + encodeURIComponent(signatureID), { method: "DELETE" })
-      .then(function (r) { if (!r.ok) throw new Error("Failed to delete signature") })
-      .then(reloadDialog)
-      .catch(function (err) {
-        if (status) status.textContent = err && err.message ? err.message : "Failed to delete signature"
-      })
+    confirmSignatureDelete(signatureName).then(function (ok) {
+      if (!ok) return
+      fetch("/api/signatures/" + encodeURIComponent(signatureID), { method: "DELETE" })
+        .then(function (r) { if (!r.ok) throw new Error("Failed to delete signature") })
+        .then(reloadDialog)
+        .catch(function (err) {
+          if (status) status.textContent = err && err.message ? err.message : "Failed to delete signature"
+        })
+    })
   })
 
   if (form) {

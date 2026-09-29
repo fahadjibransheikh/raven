@@ -1060,7 +1060,7 @@ templ SettingsSuppressedContacts(contacts []models.Contact, totalCount int) {
 							<p class="text-xs text-muted-foreground mt-0.5">Remove one address or clear the full suppression list.</p>
 						</div>
 						if totalCount > 0 {
-							<form hx-post="/api/settings/contacts/suppressed/clear" hx-target="#contacts-suppressed-settings" hx-swap="outerHTML" onsubmit="return confirm('Clear all suppressed contacts? These addresses may be rediscovered later.')">
+							<form hx-post="/api/settings/contacts/suppressed/clear" hx-target="#contacts-suppressed-settings" hx-swap="outerHTML" data-confirm="Clear all suppressed contacts? These addresses may be rediscovered later.">
 								<button type="submit" class="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-destructive/30 px-3 py-2 text-xs font-semibold text-destructive hover:bg-destructive/10">
 									@icon.Trash2(icon.Props{Class: "size-3.5"})
 									Clear all

@@ -1442,7 +1442,7 @@ templ AdminSecurityPage(data models.MailSecurityAdminData, verification ...Admin
 					<section class="rounded-lg border border-border bg-card p-5">
 						<div class={ adminPanelTitleClass() }>HTTP discovery</div>
 						<p class="mt-1 text-sm text-muted-foreground">Allow Raven to try HTTP autoconfig for one exact email domain after all HTTPS sources fail.</p>
-						<form method="post" action="/admin/security/http-discovery" class="mt-5 space-y-4" onsubmit="return confirm('Allow HTTP mail discovery for this domain? The response can be changed in transit.')">
+						<form method="post" action="/admin/security/http-discovery" class="mt-5 space-y-4" data-confirm="Allow HTTP mail discovery for this domain? The response can be changed in transit.">
 							if data.CSRFTokens["/admin/security/http-discovery"] != "" {
 								<input type="hidden" name="_csrf" value={ data.CSRFTokens["/admin/security/http-discovery"] }/>
 							}
@@ -1460,7 +1460,7 @@ templ AdminSecurityPage(data models.MailSecurityAdminData, verification ...Admin
 					<section class="rounded-lg border border-border bg-card p-5">
 						<div class={ adminPanelTitleClass() }>Plaintext mail transport</div>
 						<p class="mt-1 text-sm text-muted-foreground">Allow one exact IMAP or SMTP endpoint to connect without TLS. OAuth tokens are never allowed over this mode.</p>
-						<form method="post" action="/admin/security/plaintext" class="mt-5 space-y-4" onsubmit="return confirm('Allow credentials and message data to travel without encryption to this endpoint?')">
+						<form method="post" action="/admin/security/plaintext" class="mt-5 space-y-4" data-confirm="Allow credentials and message data to travel without encryption to this endpoint?">
 							if data.CSRFTokens["/admin/security/plaintext"] != "" {
 								<input type="hidden" name="_csrf" value={ data.CSRFTokens["/admin/security/plaintext"] }/>
 							}
@@ -1492,7 +1492,7 @@ templ AdminSecurityPage(data models.MailSecurityAdminData, verification ...Admin
 				<section class="mt-5 rounded-lg border border-border bg-card p-5">
 					<div class={ adminPanelTitleClass() }>Private discovery or mail target</div>
 					<p class="mt-1 max-w-3xl text-sm text-muted-foreground">Allow one exact loopback, private, link-local, or otherwise internal target after Raven validates the hostname. This is for local test servers and controlled lab environments only.</p>
-					<form method="post" action="/admin/security/private-target" class="mt-5 space-y-4" onsubmit="return confirm('Allow autodiscovery or mail probing to this exact private target?')">
+					<form method="post" action="/admin/security/private-target" class="mt-5 space-y-4" data-confirm="Allow autodiscovery or mail probing to this exact private target?">
 						if data.CSRFTokens["/admin/security/private-target"] != "" {
 							<input type="hidden" name="_csrf" value={ data.CSRFTokens["/admin/security/private-target"] }/>
 						}
@@ -1557,7 +1557,7 @@ templ AdminSecurityPage(data models.MailSecurityAdminData, verification ...Admin
 											</div>
 										}
 									</div>
-									<form method="post" action={ templ.URL("/admin/security/exceptions/" + item.ID + "/delete") } onsubmit="return confirm('Revoke this security exception? Accounts using it will stop reconnecting.')">
+									<form method="post" action={ templ.URL("/admin/security/exceptions/" + item.ID + "/delete") } data-confirm="Revoke this security exception? Accounts using it will stop reconnecting.">
 										if action := "/admin/security/exceptions/" + item.ID + "/delete"; data.CSRFTokens[action] != "" {
 											<input type="hidden" name="_csrf" value={ data.CSRFTokens[action] }/>
 										}

@@ -152,3 +152,83 @@
 
   window.RavenPalette = { open: open }
 })()
+
+// Confirm prompts: window.confirm returns false without showing anything in the
+// desktop app's WKWebView, so every confirmation goes through an in-app popover.
+(function () {
+  if (window.goferChoice) return
+
+  // Resolves the chosen action, or "cancel" when dismissed. Mounted inside the
+  // open modal dialog, if any, so it isn't inert.
+  window.goferChoice = function (title, text, actions) {
+    return new Promise(function (resolve) {
+      var panel = document.createElement("div")
+      panel.className = "compose-close-choice compose-close-choice-floating"
+      panel.setAttribute("popover", "auto")
+      var heading = document.createElement("h2")
+      heading.textContent = title
+      var body = document.createElement("p")
+      body.textContent = text
+      panel.appendChild(heading)
+      panel.appendChild(body)
+      var settled = false
+      function finish(action) {
+        if (settled) return
+        settled = true
+        panel.removeEventListener("toggle", onToggle)
+        if (panel.matches && panel.matches(":popover-open")) panel.hidePopover()
+        panel.remove()
+        resolve(action)
+      }
+      function onToggle(event) {
+        if (event.newState === "closed") finish("cancel")
+      }
+      var row = document.createElement("div")
+      row.className = "compose-close-choice-actions"
+      actions.forEach(function (a) {
+        var btn = document.createElement("button")
+        btn.type = "button"
+        btn.textContent = a.label
+        btn.dataset.composeCloseAction = a.action
+        if (a.primary) btn.className = "compose-close-choice-primary"
+        row.appendChild(btn)
+      })
+      panel.appendChild(row)
+      panel.addEventListener("click", function (event) {
+        var btn = event.target && event.target.closest ? event.target.closest("[data-compose-close-action]") : null
+        if (!btn) return
+        finish(btn.dataset.composeCloseAction)
+      })
+      panel.addEventListener("toggle", onToggle)
+      var dialogs = document.querySelectorAll("dialog[open]")
+      ;(dialogs.length ? dialogs[dialogs.length - 1] : document.body).appendChild(panel)
+      if (panel.showPopover) panel.showPopover()
+    })
+  }
+
+  window.goferConfirm = function (title, text, confirmLabel) {
+    return goferChoice(title, text, [
+      { label: "Cancel", action: "cancel" },
+      { label: confirmLabel, action: "ok", primary: true }
+    ]).then(function (action) { return action === "ok" })
+  }
+
+  // <form data-confirm="Question?"> asks before submitting (plain or htmx forms).
+  document.addEventListener("submit", function (e) {
+    var form = e.target
+    if (!form || !form.dataset || !form.dataset.confirm) return
+    if (form.dataset.confirmed === "true") {
+      delete form.dataset.confirmed
+      return
+    }
+    e.preventDefault()
+    e.stopImmediatePropagation()
+    var submitter = e.submitter || null
+    window.goferConfirm("Are you sure?", form.dataset.confirm, form.dataset.confirmLabel || "Continue").then(function (ok) {
+      if (!ok) return
+      form.dataset.confirmed = "true"
+      if (form.requestSubmit) form.requestSubmit(submitter)
+      else form.submit()
+    })
+  }, true)
+})()
