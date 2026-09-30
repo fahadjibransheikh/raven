@@ -1,6 +1,6 @@
 cask "raven" do
-  version "0.1.2"
-  sha256 "606904ffdbbf5d7d50888a1ffc427b1554a87553b9d6942b164a97d535251cc2"
+  version "0.1.3"
+  sha256 "7a054d2f47686aa062a1ec4f5b75133f0871510d42e60e3cdd371d61df58870e"
 
   url "https://github.com/fahadjibransheikh/raven/releases/download/v#{version}/Raven_#{version}_aarch64.dmg"
   name "Raven"
