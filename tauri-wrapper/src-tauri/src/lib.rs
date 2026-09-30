@@ -23,8 +23,10 @@ use std::time::{Duration, Instant};
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::TrayIconBuilder;
 use tauri::{AppHandle, Manager, RunEvent, WindowEvent};
+use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 use tauri_plugin_shell::process::CommandChild;
 use tauri_plugin_shell::ShellExt;
+use tauri_plugin_updater::UpdaterExt;
 
 /// Injected into the main window; polls Gofer's unread count and reflects it
 /// in `document.title` as a "(N) " prefix, which `on_document_title_changed`
@@ -91,6 +93,134 @@ fn kill_sidecar(app_handle: &tauri::AppHandle) {
     }
 }
 
+const RELEASES_URL: &str = "https://github.com/fahadjibransheikh/raven/releases/latest";
+
+/// Tauri's updater can only replace an AppImage on Linux (it swaps the file
+/// `$APPIMAGE` points at). A .deb/.rpm install is owned by the package
+/// manager, so there the user has to install the new package themselves.
+fn can_self_update() -> bool {
+    !cfg!(target_os = "linux") || std::env::var_os("APPIMAGE").is_some()
+}
+
+/// Shows a message dialog without blocking the caller's thread: the blocking
+/// `show` variant is pushed onto the blocking pool, so this is safe to await
+/// from the async runtime (and never touches the main/event-loop thread).
+async fn dialog(
+    app: &AppHandle,
+    kind: MessageDialogKind,
+    message: String,
+    buttons: MessageDialogButtons,
+) -> bool {
+    let builder = app
+        .dialog()
+        .message(message)
+        .title("Raven")
+        .kind(kind)
+        .buttons(buttons);
+    tauri::async_runtime::spawn_blocking(move || builder.blocking_show())
+        .await
+        .unwrap_or(false)
+}
+
+async fn check_latest(
+    app: &AppHandle,
+) -> tauri_plugin_updater::Result<Option<tauri_plugin_updater::Update>> {
+    app.updater()?.check().await
+}
+
+/// Checks GitHub Releases for a newer Raven and, if the user agrees,
+/// downloads it, stops the sidecar, installs, and relaunches. `user_initiated`
+/// is true for the tray item (report every outcome) and false for the launch
+/// check (stay silent unless there is an update, so offline launches are quiet).
+async fn check_for_update(app: AppHandle, user_initiated: bool) {
+    if !can_self_update() {
+        if user_initiated {
+            if let Err(err) = tauri_plugin_opener::open_url(RELEASES_URL, None::<&str>) {
+                eprintln!("failed to open {RELEASES_URL}: {err}");
+            }
+        }
+        return;
+    }
+
+    let update = match check_latest(&app).await {
+        Ok(update) => update,
+        Err(err) => {
+            eprintln!("update check failed: {err}");
+            if user_initiated {
+                dialog(
+                    &app,
+                    MessageDialogKind::Error,
+                    format!("Couldn't check for updates: {err}"),
+                    MessageDialogButtons::Ok,
+                )
+                .await;
+            }
+            return;
+        }
+    };
+
+    let Some(update) = update else {
+        if user_initiated {
+            dialog(
+                &app,
+                MessageDialogKind::Info,
+                format!(
+                    "You're on the latest version ({}).",
+                    app.package_info().version
+                ),
+                MessageDialogButtons::Ok,
+            )
+            .await;
+        }
+        return;
+    };
+
+    let accepted = dialog(
+        &app,
+        MessageDialogKind::Info,
+        format!(
+            "Raven {} is available (you have {}). Install and restart now?",
+            update.version, update.current_version
+        ),
+        MessageDialogButtons::OkCancelCustom("Install and Restart".into(), "Later".into()),
+    )
+    .await;
+    if !accepted {
+        return;
+    }
+
+    let bytes = match update.download(|_, _| {}, || {}).await {
+        Ok(bytes) => bytes,
+        Err(err) => {
+            eprintln!("update download failed: {err}");
+            dialog(
+                &app,
+                MessageDialogKind::Error,
+                format!("Couldn't download the update: {err}"),
+                MessageDialogButtons::Ok,
+            )
+            .await;
+            return;
+        }
+    };
+
+    // Stop Gofer before files are replaced: on Windows a running gofer.exe is
+    // locked and would make the installer fail.
+    kill_sidecar(&app);
+    if let Err(err) = update.install(bytes) {
+        eprintln!("update install failed: {err}");
+        dialog(
+            &app,
+            MessageDialogKind::Error,
+            format!("Couldn't install the update: {err}\n\nRestart Raven to keep using it."),
+            MessageDialogButtons::Ok,
+        )
+        .await;
+        return;
+    }
+    app.restart();
+}
+
 /// Shared by the tray "Show"/"Compose" items and the global shortcut: bring
 /// the main window to the front, and optionally trigger Gofer's own compose
 /// UI via its existing top-level `openNewCompose()` JS function (the page
@@ -112,6 +242,10 @@ fn show_main_window(app_handle: &AppHandle, open_compose: bool) {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        // The two below are driven only from Rust (check_for_update), never
+        // via invoke(), so like the global shortcut they need no capability.
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_dialog::init())
         // Remembers the main window's size, position and maximized state
         // across launches (saved on close/quit, restored when the window is
         // built in setup()). VISIBLE is left out so Raven always opens shown.
@@ -183,12 +317,20 @@ pub fn run() {
 
             let show_item = MenuItem::with_id(app, "show", "Show Raven", true, None::<&str>)?;
             let compose_item = MenuItem::with_id(app, "compose", "Compose", true, None::<&str>)?;
+            let updates_item = MenuItem::with_id(
+                app,
+                "check_updates",
+                "Check for Updates\u{2026}",
+                true,
+                None::<&str>,
+            )?;
             let quit_item = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let tray_menu = Menu::with_items(
                 app,
                 &[
                     &show_item,
                     &compose_item,
+                    &updates_item,
                     &PredefinedMenuItem::separator(app)?,
                     &quit_item,
                 ],
@@ -201,10 +343,15 @@ pub fn run() {
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "show" => show_main_window(app, false),
                     "compose" => show_main_window(app, true),
+                    "check_updates" => {
+                        tauri::async_runtime::spawn(check_for_update(app.clone(), true));
+                    }
                     "quit" => app.exit(0),
                     _ => {}
                 })
                 .build(app)?;
+
+            tauri::async_runtime::spawn(check_for_update(app_handle.clone(), false));
 
             // If Gofer is already listening (previous run, or started by
             // hand), don't spawn a second copy -- just adopt it.

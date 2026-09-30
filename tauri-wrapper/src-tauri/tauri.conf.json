@@ -1,7 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Raven",
-  "version": "0.1.2",
   "identifier": "com.fahadsheikh.raven",
   "build": {
     "frontendDist": "../frontend"
@@ -31,6 +30,7 @@
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": [
       "app",
       "dmg",
@@ -51,5 +51,13 @@
       "binaries/gofer"
     ],
     "resources": []
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDcyOTcxOTkwQUM5NUFEQ0IKUldUTHJaV3NrQm1YY3U2ajc2NXdHL0d3bENOTU1kdW9JM3dHTjNOVWRmajdxamlqczBkeU02YVUK",
+      "endpoints": [
+        "https://github.com/fahadjibransheikh/raven/releases/latest/download/latest.json"
+      ]
+    }
   }
 }
