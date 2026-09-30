@@ -17,7 +17,11 @@ assets/css/output.css
 
 # Local tooling, not part of Raven
 .DS_Store
-.claude/
+.claude/*
+# ...except the release skill, so any Claude session can cut a release.
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/release/
 .serena/
 .mcp.json
 .ignore
