@@ -7760,6 +7760,7 @@ func defaultUISettings() map[string]string {
 		"unified_folder_spam_enabled":       "true",
 		"unified_folder_trash_enabled":      "true",
 		"auto_mark_read_after":              "0",
+		"open_next_after_remove":            "true",
 		"translation_button_enabled":        "true",
 		"translation_provider":              "google_web_basic",
 		"translation_target_language":       "en",

@@ -245,6 +245,23 @@ templ SettingsComposeDisplayTab(uiSettings map[string]string, signatureData []mo
 					}
 				</div>
 			</div>
+			<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+				<div class="min-w-0">
+					<label for="open-next-after-remove" class="text-sm font-medium text-foreground">Open next email after archive, delete, or spam</label>
+					<p class="text-xs text-muted-foreground mt-1">Show the next email in the list when you archive, delete, or mark as spam the one you are reading. Turn off to leave the reading pane empty.</p>
+				</div>
+				<div class="w-full sm:w-44 shrink-0">
+					<div class="flex items-center justify-between gap-3 rounded-md border border-border/60 bg-background/40 px-3 py-2">
+						<span class="text-xs font-medium text-muted-foreground">Enabled</span>
+						@switchcomp.Switch(switchcomp.Props{
+							ID:      "open-next-after-remove",
+							Name:    "open_next_after_remove",
+							Checked: uiSettingGet(uiSettings, "open_next_after_remove", "true") != "false",
+							Attributes: templ.Attributes{"data-open-next-after-remove-setting": ""},
+						})
+					</div>
+				</div>
+			</div>
 		</div>
 		<div class="bg-card rounded-lg border p-6 space-y-5">
 			<div>
@@ -393,6 +410,10 @@ templ SettingsComposeDisplayTab(uiSettings map[string]string, signatureData []mo
 			var autoMarkRead = e.target.closest('input[name="auto_mark_read_after"]');
 			if (autoMarkRead && typeof GoferSettings !== 'undefined') {
 				GoferSettings.set('auto_mark_read_after', autoMarkRead.value);
+			}
+			var openNextAfterRemove = e.target.closest('[data-open-next-after-remove-setting]');
+			if (openNextAfterRemove && typeof GoferSettings !== 'undefined') {
+				GoferSettings.set('open_next_after_remove', openNextAfterRemove.checked ? 'true' : 'false');
 			}
 			var translationEnabled = e.target.closest('[data-translation-setting="enabled"]');
 			if (translationEnabled && typeof GoferSettings !== 'undefined') {

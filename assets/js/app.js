@@ -1465,7 +1465,8 @@ document.addEventListener("DOMContentLoaded", function () {
         var targets = selectedMailTargets(ids)
         var current = virtualMailList && virtualMailList.selectedEmailId
         var removesFromFolder = action === "archive" || action === "delete" || action === "spam" || action === "not-spam"
-        if (removesFromFolder && current && ids.indexOf(current) !== -1) setMailViewEmpty()
+        var openedNext = removesFromFolder && openNextMailAfterRemoval(ids)
+        if (removesFromFolder && !openedNext && current && ids.indexOf(current) !== -1) setMailViewEmpty()
         if (removesFromFolder) applyOptimisticRemove(ids)
         clearMailSelection()
         var path = action === "archive" ? "/api/messages/archive" : (action === "delete" ? "/api/messages/delete" : (action === "spam" ? "/api/messages/spam" : (action === "not-spam" ? "/api/messages/not-spam" : "/api/messages/star")))
@@ -10801,12 +10802,14 @@ function mailDeleteFolderQuery() {
 }
 
 function beginOptimisticMailRemoval(emailId) {
+  var openedNext = openNextMailAfterRemoval([emailId])
   if (typeof window.applyOptimisticMailRemove === "function") {
     window.applyOptimisticMailRemove([String(emailId)])
   }
-  if (typeof setMailViewEmpty === "function") setMailViewEmpty()
   var container = document.getElementById("mail-list-scroll")
   var vml = container && container._virtualMailList
+  if (openedNext) return vml
+  if (typeof setMailViewEmpty === "function") setMailViewEmpty()
   if (vml && String(vml.selectedEmailId || "") === String(emailId)) {
     vml.selectedEmailId = null
     if (typeof vml.syncSelectionClasses === "function") vml.syncSelectionClasses(vml.itemsContainer || vml.container)
@@ -10846,22 +10849,49 @@ function deleteMessage(emailId) {
     .catch(function () { restoreOptimisticMailRemoval(emailId, vml) })
 }
 
+// Opens the row after (or, at the end of the list, before) the open email when
+// it is among removedIds. Returns true if another email was opened.
+function openNextMailAfterRemoval(removedIds) {
+  if (window.GoferSettings && GoferSettings.get("open_next_after_remove") === "false") return false
+  var container = document.getElementById("mail-list-scroll")
+  var vml = container && container._virtualMailList
+  var current = vml && vml.selectedEmailId ? String(vml.selectedEmailId) : ""
+  var removed = removedIds.map(String)
+  if (!current || removed.indexOf(current) === -1) return false
+
+  var rows = Array.prototype.slice.call(container.querySelectorAll(".mail-list-item[data-email-id][data-position]"))
+  rows.sort(function (a, b) { return parseInt(a.dataset.position, 10) - parseInt(b.dataset.position, 10) })
+  // Thread archive removes every message in the thread, so skip sibling rows too.
+  var removedThreads = rows.filter(function (row) {
+    return removed.indexOf(row.dataset.emailId) !== -1 && row.dataset.threadId
+  }).map(function (row) { return row.dataset.threadId })
+  var currentIndex = -1
+  var candidates = []
+  for (var i = 0; i < rows.length; i++) {
+    if (rows[i].dataset.emailId === current) currentIndex = candidates.length
+    if (removed.indexOf(rows[i].dataset.emailId) !== -1 || removedThreads.indexOf(rows[i].dataset.threadId) !== -1) continue
+    candidates.push(rows[i])
+  }
+  if (currentIndex === -1) return false
+  var next = candidates[currentIndex] || candidates[currentIndex - 1]
+  var anchor = next && next.querySelector(":scope > a")
+  if (!anchor) return false
+
+  // Set selection now so a list refresh racing the email request keeps it.
+  vml.selectedEmailId = next.dataset.emailId
+  if (typeof vml.syncSelectionClasses === "function") vml.syncSelectionClasses(vml.itemsContainer || vml.container)
+  anchor.click()
+  return true
+}
+
 function archiveThread(emailId) {
-  fetch("/api/messages/" + emailId + "/thread/archive", { method: "POST" })
-    .then(function () {
-      var mailView = document.getElementById("mail-view")
-      if (mailView) setMailViewEmpty()
-      var container = document.getElementById("mail-list-scroll")
-      if (container && container._virtualMailList) {
-        var vml = container._virtualMailList
-        if (vml.selectedEmailId === emailId) vml.selectedEmailId = null
-        vml.reset()
-        vml.hydrateFromDOM()
-        vml.switchFolder(vml.folderID)
-      }
-      refreshSidebarUnread()
+  var vml = beginOptimisticMailRemoval(emailId)
+  fetch("/api/messages/" + encodeURIComponent(emailId) + "/thread/archive", { method: "POST" })
+    .then(function (response) {
+      if (!response.ok) throw new Error("archive failed")
+      finishOptimisticMailRemoval(vml)
     })
-    .catch(function () {})
+    .catch(function () { restoreOptimisticMailRemoval(emailId, vml) })
 }
 
 function deleteThread(emailId) {
@@ -10949,25 +10979,18 @@ function mailViewRequestURL(emailID, single) {
 
 function markSpamState(emailId, notSpam, thread) {
   var path = notSpam ? "/api/messages/not-spam" : "/api/messages/spam"
+  var body = JSON.stringify({ targets: [{ id: String(emailId), thread: !!thread }], folder_id: mailActionCurrentFolderID() })
+  var vml = beginOptimisticMailRemoval(emailId)
   fetch(path, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ targets: [{ id: String(emailId), thread: !!thread }], folder_id: mailActionCurrentFolderID() })
+    body: body
   })
-    .then(function () {
-      var mailView = document.getElementById("mail-view")
-      if (mailView) setMailViewEmpty()
-      var container = document.getElementById("mail-list-scroll")
-      if (container && container._virtualMailList) {
-        var vml = container._virtualMailList
-        if (vml.selectedEmailId === emailId) vml.selectedEmailId = null
-        vml.reset()
-        vml.hydrateFromDOM()
-        vml.switchFolder(vml.folderID)
-      }
-      refreshSidebarUnread()
+    .then(function (response) {
+      if (!response.ok) throw new Error("spam update failed")
+      finishOptimisticMailRemoval(vml)
     })
-    .catch(function () {})
+    .catch(function () { restoreOptimisticMailRemoval(emailId, vml) })
 }
 
 function promptLabelMessage(emailId, thread) {
