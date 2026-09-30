@@ -98,8 +98,8 @@ tauri build             # produces the real .app / .dmg
 `tauri build` output lands under:
 
 ```
-tauri-wrapper/src-tauri/target/release/bundle/macos/Gofer.app
-tauri-wrapper/src-tauri/target/release/bundle/dmg/Gofer_0.1.0_aarch64.dmg
+tauri-wrapper/src-tauri/target/release/bundle/macos/Raven.app
+tauri-wrapper/src-tauri/target/release/bundle/dmg/Raven_<version>_aarch64.dmg
 ```
 
 Drag the `.app` to `/Applications` (or double-click the `.dmg`) as usual.
@@ -117,11 +117,49 @@ a browser tab can't give you:
   window, so the count shows up on the Dock icon (macOS) / taskbar (Windows,
   Linux). Clears itself when the count is 0.
 - **Tray icon.** A menu bar / system tray icon with "Show Raven", "Compose",
-  and "Quit". "Show" brings the window to the front; "Compose" does the same
+  "Check for Updates...", and "Quit". "Show" brings the window to the front; "Compose" does the same
   and then calls Gofer's own `openNewCompose()` JS function; "Quit" exits the
   app (which also kills the Gofer sidecar, same as closing the window).
 - **Global shortcut.** `Cmd/Ctrl+Shift+M` opens the composer from anywhere,
   even when Raven isn't focused -- same behavior as the tray's "Compose".
+
+## Releasing
+
+The app version lives only in `src-tauri/Cargo.toml` (`tauri.conf.json` has no
+`version`, so Tauri falls back to it). To ship a release:
+
+1. Bump `version` in `src-tauri/Cargo.toml` and commit.
+2. Tag it `vX.Y.Z` (must match Cargo.toml; CI fails otherwise) and push the tag.
+
+CI (`.github/workflows/build-desktop.yml`) does the rest: drafts a release,
+builds macOS/Windows/Linux, signs and uploads the updater artifacts and
+`latest.json`, publishes the release, then bumps `Casks/raven.rb`. Edit the
+release notes afterwards ("Release notes to follow" is a placeholder). Running
+the workflow by hand (`workflow_dispatch`) only builds and uploads artifacts.
+
+The updater signing key is at `~/.tauri/raven.key` (password in
+`~/.tauri/raven.key.password`) and is stored as the repo secrets
+`TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`. **If it
+is lost, installed copies can no longer update** -- the public key is baked
+into every build.
+
+## Updates
+
+Raven checks GitHub Releases (`releases/latest/download/latest.json`) on launch
+and offers to install a newer version; the tray item "Check for Updates..."
+does the same on demand and also reports "up to date" or errors. Installing
+stops the bundled Gofer, replaces the app, and relaunches. On Linux only the
+AppImage can update itself; for .deb/.rpm the launch check is skipped and the
+tray item opens the releases page instead.
+
+## Homebrew
+
+```sh
+brew tap fahadjibransheikh/raven https://github.com/fahadjibransheikh/raven
+brew install --cask fahadjibransheikh/raven/raven
+```
+
+The cask (`Casks/raven.rb` at the repo root) is updated by CI on each release.
 
 ## Where the app keeps its settings and mail
 
@@ -192,9 +230,9 @@ tauri-wrapper/
     index.html                     <- tiny "Starting Gofer..." placeholder;
                                         replaced by navigate() at runtime
   src-tauri/
-    Cargo.toml                     <- tauri + tauri-plugin-shell deps
+    Cargo.toml                     <- tauri + plugin deps; the app version
     build.rs                       <- required tauri-build hook
-    tauri.conf.json                <- v2 config: window, externalBin, bundle
+    tauri.conf.json                <- v2 config: window, externalBin, bundle, updater
     capabilities/default.json      <- permissions for the main window
     icons/icon.png                 <- copy of ../../assets/logo.png (source
                                         for `tauri icon`)

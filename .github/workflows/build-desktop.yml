@@ -6,8 +6,73 @@ on:
     tags:
       - "v*"
 
+# contents: write lets create-release/publish manage the release and push the
+# Homebrew cask bump, and lets tauri-action upload assets with GITHUB_TOKEN.
+permissions:
+  contents: write
+
 jobs:
+  # A pushed v* tag fully publishes a release: this job makes a DRAFT (invisible
+  # to the updater and to "latest"), build uploads into it, publish flips it
+  # live only after every platform succeeded. workflow_dispatch skips all of it.
+  create-release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-22.04
+    outputs:
+      release_id: ${{ steps.create.outputs.release_id }}
+      version: ${{ steps.create.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create the draft release
+        id: create
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          # Cargo.toml is the single version source (tauri.conf.json has none).
+          VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' tauri-wrapper/src-tauri/Cargo.toml | head -n1)"
+          if [ "$TAG" != "v$VERSION" ]; then
+            echo "::error::Tag $TAG does not match Cargo.toml version $VERSION (expected v$VERSION). Bump the version, commit, and re-tag."
+            exit 1
+          fi
+
+          # Quoted heredoc so the backticks stay literal; @VERSION@ is filled in below.
+          cat > notes.md <<'NOTES'
+          ## Downloads
+
+          - **macOS (Apple Silicon):** `Raven_@VERSION@_aarch64.dmg`
+          - **Windows (x64):** `Raven_@VERSION@_x64-setup.exe` or `Raven_@VERSION@_x64_en-US.msi`
+          - **Linux (x86_64):** `.deb` (Debian/Ubuntu), `.rpm` (Fedora/RHEL), or the portable `.AppImage`
+
+          ## Homebrew (macOS)
+
+          ```
+          brew tap fahadjibransheikh/raven https://github.com/fahadjibransheikh/raven
+          brew install --cask fahadjibransheikh/raven/raven
+          ```
+
+          The macOS app is not signed or notarized yet. If macOS says it can't verify Raven, open System Settings → Privacy & Security and click **Open Anyway**. (The Homebrew install doesn't need this.)
+
+          Installed copies update themselves: Raven checks for new versions on launch, and the tray menu has **Check for Updates…**. On Linux this applies to the AppImage; for .deb/.rpm, install the new package.
+
+          ## Changes
+
+          _Release notes to follow._
+          NOTES
+          sed -i.bak "s/@VERSION@/$VERSION/g" notes.md
+
+          # The REST API returns the id directly; `gh release view` can't look up drafts by tag.
+          ID="$(gh api "repos/${{ github.repository }}/releases" \
+            -f tag_name="$TAG" -f name="Raven $VERSION" -F body=@notes.md \
+            -F draft=true --jq .id)"
+          echo "release_id=$ID" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
   build:
+    needs: create-release
+    # create-release is skipped on workflow_dispatch; don't let that skip the build.
+    if: ${{ !cancelled() && (needs.create-release.result == 'success' || needs.create-release.result == 'skipped') }}
     strategy:
       fail-fast: false
       matrix:
@@ -91,10 +156,21 @@ jobs:
         working-directory: tauri-wrapper/src-tauri
         run: cargo tauri icon icons/icon.png
 
+      # On a tag: builds, signs the updater artifacts, uploads bundles + .sig
+      # files into the draft release and merges this platform into latest.json.
+      # On workflow_dispatch releaseId is empty, so it only builds. `app` in the
+      # macOS bundle list is what yields the .app.tar.gz the updater installs.
       - name: Build the desktop app
-        shell: bash
-        working-directory: tauri-wrapper
-        run: cargo tauri build --bundles ${{ matrix.bundles }}
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: tauri-wrapper
+          tauriScript: cargo tauri
+          args: --bundles ${{ matrix.bundles }}
+          releaseId: ${{ needs.create-release.outputs.release_id }}
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -103,3 +179,59 @@ jobs:
           path: |
             tauri-wrapper/src-tauri/target/release/bundle/**
           if-no-files-found: error
+
+  # Runs only when all three platforms built. Un-drafting last means the updater
+  # (which reads releases/latest/download/latest.json) never sees a release
+  # that is missing latest.json or a platform's bundle.
+  publish:
+    needs: [create-release, build]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-22.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ github.ref_name }}
+      VERSION: ${{ needs.create-release.outputs.version }}
+    steps:
+      # The three build jobs each merge their platform into latest.json on the
+      # release; if two finish at once one merge can be lost. Refuse to go live
+      # with an incomplete file, since the updater would 404 for that platform.
+      - name: Check latest.json lists every platform
+        run: |
+          ASSET_ID="$(gh api "repos/${{ github.repository }}/releases/${{ needs.create-release.outputs.release_id }}/assets" \
+            --jq '.[] | select(.name == "latest.json") | .id')"
+          if [ -z "$ASSET_ID" ]; then
+            echo "::error::The release has no latest.json."
+            exit 1
+          fi
+          gh api -H "Accept: application/octet-stream" \
+            "repos/${{ github.repository }}/releases/assets/$ASSET_ID" > latest.json
+          for platform in darwin-aarch64 windows-x86_64 linux-x86_64; do
+            jq -e --arg p "$platform" '.platforms[$p]' latest.json > /dev/null || {
+              echo "::error::latest.json is missing $platform. Re-run the failed job, or re-run the workflow."
+              exit 1
+            }
+          done
+
+      - name: Publish the release and mark it latest
+        run: |
+          gh api -X PATCH "repos/${{ github.repository }}/releases/${{ needs.create-release.outputs.release_id }}" \
+            -F draft=false -f make_latest=true
+
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+
+      - name: Point the Homebrew cask at the new release
+        run: |
+          gh release download "$TAG" --repo "${{ github.repository }}" \
+            --pattern "Raven_${VERSION}_aarch64.dmg"
+          SHA="$(sha256sum "Raven_${VERSION}_aarch64.dmg" | cut -d' ' -f1)"
+          rm "Raven_${VERSION}_aarch64.dmg"
+          sed -i -e "s/^  version \".*\"/  version \"$VERSION\"/" \
+                 -e "s/^  sha256 \".*\"/  sha256 \"$SHA\"/" Casks/raven.rb
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Casks/raven.rb
+          git commit -m "Update Homebrew cask to $VERSION"
+          git pull --rebase origin master
+          git push origin HEAD:master
