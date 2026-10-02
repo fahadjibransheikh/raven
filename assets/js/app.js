@@ -1866,7 +1866,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function readFilters() {
       var filters = emptyFilters()
-      var form = document.querySelector("[data-mail-filter-form]")
+      // The status tri-states now live in the advanced filter popover.
+      var form = document.querySelector("[data-mail-filter-form]") || document.querySelector("[data-mail-advanced-filter-form]")
       if (form) {
         var status = form.querySelector('[data-mail-tristate="status"]')
         var attachments = form.querySelector('[data-mail-tristate="attachments"]')
