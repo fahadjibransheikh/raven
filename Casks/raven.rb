@@ -18,10 +18,9 @@ cask "raven" do
   app "Raven.app"
 
   # The app is not signed or notarized yet, so Gatekeeper would refuse to open
-  # it. Remove this postflight once it is.
-  postflight do
-    system_command "/usr/bin/xattr",
-                   args: ["-dr", "com.apple.quarantine", "#{appdir}/Raven.app"]
+  # it. Remove these postflight steps once it is.
+  postflight_steps do
+    run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{appdir}}/Raven.app"]
   end
 
   zap trash: [
