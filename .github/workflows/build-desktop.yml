@@ -223,12 +223,21 @@ jobs:
 
       - name: Point the Homebrew cask at the new release
         run: |
+          MAC_FILE="Raven_${VERSION}_aarch64.dmg"
+          LINUX_FILE="Raven_${VERSION}_amd64.AppImage"
           gh release download "$TAG" --repo "${{ github.repository }}" \
-            --pattern "Raven_${VERSION}_aarch64.dmg"
-          SHA="$(sha256sum "Raven_${VERSION}_aarch64.dmg" | cut -d' ' -f1)"
-          rm "Raven_${VERSION}_aarch64.dmg"
+            --pattern "$MAC_FILE" --pattern "$LINUX_FILE"
+          MAC_SHA="$(sha256sum "$MAC_FILE" | cut -d' ' -f1)"
+          LINUX_SHA="$(sha256sum "$LINUX_FILE" | cut -d' ' -f1)"
+          rm "$MAC_FILE" "$LINUX_FILE"
           sed -i -e "s/^  version \".*\"/  version \"$VERSION\"/" \
-                 -e "s/^  sha256 \".*\"/  sha256 \"$SHA\"/" Casks/raven.rb
+                 -e "s/^\(  sha256 arm: *\)\"[0-9a-f]*\"/\1\"$MAC_SHA\"/" \
+                 -e "s/^\( *x86_64_linux: *\)\"[0-9a-f]*\"/\1\"$LINUX_SHA\"/" Casks/raven.rb
+          # A changed cask layout would make the edits above silently miss.
+          grep -q "\"$MAC_SHA\"" Casks/raven.rb && grep -q "\"$LINUX_SHA\"" Casks/raven.rb || {
+            echo "::error::Casks/raven.rb was not updated with both checksums."
+            exit 1
+          }
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add Casks/raven.rb

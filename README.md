@@ -46,7 +46,7 @@ Download the installer for your platform from the [latest release](https://githu
 - **Windows (x64):** `Raven_<version>_x64-setup.exe` or `Raven_<version>_x64_en-US.msi`
 - **Linux (x86_64):** `.deb` (Debian/Ubuntu), `.rpm` (Fedora/RHEL), or the portable `.AppImage`
 
-On macOS you can use Homebrew instead:
+On macOS (Apple Silicon) and Linux (x86_64) you can use Homebrew instead:
 
 ```sh
 brew tap fahadjibransheikh/raven https://github.com/fahadjibransheikh/raven
@@ -54,6 +54,8 @@ brew install --cask fahadjibransheikh/raven/raven
 ```
 
 Use the full `fahadjibransheikh/raven/raven` name: a plain `brew install raven` installs an unrelated Homebrew formula.
+
+On Linux, Homebrew installs the AppImage as `~/Applications/Raven.AppImage` and adds Raven to your app launcher.
 
 The macOS app isn't signed or notarized yet. If you install the `.dmg` and macOS says it can't verify Raven, open System Settings → Privacy & Security and click **Open Anyway**. The Homebrew install doesn't need this.
 
