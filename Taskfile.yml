@@ -46,3 +46,9 @@ tasks:
     desc: Clean build artifacts
     cmds:
       - rm -rf tmp/ dist/ assets/css/output.css
+
+  test:
+    desc: Run Go and JS tests
+    cmds:
+      - go test ./...
+      - npm test

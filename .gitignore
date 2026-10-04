@@ -25,3 +25,6 @@ assets/css/output.css
 .serena/
 .mcp.json
 .ignore
+
+# JS test dependencies
+node_modules/
