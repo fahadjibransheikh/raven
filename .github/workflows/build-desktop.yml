@@ -27,7 +27,7 @@ jobs:
       release_id: ${{ steps.create.outputs.release_id }}
       version: ${{ steps.create.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Create the draft release
         id: create
@@ -98,7 +98,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install Linux system dependencies
         if: runner.os == 'Linux'
@@ -109,7 +109,7 @@ jobs:
             librsvg2-dev patchelf
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
 
@@ -178,7 +178,7 @@ jobs:
           releaseId: ${{ needs.create-release.outputs.release_id }}
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: raven-${{ runner.os }}-${{ matrix.target_triple }}
           path: |
@@ -222,7 +222,7 @@ jobs:
           gh api -X PATCH "repos/${{ github.repository }}/releases/${{ needs.create-release.outputs.release_id }}" \
             -F draft=false -f make_latest=true
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: master
 
