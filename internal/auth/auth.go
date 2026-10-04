@@ -260,7 +260,13 @@ func LoadConfig(baseURL string) *Config {
 	microsoftClientID := strings.TrimSpace(os.Getenv("GOFER_MICROSOFT_LOGIN_CLIENT_ID"))
 	microsoftClientSecret := strings.TrimSpace(os.Getenv("GOFER_MICROSOFT_LOGIN_CLIENT_SECRET"))
 	microsoftTenant := normalizeMicrosoftLoginTenant(os.Getenv("GOFER_MICROSOFT_LOGIN_TENANT"))
-	if microsoftClientID != "" && microsoftClientSecret != "" && microsoftTenant != "" {
+	// The secret is optional: without one Raven acts as a public client and
+	// the code exchange relies on PKCE, which this flow always sends.
+	if microsoftClientID != "" && microsoftTenant != "" {
+		endpoint := microsoftLoginOAuthEndpoint(microsoftTenant)
+		if microsoftClientSecret == "" {
+			endpoint.AuthStyle = oauth2.AuthStyleInParams
+		}
 		cfg.MicrosoftLoginTenant = microsoftTenant
 		cfg.MicrosoftLoginClient = &oauth2.Config{
 			ClientID:     microsoftClientID,
@@ -271,7 +277,7 @@ func LoadConfig(baseURL string) *Config {
 				microsoftApplicationProfileScope,
 				microsoftApplicationEmailScope,
 			},
-			Endpoint: microsoftLoginOAuthEndpoint(microsoftTenant),
+			Endpoint: endpoint,
 		}
 	}
 

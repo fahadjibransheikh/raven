@@ -29,6 +29,10 @@ func newAccountOAuthFlowTestHandler(t *testing.T) (*Handler, *mailauth.Service, 
 			ClientID: "client-id",
 			Endpoint: oauth2.Endpoint{AuthURL: "https://accounts.example/authorize"},
 		},
+		MicrosoftClient: &oauth2.Config{
+			ClientID: "microsoft-client-id",
+			Endpoint: oauth2.Endpoint{AuthURL: "https://login.example/authorize"},
+		},
 	}, db, testMailboxCredentialKey)
 	return &Handler{db: db, auth: manager, mailboxAuth: mailCredentials}, mailCredentials, db
 }
@@ -88,6 +92,58 @@ func TestPasswordAuthenticatedUserCanStartMailboxAuthorization(t *testing.T) {
 	}
 	if flow.FormData["email_address"] != "user@gmail.com" || flow.FormData["display_name"] != "User Gmail" || flow.FormData["flow_action"] != "add" {
 		t.Fatalf("stored form data = %#v", flow.FormData)
+	}
+}
+
+// Outlook can run as a public client with no secret, so its authorization must
+// carry a PKCE challenge whose verifier stays in the server-side flow record.
+func TestOutlookMailboxAuthorizationSendsPKCEChallengeForStoredVerifier(t *testing.T) {
+	h, manager, db := newAccountOAuthFlowTestHandler(t)
+	if _, err := db.Write().Exec(`INSERT INTO users (id, username, username_normalized, name) VALUES ('user', 'user', 'user', 'User')`); err != nil {
+		t.Fatalf("insert user: %v", err)
+	}
+	session, err := h.auth.CreateAuthenticatedSession(
+		t.Context(), "user", "Password Browser", auth.AuthenticationMethodPassword, auth.AssuranceLevelSingleFactor,
+	)
+	if err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+	const authorizePath = "/api/accounts/oauth2/authorize"
+	form := url.Values{
+		"provider":      {providers.ProviderOutlook},
+		"email_address": {"user@outlook.com"},
+		"flow_action":   {"add"},
+		auth.CSRFFormFieldName: {
+			csrfProofForSession(t, h.auth, session.Token, authorizePath),
+		},
+	}
+	req := httptest.NewRequest(http.MethodPost, authorizePath, strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(&http.Cookie{Name: "gofer_session", Value: session.Token})
+	rec := httptest.NewRecorder()
+
+	h.auth.Middleware(http.HandlerFunc(h.handleAccountOAuthAuthorize)).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d body = %q, want redirect", rec.Code, rec.Body.String())
+	}
+	location, err := url.Parse(rec.Header().Get("Location"))
+	if err != nil {
+		t.Fatalf("parse redirect: %v", err)
+	}
+	flow, err := manager.ConsumeAccountOAuthFlow(req.Context(), location.Query().Get("state"), "user", session.Token, providers.ProviderOutlook)
+	if err != nil {
+		t.Fatalf("ConsumeAccountOAuthFlow() error = %v", err)
+	}
+	verifier := flow.FormData["code_verifier"]
+	if verifier == "" {
+		t.Fatal("Outlook flow stored no PKCE verifier")
+	}
+	if location.Query().Get("code_challenge_method") != "S256" || location.Query().Get("code_challenge") != oauth2.S256ChallengeFromVerifier(verifier) {
+		t.Fatalf("redirect %q lacks the S256 challenge for the stored verifier", location.String())
+	}
+	if strings.Contains(location.String(), verifier) {
+		t.Fatal("PKCE verifier leaked into the authorization redirect")
 	}
 }
 

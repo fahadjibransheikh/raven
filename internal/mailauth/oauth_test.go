@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cristianadrielbraun/gofer/internal/providers"
 	"golang.org/x/oauth2"
 )
 
@@ -63,7 +64,7 @@ func TestMicrosoftAccountOAuthURLForcesConsentForContacts(t *testing.T) {
 		},
 	}, nil, testMailboxCredentialKey)
 
-	rawURL := manager.MicrosoftAccountOAuthURL("state-value")
+	rawURL := manager.MicrosoftAccountOAuthURL("state-value", "verifier-value")
 	parsed, err := url.Parse(rawURL)
 	if err != nil {
 		t.Fatalf("parse auth url: %v", err)
@@ -71,6 +72,9 @@ func TestMicrosoftAccountOAuthURLForcesConsentForContacts(t *testing.T) {
 	values := parsed.Query()
 	if got := values.Get("prompt"); got != "consent" {
 		t.Fatalf("prompt = %q, want consent", got)
+	}
+	if values.Get("code_challenge_method") != "S256" || values.Get("code_challenge") != oauth2.S256ChallengeFromVerifier("verifier-value") {
+		t.Fatalf("PKCE challenge = %q (%q), want S256 of the verifier", values.Get("code_challenge"), values.Get("code_challenge_method"))
 	}
 	for _, scope := range []string{microsoftGraphContactsScope, microsoftGraphMailScope, microsoftGraphMailSendScope, microsoftGraphMailboxSettingsScope} {
 		if !strings.Contains(values.Get("scope"), scope) {
@@ -111,7 +115,7 @@ func TestExchangeMicrosoftAccountCodeRequestsGraphMailScopes(t *testing.T) {
 		},
 	}, nil, testMailboxCredentialKey)
 
-	token, err := manager.ExchangeMicrosoftAccountCode(ctx, "auth-code")
+	token, err := manager.ExchangeMicrosoftAccountCode(ctx, "auth-code", "")
 	if err != nil {
 		t.Fatalf("ExchangeMicrosoftAccountCode() error = %v", err)
 	}
@@ -134,4 +138,54 @@ func testMicrosoftIDToken(t *testing.T, payload map[string]any) string {
 		t.Fatal(err)
 	}
 	return base64.RawURLEncoding.EncodeToString(header) + "." + base64.RawURLEncoding.EncodeToString(body) + "."
+}
+
+// Without a secret Raven is a public client: the exchange and the refresh must
+// send client_id and the PKCE verifier as form fields, and no secret at all.
+func TestMicrosoftPublicClientExchangesAndRefreshesWithoutSecret(t *testing.T) {
+	type tokenRequest struct {
+		form          url.Values
+		authorization string
+	}
+	var requests []tokenRequest
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			t.Fatalf("ParseForm() error = %v", err)
+		}
+		requests = append(requests, tokenRequest{form: r.PostForm, authorization: r.Header.Get("Authorization")})
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"access_token":"graph-token","refresh_token":"refresh-token","token_type":"Bearer","expires_in":3600}`))
+	}))
+	defer server.Close()
+
+	t.Setenv("MICROSOFT_OAUTH_CLIENT_ID", "public-client-id")
+	t.Setenv("MICROSOFT_OAUTH_CLIENT_SECRET", "")
+	cfg := LoadConfig("https://gofer.example", true)
+	if cfg.MicrosoftClient == nil {
+		t.Fatal("Microsoft mailbox client not configured without a secret")
+	}
+	cfg.MicrosoftClient.Endpoint.TokenURL = server.URL
+	manager := New(cfg, nil, testMailboxCredentialKey)
+
+	if _, err := manager.ExchangeMicrosoftAccountCode(context.Background(), "auth-code", "verifier-value"); err != nil {
+		t.Fatalf("ExchangeMicrosoftAccountCode() error = %v", err)
+	}
+	if _, err := manager.refreshToken(context.Background(), providers.OAuthMicrosoft, "", "refresh-token"); err != nil {
+		t.Fatalf("refreshToken() error = %v", err)
+	}
+
+	if len(requests) != 2 {
+		t.Fatalf("token requests = %d, want one exchange and one refresh (no auth-style retries)", len(requests))
+	}
+	if got := requests[0].form.Get("code_verifier"); got != "verifier-value" {
+		t.Fatalf("exchange code_verifier = %q, want verifier-value", got)
+	}
+	for i, req := range requests {
+		if req.form.Get("client_id") != "public-client-id" {
+			t.Fatalf("request %d client_id = %q, want public-client-id", i, req.form.Get("client_id"))
+		}
+		if req.form.Has("client_secret") || req.authorization != "" {
+			t.Fatalf("request %d sent a secret: form=%v authorization=%q", i, req.form, req.authorization)
+		}
+	}
 }

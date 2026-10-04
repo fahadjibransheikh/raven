@@ -4,6 +4,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"golang.org/x/oauth2"
 )
 
 func TestLoadConfigUsesMailboxCredentialsAndScopes(t *testing.T) {
@@ -47,5 +49,18 @@ func TestLoadConfigDoesNotReuseApplicationLoginCredentialsForMailboxAccess(t *te
 	cfg := LoadConfig("https://gofer.example", true)
 	if cfg.GoogleClient != nil || cfg.MicrosoftClient != nil {
 		t.Fatalf("mailbox OAuth reused application-login credentials: %#v", cfg)
+	}
+}
+
+func TestLoadConfigAllowsMicrosoftMailboxWithoutSecret(t *testing.T) {
+	t.Setenv("MICROSOFT_OAUTH_CLIENT_ID", "public-client-id")
+	t.Setenv("MICROSOFT_OAUTH_CLIENT_SECRET", "")
+
+	cfg := LoadConfig("https://gofer.example", true)
+	if cfg.MicrosoftClient == nil || cfg.MicrosoftClient.ClientSecret != "" {
+		t.Fatalf("Microsoft mailbox public client = %#v", cfg.MicrosoftClient)
+	}
+	if cfg.MicrosoftClient.Endpoint.AuthStyle != oauth2.AuthStyleInParams {
+		t.Fatalf("auth style = %v, want client_id in form params", cfg.MicrosoftClient.Endpoint.AuthStyle)
 	}
 }

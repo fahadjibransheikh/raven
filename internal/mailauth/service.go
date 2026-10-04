@@ -46,13 +46,21 @@ func LoadConfig(baseURL string, authenticationEnabled bool) *Config {
 
 	microsoftClientID := strings.TrimSpace(os.Getenv("MICROSOFT_OAUTH_CLIENT_ID"))
 	microsoftClientSecret := strings.TrimSpace(os.Getenv("MICROSOFT_OAUTH_CLIENT_SECRET"))
-	if microsoftClientID != "" && microsoftClientSecret != "" {
+	// The secret is optional: without one Raven acts as a public client and
+	// the code exchange relies on PKCE (see MicrosoftAccountOAuthURL).
+	if microsoftClientID != "" {
+		endpoint := microsoftEndpoint(os.Getenv("MICROSOFT_OAUTH_TENANT"))
+		if microsoftClientSecret == "" {
+			// Send client_id as a form field; the default first tries Basic
+			// auth with an empty password, which Microsoft rejects.
+			endpoint.AuthStyle = oauth2.AuthStyleInParams
+		}
 		cfg.MicrosoftClient = &oauth2.Config{
 			ClientID:     microsoftClientID,
 			ClientSecret: microsoftClientSecret,
 			RedirectURL:  baseURL + "/auth/microsoft/mailbox/callback",
 			Scopes:       microsoftAccountTokenScopes(),
-			Endpoint:     microsoftEndpoint(os.Getenv("MICROSOFT_OAUTH_TENANT")),
+			Endpoint:     endpoint,
 		}
 	}
 

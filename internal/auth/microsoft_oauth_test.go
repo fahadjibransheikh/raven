@@ -79,6 +79,21 @@ func TestLoadConfigSeparatesMicrosoftLoginFromOutlookMailboxOAuth(t *testing.T) 
 	}
 }
 
+func TestLoadConfigEnablesMicrosoftLoginWithoutSecret(t *testing.T) {
+	t.Setenv("GOFER_AUTH_ENABLED", "true")
+	t.Setenv("GOFER_MICROSOFT_LOGIN_CLIENT_ID", "public-login-client")
+	t.Setenv("GOFER_MICROSOFT_LOGIN_CLIENT_SECRET", "")
+	t.Setenv("GOFER_MICROSOFT_LOGIN_TENANT", "common")
+
+	cfg := LoadConfig("https://gofer.example")
+	if cfg.MicrosoftLoginClient == nil || cfg.MicrosoftLoginClient.ClientSecret != "" {
+		t.Fatalf("Microsoft public-client login = %#v", cfg.MicrosoftLoginClient)
+	}
+	if cfg.MicrosoftLoginClient.Endpoint.AuthStyle != oauth2.AuthStyleInParams {
+		t.Fatalf("auth style = %v, want client_id in form params", cfg.MicrosoftLoginClient.Endpoint.AuthStyle)
+	}
+}
+
 func TestMicrosoftApplicationLoginAuthorizationUsesPKCEStateNonceAndIdentityOnlyScopes(t *testing.T) {
 	manager := newDeterministicManager(t, &fixedClock{now: time.Date(2026, time.August, 18, 4, 0, 0, 0, time.UTC)}, &deterministicTokenGenerator{
 		ids: []string{"microsoft-challenge"}, tokens: []string{"state-value", "nonce-value"},

@@ -23,6 +23,7 @@ import (
 	"github.com/cristianadrielbraun/gofer/internal/store"
 	"github.com/cristianadrielbraun/gofer/internal/translation"
 	"github.com/cristianadrielbraun/gofer/internal/views"
+	"golang.org/x/oauth2"
 	"html"
 	"html/template"
 	"io"
@@ -6274,6 +6275,10 @@ func (h *Handler) handleAccountOAuthAuthorize(w http.ResponseWriter, r *http.Req
 		"display_name":  r.FormValue("display_name"),
 		"flow_action":   accountOAuthFlowAction(r.FormValue("flow_action")),
 	}
+	if provider == providers.ProviderOutlook {
+		// Kept server-side in the one-time flow record, never sent to the browser.
+		formData["code_verifier"] = oauth2.GenerateVerifier()
+	}
 
 	user := auth.GetCurrentUser(r.Context())
 	if user == nil || strings.TrimSpace(user.ID) == "" {
@@ -6291,7 +6296,7 @@ func (h *Handler) handleAccountOAuthAuthorize(w http.ResponseWriter, r *http.Req
 	case providers.ProviderGmail:
 		authorizeURL = h.mailCredentials().GoogleAccountOAuthURL(state)
 	case providers.ProviderOutlook:
-		authorizeURL = h.mailCredentials().MicrosoftAccountOAuthURL(state)
+		authorizeURL = h.mailCredentials().MicrosoftAccountOAuthURL(state, formData["code_verifier"])
 	}
 	http.Redirect(w, r, authorizeURL, http.StatusSeeOther)
 }
@@ -6384,7 +6389,7 @@ func (h *Handler) handleMicrosoftAccountCallback(w http.ResponseWriter, r *http.
 	}
 	formData := flow.FormData
 
-	token, err := h.mailCredentials().ExchangeMicrosoftAccountCode(r.Context(), code)
+	token, err := h.mailCredentials().ExchangeMicrosoftAccountCode(r.Context(), code, formData["code_verifier"])
 	if err != nil {
 		log.Printf("microsoft callback: token exchange failed: %v", err)
 		http.Redirect(w, r, "/settings/accounts?error=oauth_exchange_failed", http.StatusSeeOther)

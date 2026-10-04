@@ -22,8 +22,12 @@ func (m *Service) GoogleAccountOAuthURL(state string) string {
 	return m.accountOAuthConfig().AuthCodeURL(state, oauth2.AccessTypeOffline, oauth2.ApprovalForce)
 }
 
-func (m *Service) MicrosoftAccountOAuthURL(state string) string {
-	return m.microsoftAccountOAuthConfig().AuthCodeURL(state, oauth2.SetAuthURLParam("prompt", "consent"))
+// MicrosoftAccountOAuthURL starts the Outlook mailbox flow with a PKCE
+// challenge for verifier, which must be passed back to
+// ExchangeMicrosoftAccountCode. PKCE is what protects the code exchange when
+// Raven runs as a public client without a secret.
+func (m *Service) MicrosoftAccountOAuthURL(state, verifier string) string {
+	return m.microsoftAccountOAuthConfig().AuthCodeURL(state, oauth2.SetAuthURLParam("prompt", "consent"), oauth2.S256ChallengeOption(verifier))
 }
 
 func (m *Service) ExchangeAccountCode(ctx context.Context, code string) (*oauth2.Token, error) {
@@ -34,8 +38,12 @@ func (m *Service) ExchangeAccountCode(ctx context.Context, code string) (*oauth2
 	return token, nil
 }
 
-func (m *Service) ExchangeMicrosoftAccountCode(ctx context.Context, code string) (*oauth2.Token, error) {
-	token, err := m.microsoftAccountOAuthConfig().Exchange(ctx, code, oauth2.SetAuthURLParam("scope", strings.Join(microsoftAccountTokenExchangeScopes(), " ")))
+func (m *Service) ExchangeMicrosoftAccountCode(ctx context.Context, code, verifier string) (*oauth2.Token, error) {
+	opts := []oauth2.AuthCodeOption{oauth2.SetAuthURLParam("scope", strings.Join(microsoftAccountTokenExchangeScopes(), " "))}
+	if verifier != "" {
+		opts = append(opts, oauth2.VerifierOption(verifier))
+	}
+	token, err := m.microsoftAccountOAuthConfig().Exchange(ctx, code, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("oauth exchange: %w", err)
 	}
