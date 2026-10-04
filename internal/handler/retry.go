@@ -187,9 +187,14 @@ func permanentOAuthCode(code string) bool {
 
 type outgoingReconnectError struct {
 	reason string
+	// message, when set, replaces the generic text entirely.
+	message string
 }
 
 func (e *outgoingReconnectError) Error() string {
+	if e != nil && e.message != "" {
+		return e.message
+	}
 	if e == nil || strings.TrimSpace(e.reason) == "" {
 		return "Reconnect account"
 	}
