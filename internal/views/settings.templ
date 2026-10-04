@@ -2659,6 +2659,16 @@ templ ChooseAccountTypeDialog() {
 					</div>
 					<svg class="size-4 text-muted-foreground group-hover:text-foreground transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
 				</button>
+				<button type="button" data-account-type="icloud" onclick="if(window.tui&&window.tui.dialog){window.tui.dialog.close('choose-account-type-dialog')}setTimeout(function(){openICloudAccountDialog()},150)" class="w-full group flex items-center gap-4 p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-accent/50 transition-all duration-200 text-left">
+					<div class="flex items-center justify-center w-10 h-10 rounded-lg bg-accent text-muted-foreground group-hover:text-foreground transition-colors">
+						@AccountProviderIcon("imap", "size-5")
+					</div>
+					<div class="flex-1 min-w-0">
+						<div class="text-sm font-medium text-foreground">iCloud</div>
+						<div class="text-xs text-muted-foreground mt-0.5">iCloud Mail with an app-specific password</div>
+					</div>
+					<svg class="size-4 text-muted-foreground group-hover:text-foreground transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+				</button>
 				<button type="button" onclick="if(window.tui&&window.tui.dialog){window.tui.dialog.close('choose-account-type-dialog')}setTimeout(function(){if(window.tui&&window.tui.dialog)window.tui.dialog.open('gmail-account-dialog')},150)" class="w-full group flex items-center gap-4 p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-accent/50 transition-all duration-200 text-left">
 					<div class="flex items-center justify-center w-10 h-10 rounded-lg bg-accent text-muted-foreground group-hover:text-foreground transition-colors">
 						@AccountProviderIcon("gmail", "size-5")
@@ -3017,6 +3027,7 @@ templ AddAccountDialog() {
 					});
 				}
 				function mailDiscoverySourceLabel(source) {
+					if (source === 'preset') return 'Built-in preset';
 					if (source === 'provider_xml') return 'Provider XML';
 					if (source === 'thunderbird_xml') return 'Thunderbird XML';
 					if (source === 'mx_provider_xml') return 'Provider via MX';
@@ -3028,6 +3039,46 @@ templ AddAccountDialog() {
 					if (provider === 'gmail') return 'Google';
 					if (provider === 'outlook') return 'Microsoft';
 					return 'provider';
+				}
+				// iCloud preset: values from https://support.apple.com/en-us/102525
+				function openICloudAccountDialog() {
+					var form = document.getElementById('account-form');
+					if (!form) return;
+					mailDiscoverySetField(form, 'imap_host', 'imap.mail.me.com');
+					mailDiscoverySetField(form, 'imap_port', '993');
+					mailDiscoverySetField(form, 'imap_tls_mode', 'tls');
+					mailDiscoverySetField(form, 'smtp_host', 'smtp.mail.me.com');
+					mailDiscoverySetField(form, 'smtp_port', '587');
+					mailDiscoverySetField(form, 'smtp_tls_mode', 'starttls');
+					mailDiscoverySetField(form, 'auth_method', 'plain');
+					var sameAuth = document.getElementById('smtp-same-auth');
+					if (sameAuth) {
+						sameAuth.checked = true;
+						toggleSmtpAuth(true);
+					}
+					var email = form.querySelector('[name="email_address"]');
+					var username = form.querySelector('[name="username"]');
+					var host = form.querySelector('[name="imap_host"]');
+					var hint = document.getElementById('icloud-password-hint');
+					function isICloud() { return host && host.value === 'imap.mail.me.com'; }
+					if (email && username && host && form.dataset.icloudBound !== 'true') {
+						form.dataset.icloudBound = 'true';
+						// Apple's SMTP needs the full address, so use it as the shared login.
+						email.addEventListener('input', function() {
+							if (!isICloud() || (username.value && username.value !== (form.dataset.icloudSynced || ''))) return;
+							form.dataset.icloudSynced = email.value.trim();
+							mailDiscoverySetField(form, 'username', form.dataset.icloudSynced);
+						});
+						host.addEventListener('input', function() {
+							if (hint) hint.classList.toggle('hidden', !isICloud());
+						});
+					}
+					if (email && username && email.value.trim()) {
+						form.dataset.icloudSynced = email.value.trim();
+						mailDiscoverySetField(form, 'username', form.dataset.icloudSynced);
+					}
+					if (hint) hint.classList.remove('hidden');
+					if (window.tui && window.tui.dialog) window.tui.dialog.open('add-account-dialog');
 				}
 				function mailDiscoverySetField(form, name, value) {
 					var input = form.querySelector('[name="' + name + '"]');
@@ -3610,6 +3661,7 @@ templ AddAccountDialog() {
 										Placeholder: "••••••••",
 										Required:    true,
 									})
+									<p id="icloud-password-hint" class="hidden mt-1.5 text-[11px] leading-relaxed text-muted-foreground">Use an Apple app-specific password, not your Apple Account password. <a href="https://support.apple.com/en-us/102654" target="_blank" rel="noopener noreferrer" class="underline hover:text-foreground">How to create one</a></p>
 								</div>
 								<div class="col-span-2">
 									<label class="text-xs font-medium text-muted-foreground mb-1.5 block">Method</label>

@@ -392,3 +392,53 @@ func testConfigXML(imapHost, smtpHost string) string {
   </emailProvider>
 </clientConfig>`
 }
+
+func TestDiscoverReturnsICloudPresetWithoutNetwork(t *testing.T) {
+	failHTTP := fakeHTTPClientFunc(func(req *http.Request) (*http.Response, error) {
+		t.Fatalf("unexpected network request to %s", req.URL)
+		return nil, nil
+	})
+	for _, addr := range []string{"me@icloud.com", "me@ME.com", "me@mac.com"} {
+		got, err := Discover(context.Background(), addr, Options{HTTPClient: failHTTP, Resolver: fakeResolver{}, MXResolver: fakeMXResolver{}})
+		if err != nil {
+			t.Fatalf("Discover(%q) error = %v", addr, err)
+		}
+		if len(got) != 1 {
+			t.Fatalf("Discover(%q) returned %d candidates, want 1", addr, len(got))
+		}
+		c := got[0]
+		if c.Source != SourcePreset || c.IMAPHost != "imap.mail.me.com" || c.IMAPPort != 993 || c.IMAPTLSMode != "tls" ||
+			c.SMTPHost != "smtp.mail.me.com" || c.SMTPPort != 587 || c.SMTPTLSMode != "starttls" ||
+			c.Username != addr || c.AuthMethod != "plain" {
+			t.Fatalf("Discover(%q) = %#v", addr, c)
+		}
+	}
+}
+
+func TestPresetCandidateIgnoresOtherDomains(t *testing.T) {
+	for _, domain := range []string{"example.com", "icloud.com.evil.test", "noticloud.com"} {
+		if _, ok := presetCandidate(emailParts{Domain: domain}); ok {
+			t.Fatalf("presetCandidate(%q) matched", domain)
+		}
+	}
+}
+
+func TestDiscoverNonPresetDomainUsesExistingSources(t *testing.T) {
+	requests := 0
+	client := fakeHTTPClientFunc(func(req *http.Request) (*http.Response, error) {
+		requests++
+		return fakeHTTPClient{}.Do(req)
+	})
+	got, err := Discover(context.Background(), "me@example.com", Options{HTTPClient: client, Resolver: fakeResolver{}, MXResolver: fakeMXResolver{}})
+	if err != nil {
+		t.Fatalf("Discover() error = %v", err)
+	}
+	if requests == 0 {
+		t.Fatal("Discover() did not consult the network sources for a non-preset domain")
+	}
+	for _, c := range got {
+		if c.Source == SourcePreset {
+			t.Fatalf("non-preset domain returned preset candidate: %#v", c)
+		}
+	}
+}

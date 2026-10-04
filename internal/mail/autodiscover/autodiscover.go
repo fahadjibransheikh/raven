@@ -29,6 +29,7 @@ const (
 	SourceMXProviderXML  = "mx_provider_xml"
 	SourceDNSSRV         = "dns_srv"
 	SourceHeuristic      = "heuristic"
+	SourcePreset         = "preset"
 
 	maxConfigBytes = 1 << 20
 )
@@ -150,6 +151,10 @@ func Discover(ctx context.Context, email string, opts Options) ([]Candidate, err
 		opts.HTTPClient = newDiscoveryHTTPClientWithPolicy(policy)
 	}
 
+	if candidate, ok := presetCandidate(parts); ok {
+		return []Candidate{candidate}, nil
+	}
+
 	var out []Candidate
 	out = append(out, discoverConfigXML(ctx, opts.HTTPClient, parts, policy)...)
 	out = append(out, discoverMXConfigXML(ctx, opts.HTTPClient, opts.MXResolver, parts, policy)...)
@@ -157,6 +162,32 @@ func Discover(ctx context.Context, email string, opts Options) ([]Candidate, err
 	out = append(out, heuristicCandidatesWithPolicy(ctx, parts, opts.ProbeHeuristics, opts.HeuristicProbeTimeout, policy)...)
 	out = validateDiscoveredCandidates(ctx, out, policy)
 	return dedupeCandidates(out, policy), nil
+}
+
+// presetCandidate returns built-in settings for providers whose servers are
+// fixed and published by the provider, so no network lookup is needed.
+// iCloud values: https://support.apple.com/en-us/102525. Apple requires an
+// app-specific password (https://support.apple.com/en-us/102654).
+func presetCandidate(parts emailParts) (Candidate, bool) {
+	switch parts.Domain {
+	case "icloud.com", "me.com", "mac.com":
+		return Candidate{
+			Source:      SourcePreset,
+			Confidence:  100,
+			IMAPHost:    "imap.mail.me.com",
+			IMAPPort:    993,
+			IMAPTLSMode: "tls",
+			SMTPHost:    "smtp.mail.me.com",
+			SMTPPort:    587,
+			SMTPTLSMode: "starttls",
+			// Apple's SMTP requires the full address; one username keeps "same login" valid.
+			Username:   parts.Address,
+			AuthMethod: "plain",
+			Provider:   "icloud",
+			Notes:      []string{"iCloud Mail requires an app-specific password, not your Apple Account password."},
+		}, true
+	}
+	return Candidate{}, false
 }
 
 func newDiscoveryHTTPClient() *http.Client {
