@@ -23,6 +23,31 @@ type Account struct {
 	ContactAddressBooks []ContactAddressBook
 	Folders             []Folder
 	Labels              []Label
+	Identities          []AccountIdentity
+}
+
+// Identity sources. The primary identity always mirrors accounts.email_address.
+const (
+	IdentitySourcePrimary  = "primary"
+	IdentitySourceProvider = "provider"
+	IdentitySourceManual   = "manual"
+)
+
+// AccountIdentity is an address an account can send from. Email is stored
+// lowercase-trimmed; an empty Name means "use the account's display name".
+type AccountIdentity struct {
+	ID        int64  `json:"id"`
+	AccountID string `json:"account_id"`
+	Email     string `json:"email"`
+	Name      string `json:"name"`
+	Source    string `json:"source"`
+	IsDefault bool   `json:"is_default"`
+}
+
+// IdentitySuggestion is an address seen on received mail that is not yet an identity.
+type IdentitySuggestion struct {
+	Email string `json:"email"`
+	Count int    `json:"count"`
 }
 
 // DisplayLabel is how the UI names an account: label, then name, then email.

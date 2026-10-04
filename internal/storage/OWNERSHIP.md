@@ -14,6 +14,10 @@ The browser-facing handler layer uses these ownership shapes:
 - Accounts and folders are loaded from `GetAccounts*`, `GetAccountIDs`,
   `GetEmailSyncAccountIDs`, `ResolveFolderIDForUser`, or the account store's
   `GetAccountByIDForUser`.
+- Account sending identities and suggestions carry `userID` and join through
+  `accounts.user_id` (`ListAccountIdentities`, `AddManualIdentity`,
+  `DeleteIdentity`, `SetDefaultIdentity`, `IdentityForAccount`,
+  `IdentitySuggestions*`, `DismissIdentitySuggestion`).
 - Contacts, contact profiles/cards/fields, signatures, settings, suppressed
   contacts, and Web Push subscriptions carry `userID` directly.
 - Draft, outgoing-send, and mail-operation HTTP reads and retries use their
@@ -44,6 +48,9 @@ preconditions are part of their contract:
   active account sync path enumerated by `GetAllEmailSyncAccountIDs`, which
   excludes deleting accounts and accounts whose user is not active. Label
   replay independently checks the same conditions.
+- `ApplyProviderIdentities`, `IdentitiesSyncedAt`, `TouchIdentitiesSyncedAt`:
+  Gmail sync path only; `accountID` comes from an active account sync or from a
+  handler that first established ownership.
 - Queue completion, retry-state, provider UID, folder-state, body persistence,
   and attachment persistence methods are called only after one of the claims
   above or after an owned/account-scoped provider sync has established the

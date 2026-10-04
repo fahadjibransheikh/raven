@@ -493,7 +493,12 @@ func (s *AccountStore) CreateAccount(ctx context.Context, userID string, req *mo
 	initials := extractInitials(req.DisplayName)
 	color := generateColor(id)
 
-	_, err = s.db.Write().ExecContext(ctx,
+	tx, err := s.db.Write().BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("begin create account: %w", err)
+	}
+	defer tx.Rollback()
+	_, err = tx.ExecContext(ctx,
 		`INSERT INTO accounts (id, user_id, provider, provider_account_id, email_address, display_name, color, initials,
 		  imap_host, imap_port, imap_tls_mode,
 		  smtp_host, smtp_port, smtp_tls_mode,
@@ -507,6 +512,13 @@ func (s *AccountStore) CreateAccount(ctx context.Context, userID string, req *mo
 		req.SmtpUsername, encryptedSmtpPw)
 	if err != nil {
 		return nil, fmt.Errorf("insert account: %w", err)
+	}
+	// The primary sending identity always exists and mirrors the account address.
+	if err := storage.SyncPrimaryIdentityTx(ctx, tx, id); err != nil {
+		return nil, fmt.Errorf("create primary identity: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit create account: %w", err)
 	}
 
 	return &models.Account{
@@ -615,8 +627,22 @@ func (s *AccountStore) UpdateAccount(ctx context.Context, accountID string, req 
 	args = append(args, accountID)
 
 	query := fmt.Sprintf("UPDATE accounts SET %s WHERE id = ? AND COALESCE(is_deleting, 0) = 0", strings.Join(setClauses, ", "))
-	_, err := s.db.Write().ExecContext(ctx, query, args...)
-	return err
+	tx, err := s.db.Write().BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	res, err := tx.ExecContext(ctx, query, args...)
+	if err != nil {
+		return err
+	}
+	// The primary identity follows edits of the account address and name.
+	if n, _ := res.RowsAffected(); n > 0 && (req.EmailAddress != "" || req.DisplayName != "") {
+		if err := storage.SyncPrimaryIdentityTx(ctx, tx, accountID); err != nil {
+			return fmt.Errorf("sync primary identity: %w", err)
+		}
+	}
+	return tx.Commit()
 }
 
 func (s *AccountStore) FindProviderAccountID(ctx context.Context, userID, provider, providerAccountID, email string) (string, error) {

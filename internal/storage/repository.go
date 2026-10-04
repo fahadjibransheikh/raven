@@ -449,10 +449,10 @@ func (db *DB) findSubjectFallbackThreadTx(ctx context.Context, tx *sql.Tx, msgID
 
 func (db *DB) messageParticipantsTx(ctx context.Context, tx *sql.Tx, msgID int64, accountID string) map[string]bool {
 	participants := make(map[string]bool)
-	accountEmail := db.accountEmailTx(ctx, tx, accountID)
+	self := accountSelfAddressesTx(ctx, tx, accountID)
 	add := func(email string) {
 		email = strings.ToLower(strings.TrimSpace(email))
-		if email == "" || email == accountEmail {
+		if email == "" || self[email] {
 			return
 		}
 		participants[email] = true
@@ -473,12 +473,6 @@ func (db *DB) messageParticipantsTx(ctx context.Context, tx *sql.Tx, msgID int64
 		}
 	}
 	return participants
-}
-
-func (db *DB) accountEmailTx(ctx context.Context, tx *sql.Tx, accountID string) string {
-	var email string
-	_ = tx.QueryRowContext(ctx, `SELECT lower(email_address) FROM accounts WHERE id = ?`, accountID).Scan(&email)
-	return strings.TrimSpace(email)
 }
 
 func (db *DB) resolveWaitingChildrenTx(ctx context.Context, tx *sql.Tx, accountID string, parentMsgID int64, parentMessageID, threadID string) error {
@@ -4409,6 +4403,9 @@ func (db *DB) GetAccounts(ctx context.Context, userID string) ([]models.Account,
 	if err := db.attachAccountLabels(ctx, userID, accounts); err != nil {
 		return nil, err
 	}
+	if err := db.AttachAccountIdentities(ctx, userID, accounts); err != nil {
+		return nil, err
+	}
 	db.attachContactAddressBooks(ctx, userID, accounts)
 
 	return accounts, nil
@@ -4453,6 +4450,9 @@ func (db *DB) GetAccountsIncludingDeleting(ctx context.Context, userID string) (
 		accounts[i].Folders = folders
 	}
 	if err := db.attachAccountLabels(ctx, userID, accounts); err != nil {
+		return nil, err
+	}
+	if err := db.AttachAccountIdentities(ctx, userID, accounts); err != nil {
 		return nil, err
 	}
 	db.attachContactAddressBooks(ctx, userID, accounts)
