@@ -7507,19 +7507,24 @@ function selectComposeAccount(el, fromPane) {
   if (!accountId || !email) return
   var prefix = fromPane ? "compose-pane-" : "compose-"
   var idField = document.getElementById(prefix + "account-id")
+  var emailField = document.getElementById(prefix + "from-email")
   var display = document.getElementById(prefix + "from-display")
   if (idField) idField.value = accountId
+  if (emailField) emailField.value = email
   if (display) display.textContent = (name ? name + " <" : "") + email + (name ? ">" : "")
-  syncComposeAccountItems(fromPane ? "pane" : "dialog", accountId)
+  syncComposeAccountItems(fromPane ? "pane" : "dialog", accountId, email)
   _markComposeDirty(document.getElementById(prefix + "form"))
   applyDefaultComposeSignature(document.getElementById(prefix + "form"), true)
 }
 
-function syncComposeAccountItems(scope, accountId) {
+function syncComposeAccountItems(scope, accountId, email) {
   if (!scope || !accountId) return
+  var wanted = String(email || "").toLowerCase()
   var items = document.querySelectorAll('[data-compose-account-scope="' + scope + '"][data-compose-account-item]')
   for (var i = 0; i < items.length; i++) {
-    items[i].dataset.composeAccountSelected = items[i].dataset.accountId === accountId ? "true" : "false"
+    var match = items[i].dataset.accountId === accountId &&
+      (!wanted || String(items[i].dataset.accountEmail || "").toLowerCase() === wanted)
+    items[i].dataset.composeAccountSelected = match ? "true" : "false"
   }
 }
 
@@ -7529,10 +7534,12 @@ function resetComposeForm(fromPane, skipCleanup) {
   if (!form) return
   cancelComposeAutosave(form)
   if (!skipCleanup) cleanupComposeStagedUploads(form)
-  var fields = form.querySelectorAll('input[name="to"], input[name="cc"], input[name="bcc"], input[name="subject"], input[name="draft_id"], input[name="in_reply_to"], input[name="references"], textarea[name="body"], textarea[name="html_body"]')
+  var fields = form.querySelectorAll('input[name="to"], input[name="cc"], input[name="bcc"], input[name="subject"], input[name="draft_id"], input[name="from_email"], input[name="in_reply_to"], input[name="references"], textarea[name="body"], textarea[name="html_body"]')
   for (var i = 0; i < fields.length; i++) fields[i].value = ""
   var modeField = form.querySelector('input[name="compose_mode"]')
   if (modeField) modeField.value = "new"
+  var accountField = form.querySelector('input[name="account_id"]')
+  if (accountField && accountField.value) setComposeAccount(form, accountField.value, "")
   var editor = form.querySelector("[data-compose-editor]")
   if (editor) editor.innerHTML = ""
   syncComposeInlineImageInputs(form)
@@ -9719,6 +9726,7 @@ function syncComposeInlineImageInputs(form) {
 function _composeValsFromDraft(draft) {
   return {
     account_id: draft.account_id || "",
+    from_email: draft.from_email || "",
     draft_id: draft.draft_id || "",
     to: draft.to || "",
     cc: draft.cc || "",
@@ -10362,23 +10370,37 @@ function composeAccountSelfEmails(accountId) {
   return out
 }
 
-function setComposeAccount(form, accountId) {
+// setComposeAccount selects the From identity for an account. fromEmail picks
+// one of the account's identities; when it is missing or not one of them (a
+// stale value, an alias since removed) the account's default identity is used,
+// so account_id and from_email always agree.
+function setComposeAccount(form, accountId, fromEmail) {
   if (!form || !accountId) return
   var pane = form.id === "compose-pane-form"
   var prefix = pane ? "compose-pane-" : "compose-"
+  var scope = pane ? "pane" : "dialog"
   var idField = document.getElementById(prefix + "account-id")
+  var emailField = document.getElementById(prefix + "from-email")
+  if (fromEmail === undefined) fromEmail = emailField ? emailField.value : ""
+  var wanted = String(fromEmail || "").trim().toLowerCase()
   if (idField) idField.value = accountId
-  syncComposeAccountItems(pane ? "pane" : "dialog", accountId)
-  var options = document.querySelectorAll("[data-account-id]")
+  var options = document.querySelectorAll('[data-compose-account-scope="' + scope + '"][data-compose-account-item][data-account-id]')
+  if (!options.length) options = document.querySelectorAll("[data-account-id]")
+  var chosen = null, fallback = null
   for (var i = 0; i < options.length; i++) {
     if (options[i].dataset.accountId !== accountId) continue
-    var display = document.getElementById(prefix + "from-display")
-    if (display && options[i].dataset.accountEmail) {
-      var name = options[i].dataset.accountName || ""
-      var email = options[i].dataset.accountEmail
-      display.textContent = (name ? name + " <" : "") + email + (name ? ">" : "")
-    }
-    return
+    if (!fallback) fallback = options[i]
+    if (options[i].dataset.identityDefault === "true") fallback = options[i]
+    if (wanted && String(options[i].dataset.accountEmail || "").toLowerCase() === wanted) { chosen = options[i]; break }
+  }
+  chosen = chosen || fallback
+  var email = chosen ? chosen.dataset.accountEmail || "" : ""
+  if (emailField) emailField.value = email
+  syncComposeAccountItems(scope, accountId, email)
+  var display = document.getElementById(prefix + "from-display")
+  if (chosen && display && email) {
+    var name = chosen.dataset.accountName || ""
+    display.textContent = (name ? name + " <" : "") + email + (name ? ">" : "")
   }
 }
 
@@ -10435,6 +10457,7 @@ function composeValuesFromSource(source, mode) {
   composeAccountSelfEmails(source.account_id).forEach(function (email) { exclude[email] = true })
   var vals = {
     account_id: source.account_id || "",
+    from_email: source.suggested_from_email || "",
     draft_id: "",
     to: "",
     cc: "",
@@ -11498,7 +11521,7 @@ function _writeComposeFormValues(form, vals, prefix) {
   } else if (vals.account_id) {
     setComposeAccount(form, vals.account_id)
   }
-  if (vals.account_id) syncComposeAccountItems(form.id === "compose-pane-form" ? "pane" : "dialog", vals.account_id)
+  if (vals.account_id) syncComposeAccountItems(form.id === "compose-pane-form" ? "pane" : "dialog", vals.account_id, vals.from_email)
   _setComposeEditorValue(form, vals.body || "", vals.html_body || "", vals.inline_images || [])
   renderComposeAttachments(form, vals.attachments || [])
   form.dataset.composeUploadsPending = "0"

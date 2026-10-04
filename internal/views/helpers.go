@@ -153,18 +153,65 @@ func composeDefaultAccountID(accounts []models.Account) string {
 	return ""
 }
 
+// composeAccountIdentities is the account's sending identities, primary first.
+// An account with no identity rows still gets its primary address.
+func composeAccountIdentities(account models.Account) []models.AccountIdentity {
+	if len(account.Identities) > 0 {
+		return account.Identities
+	}
+	return []models.AccountIdentity{{AccountID: account.ID, Email: account.Email, Source: models.IdentitySourcePrimary, IsDefault: true}}
+}
+
+func composeDefaultIdentity(accounts []models.Account) (models.Account, models.AccountIdentity, bool) {
+	if len(accounts) == 0 {
+		return models.Account{}, models.AccountIdentity{}, false
+	}
+	identities := composeAccountIdentities(accounts[0])
+	for _, id := range identities {
+		if id.IsDefault {
+			return accounts[0], id, true
+		}
+	}
+	return accounts[0], identities[0], true
+}
+
 func composeDefaultEmail(accounts []models.Account) string {
-	if len(accounts) > 0 {
-		return accounts[0].Email
+	if _, id, ok := composeDefaultIdentity(accounts); ok {
+		return id.Email
 	}
 	return ""
 }
 
 func composeDefaultName(accounts []models.Account) string {
-	if len(accounts) > 0 {
-		return composeAccountName(accounts[0])
+	if acc, id, ok := composeDefaultIdentity(accounts); ok {
+		return composeIdentityName(acc, id)
 	}
 	return ""
+}
+
+func composeIsDefaultFrom(accounts []models.Account, account models.Account, id models.AccountIdentity) bool {
+	return account.ID == composeDefaultAccountID(accounts) && strings.EqualFold(id.Email, composeDefaultEmail(accounts))
+}
+
+// composeAccountHeading labels an account's group in the From picker.
+func composeAccountHeading(account models.Account) string {
+	if name := composeAccountName(account); name != "" {
+		return name
+	}
+	return account.Email
+}
+
+// composeIdentityName is the picker text for one identity. A lone identity
+// reads as the account always did (label, else name). Among several, it is the
+// name that will actually be sent: the identity's own, else the account name.
+func composeIdentityName(account models.Account, id models.AccountIdentity) string {
+	if len(composeAccountIdentities(account)) <= 1 {
+		return composeAccountName(account)
+	}
+	if name := strings.TrimSpace(id.Name); name != "" {
+		return name
+	}
+	return account.Name
 }
 
 // composeAccountName is the From-picker text: label, else name, never the email

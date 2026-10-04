@@ -53,6 +53,7 @@ templ ComposeDialog(accounts []models.Account) {
 			</div>
 			<div id="compose-form" class="flex flex-col flex-1 min-h-0 gap-3 pt-2">
 				<input type="hidden" name="account_id" id="compose-account-id" value={ composeDefaultAccountID(accounts) }/>
+				<input type="hidden" name="from_email" id="compose-from-email" value={ composeDefaultEmail(accounts) }/>
 				<input type="hidden" name="draft_id" id="compose-draft-id" value=""/>
 				<input type="hidden" name="compose_mode" id="compose-mode" value="new"/>
 				<input type="hidden" name="in_reply_to" id="compose-in-reply-to" value=""/>
@@ -68,23 +69,7 @@ templ ComposeDialog(accounts []models.Account) {
 								</button>
 							}
 							@dropdown.Content(dropdown.ContentProps{Class: "compose-from-menu w-80 normal-case tracking-normal"}) {
-								for _, acc := range accounts {
-									@dropdown.Item(dropdown.ItemProps{
-										Class: "compose-from-item select-item group relative justify-start pr-8 font-light outline-none transition-colors duration-150",
-										Attributes: templ.Attributes{
-											"data-compose-account-item":     "",
-											"data-compose-account-scope":    "dialog",
-											"data-compose-account-selected": fmt.Sprintf("%t", acc.ID == composeDefaultAccountID(accounts)),
-											"data-account-id":               acc.ID,
-											"data-account-email":            acc.Email,
-											"data-account-self-emails":       composeAccountSelfEmails(acc),
-											"data-account-name":             composeAccountName(acc),
-											"onclick":                       "selectComposeAccount(this)",
-										},
-									}) {
-										<span class="truncate select-item-text">{ composeAccountName(acc) } &lt;{ acc.Email }&gt;</span>
-									}
-								}
+								@composeFromItems(accounts, "dialog", "selectComposeAccount(this)")
 							}
 						}
 					</div>
@@ -510,6 +495,7 @@ templ ComposePane(accounts []models.Account) {
 				<div id="compose-pane-content" class="mx-auto flex h-full flex-col px-8 py-4">
 					<div id="compose-pane-form" class="flex flex-1 min-h-0 flex-col gap-3">
 						<input type="hidden" name="account_id" id="compose-pane-account-id" value={ composeDefaultAccountID(accounts) }/>
+						<input type="hidden" name="from_email" id="compose-pane-from-email" value={ composeDefaultEmail(accounts) }/>
 						<input type="hidden" name="draft_id" id="compose-pane-draft-id" value=""/>
 						<input type="hidden" name="compose_mode" id="compose-pane-mode" value="new"/>
 						<input type="hidden" name="in_reply_to" id="compose-pane-in-reply-to" value=""/>
@@ -525,23 +511,7 @@ templ ComposePane(accounts []models.Account) {
 									</button>
 								}
 								@dropdown.Content(dropdown.ContentProps{Class: "compose-from-menu w-80 normal-case tracking-normal"}) {
-									for _, acc := range accounts {
-										@dropdown.Item(dropdown.ItemProps{
-											Class: "compose-from-item select-item group relative justify-start pr-8 font-light outline-none transition-colors duration-150",
-											Attributes: templ.Attributes{
-												"data-compose-account-item":     "",
-												"data-compose-account-scope":    "pane",
-												"data-compose-account-selected": fmt.Sprintf("%t", acc.ID == composeDefaultAccountID(accounts)),
-												"data-account-id":               acc.ID,
-												"data-account-email":            acc.Email,
-											"data-account-self-emails":       composeAccountSelfEmails(acc),
-												"data-account-name":             composeAccountName(acc),
-												"onclick":                       "selectComposeAccount(this, true)",
-											},
-										}) {
-											<span class="truncate select-item-text">{ composeAccountName(acc) } &lt;{ acc.Email }&gt;</span>
-										}
-									}
+									@composeFromItems(accounts, "pane", "selectComposeAccount(this, true)")
 								}
 							}
 						</div>
@@ -605,4 +575,36 @@ templ ComposePane(accounts []models.Account) {
 			</div>
 		</div>
 	</div>
+}
+
+// composeFromItems renders the From picker: one item per sending identity. An
+// account with several identities gets a heading (its label); an account with
+// only its primary address renders as a single plain item, as it always did.
+templ composeFromItems(accounts []models.Account, scope string, onclick string) {
+	for _, acc := range accounts {
+		{{ identities := composeAccountIdentities(acc) }}
+		if len(identities) > 1 {
+			@dropdown.Label(dropdown.LabelProps{Class: "text-xs text-muted-foreground font-medium", Attributes: templ.Attributes{"data-compose-account-heading": ""}}) {
+				{ composeAccountHeading(acc) }
+			}
+		}
+		for _, id := range identities {
+			@dropdown.Item(dropdown.ItemProps{
+				Class: "compose-from-item select-item group relative justify-start pr-8 font-light outline-none transition-colors duration-150",
+				Attributes: templ.Attributes{
+					"data-compose-account-item":     "",
+					"data-compose-account-scope":    scope,
+					"data-compose-account-selected": fmt.Sprintf("%t", composeIsDefaultFrom(accounts, acc, id)),
+					"data-account-id":               acc.ID,
+					"data-account-email":            id.Email,
+					"data-identity-default":         fmt.Sprintf("%t", id.IsDefault),
+					"data-account-self-emails":      composeAccountSelfEmails(acc),
+					"data-account-name":             composeIdentityName(acc, id),
+					"onclick":                       onclick,
+				},
+			}) {
+				<span class="truncate select-item-text">{ composeIdentityName(acc, id) } &lt;{ id.Email }&gt;</span>
+			}
+		}
+	}
 }
