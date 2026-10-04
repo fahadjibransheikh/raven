@@ -19,7 +19,7 @@ import (
 templ AppIcon() {
 	<link rel="icon" type="image/svg+xml" href="/assets/logo.svg"/>
 	<link rel="manifest" href="/assets/manifest.webmanifest"/>
-	<link rel="apple-touch-icon" href="/assets/logo.png"/>
+	<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png"/>
 	<meta name="apple-mobile-web-app-capable" content="yes"/>
 	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 }
@@ -366,7 +366,7 @@ templ AdminLayout(uiSettings map[string]string, userData AdminUsersData, avatarS
 	<html lang="en" class={ themeClass(uiSettings) } data-theme={ themeStyle(uiSettings) }>
 		<head>
 			<meta charset="UTF-8"/>
-			<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<title>Admin — Raven</title>
 			@AppIcon()
 			<link rel="preconnect" href="https://fonts.googleapis.com"/>
@@ -425,6 +425,8 @@ templ SavedPanelSizeStyle() {
 	<script>
 		(function() {
 			document.documentElement.classList.add("js");
+			// Set before first paint so phones never flash the desktop panes; phone-layout.js keeps it in sync.
+			if (window.matchMedia && window.matchMedia("(max-width: 1023.98px)").matches) document.documentElement.setAttribute("data-phone", "");
 
 			var settings = {};
 			try {

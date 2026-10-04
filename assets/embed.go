@@ -8,5 +8,5 @@ import "embed"
 //
 // Build with `-tags embedded_assets` after generating css/output.css.
 //
-//go:embed css/output.css js/*.js logo.svg logo.png manifest.webmanifest
+//go:embed css/output.css js/*.js logo.svg logo.png apple-touch-icon.png manifest.webmanifest
 var FS embed.FS
