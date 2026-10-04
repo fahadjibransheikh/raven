@@ -260,6 +260,7 @@ pub fn run() {
         // via invoke(), so like the global shortcut they need no capability.
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_notification::init())
         // Remembers the main window's size, position and maximized state
         // across launches (saved on close/quit, restored when the window is
         // built in setup()). VISIBLE is left out so Raven always opens shown.

@@ -3699,7 +3699,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function updateDesktopNotificationControls() {
     var supported = webPushSupported()
-    var permission = "Notification" in window ? Notification.permission : "unsupported"
+    var permission = currentNotificationPermission()
+    var native = !!tauriNotifications()
     var enabled = notificationsEnabled()
     var mode = notificationMode()
     var toggles = document.querySelectorAll("[data-desktop-notifications-switch]")
@@ -3709,7 +3710,9 @@ document.addEventListener("DOMContentLoaded", function () {
     var labels = document.querySelectorAll("[data-desktop-notifications-status]")
     for (var j = 0; j < labels.length; j++) {
       if (!enabled || mode === "off") labels[j].textContent = "Notifications are off."
+      else if (native && permission === "denied") labels[j].textContent = "Notifications are blocked. Enable Raven in System Settings > Notifications."
       else if (permission === "denied") labels[j].textContent = "Notifications are blocked in this browser."
+      else if (native) labels[j].textContent = "Desktop notifications are on. If none appear, enable Raven in System Settings > Notifications."
       else if (supported) labels[j].textContent = "Web Push is available in this browser."
       else if (browserNotificationsSupported()) labels[j].textContent = "Browser-tab notifications are available while Raven is open."
       else labels[j].textContent = "No notification method is available for this browser/origin."
@@ -3787,7 +3790,30 @@ document.addEventListener("DOMContentLoaded", function () {
     return location.hostname === "localhost" || location.hostname === "127.0.0.1" || location.hostname === "[::1]"
   }
 
+  // The Tauri desktop app (WKWebView on macOS) has no web Notification
+  // permission prompt, so there the notification plugin's global API is used.
+  // Feature-detected, so a normal browser never takes this path.
+  function tauriNotifications() {
+    var n = window.__TAURI__ && window.__TAURI__.notification
+    if (n && typeof n.isPermissionGranted === "function" && typeof n.requestPermission === "function" && typeof n.sendNotification === "function") return n
+    return null
+  }
+
+  var _nativePermission = "default"
+
+  function currentNotificationPermission() {
+    if (tauriNotifications()) return _nativePermission
+    return "Notification" in window ? Notification.permission : "unsupported"
+  }
+
+  function normalizeNativePermission(value) {
+    if (value === true || value === "granted") return "granted"
+    if (value === false || value === "denied") return "denied"
+    return "default"
+  }
+
   function browserNotificationsSupported() {
+    if (tauriNotifications()) return true
     return "Notification" in window && (window.isSecureContext || isLoopbackHost())
   }
 
@@ -3801,7 +3827,29 @@ document.addEventListener("DOMContentLoaded", function () {
     for (var i = 0; i < nodes.length; i++) nodes[i].textContent = "Active method: " + label
   }
 
+  function requestNativeNotificationPermission(native, prompt) {
+    return native.isPermissionGranted().then(function (granted) {
+      if (granted === true || !prompt) return granted
+      // On macOS the plugin reports "granted" without asking; the system prompt
+      // appears on the first notification and any denial lives in System Settings.
+      return native.requestPermission()
+    }).then(function (result) {
+      _nativePermission = normalizeNativePermission(result)
+      // Sending one now makes macOS show its allow/deny prompt immediately
+      // instead of on the first real message.
+      if (prompt && _nativePermission === "granted") native.sendNotification({ title: "Raven notifications are on", body: "New mail will appear here." })
+      updateDesktopNotificationControls()
+      return _nativePermission
+    }, function () {
+      _nativePermission = "denied"
+      updateDesktopNotificationControls()
+      return _nativePermission
+    })
+  }
+
   function requestNotificationPermission(prompt) {
+    var native = tauriNotifications()
+    if (native) return requestNativeNotificationPermission(native, prompt)
     if (!browserNotificationsSupported()) return Promise.resolve("unsupported")
     if (Notification.permission === "granted" || Notification.permission === "denied" || !prompt) return Promise.resolve(Notification.permission)
     try {
@@ -3850,6 +3898,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function webPushSupported() {
+    if (tauriNotifications()) return false
     return window.isSecureContext && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window
   }
 
@@ -3914,7 +3963,7 @@ document.addEventListener("DOMContentLoaded", function () {
   function showBrowserTabNewMailNotification(data) {
     if (!notificationsEnabled()) return
     if (_notificationActiveMethod !== "browser_tab") return
-    if (!browserNotificationsSupported() || Notification.permission !== "granted") return
+    if (!browserNotificationsSupported() || currentNotificationPermission() !== "granted") return
     if (!document.hidden && document.hasFocus && document.hasFocus()) return
 
     var role = String(data.folder_role || "")
@@ -3930,13 +3979,23 @@ document.addEventListener("DOMContentLoaded", function () {
     var body = unreadCount === 1 ? subject : sender + ": " + subject
     var icon = data.avatar_url || data.icon || "/assets/logo.png"
 
-    var notification = new Notification(title, {
+    deliverNotification(title, {
       body: body,
       tag: "gofer-new-mail-" + (data.account_id || "") + "-" + (data.folder_id || folderName),
       icon: icon,
       badge: "/assets/logo.png",
       data: { folderID: data.folder_id || "" },
     })
+  }
+
+  function deliverNotification(title, options) {
+    var native = tauriNotifications()
+    if (native) {
+      // Desktop plugin notifications have no click callback; just show it.
+      native.sendNotification({ title: title, body: options.body })
+      return
+    }
+    var notification = new Notification(title, options)
     notification.onclick = function () {
       window.focus()
       if (notification.data && notification.data.folderID) {
@@ -3946,6 +4005,8 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     setTimeout(function () { notification.close() }, 12000)
   }
+
+  window.goferNotifications = { request: requestNotificationPermission, deliver: deliverNotification }
 
   function openContactDetail(contactID) {
     var detail = document.getElementById("contacts-detail")
