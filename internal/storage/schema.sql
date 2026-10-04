@@ -292,6 +292,28 @@ CREATE TABLE IF NOT EXISTS message_mutations (
     UNIQUE(message_id, kind, folder_id)
 );
 
+CREATE TABLE IF NOT EXISTS folder_read_mutations (
+    id TEXT PRIMARY KEY,
+    account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    folder_id TEXT NOT NULL REFERENCES folders(id) ON DELETE CASCADE,
+    provider_type TEXT NOT NULL CHECK (provider_type IN ('gmail', 'outlook', 'imap')),
+    cutoff_at DATETIME NOT NULL,
+    cutoff_message_id INTEGER NOT NULL DEFAULT 0,
+    max_uid INTEGER NOT NULL DEFAULT 0,
+    uid_validity INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'failed')),
+    attempt_count INTEGER NOT NULL DEFAULT 0,
+    last_error TEXT NOT NULL DEFAULT '',
+    locked_at DATETIME,
+    next_attempt_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(folder_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_folder_read_mutations_due
+ON folder_read_mutations(status, next_attempt_at, created_at);
+
 CREATE TABLE IF NOT EXISTS label_aliases (
     account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     provider_type TEXT NOT NULL,
@@ -1350,4 +1372,4 @@ CREATE INDEX IF NOT EXISTS idx_mail_security_exceptions_lookup
 ON mail_security_exceptions(kind, protocol, host, port);
 
 -- Schema version marker for fresh installs
-INSERT OR REPLACE INTO schema_version (version) VALUES (94);
+INSERT OR REPLACE INTO schema_version (version) VALUES (95);

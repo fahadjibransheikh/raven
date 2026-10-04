@@ -77,6 +77,7 @@ type Handler struct {
 	sentCopyIMAPFactory        sentCopyIMAPClientFactory
 	messageMutationWake        chan struct{}
 	messageMutationIMAPFactory messageMutationIMAPClientFactory
+	folderReadIMAPFactory      func(context.Context, *models.AccountConfig, string) (folderReadIMAPClient, error)
 	remoteResourceDownloader   func(string) ([]byte, error)
 	providerAvatarHTTPClient   *http.Client
 	retentionMu                sync.RWMutex
@@ -512,6 +513,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/mail/sync/accounts/{id}/repair", h.handleRepairMailAccount)
 	mux.HandleFunc("POST /api/mail/sync/cancel", h.handleCancelSyncMail)
 	mux.HandleFunc("GET /api/folders/unread", h.handleFolderUnreadCounts)
+	mux.HandleFunc("POST /api/folders/{id}/read-all", h.handleMarkFolderRead)
 	adminRoute("GET /api/system/processing", h.handleProcessingStatus)
 	mux.HandleFunc("POST /api/messages/{id}/prefetch-body", h.handlePrefetchBody)
 	mux.HandleFunc("GET /api/compose/source", h.handleComposeSource)

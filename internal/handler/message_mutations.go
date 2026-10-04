@@ -105,6 +105,9 @@ func (h *Handler) runDueMessageMutations(ctx context.Context) {
 			return
 		}
 		if len(mutations) == 0 {
+			if h.runDueFolderReads(ctx) {
+				continue
+			}
 			return
 		}
 		for _, mutation := range mutations {

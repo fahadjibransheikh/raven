@@ -194,3 +194,36 @@ func (c *Client) DeleteMessagesIfUIDValidity(ctx context.Context, folderRemoteNa
 	_, err = expungeCmd.Collect()
 	return false, err
 }
+
+// AddFlagsUIDRangeIfUIDValidity issues one `UID STORE 1:maxUID +FLAGS.SILENT`
+// for the whole range, covering mail that was never downloaded locally. It
+// returns true without storing when UIDVALIDITY no longer matches, because the
+// UIDs then identify different messages.
+func (c *Client) AddFlagsUIDRangeIfUIDValidity(ctx context.Context, folderRemoteName string, maxUID uint32, expectedUIDValidity uint32, flags []imap.Flag) (bool, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if maxUID == 0 {
+		return false, nil
+	}
+	if c.closed {
+		return false, fmt.Errorf("client is closed")
+	}
+	selectData, err := c.client.Select(folderRemoteName, nil).Wait()
+	if err != nil {
+		return false, fmt.Errorf("select %s: %w", folderRemoteName, err)
+	}
+	defer c.client.Unselect()
+	if uidValidityChanged(expectedUIDValidity, uint32(selectData.UIDValidity)) {
+		return true, nil
+	}
+
+	var uidSet imap.UIDSet
+	uidSet.AddRange(1, imap.UID(maxUID))
+	storeCmd := c.client.Store(uidSet, &imap.StoreFlags{
+		Op:     imap.StoreFlagsAdd,
+		Silent: true,
+		Flags:  flags,
+	}, nil)
+	return false, storeCmd.Close()
+}

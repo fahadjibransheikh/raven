@@ -557,7 +557,19 @@ func (db *DB) MarkInterruptedMessageMutationsPending(ctx context.Context) (int64
 	if err != nil {
 		return 0, err
 	}
-	return result.RowsAffected()
+	count, err := result.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+	folderResult, err := db.Write().ExecContext(ctx, `
+		UPDATE folder_read_mutations
+		SET status = ?, locked_at = NULL, next_attempt_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+		WHERE status = ?`, MessageMutationPending, MessageMutationProcessing)
+	if err != nil {
+		return 0, err
+	}
+	folderCount, err := folderResult.RowsAffected()
+	return count + folderCount, err
 }
 
 func (db *DB) CompleteMessageMutation(ctx context.Context, id string) error {
@@ -680,6 +692,22 @@ func (db *DB) GetMessageMutationInternal(ctx context.Context, id string) (Messag
 }
 
 func resolveMessageMutationTargetsTx(ctx context.Context, tx *sql.Tx, messageID int64, folderID string, read, starred *bool) error {
+	if read != nil && !*read {
+		// A queued folder-wide read covers messages at or below its cutoff id;
+		// without this a sync before the provider call lands would flip them back.
+		var covered int
+		if err := tx.QueryRowContext(ctx, `
+			SELECT EXISTS(
+				SELECT 1 FROM folder_read_mutations fr
+				JOIN message_folder_state mfs ON mfs.folder_id = fr.folder_id AND mfs.message_id = ? AND mfs.is_deleted = 0
+				WHERE ? <= fr.cutoff_message_id AND (fr.provider_type != 'imap' OR fr.folder_id = ?)
+			)`, messageID, messageID, folderID).Scan(&covered); err != nil {
+			return err
+		}
+		if covered != 0 {
+			*read = true
+		}
+	}
 	rows, err := tx.QueryContext(ctx, messageMutationSelect+`
 		WHERE message_id = ? AND (folder_id = '' OR folder_id = ?)`, messageID, folderID)
 	if err != nil {
