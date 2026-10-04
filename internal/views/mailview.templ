@@ -472,6 +472,9 @@ templ MailViewThreadItemActions(item *models.ThreadItem) {
 templ MailViewHeader(email *models.Email) {
 	<div class="mail-view-toolbar flex items-center justify-between px-6 py-2.5">
 		<div class="mail-view-actions flex items-center gap-1 min-w-0">
+			<button type="button" class="inline-flex lg:hidden h-8 w-8 shrink-0 items-center justify-center rounded-md text-ink/60 hover:text-ink/80 hover:bg-ink/5" aria-label="Back to list" onclick="clearActiveMailSelection()">
+				@icon.ChevronLeft(icon.Props{Class: "size-5"})
+			</button>
 			@tooltip.Tooltip() {
 				@tooltip.Trigger() {
 					@button.Button(button.Props{

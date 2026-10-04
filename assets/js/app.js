@@ -1199,6 +1199,7 @@ document.addEventListener("DOMContentLoaded", function () {
   function setupMailListActions() {
     window.syncMailSelectionControls = syncMailSelectionControls
     window.clearMailSelection = clearMailSelection
+    window.clearActiveMailSelection = clearActiveMailSelection
     window.applyOptimisticMailRemove = applyOptimisticRemove
 
     document.addEventListener("click", function (e) {
