@@ -208,6 +208,7 @@ func foreignMessageActionRequests(fixture messageActionOwnershipFixture) []messa
 		{name: "label message", method: http.MethodPost, path: "/api/messages/" + id + "/label", pathValues: map[string]string{"id": id}, body: url.Values{"label": {"Projects"}}.Encode(), contentType: "application/x-www-form-urlencoded", handle: fixture.handler.handleLabelMessage},
 		{name: "unlabel message", method: http.MethodPost, path: "/api/messages/" + id + "/unlabel", pathValues: map[string]string{"id": id}, body: url.Values{"label": {"Projects"}}.Encode(), contentType: "application/x-www-form-urlencoded", handle: fixture.handler.handleUnlabelMessage},
 		{name: "bulk read", method: http.MethodPost, path: "/api/messages/read", body: bulk(""), contentType: "application/json", handle: fixture.handler.handleMarkMessagesRead},
+		{name: "bulk unread", method: http.MethodPost, path: "/api/messages/read", body: bulk(`,"state":"unread"`), contentType: "application/json", handle: fixture.handler.handleMarkMessagesRead},
 		{name: "bulk star", method: http.MethodPost, path: "/api/messages/star", body: bulk(`,"state":"starred"`), contentType: "application/json", handle: fixture.handler.handleMarkMessagesStarred},
 		{name: "bulk archive", method: http.MethodPost, path: "/api/messages/archive", body: bulk(""), contentType: "application/json", handle: fixture.handler.handleArchiveMessages},
 		{name: "bulk delete", method: http.MethodPost, path: "/api/messages/delete", body: bulk(""), contentType: "application/json", handle: fixture.handler.handleDeleteMessages},
@@ -411,5 +412,59 @@ func TestOwnedRemoteContentApprovalFetchesAndPersists(t *testing.T) {
 	if bodyPath == fixture.bodyPath || allowed != 1 || senderMarkers != 1 {
 		t.Fatalf("remote content body=%q original=%q allowed=%d sender_markers=%d",
 			bodyPath, fixture.bodyPath, allowed, senderMarkers)
+	}
+}
+
+func TestBulkReadHonoursUnreadState(t *testing.T) {
+	fixture := newMessageActionOwnershipFixture(t)
+	ctx := t.Context()
+	const siblingID = int64(103)
+	if _, err := fixture.db.Write().ExecContext(ctx, `
+		INSERT INTO messages (id, account_id, internet_message_id, thread_id, subject, from_email, snippet)
+		VALUES (?, 'victim-account', '<victim-sibling@example.com>', 'victim-thread', 'Sibling', 'sender@example.com', 'x');
+		INSERT INTO message_folder_state (message_id, folder_id, remote_uid) VALUES (?, 'victim-inbox', 103)`,
+		siblingID, siblingID); err != nil {
+		t.Fatalf("seed sibling: %v", err)
+	}
+	victim := strconv.FormatInt(fixture.victimMessageID, 10)
+	post := func(body string) {
+		t.Helper()
+		rec := executeMessageActionRequest(t, messageActionRequest{method: http.MethodPost, path: "/api/messages/read", body: body, contentType: "application/json", handle: fixture.handler.handleMarkMessagesRead}, ownerRequest)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("status = %d body = %q", rec.Code, rec.Body.String())
+		}
+	}
+	state := func(id int64) (isRead int, target string, count int) {
+		t.Helper()
+		if err := fixture.db.Read().QueryRowContext(ctx, `SELECT is_read FROM message_folder_state WHERE message_id = ?`, id).Scan(&isRead); err != nil {
+			t.Fatalf("read state: %v", err)
+		}
+		_ = fixture.db.Read().QueryRowContext(ctx, `SELECT COUNT(*) FROM message_mutations WHERE message_id = ? AND kind = 'read'`, id).Scan(&count)
+		if count > 0 {
+			if err := fixture.db.Read().QueryRowContext(ctx, `SELECT CAST(target_value AS TEXT) FROM message_mutations WHERE message_id = ? AND kind = 'read' LIMIT 1`, id).Scan(&target); err != nil {
+				t.Fatalf("read mutation: %v", err)
+			}
+		}
+		return
+	}
+
+	// Default (no state) still marks read.
+	post(`{"targets":[{"id":"` + victim + `"}]}`)
+	if r, tv, n := state(fixture.victimMessageID); r != 1 || tv != "1" || n == 0 {
+		t.Fatalf("mark read: is_read=%d target=%q mutations=%d", r, tv, n)
+	}
+	// Single-message unread.
+	post(`{"targets":[{"id":"` + victim + `"}],"state":"unread"}`)
+	if r, tv, _ := state(fixture.victimMessageID); r != 0 || tv != "0" {
+		t.Fatalf("unread message: is_read=%d target=%q", r, tv)
+	}
+	// Thread unread covers the sibling too.
+	post(`{"targets":[{"id":"` + victim + `"}]}`)
+	post(`{"targets":[{"id":"` + victim + `","thread":true}]}`)
+	post(`{"targets":[{"id":"` + victim + `","thread":true}],"state":"unread"}`)
+	for _, id := range []int64{fixture.victimMessageID, siblingID} {
+		if r, tv, n := state(id); r != 0 || tv != "0" || n == 0 {
+			t.Fatalf("unread thread message %d: is_read=%d target=%q mutations=%d", id, r, tv, n)
+		}
 	}
 }

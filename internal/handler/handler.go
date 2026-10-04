@@ -5636,6 +5636,8 @@ func (h *Handler) handleMarkMessagesRead(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
+	// Absent/"read" marks read; "unread"/"false" marks unread (mirrors the starred handler).
+	targetRead := payload.State != "unread" && payload.State != "false"
 
 	ctx := context.WithoutCancel(r.Context())
 	targets, err := h.resolveOwnedMessageTargets(ctx, messageBulkTargets(payload), strings.TrimSpace(payload.FolderID), true)
@@ -5649,7 +5651,7 @@ func (h *Handler) handleMarkMessagesRead(w http.ResponseWriter, r *http.Request)
 		for _, info := range target.Infos {
 			messageIDs = append(messageIDs, info.MessageID)
 		}
-		if err := h.db.SetMessagesReadAndQueueForUser(ctx, messageIDs, true, h.userID(ctx)); err != nil {
+		if err := h.db.SetMessagesReadAndQueueForUser(ctx, messageIDs, targetRead, h.userID(ctx)); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
