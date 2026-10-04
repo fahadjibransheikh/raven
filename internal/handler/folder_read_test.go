@@ -359,3 +359,85 @@ func TestFolderReadWorkerOutlookPagesAndBatchesByTwenty(t *testing.T) {
 		t.Fatalf("applied job still queued (%d, %v)", jobs, err)
 	}
 }
+
+func TestFolderReadJobIsDroppedAfterMaxAttemptsAndSyncReconciles(t *testing.T) {
+	ctx := t.Context()
+	h, db := newGmailAPITestHandler(t, ctx)
+	if err := db.UpsertFolders(ctx, []storage.UpsertFolderInput{{
+		ID: "acc_inbox", AccountID: "acc", RemoteID: "INBOX", ProviderRemoteID: "INBOX", Name: "Inbox", Role: "inbox", Selectable: true,
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	sync := func(read bool) {
+		if _, err := db.UpsertProviderSyncMessages(ctx, []storage.ProviderSyncMessage{{
+			AccountID: "acc", FolderID: "acc_inbox", ProviderMessageID: "g1", InternetMessageID: "<g1@example.com>",
+			Subject: "S", FromEmail: "s@example.com", DateSent: time.Now(), DateReceived: time.Now(), IsRead: read,
+		}}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	isRead := func() bool {
+		var n int
+		if err := db.Read().QueryRow(`SELECT is_read FROM message_folder_state`).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n == 1
+	}
+	sync(false)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "label gone", http.StatusNotFound)
+	}))
+	defer server.Close()
+	previous := gmailAPIBaseURL
+	gmailAPIBaseURL = server.URL
+	t.Cleanup(func() { gmailAPIBaseURL = previous })
+	if _, err := db.MarkFolderReadAndQueueForUser(ctx, "default", "acc_inbox", time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	sync(false)
+	if !isRead() {
+		t.Fatal("queued job should pin the message read")
+	}
+	for attempt := 1; attempt <= folderReadMaxAttempts; attempt++ {
+		var jobs int
+		if err := db.Read().QueryRow(`SELECT COUNT(*) FROM folder_read_mutations`).Scan(&jobs); err != nil || jobs != 1 {
+			t.Fatalf("before attempt %d: jobs=%d err=%v", attempt, jobs, err)
+		}
+		if _, err := db.Write().Exec(`UPDATE folder_read_mutations SET next_attempt_at = CURRENT_TIMESTAMP`); err != nil {
+			t.Fatal(err)
+		}
+		h.runDueMessageMutations(ctx)
+	}
+	var jobs int
+	if err := db.Read().QueryRow(`SELECT COUNT(*) FROM folder_read_mutations`).Scan(&jobs); err != nil || jobs != 0 {
+		t.Fatalf("job survived %d failures (jobs=%d, %v)", folderReadMaxAttempts, jobs, err)
+	}
+	sync(false)
+	if isRead() {
+		t.Fatal("sync with read=false was still overridden after the job was dropped")
+	}
+}
+
+func TestFolderReadJobForMissingFolderIsRemoved(t *testing.T) {
+	h, db := seedFolderReadHandler(t)
+	if _, err := db.MarkFolderReadAndQueueForUser(t.Context(), "owner", "victim-inbox", time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	// Simulate the folder row vanishing without the FK cascade (e.g. a partial failure path).
+	jobs, err := db.ClaimDueFolderReadMutations(t.Context(), time.Now().Add(time.Minute), 5)
+	if err != nil || len(jobs) != 1 {
+		t.Fatalf("claim = %v, %v", jobs, err)
+	}
+	if _, err := db.Write().Exec(`PRAGMA foreign_keys = OFF`); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = db.Write().Exec(`PRAGMA foreign_keys = ON`) })
+	if _, err := db.Write().Exec(`DELETE FROM folders WHERE id = 'victim-inbox'`); err != nil {
+		t.Fatal(err)
+	}
+	h.applyQueuedFolderRead(t.Context(), jobs[0])
+	var n int
+	if err := db.Read().QueryRow(`SELECT COUNT(*) FROM folder_read_mutations`).Scan(&n); err != nil || n != 0 {
+		t.Fatalf("job for missing folder remains (%d, %v)", n, err)
+	}
+}

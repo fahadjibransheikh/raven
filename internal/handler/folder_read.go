@@ -26,6 +26,14 @@ import (
 // just resumes on the next retry.
 const folderReadTimeout = 20 * time.Minute
 
+// While a job is queued, sync treats every message at or below its cutoff as
+// read, so a job that can never succeed (revoked auth, deleted label) would pin
+// the folder read forever. The per-message worker has no attempt limit; for
+// folder jobs 8 attempts spans about an hour with the existing backoff
+// (30s doubling to 32m), enough for outages, then the job is dropped and sync
+// reconciles from the server.
+const folderReadMaxAttempts = 8
+
 const (
 	gmailListPageSize    = 500  // users.messages.list maxResults ceiling
 	gmailBatchModifyMax  = 1000 // users.messages.batchModify ids limit
@@ -98,6 +106,13 @@ func (h *Handler) applyQueuedFolderRead(parent context.Context, job storage.Fold
 	ctx, cancel := context.WithTimeout(parent, folderReadTimeout)
 	defer cancel()
 	err := h.applyRemoteFolderRead(ctx, job)
+	if err != nil && job.AttemptCount >= folderReadMaxAttempts {
+		log.Printf("folder-read: giving up account=%s folder=%s after %d attempts: %v", job.AccountID, job.FolderID, job.AttemptCount, err)
+		if dbErr := h.db.CompleteFolderReadMutation(context.Background(), job.ID); dbErr != nil {
+			log.Printf("folder-read: drop abandoned job id=%s: %v", job.ID, dbErr)
+		}
+		return
+	}
 	if err != nil {
 		nextAttempt := time.Now().Add(sentCopyRetryDelay(job.AttemptCount))
 		if dbErr := h.db.FinishFolderReadMutationWithError(context.Background(), job.ID, err.Error(), nextAttempt); dbErr != nil {
@@ -193,6 +208,8 @@ func (h *Handler) markGmailLabelRead(ctx context.Context, token, labelID string,
 	for {
 		query := url.Values{}
 		query.Set("labelIds", labelID)
+		// before: takes epoch seconds for an exact (timezone-free) instant:
+		// https://developers.google.com/workspace/gmail/api/guides/filtering
 		query.Set("q", "is:unread before:"+strconv.FormatInt(cutoff.Unix(), 10))
 		query.Set("maxResults", strconv.Itoa(gmailListPageSize))
 		query.Set("includeSpamTrash", "true") // otherwise SPAM and TRASH labels list nothing
