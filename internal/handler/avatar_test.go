@@ -356,6 +356,12 @@ func TestHandleAvatarSendersUsesProviderContactAvatarsFromAllWebmailUsers(t *tes
 }
 
 func TestReuseStoredDomainIconAvatarMarksSenderFound(t *testing.T) {
+	// Expiry times are compared against SQLite's UTC CURRENT_TIMESTAMP, so
+	// run west of UTC to catch local-time values that look already expired.
+	originalLocal := time.Local
+	time.Local = time.FixedZone("UTC-7", -7*60*60)
+	defer func() { time.Local = originalLocal }()
+
 	ctx := context.Background()
 	dir := t.TempDir()
 	db, err := storage.New(filepath.Join(dir, "gofer.db"))

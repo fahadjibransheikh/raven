@@ -546,7 +546,7 @@ func (db *DB) SaveSenderAvatarFound(ctx context.Context, hash, email, source, co
 		 	expires_at = excluded.expires_at,
 		 	next_retry_at = NULL,
 		 	error = '',
-		 	updated_at = CURRENT_TIMESTAMP`, strings.ToLower(strings.TrimSpace(hash)), strings.ToLower(strings.TrimSpace(email)), source, gravatarStatus, gravatarStatus, bimiStatus, bimiStatus, contentType, data, storagePath, expiresAt)
+		 	updated_at = CURRENT_TIMESTAMP`, strings.ToLower(strings.TrimSpace(hash)), strings.ToLower(strings.TrimSpace(email)), source, gravatarStatus, gravatarStatus, bimiStatus, bimiStatus, contentType, data, storagePath, formatDBTime(expiresAt))
 	return err
 }
 
@@ -583,7 +583,7 @@ func (db *DB) SaveSenderAvatarMissing(ctx context.Context, hash, email, source s
 		 	expires_at = excluded.expires_at,
 		 	next_retry_at = NULL,
 		 	error = '',
-		 	updated_at = CURRENT_TIMESTAMP`, strings.ToLower(strings.TrimSpace(hash)), strings.ToLower(strings.TrimSpace(email)), source, gravatarStatus, gravatarStatus, bimiStatus, bimiStatus, expiresAt)
+		 	updated_at = CURRENT_TIMESTAMP`, strings.ToLower(strings.TrimSpace(hash)), strings.ToLower(strings.TrimSpace(email)), source, gravatarStatus, gravatarStatus, bimiStatus, bimiStatus, formatDBTime(expiresAt))
 	return err
 }
 
@@ -612,7 +612,7 @@ func (db *DB) SaveSenderAvatarError(ctx context.Context, hash, email, source, me
 		 	expires_at = NULL,
 		 	next_retry_at = excluded.next_retry_at,
 		 	error = excluded.error,
-		 	updated_at = CURRENT_TIMESTAMP`, strings.ToLower(strings.TrimSpace(hash)), strings.ToLower(strings.TrimSpace(email)), source, gravatarStatus, gravatarStatus, bimiStatus, bimiStatus, nextRetryAt, message)
+		 	updated_at = CURRENT_TIMESTAMP`, strings.ToLower(strings.TrimSpace(hash)), strings.ToLower(strings.TrimSpace(email)), source, gravatarStatus, gravatarStatus, bimiStatus, bimiStatus, formatDBTime(nextRetryAt), message)
 	return err
 }
 
