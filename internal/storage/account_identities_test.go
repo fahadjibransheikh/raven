@@ -262,8 +262,21 @@ func seedReceived(t *testing.T, db *DB, accountID, from string, to ...string) {
 func TestIdentitySuggestions(t *testing.T) {
 	ctx := context.Background()
 	db := newIdentityTestDB(t)
+	for i := 0; i < 3; i++ { // reached us with only this address named: likely an alias
+		seedReceived(t, db, "a1", "friend@x.com", "Hello@Example.com")
+	}
+	for i := 0; i < 4; i++ { // colleague on a thread that names us: not an alias
+		seedReceived(t, db, "a1", "friend@x.com", "colleague@example.com", "me@example.com")
+	}
+	// The user's other account forwards into this one: its address is ours, not a suggestion.
+	if _, err := db.Write().Exec(`INSERT INTO accounts (id, user_id, provider, email_address, display_name) VALUES ('a3','u1','imap','Second@Example.com','Me')`); err != nil {
+		t.Fatal(err)
+	}
 	for i := 0; i < 3; i++ {
-		seedReceived(t, db, "a1", "friend@x.com", "Hello@Example.com", "me@example.com")
+		seedReceived(t, db, "a1", "friend@x.com", "second@example.com")
+	}
+	for i := 0; i < 4; i++ { // several recipients, none of them us (Bcc): ambiguous, skipped
+		seedReceived(t, db, "a1", "friend@x.com", "group1@example.com", "group2@example.com")
 	}
 	for i := 0; i < 2; i++ { // below threshold
 		seedReceived(t, db, "a1", "friend@x.com", "rare@example.com")
