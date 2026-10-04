@@ -81,8 +81,11 @@ func TestMicrosoftAccountOAuthURLForcesConsentForContacts(t *testing.T) {
 			t.Fatalf("scope = %q, want Graph scope %q", values.Get("scope"), scope)
 		}
 	}
-	if strings.Contains(values.Get("scope"), "outlook.office.com/IMAP") || strings.Contains(values.Get("scope"), "outlook.office.com/SMTP") {
-		t.Fatalf("scope = %q, must not request Outlook IMAP/SMTP scopes", values.Get("scope"))
+	if !strings.Contains(values.Get("scope"), microsoftSMTPSendScope) {
+		t.Fatalf("scope = %q, want SMTP.Send so alias sends can use Microsoft SMTP", values.Get("scope"))
+	}
+	if strings.Contains(values.Get("scope"), "outlook.office.com/IMAP") {
+		t.Fatalf("scope = %q, must not request Outlook IMAP scopes", values.Get("scope"))
 	}
 }
 
@@ -124,6 +127,9 @@ func TestExchangeMicrosoftAccountCodeRequestsGraphMailScopes(t *testing.T) {
 	}
 	if gotScope != strings.Join(microsoftAccountTokenExchangeScopes(), " ") {
 		t.Fatalf("scope = %q, want Microsoft token exchange scopes", gotScope)
+	}
+	if strings.Contains(gotScope, "outlook.office.com") {
+		t.Fatalf("scope = %q: a token request may name only one resource, keep SMTP.Send out of the code exchange", gotScope)
 	}
 }
 
