@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -21,7 +22,16 @@ const (
 	microsoftGraphMailScope            = "https://graph.microsoft.com/Mail.ReadWrite"
 	microsoftGraphMailSendScope        = "https://graph.microsoft.com/Mail.Send"
 	microsoftGraphMailboxSettingsScope = "https://graph.microsoft.com/MailboxSettings.ReadWrite"
+	// microsoftSMTPSendScope authorizes SMTP AUTH (XOAUTH2) submission for
+	// Outlook.com and Microsoft 365 mailboxes. It belongs to the
+	// outlook.office.com resource, not Graph.
+	microsoftSMTPSendScope = "https://outlook.office.com/SMTP.Send"
 )
+
+// ErrMicrosoftSMTPConsentRequired means the stored Microsoft grant does not
+// cover SMTP.Send (the account was connected before Raven asked for it), or the
+// grant is no longer valid. The user must reconnect the account.
+var ErrMicrosoftSMTPConsentRequired = errors.New("microsoft account has not granted SMTP send access")
 
 // OAuthTokenError keeps the non-secret parts of a token endpoint failure so
 // callers can distinguish a permanent authorization problem from a temporary
@@ -113,23 +123,57 @@ func (m *Manager) GetMicrosoftGraphMailTokenForAccount(ctx context.Context, acco
 	return m.getMicrosoftGraphTokenForAccount(ctx, accountID, "mail", microsoftGraphMailScopes()...)
 }
 
+// GetMicrosoftSMTPTokenForAccount returns an access token for the
+// outlook.office.com resource, used as the XOAUTH2 secret for Microsoft SMTP
+// submission. A grant without SMTP.Send yields ErrMicrosoftSMTPConsentRequired.
+func (m *Manager) GetMicrosoftSMTPTokenForAccount(ctx context.Context, accountID string) (string, error) {
+	// Never served from the stored record: its access token is for Graph.
+	record, err := m.outlookOAuthRecord(ctx, accountID)
+	if err != nil {
+		return "", err
+	}
+	token, err := m.refreshMicrosoftScopes(ctx, record, "smtp", []string{microsoftSMTPSendScope})
+	var tokenErr *OAuthTokenError
+	if errors.As(err, &tokenErr) && smtpConsentMissing(tokenErr) {
+		return "", fmt.Errorf("%w: %w", ErrMicrosoftSMTPConsentRequired, err)
+	}
+	return token, err
+}
+
+func smtpConsentMissing(e *OAuthTokenError) bool {
+	switch strings.ToLower(e.Code) {
+	case "invalid_grant", "consent_required", "interaction_required", "invalid_scope":
+		return true
+	}
+	d := strings.ToLower(e.Description)
+	return strings.Contains(d, "aadsts65001") || strings.Contains(d, "aadsts70011")
+}
+
 func (m *Manager) getMicrosoftGraphTokenForAccount(ctx context.Context, accountID, label string, scopes ...string) (string, error) {
-	var accountProvider string
-	if err := m.db.Read().QueryRowContext(ctx, `SELECT provider FROM accounts WHERE id = ?`, accountID).Scan(&accountProvider); err != nil {
-		return "", fmt.Errorf("query account oauth identity: %w", err)
-	}
-	if accountProvider != providers.ProviderOutlook {
-		return "", fmt.Errorf("account %s is not an Outlook account", accountID)
-	}
-	record, err := m.oauthTokenForAccount(ctx, accountID, providers.OAuthMicrosoft)
+	record, err := m.outlookOAuthRecord(ctx, accountID)
 	if err != nil {
 		return "", err
 	}
 	if record.AccessToken != "" && recordHasScopes(record.Scopes, scopes...) && record.ExpiresAt.Valid && record.ExpiresAt.Time.After(time.Now().Add(5*time.Minute)) {
 		return record.AccessToken, nil
 	}
+	return m.refreshMicrosoftScopes(ctx, record, label, scopes)
+}
+
+func (m *Manager) outlookOAuthRecord(ctx context.Context, accountID string) (oauthTokenRecord, error) {
+	var accountProvider string
+	if err := m.db.Read().QueryRowContext(ctx, `SELECT provider FROM accounts WHERE id = ?`, accountID).Scan(&accountProvider); err != nil {
+		return oauthTokenRecord{}, fmt.Errorf("query account oauth identity: %w", err)
+	}
+	if accountProvider != providers.ProviderOutlook {
+		return oauthTokenRecord{}, fmt.Errorf("account %s is not an Outlook account", accountID)
+	}
+	return m.oauthTokenForAccount(ctx, accountID, providers.OAuthMicrosoft)
+}
+
+func (m *Manager) refreshMicrosoftScopes(ctx context.Context, record oauthTokenRecord, label string, scopes []string) (string, error) {
 	if strings.TrimSpace(record.RefreshToken) == "" {
-		return "", fmt.Errorf("no refresh token available for account %s", accountID)
+		return "", fmt.Errorf("no refresh token available for account %s", record.AccountID)
 	}
 	cfg, err := m.oauthConfigForProvider(providers.OAuthMicrosoft)
 	if err != nil {

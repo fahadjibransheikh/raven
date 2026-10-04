@@ -317,11 +317,16 @@ func (h *Handler) deliverOutgoingSend(parent context.Context, send storage.Outgo
 	defer cancel()
 	status := storage.OutgoingSendFailed
 	var providerMessageID, providerToken string
+	var viaSMTP bool
 	switch send.Transport {
 	case storage.OutgoingTransportGmail:
 		providerMessageID, providerToken, err = h.sendGmailAPIRaw(sendCtx, cfg, send.MIMEData)
 	case storage.OutgoingTransportOutlook:
-		providerToken, err = h.sendOutlookGraphRaw(sendCtx, cfg, send.MIMEData)
+		if viaSMTP = h.outlookSendNeedsSMTP(sendCtx, send.AccountID, msg); viaSMTP {
+			err = h.sendOutlookSMTPRaw(sendCtx, cfg, send, msg)
+		} else {
+			providerToken, err = h.sendOutlookGraphRaw(sendCtx, cfg, send.MIMEData)
+		}
 	case storage.OutgoingTransportSMTP:
 		err = h.sendSMTPOutgoingRaw(sendCtx, cfg, send)
 	default:
@@ -347,7 +352,9 @@ func (h *Handler) deliverOutgoingSend(parent context.Context, send storage.Outgo
 	if send.Transport == storage.OutgoingTransportGmail {
 		h.cacheGmailSentMessageID(parent, send.AccountID, msg, providerToken, providerMessageID)
 	}
-	if send.Transport == storage.OutgoingTransportOutlook {
+	if viaSMTP {
+		h.cacheOutlookSMTPSentMessageID(parent, send.AccountID, msg)
+	} else if send.Transport == storage.OutgoingTransportOutlook {
 		h.cacheOutlookSentMessageID(parent, send.AccountID, msg, providerToken)
 	}
 	needsSentCopy := send.Transport == storage.OutgoingTransportSMTP
@@ -541,16 +548,9 @@ func outgoingSendRetryDelay(attempt int) time.Duration {
 
 func (h *Handler) sendSMTPOutgoingRaw(ctx context.Context, cfg *models.AccountConfig, send storage.OutgoingSend) error {
 	startedAt := time.Now()
-	queueWait := time.Duration(0)
-	if !send.CreatedAt.IsZero() {
-		queueWait = time.Since(send.CreatedAt)
-		if queueWait < 0 {
-			queueWait = 0
-		}
-	}
 	password, err := h.resolvePassword(ctx, cfg, send.AccountID)
 	if err != nil {
-		h.recordSMTPDelivery(models.SendFailed, smtpclient.DeliveryTiming{Total: time.Since(startedAt), QueueWait: queueWait})
+		h.recordSMTPDelivery(models.SendFailed, smtpclient.DeliveryTiming{Total: time.Since(startedAt), QueueWait: smtpQueueWait(send)})
 		return fmt.Errorf("failed to get credentials")
 	}
 	smtpPassword := password
@@ -559,9 +559,24 @@ func (h *Handler) sendSMTPOutgoingRaw(ctx context.Context, cfg *models.AccountCo
 			smtpPassword = decrypted
 		}
 	}
-	result, err, timing := smtpclient.SendRawMessageWithTiming(ctx, cfg, smtpPassword, send.EnvelopeFrom, send.EnvelopeRecipients, send.MIMEData)
+	return h.runSMTPSendFrom(ctx, startedAt, cfg, smtpPassword, send, send.MIMEData, smtpclient.SendRawMessageWithTiming)
+}
+
+type smtpSendFunc func(ctx context.Context, cfg *models.AccountConfig, password, from string, recipients []string, mimeData []byte) (models.SendResult, error, smtpclient.DeliveryTiming)
+
+func smtpQueueWait(send storage.OutgoingSend) time.Duration {
+	if send.CreatedAt.IsZero() {
+		return 0
+	}
+	return max(time.Since(send.CreatedAt), 0)
+}
+
+// runSMTPSendFrom submits mimeData over SMTP and classifies the outcome for the
+// outgoing worker (ambiguous, retryable, or a definitive failure).
+func (h *Handler) runSMTPSendFrom(ctx context.Context, startedAt time.Time, cfg *models.AccountConfig, secret string, send storage.OutgoingSend, mimeData []byte, sendFn smtpSendFunc) error {
+	result, err, timing := sendFn(ctx, cfg, secret, send.EnvelopeFrom, send.EnvelopeRecipients, mimeData)
 	timing.Total = time.Since(startedAt)
-	timing.QueueWait = queueWait
+	timing.QueueWait = smtpQueueWait(send)
 	h.recordSMTPDelivery(result, timing)
 	if err != nil {
 		if result == models.SendAmbiguous {

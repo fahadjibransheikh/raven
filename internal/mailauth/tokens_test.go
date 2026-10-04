@@ -380,3 +380,85 @@ func TestMicrosoftGraphContactsTokenRejectsNonOutlookAccount(t *testing.T) {
 		t.Fatalf("error = %v, want non-Outlook account rejection", err)
 	}
 }
+
+func newOutlookSMTPTokenManager(t *testing.T, tokenURL string, cachedScopes string) *Manager {
+	t.Helper()
+	ctx := context.Background()
+	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	if err != nil {
+		t.Fatalf("storage.New() error = %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	if _, err := db.Write().ExecContext(ctx, `INSERT OR IGNORE INTO users (id, username, username_normalized, name) VALUES ('default', 'default', 'default', 'Default')`); err != nil {
+		t.Fatalf("insert user: %v", err)
+	}
+	if _, err := db.Write().ExecContext(ctx, `
+		INSERT INTO accounts (id, user_id, provider, provider_account_id, email_address)
+		VALUES ('acc', 'default', 'outlook', 'subject-id', 'person@msn.com')`); err != nil {
+		t.Fatalf("insert account: %v", err)
+	}
+	manager := NewManager(&Config{
+		MicrosoftClient: &oauth2.Config{ClientID: "client-id", Endpoint: oauth2.Endpoint{TokenURL: tokenURL}},
+	}, db, testMailboxCredentialKey)
+	expiresAt := time.Now().Add(time.Hour)
+	if err := manager.UpsertOAuthAccount(ctx, "acc", providers.OAuthMicrosoft, "subject-id", "cached-graph-token", "refresh-token", "Bearer", &expiresAt, cachedScopes); err != nil {
+		t.Fatalf("UpsertOAuthAccount() error = %v", err)
+	}
+	return manager
+}
+
+func TestMicrosoftSMTPTokenRefreshesForOutlookResourceNeverUsingCachedGraphToken(t *testing.T) {
+	var gotScope string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = r.ParseForm()
+		gotScope = r.FormValue("scope")
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"access_token":"smtp-token","token_type":"Bearer","expires_in":3600,"scope":"https://outlook.office.com/SMTP.Send"}`))
+	}))
+	defer server.Close()
+	// Even a record that claims the SMTP scope holds a Graph access token.
+	manager := newOutlookSMTPTokenManager(t, server.URL, strings.Join(microsoftAccountTokenScopes(), " "))
+
+	token, err := manager.GetMicrosoftSMTPTokenForAccount(context.Background(), "acc")
+	if err != nil {
+		t.Fatalf("GetMicrosoftSMTPTokenForAccount() error = %v", err)
+	}
+	if token != "smtp-token" {
+		t.Fatalf("token = %q, want smtp-token (not the cached Graph token)", token)
+	}
+	if gotScope != microsoftSMTPSendScope {
+		t.Fatalf("scope = %q, want %q", gotScope, microsoftSMTPSendScope)
+	}
+}
+
+func TestMicrosoftSMTPTokenMissingConsentIsTyped(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"error":"invalid_grant","error_description":"AADSTS65001: The user or administrator has not consented to use the application"}`))
+	}))
+	defer server.Close()
+	manager := newOutlookSMTPTokenManager(t, server.URL, microsoftGraphContactsScope)
+
+	_, err := manager.GetMicrosoftSMTPTokenForAccount(context.Background(), "acc")
+	if !errors.Is(err, ErrMicrosoftSMTPConsentRequired) {
+		t.Fatalf("error = %v, want ErrMicrosoftSMTPConsentRequired", err)
+	}
+	var tokenErr *OAuthTokenError
+	if !errors.As(err, &tokenErr) {
+		t.Fatalf("error = %v, want the OAuthTokenError preserved", err)
+	}
+}
+
+func TestMicrosoftSMTPTokenTransientFailureIsNotConsentError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer server.Close()
+	manager := newOutlookSMTPTokenManager(t, server.URL, microsoftGraphContactsScope)
+
+	_, err := manager.GetMicrosoftSMTPTokenForAccount(context.Background(), "acc")
+	if err == nil || errors.Is(err, ErrMicrosoftSMTPConsentRequired) {
+		t.Fatalf("error = %v, want a non-consent failure", err)
+	}
+}

@@ -50,7 +50,13 @@ func (m *Service) ExchangeMicrosoftAccountCode(ctx context.Context, code, verifi
 	return token, nil
 }
 
-func microsoftAccountTokenScopes() []string { return microsoftAccountTokenExchangeScopes() }
+// microsoftAccountTokenScopes is what the authorize leg asks the user to
+// consent to. It adds the Outlook SMTP scope, which is a different resource
+// than Graph, so it can be consented here but must stay out of the code
+// exchange (a token request may name only one resource).
+func microsoftAccountTokenScopes() []string {
+	return append(microsoftAccountTokenExchangeScopes(), microsoftSMTPSendScope)
+}
 
 func microsoftAccountTokenExchangeScopes() []string {
 	return []string{"openid", "email", "profile", "offline_access", microsoftGraphContactsScope, microsoftGraphMailScope, microsoftGraphMailSendScope, microsoftGraphMailboxSettingsScope}
