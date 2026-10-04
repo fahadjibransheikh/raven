@@ -580,3 +580,24 @@ func TestAccountDiscoveryRequiresExplicitCandidateSelection(t *testing.T) {
 		t.Fatal("mail discovery does not ask the user to choose a candidate")
 	}
 }
+
+func TestChooseAccountTypeDialogOffersICloudPreset(t *testing.T) {
+	var chooser, add bytes.Buffer
+	if err := ChooseAccountTypeDialog().Render(context.Background(), &chooser); err != nil {
+		t.Fatalf("ChooseAccountTypeDialog.Render() error = %v", err)
+	}
+	if err := AddAccountDialog().Render(context.Background(), &add); err != nil {
+		t.Fatalf("AddAccountDialog.Render() error = %v", err)
+	}
+	if !strings.Contains(chooser.String(), "openICloudAccountDialog()") || !strings.Contains(chooser.String(), ">iCloud<") {
+		t.Fatal("account chooser does not offer an iCloud option")
+	}
+	for _, want := range []string{
+		"imap.mail.me.com", "smtp.mail.me.com", "'587'", "'starttls'",
+		"https://support.apple.com/en-us/102654", "app-specific password",
+	} {
+		if !strings.Contains(add.String(), want) {
+			t.Fatalf("add account dialog missing iCloud preset detail %q", want)
+		}
+	}
+}
