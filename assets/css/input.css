@@ -3066,4 +3066,14 @@ body.mail-list-column-resizing {
     flex-direction: column;
     flex: 1 1 auto;
   }
+
+  html[data-phone-pane="view"] #mail-list {
+    display: none !important;
+  }
+
+  html[data-phone-pane="view"] #mail-view {
+    display: flex !important;
+    width: 100%;
+    flex: 1 1 auto;
+  }
 }
