@@ -472,6 +472,9 @@ templ MailViewThreadItemActions(item *models.ThreadItem) {
 templ MailViewHeader(email *models.Email) {
 	<div class="mail-view-toolbar flex items-center justify-between px-6 py-2.5">
 		<div class="mail-view-actions flex items-center gap-1 min-w-0">
+			<button type="button" class="inline-flex lg:hidden h-8 w-8 shrink-0 items-center justify-center rounded-md text-ink/60 hover:text-ink/80 hover:bg-ink/5" aria-label="Back to list" onclick="clearActiveMailSelection()">
+				@icon.ChevronLeft(icon.Props{Class: "size-5"})
+			</button>
 			@tooltip.Tooltip() {
 				@tooltip.Trigger() {
 					@button.Button(button.Props{
@@ -970,7 +973,7 @@ templ MailViewDraftBar(email *models.Email) {
 }
 
 templ MailViewEmpty() {
-	<div class="flex flex-col items-center justify-center h-full text-center">
+	<div class="flex flex-col items-center justify-center h-full text-center" data-mail-view-empty>
 		<div class="space-y-4 animate-fade-in">
 			<div class="size-20 rounded-2xl bg-card flex items-center justify-center mx-auto raised">
 				@icon.Mail(icon.Props{Class: "size-9 text-muted-foreground/30"})

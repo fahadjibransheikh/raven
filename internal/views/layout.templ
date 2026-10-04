@@ -19,6 +19,9 @@ import (
 templ AppIcon() {
 	<link rel="icon" type="image/svg+xml" href="/assets/logo.svg"/>
 	<link rel="manifest" href="/assets/manifest.webmanifest"/>
+	<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png"/>
+	<meta name="apple-mobile-web-app-capable" content="yes"/>
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 }
 
 templ Layout(accounts []models.Account, activeFolder string, emails []models.Email, selectedEmail *models.Email, totalCount int, scrollCount int, uiSettings map[string]string, selectedThread []models.ThreadItem, initialEmailID string, scheduledCount int, filters models.EmailFilters) {
@@ -26,7 +29,7 @@ templ Layout(accounts []models.Account, activeFolder string, emails []models.Ema
 	<html lang="en" class={ themeClass(uiSettings) } data-theme={ themeStyle(uiSettings) }>
 		<head>
 			<meta charset="UTF-8"/>
-			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 			<title>Raven</title>
 			@AppIcon()
 			<link rel="preconnect" href="https://fonts.googleapis.com"/>
@@ -75,6 +78,7 @@ templ Layout(accounts []models.Account, activeFolder string, emails []models.Ema
 			<script src="/assets/js/settings.js"></script>
 			<script src="/assets/js/ui-settings.js"></script>
 			<script src="/assets/js/raven.js"></script>
+			<script src="/assets/js/phone-layout.js"></script>
 			@MailCardLayoutScript()
 			<script src="/assets/js/resize.js"></script>
 			<script>
@@ -143,7 +147,7 @@ templ SettingsLayout(accounts []models.Account, syncSettings models.SyncSettings
 	<html lang="en" class={ themeClass(uiSettings) } data-theme={ themeStyle(uiSettings) }>
 		<head>
 			<meta charset="UTF-8"/>
-			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 			<title>Settings — Raven</title>
 			@AppIcon()
 			<link rel="preconnect" href="https://fonts.googleapis.com"/>
@@ -194,6 +198,7 @@ templ SettingsRuntime(accounts []models.Account) {
 	<script src="/assets/js/settings.js"></script>
 	<script src="/assets/js/ui-settings.js"></script>
 	<script src="/assets/js/raven.js"></script>
+	<script src="/assets/js/phone-layout.js"></script>
 	<script src="/assets/js/resize.js"></script>
 	<script src="/assets/js/passkey-registration.js"></script>
 	<script src="/assets/js/passkey-authentication.js"></script>
@@ -277,7 +282,7 @@ templ ContactsLayout(accounts []models.Account, contacts []models.Contact, selec
 	<html lang="en" class={ themeClass(uiSettings) } data-theme={ themeStyle(uiSettings) }>
 		<head>
 			<meta charset="UTF-8"/>
-			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 			<title>Contacts — Raven</title>
 			@AppIcon()
 			<link rel="preconnect" href="https://fonts.googleapis.com"/>
@@ -315,6 +320,7 @@ templ ContactsLayout(accounts []models.Account, contacts []models.Contact, selec
 			<script src="/assets/js/settings.js"></script>
 			<script src="/assets/js/ui-settings.js"></script>
 			<script src="/assets/js/raven.js"></script>
+			<script src="/assets/js/phone-layout.js"></script>
 			<script src="/assets/js/resize.js"></script>
 		</body>
 	</html>
@@ -419,6 +425,8 @@ templ SavedPanelSizeStyle() {
 	<script>
 		(function() {
 			document.documentElement.classList.add("js");
+			// Set before first paint so phones never flash the desktop panes; phone-layout.js keeps it in sync.
+			if (window.matchMedia && window.matchMedia("(max-width: 1023.98px)").matches) document.documentElement.setAttribute("data-phone", "");
 
 			var settings = {};
 			try {

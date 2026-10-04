@@ -16,7 +16,7 @@ import (
 )
 
 templ Sidebar(accounts []models.Account, activeFolder string, width string, uiSettings map[string]string, scheduledCount int, filters models.EmailFilters) {
-	<aside class="hidden lg:flex flex-col surface-leather text-sidebar-foreground h-full overflow-hidden" style={ "width:" + width } data-app-sidebar>
+	<aside class="hidden lg:flex flex-col surface-leather text-sidebar-foreground h-full overflow-hidden" style={ "width:" + width } data-app-sidebar data-phone-drawer>
 		@SidebarHeader(accounts, "mail")
 		@MailSidebarBody(accounts, activeFolder, uiSettings, scheduledCount, filters)
 		@SidebarFooter()
@@ -24,7 +24,7 @@ templ Sidebar(accounts []models.Account, activeFolder string, width string, uiSe
 }
 
 templ ContactsSidebar(accounts []models.Account, activeFolder string, width string, uiSettings map[string]string, filters models.ContactFilters) {
-	<aside class="hidden lg:flex flex-col surface-leather text-sidebar-foreground h-full overflow-hidden" style={ "width:" + width } data-app-sidebar>
+	<aside class="hidden lg:flex flex-col surface-leather text-sidebar-foreground h-full overflow-hidden" style={ "width:" + width } data-app-sidebar data-phone-drawer>
 		@SidebarHeader(accounts, "contacts")
 		@ContactsSidebarBody(accounts, activeFolder, uiSettings, filters)
 		@SidebarFooter()
@@ -247,7 +247,7 @@ func contactSidebarBookName(book models.ContactAddressBook) string {
 }
 
 templ SettingsSidebar(activeTab string, width string) {
-	<aside class="hidden lg:flex flex-col surface-leather text-sidebar-foreground h-full overflow-hidden" style={ "width:" + width }>
+	<aside class="hidden lg:flex flex-col surface-leather text-sidebar-foreground h-full overflow-hidden" style={ "width:" + width } data-phone-drawer>
 		<div class="px-4 pt-5 pb-4">
 			<div class="flex items-center gap-2.5 mb-5">
 				<img src="/assets/logo.svg" alt="Raven" class="h-8 w-8 shrink-0 p-1"/>
@@ -944,4 +944,11 @@ templ WebmailSidebarLogout() {
 			</button>
 		</form>
 	}
+}
+
+// PhoneNavToggle opens the folders/settings drawer below the lg breakpoint (see phone-layout.js).
+templ PhoneNavToggle(class string) {
+	<button type="button" class={ "inline-flex lg:hidden h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground " + class } aria-label="Open folders" aria-expanded="false" data-phone-nav-toggle>
+		@icon.Menu(icon.Props{Class: "size-5"})
+	</button>
 }

@@ -42,6 +42,9 @@ templ MailListHeader(accounts []models.Account, activeFolder string, totalCount 
 	<div class="mail-list-header px-4 py-4 space-y-3">
 		<div class="mail-list-title-row flex items-center justify-between">
 			<div class="mail-list-title flex items-center gap-2 min-w-0">
+				<button type="button" class="inline-flex lg:hidden h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Open folders" aria-expanded="false" data-phone-nav-toggle>
+					@icon.Menu(icon.Props{Class: "size-5"})
+				</button>
 				<h2 id="mail-folder-name" data-mail-folder-default-name={ folderDisplayName(activeFolder) } class="text-lg font-bold tracking-tight" style="font-family: var(--font-serif)">{ mailListFolderHeading(activeFolder, filters) }</h2>
 				if totalCount >= 0 {
 					<span id="mail-folder-count" class="inline-flex h-5 min-w-10 items-center justify-center rounded-full bg-muted px-2 text-xs font-medium text-muted-foreground shadow-[0_1px_2px_rgba(0,0,0,0.06)]">{ fmt.Sprintf("%d", totalCount) }</span>
@@ -49,6 +52,9 @@ templ MailListHeader(accounts []models.Account, activeFolder string, totalCount 
 					<span id="mail-folder-count" class="inline-flex h-5 min-w-10 items-center justify-center rounded-full bg-muted px-2 text-xs font-medium text-muted-foreground shadow-[0_1px_2px_rgba(0,0,0,0.06)] animate-pulse"></span>
 				}
 			</div>
+			<button type="button" class="inline-flex lg:hidden h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90" aria-label="Compose" onclick="openNewCompose()">
+				@icon.SquarePen(icon.Props{Class: "size-4"})
+			</button>
 		</div>
 		<div class="mail-list-search-section">
 			<div class="mail-list-search-primary">

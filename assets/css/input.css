@@ -3045,3 +3045,94 @@ body.mail-list-column-resizing {
 .has-\[\:focus\]\:ring-\[3px\]:has(*:is(:focus)) {
   --tw-ring-shadow: var(--tw-ring-inset,) 0 0 0 calc(var(--ring-width) + var(--tw-ring-offset-width)) var(--tw-ring-color, currentcolor);
 }
+
+/* === PHONE LAYOUT (<1024px) ===
+   One pane at a time. Keyed on IDs + state attributes set by phone-layout.js so the
+   desktop Tailwind class strings stay untouched. !important + html[...] specificity
+   beats the inline !important rules from SavedPanelSizeStyle. */
+@media (max-width: 1023.98px) {
+  #app-shell {
+    height: 100dvh;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    box-sizing: border-box;
+  }
+
+  .resize-handle {
+    display: none !important;
+  }
+
+  html[data-phone] #mail-list {
+    width: 100% !important;
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column;
+    flex: 1 1 auto;
+  }
+
+  html[data-phone-pane="view"] #mail-list {
+    display: none !important;
+  }
+
+  html[data-phone-pane="view"] #mail-view {
+    display: flex !important;
+    width: 100%;
+    flex: 1 1 auto;
+  }
+
+  #settings-content {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  /* Folders/accounts drawer */
+  html[data-phone-nav="open"] aside[data-phone-drawer] {
+    display: flex !important;
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: min(85vw, 320px) !important;
+    z-index: 50;
+    box-shadow: 0 0 40px rgb(0 0 0 / 0.35);
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+  }
+
+  html[data-phone-nav="open"] #phone-nav-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background: rgb(0 0 0 / 0.45);
+  }
+
+  /* Compose dialog goes full screen */
+  #compose-dialog dialog[data-tui-dialog-content] {
+    inset: 0 !important;
+    translate: none !important;
+    width: 100vw !important;
+    max-width: none !important;
+    height: 100dvh !important;
+    max-height: none !important;
+    border-radius: 0 !important;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left) !important;
+    box-sizing: border-box;
+  }
+
+  /* The dialog is already full screen here; the inline toggle only collides with the title. */
+  html[data-phone] #compose-dialog [aria-label="Compose inline"] {
+    display: none !important;
+  }
+
+  [data-tui-popover-content]:has(.compose-close-choice) {
+    max-width: calc(100vw - 2rem);
+  }
+
+  /* Hover-only row actions are unreachable on touch; the message toolbar has them. */
+  html[data-phone] [data-mail-row-actions] {
+    display: none !important;
+  }
+}
+
+#phone-nav-backdrop {
+  display: none;
+}

@@ -1199,6 +1199,7 @@ document.addEventListener("DOMContentLoaded", function () {
   function setupMailListActions() {
     window.syncMailSelectionControls = syncMailSelectionControls
     window.clearMailSelection = clearMailSelection
+    window.clearActiveMailSelection = clearActiveMailSelection
     window.applyOptimisticMailRemove = applyOptimisticRemove
 
     document.addEventListener("click", function (e) {
@@ -4681,7 +4682,7 @@ document.addEventListener("DOMContentLoaded", function () {
       '</div>' +
       '<div class="resize-handle" data-panel="maillist" draggable="false"></div>' +
       '<div id="mail-view" class="hidden lg:flex flex-1 flex-col min-w-0 bg-background surface-desk">' +
-      '<div class="flex flex-col items-center justify-center h-full text-center p-8">' +
+      '<div class="flex flex-col items-center justify-center h-full text-center p-8" data-mail-view-empty>' +
       '<h3 class="text-lg font-semibold mb-2">Select an email</h3>' +
       '<p class="text-sm text-muted-foreground">Choose a message from the list to read it.</p>' +
       '</div>' +
@@ -5913,7 +5914,7 @@ function setMailViewEmpty() {
   var mailView = document.getElementById("mail-view")
   if (!mailView) return
   mailView.innerHTML =
-    '<div class="flex flex-col items-center justify-center h-full text-center">' +
+    '<div class="flex flex-col items-center justify-center h-full text-center" data-mail-view-empty>' +
       '<div class="space-y-4 animate-fade-in">' +
         '<div class="size-20 rounded-2xl bg-card flex items-center justify-center mx-auto raised">' +
           '<svg class="size-9 text-muted-foreground/30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7"/><rect x="2" y="4" width="20" height="16" rx="2"/></svg>' +

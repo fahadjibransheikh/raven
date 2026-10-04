@@ -3465,5 +3465,10 @@ window.addEventListener("popstate", function (e) {
       if (typeof showMailViewLoading === "function") showMailViewLoading()
       htmx.ajax("GET", typeof mailViewRequestURL === "function" ? mailViewRequestURL(e.state.email) : "/email/" + e.state.email, "#mail-view")
     }
+  } else if (!e.state.email && vml.selectedEmailId) {
+    // Same folder, no email in the popped entry: close the open email without writing history.
+    vml.selectedEmailId = null
+    if (typeof vml.syncSelectionClasses === "function") vml.syncSelectionClasses(vml.itemsContainer || vml.container)
+    if (typeof setMailViewEmpty === "function") setMailViewEmpty()
   }
 })
