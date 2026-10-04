@@ -44,7 +44,7 @@ Skip this section if the user only wants notes for an existing release.
 
 - `gh release list -R ...`: the new release is **Latest** and not a draft.
 - Assets: the `.dmg`, `-setup.exe`, `.msi`, `.deb`, `.rpm`, `.AppImage` and
-  `Raven_aarch64.app.tar.gz`, each with a `.sig` where the updater needs one,
+  `Raven_X.Y.Z_aarch64.app.tar.gz`, each with a `.sig` where the updater needs one,
   plus `latest.json`.
 - `curl -sL https://github.com/fahadjibransheikh/raven/releases/latest/download/latest.json`
   shows the new `version`, with `darwin-aarch64`, `windows-x86_64` and
