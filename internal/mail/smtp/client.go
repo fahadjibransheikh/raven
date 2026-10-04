@@ -3,6 +3,7 @@ package smtp
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"net"
@@ -18,6 +19,10 @@ import (
 	mailtransport "github.com/cristianadrielbraun/gofer/internal/mail/transport"
 	"github.com/cristianadrielbraun/gofer/internal/models"
 )
+
+// testRootCAs lets package tests trust a self-signed fake server. It is nil in
+// production, which keeps the system trust store.
+var testRootCAs *x509.CertPool
 
 type Client struct {
 	config *models.AccountConfig
@@ -131,6 +136,7 @@ func NewClient(ctx context.Context, cfg *models.AccountConfig, password string) 
 		tlsConfig := &tls.Config{
 			ServerName: cfg.SMTPHost,
 			MinVersion: tls.VersionTLS12,
+			RootCAs:    testRootCAs,
 		}
 		tlsDialer := &tls.Dialer{NetDialer: dialer, Config: tlsConfig}
 		conn, err = tlsDialer.DialContext(setupCtx, "tcp", addr)
@@ -149,6 +155,7 @@ func NewClient(ctx context.Context, cfg *models.AccountConfig, password string) 
 		tlsConfig := &tls.Config{
 			ServerName: cfg.SMTPHost,
 			MinVersion: tls.VersionTLS12,
+			RootCAs:    testRootCAs,
 		}
 		client, err = smtp.NewClientStartTLS(conn, tlsConfig)
 		if err != nil {
