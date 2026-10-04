@@ -3118,6 +3118,11 @@ body.mail-list-column-resizing {
     box-sizing: border-box;
   }
 
+  /* The dialog is already full screen here; the inline toggle only collides with the title. */
+  html[data-phone] #compose-dialog [aria-label="Compose inline"] {
+    display: none !important;
+  }
+
   [data-tui-popover-content]:has(.compose-close-choice) {
     max-width: calc(100vw - 2rem);
   }
