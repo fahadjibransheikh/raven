@@ -59,3 +59,26 @@ test("no-op without #app-shell", () => {
   assert.doesNotThrow(() => load("<p>login</p>"))
   assert.equal(pane(load("<p>login</p>")), null)
 })
+
+test("drawer toggles via hamburger, closes on backdrop, Escape and sidebar link click", () => {
+  const w = load('<div id="app-shell"><aside data-app-sidebar><a href="#x">Inbox</a></aside><button data-phone-nav-toggle aria-expanded="false"></button><div id="mail-list"></div><div id="mail-view"><div data-mail-view-empty></div></div></div>')
+  const doc = w.document
+  const nav = () => doc.documentElement.getAttribute("data-phone-nav")
+  const toggle = doc.querySelector("[data-phone-nav-toggle]")
+
+  toggle.click()
+  assert.equal(nav(), "open")
+  assert.equal(toggle.getAttribute("aria-expanded"), "true")
+
+  doc.getElementById("phone-nav-backdrop").click()
+  assert.equal(nav(), null)
+  assert.equal(toggle.getAttribute("aria-expanded"), "false")
+
+  toggle.click()
+  doc.dispatchEvent(new w.KeyboardEvent("keydown", { key: "Escape", bubbles: true }))
+  assert.equal(nav(), null)
+
+  toggle.click()
+  doc.querySelector("aside a").click()
+  assert.equal(nav(), null)
+})

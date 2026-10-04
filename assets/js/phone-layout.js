@@ -9,7 +9,18 @@
 
   function syncPhone() {
     if (mq.matches) root.setAttribute("data-phone", "")
-    else root.removeAttribute("data-phone")
+    else {
+      root.removeAttribute("data-phone")
+      setNav(false)
+    }
+  }
+
+  // Folders/accounts drawer state lives on html[data-phone-nav]; toggles mirror it in aria-expanded.
+  function setNav(open) {
+    if (open) root.setAttribute("data-phone-nav", "open")
+    else root.removeAttribute("data-phone-nav")
+    var toggles = document.querySelectorAll("[data-phone-nav-toggle]")
+    for (var i = 0; i < toggles.length; i++) toggles[i].setAttribute("aria-expanded", open ? "true" : "false")
   }
 
   // Mail shell only; contacts keeps its own detail mechanism.
@@ -37,6 +48,28 @@
 
   var shell = document.getElementById("app-shell")
   if (!shell) return
+  var backdrop = document.createElement("div")
+  backdrop.id = "phone-nav-backdrop"
+  backdrop.addEventListener("click", function () { setNav(false) })
+  document.body.appendChild(backdrop)
+
+  document.addEventListener("click", function (e) {
+    var t = e.target
+    if (!t || !t.closest) return
+    if (t.closest("[data-phone-nav-toggle]")) {
+      setNav(root.getAttribute("data-phone-nav") !== "open")
+    } else if (root.hasAttribute("data-phone-nav") && t.closest("[data-app-sidebar] a")) {
+      setNav(false)
+    }
+  }, true)
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && root.hasAttribute("data-phone-nav")) setNav(false)
+  })
+  document.addEventListener("htmx:afterSettle", function (e) {
+    var elt = e.detail && e.detail.elt
+    if (elt && elt.closest && elt.closest("[data-app-sidebar]")) setNav(false)
+  })
+
   syncPane()
   document.addEventListener("htmx:afterSettle", schedulePane)
   window.addEventListener("popstate", schedulePane)

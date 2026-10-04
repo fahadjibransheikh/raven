@@ -3076,4 +3076,46 @@ body.mail-list-column-resizing {
     width: 100%;
     flex: 1 1 auto;
   }
+
+  /* Folders/accounts drawer */
+  html[data-phone-nav="open"] aside[data-app-sidebar] {
+    display: flex !important;
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: min(85vw, 320px) !important;
+    z-index: 50;
+    box-shadow: 0 0 40px rgb(0 0 0 / 0.35);
+  }
+
+  html[data-phone-nav="open"] #phone-nav-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background: rgb(0 0 0 / 0.45);
+  }
+
+  /* Compose dialog goes full screen */
+  #compose-dialog dialog[data-tui-dialog-content] {
+    inset: 0 !important;
+    translate: none !important;
+    width: 100vw !important;
+    max-width: none !important;
+    height: 100dvh !important;
+    max-height: none !important;
+    border-radius: 0 !important;
+  }
+
+  [data-tui-popover-content]:has(.compose-close-choice) {
+    max-width: calc(100vw - 2rem);
+  }
+
+  /* Hover-only row actions are unreachable on touch; the message toolbar has them. */
+  html[data-phone] [data-mail-row-actions] {
+    display: none !important;
+  }
+}
+
+#phone-nav-backdrop {
+  display: none;
 }
