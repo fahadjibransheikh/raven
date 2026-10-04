@@ -6,6 +6,7 @@
     "frontendDist": "../frontend"
   },
   "app": {
+    "withGlobalTauri": true,
     "windows": [
       {
         "label": "main",
@@ -24,7 +25,8 @@
     ],
     "security": {
       "capabilities": [
-        "default"
+        "default",
+        "remote-notifications"
       ]
     }
   },

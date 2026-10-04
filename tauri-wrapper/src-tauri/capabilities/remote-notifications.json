@@ -1,0 +1,14 @@
+{
+  "$schema": "../gen/schemas/remote-schema.json",
+  "identifier": "remote-notifications",
+  "description": "Lets the Raven page served by the bundled Go server (http://127.0.0.1:8090, the origin src/lib.rs navigates to) use native notifications. WKWebView has no web Notification permission prompt, so the page calls window.__TAURI__.notification instead. Nothing else is exposed to the remote page.",
+  "windows": ["main"],
+  "remote": {
+    "urls": ["http://127.0.0.1:8090"]
+  },
+  "permissions": [
+    "notification:allow-is-permission-granted",
+    "notification:allow-request-permission",
+    "notification:allow-notify"
+  ]
+}
