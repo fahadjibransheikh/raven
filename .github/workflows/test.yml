@@ -1,0 +1,36 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      # The JS tests run app.js in jsdom and render the popover with go run.
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Go tests
+        run: go test ./...
+
+      - name: JS tests
+        run: |
+          npm ci
+          npm test
