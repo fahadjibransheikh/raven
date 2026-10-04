@@ -435,15 +435,14 @@ func TestSyncGmailLabelsStopsOnContextCancellation(t *testing.T) {
 			}})
 		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/users/me/messages/"):
 			messageRequests++
+			// Cancel before replying: cancelling after the reply races the
+			// client, which can finish the request and send the next one first.
+			cancel()
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"id":        "gmail-msg-1",
 				"historyId": "101",
 				"labelIds":  []string{"Label_1"},
 			})
-			if flusher, ok := w.(http.Flusher); ok {
-				flusher.Flush()
-			}
-			cancel()
 		default:
 			t.Fatalf("unexpected Gmail request %s %s", r.Method, r.URL.String())
 		}
