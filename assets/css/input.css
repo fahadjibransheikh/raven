@@ -3053,6 +3053,8 @@ body.mail-list-column-resizing {
 @media (max-width: 1023.98px) {
   #app-shell {
     height: 100dvh;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    box-sizing: border-box;
   }
 
   .resize-handle {
@@ -3090,6 +3092,9 @@ body.mail-list-column-resizing {
     width: min(85vw, 320px) !important;
     z-index: 50;
     box-shadow: 0 0 40px rgb(0 0 0 / 0.35);
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
   }
 
   html[data-phone-nav="open"] #phone-nav-backdrop {
@@ -3109,6 +3114,8 @@ body.mail-list-column-resizing {
     height: 100dvh !important;
     max-height: none !important;
     border-radius: 0 !important;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left) !important;
+    box-sizing: border-box;
   }
 
   [data-tui-popover-content]:has(.compose-close-choice) {
