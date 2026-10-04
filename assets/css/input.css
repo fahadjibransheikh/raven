@@ -93,6 +93,15 @@
 }
 
 @layer base {
+  /* Native scrollbars and form controls follow color-scheme. The macOS
+     desktop app's WebKit draws native scrollbars instead of the custom
+     styles below, so without this they stay light in dark mode. */
+  html {
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
   * {
     @apply border-border;
     scrollbar-width: thin;
