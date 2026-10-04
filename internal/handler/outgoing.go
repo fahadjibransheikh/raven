@@ -181,13 +181,23 @@ func (h *Handler) queueOutgoingMessage(ctx context.Context, accountID string, lo
 		MessageID:          localMessageID,
 		DraftID:            strings.TrimSpace(draftID),
 		Transport:          transport,
-		EnvelopeFrom:       msg.FromEmail,
+		EnvelopeFrom:       h.outgoingEnvelopeFrom(ctx, accountID, msg),
 		EnvelopeRecipients: recipients,
 		MIMEData:           raw,
 		MessageJSON:        snapshotJSON,
 		SendAfter:          sendAfter,
 		IsScheduled:        scheduled,
 	})
+}
+
+// outgoingEnvelopeFrom is the SMTP MAIL FROM: always the account's own address,
+// even when the From header is a send-as alias, so SMTP auth and bounce
+// handling stay with the login the server knows.
+func (h *Handler) outgoingEnvelopeFrom(ctx context.Context, accountID string, msg *message.OutgoingMessage) string {
+	if account, err := h.accountStore.GetAccountByID(ctx, accountID); err == nil && account != nil && strings.TrimSpace(account.Email) != "" {
+		return account.Email
+	}
+	return msg.FromEmail
 }
 
 func (h *Handler) signalOutgoingWorker() {
@@ -266,7 +276,7 @@ func (h *Handler) prepareMigratedOutgoingSends(ctx context.Context) {
 			_ = h.db.MarkPendingOutgoingSendFailed(ctx, send.ID, err.Error())
 			continue
 		}
-		if err := h.db.PrepareOutgoingSend(ctx, send.ID, send.DraftID, transport, msg.FromEmail, message.AllRecipients(msg), raw, snapshotJSON); err != nil {
+		if err := h.db.PrepareOutgoingSend(ctx, send.ID, send.DraftID, transport, h.outgoingEnvelopeFrom(ctx, send.AccountID, msg), message.AllRecipients(msg), raw, snapshotJSON); err != nil {
 			log.Printf("outgoing-send: prepare migrated send %s: %v", send.ID, err)
 		}
 	}
@@ -770,9 +780,16 @@ func (h *Handler) outgoingMessageFromDraft(ctx context.Context, localMessageID i
 		htmlBody = "<html><body>" + htmlBody + "</body></html>"
 	}
 	inReplyTo, references := h.validComposeThreadHeaders(ctx, email.AccountID, email.Subject, email.InReplyTo, email.References)
+	// The draft's From was validated against the account's identities when it
+	// was saved. Only a draft still from the primary address picks up the
+	// account's current display name.
 	fromName, fromEmail := email.From.Name, email.From.Email
 	if account, err := h.accountStore.GetAccountByID(ctx, email.AccountID); err == nil && account != nil {
-		fromName, fromEmail = account.Name, account.Email
+		if fromEmail == "" || strings.EqualFold(fromEmail, account.Email) {
+			fromName, fromEmail = account.Name, account.Email
+		} else if strings.TrimSpace(fromName) == "" {
+			fromName = account.Name
+		}
 	}
 	return &message.OutgoingMessage{
 		FromName: fromName, FromEmail: fromEmail, To: to, CC: cc, Bcc: bcc,
@@ -821,7 +838,7 @@ func (h *Handler) refreshPendingOutgoingSend(ctx context.Context, saved composeD
 	if len(recipients) == 0 {
 		return fmt.Errorf("no recipients")
 	}
-	return h.db.PrepareOutgoingSend(ctx, existing.ID, saved.DraftID, transport, msg.FromEmail, recipients, raw, snapshotJSON)
+	return h.db.PrepareOutgoingSend(ctx, existing.ID, saved.DraftID, transport, h.outgoingEnvelopeFrom(ctx, saved.AccountID, msg), recipients, raw, snapshotJSON)
 }
 
 func (h *Handler) saveSentMessageSnapshot(ctx context.Context, accountID string, msg *message.OutgoingMessage, raw []byte) {

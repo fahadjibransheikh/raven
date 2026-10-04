@@ -4633,6 +4633,11 @@ func (h *Handler) saveComposeDraftFromForm(ctx context.Context, r *http.Request)
 		return composeDraftSaveResult{}, &composeRequestError{status: http.StatusNotFound, message: "account not found"}
 	}
 
+	fromName, fromEmail, cerr := h.resolveComposeIdentity(ctx, account, r.FormValue("from_email"))
+	if cerr != nil {
+		return composeDraftSaveResult{}, cerr
+	}
+
 	draftFolderID, draftFolderRemoteName, err := h.db.GetFolderIDByRole(ctx, accountID, "drafts")
 	if err != nil || draftFolderID == "" {
 		return composeDraftSaveResult{}, &composeRequestError{status: http.StatusBadRequest, message: "drafts folder not available"}
@@ -4664,8 +4669,8 @@ func (h *Handler) saveComposeDraftFromForm(ctx context.Context, r *http.Request)
 		InReplyTo:         r.FormValue("in_reply_to"),
 		References:        r.FormValue("references"),
 		Subject:           subject,
-		FromName:          account.Name,
-		FromEmail:         account.Email,
+		FromName:          fromName,
+		FromEmail:         fromEmail,
 		Snippet:           snippet,
 		ToRecipients:      parseDraftRecipients(r.FormValue("to")),
 		CCRecipients:      parseDraftRecipients(r.FormValue("cc")),
@@ -4693,8 +4698,8 @@ func (h *Handler) saveComposeDraftFromForm(ctx context.Context, r *http.Request)
 	ccAddrs, _ := message.ParseAddressList(r.FormValue("cc"))
 	bccAddrs, _ := message.ParseAddressList(r.FormValue("bcc"))
 	providerDraft := &message.OutgoingMessage{
-		FromName:    account.Name,
-		FromEmail:   account.Email,
+		FromName:    fromName,
+		FromEmail:   fromEmail,
 		To:          toAddrs,
 		CC:          ccAddrs,
 		Bcc:         bccAddrs,
@@ -4971,20 +4976,22 @@ func (h *Handler) handleComposeSource(w http.ResponseWriter, r *http.Request) {
 	if htmlBody == "" {
 		htmlBody = email.HTMLBody
 	}
+	identities, _ := h.db.ListAccountIdentities(r.Context(), userID, email.AccountID)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{
-		"account_id":  email.AccountID,
-		"message_id":  email.InternetMessageID,
-		"references":  email.References,
-		"subject":     email.Subject,
-		"from_name":   email.From.Name,
-		"from_email":  email.From.Email,
-		"date":        email.DateFull,
-		"to":          contactsToAddressList(email.To),
-		"cc":          contactsToAddressList(email.CC),
-		"body":        email.TextBody,
-		"html_body":   htmlBody,
-		"attachments": attachments,
+		"account_id":           email.AccountID,
+		"suggested_from_email": pickReplyIdentity(identities, email.FolderRole, email.From, email.To, email.CC),
+		"message_id":           email.InternetMessageID,
+		"references":           email.References,
+		"subject":              email.Subject,
+		"from_name":            email.From.Name,
+		"from_email":           email.From.Email,
+		"date":                 email.DateFull,
+		"to":                   contactsToAddressList(email.To),
+		"cc":                   contactsToAddressList(email.CC),
+		"body":                 email.TextBody,
+		"html_body":            htmlBody,
+		"attachments":          attachments,
 	})
 }
 
@@ -5016,6 +5023,7 @@ func (h *Handler) handleGetDraft(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{
 		"account_id":    email.AccountID,
+		"from_email":    email.From.Email,
 		"draft_id":      email.InternetMessageID,
 		"to":            contactsToAddressList(email.To),
 		"cc":            contactsToAddressList(email.CC),
@@ -5107,6 +5115,12 @@ func (h *Handler) handleCompose(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	fromName, fromEmail, cerr := h.resolveComposeIdentity(ctx, account, r.FormValue("from_email"))
+	if cerr != nil {
+		writeComposeJSONError(w, cerr.status, cerr.message)
+		return
+	}
+
 	toAddrs, err := message.ParseAddressList(r.FormValue("to"))
 	if err != nil || len(toAddrs) == 0 {
 		writeComposeJSONError(w, http.StatusBadRequest, "Please enter at least one recipient.")
@@ -5137,8 +5151,8 @@ func (h *Handler) handleCompose(w http.ResponseWriter, r *http.Request) {
 	inReplyTo, references := h.validComposeThreadHeaders(ctx, accountID, r.FormValue("subject"), r.FormValue("in_reply_to"), r.FormValue("references"))
 
 	msg := &message.OutgoingMessage{
-		FromName:    account.Name,
-		FromEmail:   account.Email,
+		FromName:    fromName,
+		FromEmail:   fromEmail,
 		To:          toAddrs,
 		CC:          ccAddrs,
 		Bcc:         bccAddrs,
