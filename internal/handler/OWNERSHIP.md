@@ -50,6 +50,9 @@ constrain every private lookup or mutation to that user:
 
 - Mail pages and lists: `/`, `/email/*`, `/folder/*`, `/mail/folder/*`,
   `/mail/thread/*`, `/search`, `/api/sidebar/*`, and `/api/folders/unread`.
+- Folder actions: `POST /api/folders/{id}/read-all` resolves the folder (or a
+  unified role) through `ResolveFolderIDForUser` and applies only to folders of
+  accounts the caller owns; foreign and missing folders both return 404.
 - Message content and actions: `/api/messages/*`, `/api/attachments/*`,
   `/api/inline-content/*`, `/api/remote-content/*`, and
   `/api/remote-assets/*`.
