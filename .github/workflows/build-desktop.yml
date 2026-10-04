@@ -166,6 +166,35 @@ jobs:
       # On workflow_dispatch releaseId is empty, so it only builds. `app` in the
       # macOS bundle list is what yields the .app.tar.gz the updater installs.
       - name: Build the desktop app
+        id: build
+        # The macOS DMG step (bundle_dmg.sh drives Finder) fails at random on
+        # hosted runners, so a failure here gets one retry below.
+        continue-on-error: true
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: tauri-wrapper
+          tauriScript: cargo tauri
+          args: --bundles ${{ matrix.bundles }}
+          releaseId: ${{ needs.create-release.outputs.release_id }}
+
+      # A failed DMG run can leave its scratch image mounted and half-written
+      # files behind, which would break the retry too.
+      - name: Clean up after a failed DMG build
+        if: steps.build.outcome == 'failure' && runner.os == 'macOS'
+        run: |
+          for vol in /Volumes/Raven*; do
+            if [ -d "$vol" ]; then hdiutil detach "$vol" -force || true; fi
+          done
+          rm -rf tauri-wrapper/src-tauri/target/release/bundle/dmg tauri-wrapper/src-tauri/target/release/bundle/macos/rw.*
+
+      # Same inputs as above. Release uploads match existing assets by name,
+      # so anything the first attempt already uploaded is replaced, not duplicated.
+      - name: Build the desktop app (retry)
+        if: steps.build.outcome == 'failure'
         uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -239,10 +268,10 @@ jobs:
                  -e "s/^\(  sha256 arm: *\)\"[0-9a-f]*\"/\1\"$MAC_SHA\"/" \
                  -e "s/^\( *x86_64_linux: *\)\"[0-9a-f]*\"/\1\"$LINUX_SHA\"/" Casks/raven.rb
           # A changed cask layout would make the edits above silently miss.
-          grep -q "\"$MAC_SHA\"" Casks/raven.rb && grep -q "\"$LINUX_SHA\"" Casks/raven.rb || {
+          if ! grep -q "\"$MAC_SHA\"" Casks/raven.rb || ! grep -q "\"$LINUX_SHA\"" Casks/raven.rb; then
             echo "::error::Casks/raven.rb was not updated with both checksums."
             exit 1
-          }
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add Casks/raven.rb
