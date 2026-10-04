@@ -807,7 +807,7 @@ templ SidebarFolderMenu(folder models.Folder) {
 					</button>
 				}
 				@dropdown.Content(dropdown.ContentProps{Placement: dropdown.PlacementBottomStart, Class: "w-44 normal-case tracking-normal"}) {
-					@dropdown.Item(dropdown.ItemProps{Disabled: folder.Unread <= 0, Attributes: templ.Attributes{"data-folder-mark-all-read": folder.ID}}) {
+					@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"data-folder-mark-all-read": folder.ID}}) {
 						<span class="flex items-center gap-2">
 							@icon.MailCheck(icon.Props{Class: "size-4"})
 							Mark all as read

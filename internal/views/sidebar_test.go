@@ -493,7 +493,9 @@ func TestSidebarFolderTreeCollapsesFolderChildrenFromSettings(t *testing.T) {
 	}
 }
 
-func TestSidebarFolderMenuOffersMarkAllReadAndDisablesItWithoutUnread(t *testing.T) {
+// The item stays enabled even when a folder shows no unread count: counts are
+// not tracked for every folder (e.g. Archive), so 0 does not mean "nothing unread".
+func TestSidebarFolderMenuOffersMarkAllReadForEveryRealFolder(t *testing.T) {
 	accounts := []models.Account{{
 		ID:               "acc",
 		Name:             "Personal",
@@ -522,8 +524,8 @@ func TestSidebarFolderMenuOffersMarkAllReadAndDisablesItWithoutUnread(t *testing
 	if tag := item("acc-inbox"); strings.Contains(tag, "disabled") {
 		t.Fatalf("inbox with unread mail has a disabled item: %s", tag)
 	}
-	if tag := item("acc-sent"); !strings.Contains(tag, "disabled") {
-		t.Fatalf("folder without unread mail has an enabled item: %s", tag)
+	if tag := item("acc-sent"); strings.Contains(tag, "disabled") {
+		t.Fatalf("folder without an unread count must still offer the item: %s", tag)
 	}
 	// Unified folders get the menu too, but virtual Starred and Scheduled do not.
 	item("inbox")

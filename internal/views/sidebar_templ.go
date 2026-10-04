@@ -3341,7 +3341,7 @@ func SidebarFolderMenu(folder models.Folder) templ.Component {
 						}
 						return nil
 					})
-					templ_7745c5c3_Err = dropdown.Item(dropdown.ItemProps{Disabled: folder.Unread <= 0, Attributes: templ.Attributes{"data-folder-mark-all-read": folder.ID}}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var156), templ_7745c5c3_Buffer)
+					templ_7745c5c3_Err = dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"data-folder-mark-all-read": folder.ID}}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var156), templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}

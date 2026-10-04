@@ -1231,13 +1231,10 @@ document.addEventListener("DOMContentLoaded", function () {
         return
       }
 
-      var folderMenuTrigger = e.target.closest && e.target.closest("[data-folder-menu-trigger]")
-      if (folderMenuTrigger) syncFolderMarkReadItems()
-
       var folderMarkRead = e.target.closest && e.target.closest("[data-folder-mark-all-read]")
       if (folderMarkRead) {
         e.preventDefault()
-        if (!folderMarkRead.disabled) markFolderAllRead(folderMarkRead.getAttribute("data-folder-mark-all-read"))
+        markFolderAllRead(folderMarkRead.getAttribute("data-folder-mark-all-read"))
         return
       }
 
@@ -4352,22 +4349,6 @@ document.addEventListener("DOMContentLoaded", function () {
     pendingSyncEvents = remaining.slice(-50)
   }
 
-  // "Mark all as read" is only useful while the folder shows unread mail.
-  function syncFolderMarkReadItems() {
-    var items = document.querySelectorAll("[data-folder-mark-all-read]")
-    for (var i = 0; i < items.length; i++) {
-      var id = items[i].getAttribute("data-folder-mark-all-read")
-      var unread = 0
-      var badges = document.querySelectorAll("[data-folder-unread]")
-      for (var b = 0; b < badges.length; b++) {
-        if (badges[b].dataset.folderUnread === id && badges[b].style.display !== "none") unread = parseInt(badges[b].textContent, 10) || 0
-      }
-      items[i].disabled = unread <= 0
-      items[i].classList.toggle("opacity-50", unread <= 0)
-      items[i].classList.toggle("pointer-events-none", unread <= 0)
-    }
-  }
-
   function refreshSidebarUnread() {
     fetch("/api/folders/unread").then(function (r) { return r.json() }).then(function (counts) {
       var badges = document.querySelectorAll("[data-folder-unread]")
@@ -4398,7 +4379,6 @@ document.addEventListener("DOMContentLoaded", function () {
           }
         }
       }
-      syncFolderMarkReadItems()
     }).catch(function () {})
   }
 
