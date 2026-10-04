@@ -177,6 +177,30 @@ func composeAccountName(account models.Account) string {
 	return account.DisplayLabel()
 }
 
+// composeAccountSelfEmails lists every address that means "me" for the account
+// (primary plus identities), comma-separated and lowercase, for reply-all
+// self-removal in the browser.
+func composeAccountSelfEmails(account models.Account) string {
+	seen := map[string]bool{}
+	var out []string
+	for _, email := range append([]string{account.Email}, identityEmails(account.Identities)...) {
+		email = strings.ToLower(strings.TrimSpace(email))
+		if email != "" && !seen[email] {
+			seen[email] = true
+			out = append(out, email)
+		}
+	}
+	return strings.Join(out, ",")
+}
+
+func identityEmails(identities []models.AccountIdentity) []string {
+	out := make([]string, 0, len(identities))
+	for _, identity := range identities {
+		out = append(out, identity.Email)
+	}
+	return out
+}
+
 func syncAccountDisplayName(account models.AccountSyncStatus) string {
 	if strings.TrimSpace(account.AccountName) != "" {
 		return account.AccountName

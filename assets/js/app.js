@@ -10345,14 +10345,20 @@ function composeDedupeAddresses(values, excludeEmails) {
   return out.join(", ")
 }
 
-function composeAccountEmail(accountId) {
+// composeAccountSelfEmails returns every address that means "me" for the
+// account: its primary address plus all sending identities (lowercase).
+function composeAccountSelfEmails(accountId) {
   var options = document.querySelectorAll("[data-account-id]")
+  var out = []
   for (var i = 0; i < options.length; i++) {
-    if (options[i].dataset.accountId === accountId && options[i].dataset.accountEmail) {
-      return String(options[i].dataset.accountEmail).toLowerCase()
-    }
+    if (options[i].dataset.accountId !== accountId) continue
+    var raw = (options[i].dataset.accountSelfEmails || "") + "," + (options[i].dataset.accountEmail || "")
+    raw.toLowerCase().split(",").forEach(function (e) {
+      e = e.trim()
+      if (e && out.indexOf(e) < 0) out.push(e)
+    })
   }
-  return ""
+  return out
 }
 
 function setComposeAccount(form, accountId) {
@@ -10424,9 +10430,8 @@ function composeReferencesForReply(source) {
 
 function composeValuesFromSource(source, mode) {
   var fromLine = composeAddress(source.from_name, source.from_email)
-  var ownEmail = composeAccountEmail(source.account_id)
   var exclude = {}
-  if (ownEmail) exclude[ownEmail] = true
+  composeAccountSelfEmails(source.account_id).forEach(function (email) { exclude[email] = true })
   var vals = {
     account_id: source.account_id || "",
     draft_id: "",
