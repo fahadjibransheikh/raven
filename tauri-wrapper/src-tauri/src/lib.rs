@@ -40,6 +40,20 @@ const GOFER_HOST: &str = "127.0.0.1";
 const GOFER_PORT: u16 = 8090;
 const GOFER_URL: &str = "http://127.0.0.1:8090";
 
+/// Microsoft settings the desktop app always runs Gofer with, so Outlook works
+/// on every install without editing a .env. The client ID is Raven's Azure app,
+/// registered as a public client (no secret; PKCE protects the code exchange),
+/// so it is safe to ship. Its redirect URIs are registered for
+/// http://localhost:8090, hence the fixed base URL. Gofer's .env loader never
+/// overrides variables that are already set, so these win over any stale
+/// values in a user's .env.
+const SIDECAR_ENV: [(&str, &str); 4] = [
+    ("GOFER_BASE_URL", "http://localhost:8090"),
+    ("MICROSOFT_OAUTH_CLIENT_ID", "57979fc5-6850-4d3d-8e8b-ab3122e4dc0c"),
+    ("MICROSOFT_OAUTH_CLIENT_SECRET", ""),
+    ("MICROSOFT_OAUTH_TENANT", "common"),
+];
+
 /// Working directory the sidecar is spawned with. Gofer reads its .env
 /// (OAuth credentials) and its data/ SQLite store relative to its process
 /// working directory, so this is the per-user app data folder
@@ -363,6 +377,7 @@ pub fn run() {
 
                 let (_rx, child) = sidecar_command
                     .current_dir(gofer_working_dir(&app_handle))
+                    .envs(SIDECAR_ENV)
                     .spawn()
                     .expect("failed to spawn the Gofer sidecar process");
 
