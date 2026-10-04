@@ -956,7 +956,7 @@ templ SettingsContactsTab(accounts []models.Account, uiSettings map[string]strin
 						for _, account := range contactSyncAccounts(accounts) {
 							<div class="flex items-center justify-between gap-3 rounded-md border border-border/70 bg-card/60 px-3 py-2">
 								<div class="min-w-0">
-									<p class="truncate text-xs font-medium text-foreground">{ account.Name }</p>
+									<p class="truncate text-xs font-medium text-foreground">{ account.DisplayLabel() }</p>
 									<p class="truncate text-[11px] text-muted-foreground">{ contactProviderLabel(account) } - { account.Email }</p>
 								</div>
 								<form hx-post="/api/settings/contacts/accounts/sync" hx-target="#account-contact-sync-status" hx-swap="innerHTML">
@@ -1862,7 +1862,7 @@ templ SettingsAccountCard(account models.Account) {
 					@AccountColorPopover(account)
 					<div class="min-w-0">
 						<div class="flex min-w-0 items-center gap-1.5">
-							<p class="min-w-0 truncate text-sm font-semibold text-foreground">{ account.Name }</p>
+							<p class="min-w-0 truncate text-sm font-semibold text-foreground" data-account-label={ account.ID } data-account-label-value={ account.Label }>{ account.DisplayLabel() }</p>
 							@SettingsAccountSyncErrorPopover(account, syncError, syncErrorAt)
 						</div>
 						<p class="mt-0.5 truncate text-xs text-muted-foreground">{ account.Email }</p>
@@ -1924,7 +1924,7 @@ templ SettingsAccountCard(account models.Account) {
 					<div class="flex items-center gap-3 rounded-lg border border-border bg-background/60 p-3">
 						<div class="account-color-marker size-5 shrink-0" style={ accountColorStyle(account.Color) } data-account-marker={ account.ID }></div>
 						<div class="min-w-0 flex-1">
-							<p class="truncate text-sm font-medium">{ account.Name }</p>
+							<p class="truncate text-sm font-medium">{ account.DisplayLabel() }</p>
 							<p class="truncate text-xs text-muted-foreground">{ account.Email }</p>
 						</div>
 					</div>
@@ -1968,7 +1968,7 @@ templ SettingsAccountCard(account models.Account) {
 				<div class="flex items-center gap-3 p-3 rounded-lg bg-destructive/5 border border-destructive/15">
 					<div class="account-color-marker size-5 shrink-0" style={ accountColorStyle(account.Color) } data-account-marker={ account.ID }></div>
 					<div class="flex-1 min-w-0">
-						<p class="text-sm font-medium truncate">{ account.Name }</p>
+						<p class="text-sm font-medium truncate">{ account.DisplayLabel() }</p>
 						<p class="text-xs text-muted-foreground truncate">{ account.Email }</p>
 					</div>
 				</div>
@@ -2011,7 +2011,7 @@ templ SettingsAccountSyncErrorPopover(account models.Account, syncError string, 
 				<button
 					type="button"
 					class="inline-flex size-6 items-center justify-center rounded-md text-destructive transition-colors hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/40"
-					aria-label={ fmt.Sprintf("Show mail sync error for %s", account.Name) }
+					aria-label={ fmt.Sprintf("Show mail sync error for %s", account.DisplayLabel()) }
 				>
 					@icon.CircleAlert(icon.Props{Class: "size-4"})
 				</button>
@@ -2090,7 +2090,7 @@ templ SettingsAccountConnectionTestDialog(account models.Account) {
 			<div class="flex items-center gap-3 rounded-lg border border-border bg-background/60 p-3" data-account-test-identity>
 				<div class="account-color-marker size-5 shrink-0" style={ accountColorStyle(account.Color) } data-account-marker={ account.ID }></div>
 				<div class="min-w-0 flex-1">
-					<p class="truncate text-sm font-medium">{ account.Name }</p>
+					<p class="truncate text-sm font-medium">{ account.DisplayLabel() }</p>
 					<p class="truncate text-xs text-muted-foreground">{ account.Email }</p>
 				</div>
 			</div>
@@ -2146,7 +2146,7 @@ templ SettingsAccountActionsMenu(account models.Account) {
 				Size:    button.SizeIcon,
 				Class:   "account-action-btn size-[30px] text-muted-foreground hover:text-foreground shadow-none",
 				Attributes: templ.Attributes{
-					"aria-label": fmt.Sprintf("More actions for %s", account.Name),
+					"aria-label": fmt.Sprintf("More actions for %s", account.DisplayLabel()),
 				},
 			}) {
 				@icon.EllipsisVertical(icon.Props{Class: "size-4"})
@@ -2196,6 +2196,16 @@ templ SettingsAccountActionsMenu(account models.Account) {
 				}
 			} else if account.Provider == "outlook" {
 				@OutlookReauthForm(account)
+			}
+			@dropdown.Item(dropdown.ItemProps{
+				Class: "justify-start gap-2",
+				Attributes: templ.Attributes{
+					"type":                "button",
+					"data-account-rename": account.ID,
+				},
+			}) {
+				@icon.Pencil(icon.Props{Class: "size-3.5"})
+				Rename
 			}
 			@dropdown.Separator()
 			@dialog.Trigger(dialog.TriggerProps{For: fmt.Sprintf("delete-account-%s", account.ID)}) {
@@ -2289,7 +2299,7 @@ templ AccountColorPopover(account models.Account) {
 				class="account-color-marker size-5 shrink-0 cursor-pointer ring-2 ring-transparent ring-offset-2 ring-offset-background transition-[box-shadow,filter] hover:brightness-110 hover:ring-border focus-visible:outline-none focus-visible:ring-ring"
 				style={ accountColorStyle(account.Color) }
 				data-account-marker={ account.ID }
-				aria-label={ fmt.Sprintf("Change marker color for %s", account.Name) }
+				aria-label={ fmt.Sprintf("Change marker color for %s", account.DisplayLabel()) }
 			></button>
 		}
 		@popover.Content(popover.ContentProps{Placement: popover.PlacementBottomStart, ShowArrow: true, Class: "w-64"}) {
@@ -2297,7 +2307,7 @@ templ AccountColorPopover(account models.Account) {
 				<div class="mb-3 flex items-start justify-between gap-3">
 					<div class="min-w-0">
 						<p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Marker color</p>
-						<p class="mt-0.5 truncate text-sm font-medium text-popover-foreground">{ account.Name }</p>
+						<p class="mt-0.5 truncate text-sm font-medium text-popover-foreground">{ account.DisplayLabel() }</p>
 					</div>
 					<div class="account-color-marker size-6 shrink-0" style={ accountColorStyle(account.Color) } data-account-marker={ account.ID }></div>
 				</div>
@@ -2395,7 +2405,7 @@ templ SignatureManagerGrid(accounts []models.AccountSignatureData) {
 							<span class="flex min-w-0 flex-1 items-center gap-2">
 								<span class="account-color-marker size-3.5 shrink-0" style={ accountColorStyle(first.Account.Color) } data-signature-account-marker data-account-marker={ first.Account.ID }></span>
 								@selectbox.Value(selectbox.ValueProps{Placeholder: "Choose account", Class: "min-w-0 text-left"}) {
-									{ first.Account.Name } &lt;{ first.Account.Email }&gt;
+									{ first.Account.DisplayLabel() } &lt;{ first.Account.Email }&gt;
 								}
 							</span>
 						}
@@ -2404,7 +2414,7 @@ templ SignatureManagerGrid(accounts []models.AccountSignatureData) {
 								@selectbox.Item(selectbox.ItemProps{Value: data.Account.ID, Selected: data.Account.ID == first.Account.ID}) {
 									<span class="inline-flex min-w-0 items-center gap-2">
 										<span class="account-color-marker size-3.5 shrink-0" style={ accountColorStyle(data.Account.Color) } data-signature-account-marker-source data-account-marker={ data.Account.ID }></span>
-										<span class="truncate">{ data.Account.Name } &lt;{ data.Account.Email }&gt;</span>
+										<span class="truncate">{ data.Account.DisplayLabel() } &lt;{ data.Account.Email }&gt;</span>
 									</span>
 								}
 							}
@@ -4095,6 +4105,16 @@ templ EditAccountDialog(data models.EditAccountData) {
 										Type:  input.TypeText,
 										Value: data.DisplayName,
 									})
+								</div>
+								<div>
+									<label class="text-xs font-medium text-muted-foreground mb-1.5 block">Sidebar label <span class="font-normal">(optional)</span></label>
+									@input.Input(input.Props{
+										Name:  "label",
+										Type:  input.TypeText,
+										Value: data.Label,
+										Attributes: templ.Attributes{"maxlength": "64", "placeholder": "e.g. Work"},
+									})
+									<p class="mt-1 text-xs text-muted-foreground">Shown only in Raven, not to recipients. Display Name above is what recipients see.</p>
 								</div>
 							</div>
 							</div>

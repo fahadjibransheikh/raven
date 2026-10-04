@@ -49,7 +49,7 @@ func TestMigrateV92ToV93AddsBoundedAuthenticationEventRetention(t *testing.T) {
 	).Scan(&days); err != nil {
 		t.Fatal(err)
 	}
-	if version != 93 || days != 180 {
+	if version != CurrentSchemaVersion || days != 180 {
 		t.Fatalf("migrated retention = version:%d days:%d", version, days)
 	}
 	for _, invalid := range []int{0, 366} {

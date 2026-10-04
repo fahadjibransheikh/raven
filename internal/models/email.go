@@ -1,11 +1,15 @@
 package models
 
-import "html/template"
+import (
+	"html/template"
+	"strings"
+)
 
 type Account struct {
 	ID                  string
 	Provider            string
 	Name                string
+	Label               string
 	Email               string
 	Color               string
 	Initials            string
@@ -19,6 +23,16 @@ type Account struct {
 	ContactAddressBooks []ContactAddressBook
 	Folders             []Folder
 	Labels              []Label
+}
+
+// DisplayLabel is how the UI names an account: label, then name, then email.
+func (a Account) DisplayLabel() string {
+	for _, v := range []string{a.Label, a.Name, a.Email} {
+		if v = strings.TrimSpace(v); v != "" {
+			return v
+		}
+	}
+	return ""
 }
 
 type Folder struct {

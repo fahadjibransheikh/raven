@@ -7424,7 +7424,7 @@ function selectComposeAccount(el, fromPane) {
   var idField = document.getElementById(prefix + "account-id")
   var display = document.getElementById(prefix + "from-display")
   if (idField) idField.value = accountId
-  if (display) display.innerHTML = (name ? name + " &lt;" : "") + email + (name ? "&gt;" : "")
+  if (display) display.textContent = (name ? name + " <" : "") + email + (name ? ">" : "")
   syncComposeAccountItems(fromPane ? "pane" : "dialog", accountId)
   _markComposeDirty(document.getElementById(prefix + "form"))
   applyDefaultComposeSignature(document.getElementById(prefix + "form"), true)
@@ -10285,7 +10285,7 @@ function setComposeAccount(form, accountId) {
     if (display && options[i].dataset.accountEmail) {
       var name = options[i].dataset.accountName || ""
       var email = options[i].dataset.accountEmail
-      display.innerHTML = (name ? name + " &lt;" : "") + email + (name ? "&gt;" : "")
+      display.textContent = (name ? name + " <" : "") + email + (name ? ">" : "")
     }
     return
   }

@@ -30,6 +30,7 @@ type EditAccountData struct {
 	ProviderAccountID string
 	EmailAddress      string
 	DisplayName       string
+	Label             string
 	IMAPHost          string
 	IMAPPort          int
 	IMAPTLSMode       string
@@ -62,6 +63,9 @@ type CreateAccountRequest struct {
 	AuthMethod        string `json:"auth_method"`
 	SmtpUsername      string `json:"smtp_username"`
 	SmtpPassword      string `json:"smtp_password"`
+
+	// Label is display-only (never the From name); nil leaves it unchanged on update.
+	Label *string `json:"label,omitempty"`
 }
 
 type SyncSettings struct {
