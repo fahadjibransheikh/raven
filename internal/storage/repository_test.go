@@ -3223,3 +3223,115 @@ func TestMigrateV75AddsGmailMessageFetchQueue(t *testing.T) {
 		t.Fatalf("migrated Gmail queue rows=%d version=%d, want 1/%d", queued, version, CurrentSchemaVersion)
 	}
 }
+
+func TestUpsertProviderSyncMessagesAdoptsOutlookSentWithRewrittenMessageID(t *testing.T) {
+	base := time.Date(2026, 10, 4, 23, 37, 57, 0, time.UTC)
+	to := []Recipient{{Email: "To@Example.com"}}
+	cc := []Recipient{{Email: "cc@example.com"}}
+	tests := []struct {
+		name      string
+		provider  string
+		folder    string // incoming folder
+		mutate    func(m *ProviderSyncMessage)
+		preRemote bool
+		adopt     bool
+	}{
+		{"rewritten id adopted", "outlook", "acc_sent", nil, false, true},
+		{"bcc ignored", "outlook", "acc_sent", func(m *ProviderSyncMessage) { m.BCCRecipients = []Recipient{{Email: "b@example.com"}} }, false, true},
+		{"different subject", "outlook", "acc_sent", func(m *ProviderSyncMessage) { m.Subject = "Other" }, false, false},
+		{"local row has remote id", "outlook", "acc_sent", nil, true, false},
+		{"incoming not sent folder", "outlook", "acc_inbox", nil, false, false},
+		{"gmail provider", "gmail", "acc_sent", nil, false, false},
+		{"recipients differ", "outlook", "acc_sent", func(m *ProviderSyncMessage) { m.ToRecipients = []Recipient{{Email: "x@example.com"}} }, false, false},
+		{"outside window", "outlook", "acc_sent", func(m *ProviderSyncMessage) { m.DateSent = base.Add(11 * time.Minute) }, false, false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			db := newContactsTestDB(t)
+			if _, err := db.Write().ExecContext(ctx, `INSERT INTO accounts (id, user_id, email_address, provider) VALUES ('acc', 'default', 'user@outlook.com', ?)`, tc.provider); err != nil {
+				t.Fatalf("insert account: %v", err)
+			}
+			if err := db.UpsertFolders(ctx, []UpsertFolderInput{
+				{ID: "acc_sent", AccountID: "acc", RemoteID: "Sent", ProviderRemoteID: "graph-sent", Name: "Sent", Role: "sent", Selectable: true},
+				{ID: "acc_inbox", AccountID: "acc", RemoteID: "INBOX", ProviderRemoteID: "graph-inbox", Name: "Inbox", Role: "inbox", Selectable: true},
+			}); err != nil {
+				t.Fatalf("UpsertFolders() error = %v", err)
+			}
+			if err := db.UpsertSyncMessages(ctx, []SyncMessage{{
+				AccountID: "acc", FolderID: "acc_sent", MessageID: "<local@gofer>", Subject: "Hello",
+				FromEmail: "User@Outlook.com", DateSent: base, IsRead: true, ToRecipients: to, CCRecipients: cc,
+			}}); err != nil {
+				t.Fatalf("UpsertSyncMessages() error = %v", err)
+			}
+			localID, err := db.GetMessageLocalIDByInternetIDInternal(ctx, "acc", "<local@gofer>")
+			if err != nil || localID == 0 {
+				t.Fatalf("local id = %d, %v", localID, err)
+			}
+			if tc.preRemote {
+				if _, err := db.Write().ExecContext(ctx, `UPDATE messages SET remote_message_id = 'earlier' WHERE id = ?`, localID); err != nil {
+					t.Fatal(err)
+				}
+			}
+			in := ProviderSyncMessage{
+				AccountID: "acc", FolderID: tc.folder, ProviderMessageID: "graph-1", InternetMessageID: "<server@outlook.com>",
+				Subject: "Hello", FromEmail: "user@outlook.com", DateSent: base.Add(3 * time.Second), DateReceived: base.Add(3 * time.Second),
+				IsRead: true, ToRecipients: to, CCRecipients: cc,
+			}
+			if tc.mutate != nil {
+				tc.mutate(&in)
+			}
+			ids, err := db.UpsertProviderSyncMessages(ctx, []ProviderSyncMessage{in})
+			if err != nil {
+				t.Fatalf("UpsertProviderSyncMessages() error = %v", err)
+			}
+			var count int
+			if err := db.Read().QueryRowContext(ctx, `SELECT COUNT(*) FROM messages WHERE account_id = 'acc'`).Scan(&count); err != nil {
+				t.Fatal(err)
+			}
+			if tc.adopt {
+				var internetID, remoteID string
+				if err := db.Read().QueryRowContext(ctx, `SELECT internet_message_id, remote_message_id FROM messages WHERE id = ?`, localID).Scan(&internetID, &remoteID); err != nil {
+					t.Fatal(err)
+				}
+				if count != 1 || ids["graph-1"] != localID || internetID != "<server@outlook.com>" || remoteID != "graph-1" {
+					t.Fatalf("count=%d id=%d (local %d) internet=%q remote=%q, want adopted", count, ids["graph-1"], localID, internetID, remoteID)
+				}
+			} else if count != 2 || ids["graph-1"] == localID {
+				t.Fatalf("count=%d id=%d (local %d), want separate insert", count, ids["graph-1"], localID)
+			}
+		})
+	}
+}
+
+func TestUpsertProviderSyncMessagesDoesNotAdoptAmbiguousOutlookSent(t *testing.T) {
+	ctx := context.Background()
+	db := newContactsTestDB(t)
+	if _, err := db.Write().ExecContext(ctx, `INSERT INTO accounts (id, user_id, email_address, provider) VALUES ('acc', 'default', 'user@outlook.com', 'outlook')`); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.UpsertFolders(ctx, []UpsertFolderInput{{ID: "acc_sent", AccountID: "acc", RemoteID: "Sent", ProviderRemoteID: "graph-sent", Name: "Sent", Role: "sent", Selectable: true}}); err != nil {
+		t.Fatal(err)
+	}
+	base := time.Date(2026, 10, 4, 23, 37, 57, 0, time.UTC)
+	to := []Recipient{{Email: "to@example.com"}}
+	for _, id := range []string{"<a@gofer>", "<b@gofer>"} { // equally far from the server copy
+		d := base
+		if id == "<b@gofer>" {
+			d = base.Add(20 * time.Second)
+		}
+		if err := db.UpsertSyncMessages(ctx, []SyncMessage{{AccountID: "acc", FolderID: "acc_sent", MessageID: id, Subject: "Hello", FromEmail: "user@outlook.com", DateSent: d, ToRecipients: to}}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := db.UpsertProviderSyncMessages(ctx, []ProviderSyncMessage{{
+		AccountID: "acc", FolderID: "acc_sent", ProviderMessageID: "graph-1", InternetMessageID: "<server@outlook.com>",
+		Subject: "Hello", FromEmail: "user@outlook.com", DateSent: base.Add(10 * time.Second), ToRecipients: to,
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	var count int
+	if err := db.Read().QueryRowContext(ctx, `SELECT COUNT(*) FROM messages WHERE account_id = 'acc'`).Scan(&count); err != nil || count != 3 {
+		t.Fatalf("count = %d, %v; want 3 (tie must not adopt)", count, err)
+	}
+}

@@ -1662,6 +1662,20 @@ func (db *DB) UpsertProviderSyncMessages(ctx context.Context, msgs []ProviderSyn
 		if err != nil {
 			return nil, err
 		}
+		if msgID == 0 {
+			msgID, err = db.findRewrittenOutlookSentTx(ctx, tx, m, normalizedSubject, dateSent)
+			if err != nil {
+				return nil, err
+			}
+			if msgID != 0 {
+				// Adopt the server's Message-ID so replies thread against it.
+				if _, err := tx.ExecContext(ctx,
+					`UPDATE messages SET internet_message_id = ?, message_id_normalized = ? WHERE id = ?`,
+					m.InternetMessageID, messageIDNorm, msgID); err != nil {
+					return nil, fmt.Errorf("adopt provider message id: %w", err)
+				}
+			}
+		}
 		wasNew := msgID == 0
 		if wasNew {
 			result, err := insertStmt.ExecContext(ctx,
@@ -2106,6 +2120,111 @@ func (db *DB) findProviderSyncMessageTx(ctx context.Context, tx *sql.Tx, account
 		}
 	}
 	return msgID, nil
+}
+
+// outlookSentAdoptWindow bounds how far the server copy's date_sent may drift
+// from the local sent record's.
+const outlookSentAdoptWindow = 10 * time.Minute
+
+// findRewrittenOutlookSentTx finds the local Sent record for a server copy
+// whose Message-ID Exchange rewrote. Microsoft SMTP submission (alias sends)
+// replaces the client's Message-ID, so neither the provider ID nor the
+// Internet Message-ID lookup matches and sync would insert a duplicate. This
+// is a heuristic, so it is limited to Outlook accounts, to messages arriving
+// in the Sent folder, and to local rows that have no remote ID yet. It returns
+// 0 (insert as usual) when there is no candidate or the best two tie.
+func (db *DB) findRewrittenOutlookSentTx(ctx context.Context, tx *sql.Tx, m ProviderSyncMessage, normalizedSubject string, dateSent time.Time) (int64, error) {
+	incoming := recipientAddressSet(m.ToRecipients, m.CCRecipients)
+	if len(incoming) == 0 || strings.TrimSpace(m.FromEmail) == "" {
+		return 0, nil
+	}
+	var ok int
+	err := tx.QueryRowContext(ctx, `
+		SELECT 1 FROM accounts a JOIN folders f ON f.account_id = a.id
+		WHERE a.id = ? AND a.provider = 'outlook' AND f.id = ? AND f.role = 'sent'`,
+		m.AccountID, m.FolderID).Scan(&ok)
+	if err == sql.ErrNoRows {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, fmt.Errorf("check outlook sent folder: %w", err)
+	}
+	rows, err := tx.QueryContext(ctx, `
+		SELECT m.id, ABS(julianday(m.date_sent) - julianday(?)) * 86400
+		FROM messages m
+		WHERE m.account_id = ?
+		  AND COALESCE(m.remote_message_id, '') = ''
+		  AND LOWER(m.from_email) = LOWER(?)
+		  AND m.normalized_subject = ?
+		  AND ABS(julianday(m.date_sent) - julianday(?)) * 86400 <= ?
+		  AND EXISTS (SELECT 1 FROM message_folder_state mfs JOIN folders sf ON sf.id = mfs.folder_id
+		              WHERE mfs.message_id = m.id AND mfs.is_deleted = 0 AND sf.account_id = m.account_id AND sf.role = 'sent')
+		ORDER BY 2`,
+		formatDBTime(dateSent), m.AccountID, m.FromEmail, normalizedSubject, formatDBTime(dateSent), outlookSentAdoptWindow.Seconds())
+	if err != nil {
+		return 0, fmt.Errorf("query outlook sent candidates: %w", err)
+	}
+	type candidate struct {
+		id    int64
+		delta float64
+	}
+	var cands []candidate
+	for rows.Next() {
+		var c candidate
+		if err := rows.Scan(&c.id, &c.delta); err != nil {
+			rows.Close()
+			return 0, fmt.Errorf("scan outlook sent candidate: %w", err)
+		}
+		cands = append(cands, c)
+	}
+	if err := rows.Close(); err != nil {
+		return 0, err
+	}
+	// Recipients are compared after the date filter so the common case reads nothing.
+	var matched []candidate
+	for _, c := range cands {
+		rr, err := tx.QueryContext(ctx, `SELECT email FROM message_recipients WHERE message_id = ? AND kind IN ('to', 'cc')`, c.id)
+		if err != nil {
+			return 0, fmt.Errorf("query candidate recipients: %w", err)
+		}
+		have := map[string]bool{}
+		for rr.Next() {
+			var email string
+			if err := rr.Scan(&email); err != nil {
+				rr.Close()
+				return 0, err
+			}
+			have[strings.ToLower(strings.TrimSpace(email))] = true
+		}
+		if err := rr.Close(); err != nil {
+			return 0, err
+		}
+		if len(have) == len(incoming) {
+			same := true
+			for e := range incoming {
+				same = same && have[e]
+			}
+			if same {
+				matched = append(matched, c)
+			}
+		}
+	}
+	if len(matched) == 0 || (len(matched) > 1 && matched[0].delta == matched[1].delta) {
+		return 0, nil
+	}
+	return matched[0].id, nil
+}
+
+func recipientAddressSet(lists ...[]Recipient) map[string]bool {
+	set := map[string]bool{}
+	for _, list := range lists {
+		for _, r := range list {
+			if e := strings.ToLower(strings.TrimSpace(r.Email)); e != "" {
+				set[e] = true
+			}
+		}
+	}
+	return set
 }
 
 func syntheticProviderMessageID(providerMessageID string) string {

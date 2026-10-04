@@ -105,6 +105,9 @@ func (h *Handler) sendOutlookGraphRaw(ctx context.Context, cfg *models.AccountCo
 	return token, nil
 }
 
+// Microsoft SMTP submission (alias sends) rewrites the Message-ID, so for those
+// sends this lookup by our Message-ID misses. Provider sync adopts the local
+// Sent row instead (storage.findRewrittenOutlookSentTx).
 func (h *Handler) cacheOutlookSentMessageID(ctx context.Context, accountID string, msg *message.OutgoingMessage, token string) {
 	localID, err := h.db.GetMessageLocalIDByInternetIDInternal(ctx, accountID, msg.MessageID)
 	if err != nil || localID == 0 {
