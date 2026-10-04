@@ -4,7 +4,22 @@ on:
   push:
     branches:
       - master
+    paths-ignore:
+      - "**.md"
+      - "Casks/**"
+      - "screenshots/**"
   pull_request:
+    paths-ignore:
+      - "**.md"
+      - "Casks/**"
+      - "screenshots/**"
+  # The release workflow calls this before drafting a release.
+  workflow_call:
+
+# A newer push to the same branch or PR cancels the run it supersedes.
+concurrency:
+  group: test-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -12,6 +27,7 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-22.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 

@@ -12,10 +12,15 @@ permissions:
   contents: write
 
 jobs:
+  # Nothing is drafted or built until the Go and JS tests pass.
+  test:
+    uses: ./.github/workflows/test.yml
+
   # A pushed v* tag fully publishes a release: this job makes a DRAFT (invisible
   # to the updater and to "latest"), build uploads into it, publish flips it
   # live only after every platform succeeded. workflow_dispatch skips all of it.
   create-release:
+    needs: test
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-22.04
     outputs:
@@ -70,9 +75,9 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
   build:
-    needs: create-release
+    needs: [test, create-release]
     # create-release is skipped on workflow_dispatch; don't let that skip the build.
-    if: ${{ !cancelled() && (needs.create-release.result == 'success' || needs.create-release.result == 'skipped') }}
+    if: ${{ !cancelled() && needs.test.result == 'success' && (needs.create-release.result == 'success' || needs.create-release.result == 'skipped') }}
     strategy:
       fail-fast: false
       matrix:
