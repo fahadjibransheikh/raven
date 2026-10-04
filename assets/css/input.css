@@ -3077,8 +3077,13 @@ body.mail-list-column-resizing {
     flex: 1 1 auto;
   }
 
+  #settings-content {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
   /* Folders/accounts drawer */
-  html[data-phone-nav="open"] aside[data-app-sidebar] {
+  html[data-phone-nav="open"] aside[data-phone-drawer] {
     display: flex !important;
     position: fixed;
     inset: 0 auto 0 0;

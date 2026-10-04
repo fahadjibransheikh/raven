@@ -26,6 +26,7 @@ templ SettingsPage(accounts []models.Account, syncSettings models.SyncSettings, 
 		<div class="flex-1 overflow-y-auto">
 			<div id="settings-content" class="max-w-3xl px-8 py-10">
 				<div class="mb-6">
+					@PhoneNavToggle("-ml-2 mb-2")
 					<h2 class="text-2xl font-bold text-foreground mb-1" style="font-family: var(--font-serif)">Settings</h2>
 					<p class="text-sm text-muted-foreground">Manage your accounts and preferences</p>
 				</div>

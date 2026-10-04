@@ -58,7 +58,7 @@
     if (!t || !t.closest) return
     if (t.closest("[data-phone-nav-toggle]")) {
       setNav(root.getAttribute("data-phone-nav") !== "open")
-    } else if (root.hasAttribute("data-phone-nav") && t.closest("[data-app-sidebar] a")) {
+    } else if (root.hasAttribute("data-phone-nav") && t.closest("[data-phone-drawer] a")) {
       setNav(false)
     }
   }, true)
@@ -67,7 +67,7 @@
   })
   document.addEventListener("htmx:afterSettle", function (e) {
     var elt = e.detail && e.detail.elt
-    if (elt && elt.closest && elt.closest("[data-app-sidebar]")) setNav(false)
+    if (elt && elt.closest && elt.closest("[data-phone-drawer]")) setNav(false)
   })
 
   syncPane()

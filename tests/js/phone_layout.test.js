@@ -61,7 +61,7 @@ test("no-op without #app-shell", () => {
 })
 
 test("drawer toggles via hamburger, closes on backdrop, Escape and sidebar link click", () => {
-  const w = load('<div id="app-shell"><aside data-app-sidebar><a href="#x">Inbox</a></aside><button data-phone-nav-toggle aria-expanded="false"></button><div id="mail-list"></div><div id="mail-view"><div data-mail-view-empty></div></div></div>')
+  const w = load('<div id="app-shell"><aside data-phone-drawer><a href="#x">Inbox</a></aside><button data-phone-nav-toggle aria-expanded="false"></button><div id="mail-list"></div><div id="mail-view"><div data-mail-view-empty></div></div></div>')
   const doc = w.document
   const nav = () => doc.documentElement.getAttribute("data-phone-nav")
   const toggle = doc.querySelector("[data-phone-nav-toggle]")
