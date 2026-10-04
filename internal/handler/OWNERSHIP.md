@@ -60,6 +60,10 @@ constrain every private lookup or mutation to that user:
   setup/confirmation, provider sync, suppression, and observed-contact cleanup.
 - Accounts: account discovery/creation/edit/service/color/test/deletion,
   account contact settings, signatures, and `/api/mail/sync*`.
+- Sending addresses: `/api/accounts/{id}/identities*` (list, add, delete,
+  set default, refresh from Gmail, dismiss suggestion) require an owned
+  account before any write or provider call; storage re-checks ownership in
+  SQL and foreign/missing accounts and identities both return 404.
 - Account OAuth: `/api/accounts/oauth2/authorize`,
   `/auth/google/mailbox/callback`, and `/auth/microsoft/mailbox/callback` use a
   single-use flow bound to the current user, session, and provider.

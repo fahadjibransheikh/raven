@@ -2069,6 +2069,7 @@ func (o *SyncOrchestrator) syncAccount(ctx context.Context, accountID string, in
 		return o.syncOutlookGraphAccount(ctx, accountID, includeIDLEFolders)
 	}
 	if o.shouldUseGmailAPIMail(cfg) {
+		o.refreshGmailIdentitiesIfDue(ctx, accountID)
 		return o.syncGmailAPIAccount(ctx, accountID, includeIDLEFolders)
 	}
 

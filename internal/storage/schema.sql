@@ -31,6 +31,8 @@ CREATE TABLE IF NOT EXISTS accounts (
     email_sync_enabled INTEGER NOT NULL DEFAULT 1,
     email_sync_error TEXT NOT NULL DEFAULT '',
     email_sync_error_at DATETIME,
+    identities_synced_at DATETIME,
+    identity_default_pinned INTEGER NOT NULL DEFAULT 0,
     is_deleting INTEGER NOT NULL DEFAULT 0,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -1372,4 +1374,26 @@ CREATE INDEX IF NOT EXISTS idx_mail_security_exceptions_lookup
 ON mail_security_exceptions(kind, protocol, host, port);
 
 -- Schema version marker for fresh installs
-INSERT OR REPLACE INTO schema_version (version) VALUES (95);
+CREATE TABLE IF NOT EXISTS account_identities (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    email TEXT NOT NULL,
+    name TEXT NOT NULL DEFAULT '',
+    source TEXT NOT NULL CHECK (source IN ('primary', 'provider', 'manual')),
+    is_default INTEGER NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(account_id, email)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_account_identities_default
+ON account_identities(account_id) WHERE is_default = 1;
+
+CREATE TABLE IF NOT EXISTS account_identity_dismissals (
+    account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    email TEXT NOT NULL,
+    dismissed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (account_id, email)
+);
+
+INSERT OR REPLACE INTO schema_version (version) VALUES (96);

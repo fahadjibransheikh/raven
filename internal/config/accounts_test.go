@@ -658,3 +658,39 @@ func TestUpdateAccountOnlyTouchesLabelWhenProvided(t *testing.T) {
 		t.Fatalf("empty Label must clear it: label/name = %q/%q", got.Label, got.Name)
 	}
 }
+
+func TestAccountPrimaryIdentityIsCreatedAndFollowsEdits(t *testing.T) {
+	ctx := context.Background()
+	db, store := newAccountStoreTestStore(t)
+	seedAccountStoreTestUser(t, ctx, db)
+
+	account, err := store.CreateAccount(ctx, "default", secureAccountStoreTestRequest("First@Example.com"))
+	if err != nil {
+		t.Fatalf("CreateAccount() error = %v", err)
+	}
+	ids, err := db.ListAccountIdentities(ctx, "default", account.ID)
+	if err != nil || len(ids) != 1 || ids[0].Source != "primary" || ids[0].Email != "first@example.com" || !ids[0].IsDefault || ids[0].Name != "Secure Mail" {
+		t.Fatalf("identities after create = %+v, %v", ids, err)
+	}
+
+	// An existing manual identity that matches the new address is absorbed.
+	if _, err := db.AddManualIdentity(ctx, "default", account.ID, "second@example.com", ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.UpdateAccount(ctx, account.ID, &models.CreateAccountRequest{EmailAddress: "second@example.com", DisplayName: "Renamed"}); err != nil {
+		t.Fatalf("UpdateAccount() error = %v", err)
+	}
+	ids, _ = db.ListAccountIdentities(ctx, "default", account.ID)
+	if len(ids) != 1 || ids[0].Source != "primary" || ids[0].Email != "second@example.com" || ids[0].Name != "Renamed" || !ids[0].IsDefault {
+		t.Fatalf("identities after edit = %+v", ids)
+	}
+
+	// Edits that touch neither address nor name leave identities alone.
+	label := "Work"
+	if err := store.UpdateAccount(ctx, account.ID, &models.CreateAccountRequest{Label: &label}); err != nil {
+		t.Fatal(err)
+	}
+	if ids, _ = db.ListAccountIdentities(ctx, "default", account.ID); len(ids) != 1 {
+		t.Fatalf("identities after label edit = %+v", ids)
+	}
+}
