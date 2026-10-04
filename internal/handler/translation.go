@@ -151,14 +151,7 @@ func (h *Handler) handleTranslatedEmailBody(w http.ResponseWriter, r *http.Reque
 
 	loadRemote := r.URL.Query().Get("remote") == "true"
 	if !loadRemote {
-		if h.db.IsRemoteContentAllowedForMessageForUser(ctx, msgID, h.userID(ctx)) {
-			loadRemote = true
-		} else {
-			senderEmail, _ := h.db.GetMessageSenderEmailForUser(ctx, msgID, h.userID(ctx))
-			if senderEmail != "" && h.db.IsRemoteContentAllowedForSenderForUser(ctx, senderEmail, h.userID(ctx)) {
-				loadRemote = true
-			}
-		}
+		loadRemote = h.remoteImagesAllowed(ctx, h.userID(ctx), msgID)
 	}
 	if loadRemote {
 		body = mailmessage.RestoreRemoteImages(body)

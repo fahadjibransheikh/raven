@@ -1403,15 +1403,8 @@ func (h *Handler) handleEmailBody(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if !loadRemote && msgID > 0 {
-		if h.db.IsRemoteContentAllowedForMessageForUser(ctx, msgID, userID) {
-			loadRemote = true
-		} else {
-			senderEmail, _ := h.db.GetMessageSenderEmailForUser(ctx, msgID, userID)
-			if senderEmail != "" && h.db.IsRemoteContentAllowedForSenderForUser(ctx, senderEmail, userID) {
-				loadRemote = true
-			}
-		}
+	if !loadRemote {
+		loadRemote = h.remoteImagesAllowed(ctx, userID, msgID)
 	}
 
 	if loadRemote {
@@ -1425,6 +1418,23 @@ func (h *Handler) handleEmailBody(w http.ResponseWriter, r *http.Request) {
 		doc = append(doc, remoteImagesDetectScript(emailID)...)
 	}
 	w.Write(doc)
+}
+
+// remoteImagesAllowed reports whether a message body should load its remote
+// images: always when the user's load_remote_images setting is on (the
+// default), otherwise only for messages or senders they allowed.
+func (h *Handler) remoteImagesAllowed(ctx context.Context, userID string, msgID int64) bool {
+	if h.db.GetUISettings(ctx, userID)["load_remote_images"] != "false" {
+		return true
+	}
+	if msgID <= 0 {
+		return false
+	}
+	if h.db.IsRemoteContentAllowedForMessageForUser(ctx, msgID, userID) {
+		return true
+	}
+	senderEmail, _ := h.db.GetMessageSenderEmailForUser(ctx, msgID, userID)
+	return senderEmail != "" && h.db.IsRemoteContentAllowedForSenderForUser(ctx, senderEmail, userID)
 }
 
 func safeEmailCSSColor(value, fallback string) string {
