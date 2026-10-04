@@ -633,7 +633,7 @@ func contactSaveTargetSelected(contact *models.Contact, target string) bool {
 }
 
 func accountContactSaveLabel(account models.Account) string {
-	name := strings.TrimSpace(account.Name)
+	name := account.DisplayLabel()
 	email := strings.TrimSpace(account.Email)
 	if name == "" {
 		return email
@@ -645,7 +645,7 @@ func accountContactSaveLabel(account models.Account) string {
 }
 
 func accountContactOriginLabel(account models.Account) string {
-	name := strings.TrimSpace(account.Name)
+	name := account.DisplayLabel()
 	if name != "" {
 		return name
 	}

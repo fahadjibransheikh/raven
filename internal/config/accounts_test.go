@@ -2,6 +2,7 @@ package config
 
 import (
 	"context"
+	"database/sql"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -588,5 +589,72 @@ func TestListDeletingAccountIDs(t *testing.T) {
 		if ids[i] != want[i] {
 			t.Fatalf("ids = %#v, want %#v", ids, want)
 		}
+	}
+}
+
+func TestUpdateAccountLabelIsScopedToOwnerAndLeavesDisplayName(t *testing.T) {
+	ctx := context.Background()
+	db, store := newAccountStoreTestStore(t)
+	seedAccountStoreTestUser(t, ctx, db)
+	if _, err := db.Write().ExecContext(ctx, `INSERT INTO users (id, username, username_normalized, name) VALUES ('other', 'other', 'other', 'Other')`); err != nil {
+		t.Fatal(err)
+	}
+	account, err := store.CreateAccount(ctx, "default", secureAccountStoreTestRequest("label@example.com"))
+	if err != nil {
+		t.Fatalf("CreateAccount() error = %v", err)
+	}
+
+	if err := store.UpdateAccountLabel(ctx, "other", account.ID, "Hijack"); err != sql.ErrNoRows {
+		t.Fatalf("foreign UpdateAccountLabel error = %v, want sql.ErrNoRows", err)
+	}
+	if err := store.UpdateAccountLabel(ctx, "default", account.ID, "Work"); err != nil {
+		t.Fatalf("UpdateAccountLabel() error = %v", err)
+	}
+	got, err := store.GetAccountByIDForUser(ctx, "default", account.ID)
+	if err != nil || got == nil {
+		t.Fatalf("GetAccountByIDForUser() = %v, %v", got, err)
+	}
+	if got.Label != "Work" || got.Name != "Secure Mail" {
+		t.Fatalf("label/name = %q/%q, want Work/Secure Mail", got.Label, got.Name)
+	}
+	listed, err := db.GetAccounts(ctx, "default")
+	if err != nil || len(listed) != 1 || listed[0].Label != "Work" {
+		t.Fatalf("GetAccounts() = %+v, %v; want label Work loaded", listed, err)
+	}
+
+	if err := store.UpdateAccountLabel(ctx, "default", account.ID, ""); err != nil {
+		t.Fatalf("clear label: %v", err)
+	}
+	got, _ = store.GetAccountByIDForUser(ctx, "default", account.ID)
+	if got.Label != "" {
+		t.Fatalf("label after clear = %q", got.Label)
+	}
+}
+
+func TestUpdateAccountOnlyTouchesLabelWhenProvided(t *testing.T) {
+	ctx := context.Background()
+	db, store := newAccountStoreTestStore(t)
+	seedAccountStoreTestUser(t, ctx, db)
+	account, err := store.CreateAccount(ctx, "default", secureAccountStoreTestRequest("label2@example.com"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.UpdateAccountLabel(ctx, "default", account.ID, "Work"); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.UpdateAccount(ctx, account.ID, &models.CreateAccountRequest{DisplayName: "Renamed"}); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := store.GetAccountByIDForUser(ctx, "default", account.ID)
+	if got.Label != "Work" || got.Name != "Renamed" {
+		t.Fatalf("nil Label must leave label alone: label/name = %q/%q", got.Label, got.Name)
+	}
+	empty := ""
+	if err := store.UpdateAccount(ctx, account.ID, &models.CreateAccountRequest{Label: &empty}); err != nil {
+		t.Fatal(err)
+	}
+	got, _ = store.GetAccountByIDForUser(ctx, "default", account.ID)
+	if got.Label != "" || got.Name != "Renamed" {
+		t.Fatalf("empty Label must clear it: label/name = %q/%q", got.Label, got.Name)
 	}
 }

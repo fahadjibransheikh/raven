@@ -728,7 +728,7 @@ func (db *DB) hydrateContactAddressBooksForList(ctx context.Context, userID stri
 	}
 	args := append([]any{userID}, stringsToAny(ids)...)
 	rows, err := db.Read().QueryContext(ctx, `
-		SELECT DISTINCT cc.profile_id, ab.id, ab.account_id, COALESCE(NULLIF(a.display_name, ''), a.email_address), ab.name, ab.url, ab.is_default
+		SELECT DISTINCT cc.profile_id, ab.id, ab.account_id, COALESCE(NULLIF(a.label, ''), NULLIF(a.display_name, ''), a.email_address), ab.name, ab.url, ab.is_default
 		FROM contact_cards cc
 		JOIN account_contact_address_books ab ON ab.account_id = cc.account_id
 		JOIN accounts a ON a.id = ab.account_id
@@ -947,7 +947,7 @@ func (db *DB) hydrateContactAddressBooks(ctx context.Context, userID string, con
 		return nil
 	}
 	rows, err := db.Read().QueryContext(ctx, `
-		SELECT DISTINCT ab.id, ab.account_id, COALESCE(NULLIF(a.display_name, ''), a.email_address), ab.name, ab.url, ab.is_default
+		SELECT DISTINCT ab.id, ab.account_id, COALESCE(NULLIF(a.label, ''), NULLIF(a.display_name, ''), a.email_address), ab.name, ab.url, ab.is_default
 		FROM contact_cards cc
 		JOIN account_contact_address_books ab ON ab.account_id = cc.account_id
 		JOIN accounts a ON a.id = ab.account_id
@@ -976,7 +976,7 @@ func (db *DB) hydrateContactAddressBooks(ctx context.Context, userID string, con
 
 func (db *DB) ListContactAddressBooks(ctx context.Context, userID string) ([]models.ContactAddressBook, error) {
 	rows, err := db.Read().QueryContext(ctx, `
-		SELECT ab.id, ab.account_id, COALESCE(NULLIF(a.display_name, ''), a.email_address), ab.name, ab.url, ab.is_default, ab.last_sync_token
+		SELECT ab.id, ab.account_id, COALESCE(NULLIF(a.label, ''), NULLIF(a.display_name, ''), a.email_address), ab.name, ab.url, ab.is_default, ab.last_sync_token
 		FROM account_contact_address_books ab
 		JOIN accounts a ON a.id = ab.account_id
 		JOIN account_contact_sync_configs acc ON acc.account_id = ab.account_id AND acc.user_id = ab.user_id
@@ -1004,7 +1004,7 @@ func (db *DB) GetContactAddressBook(ctx context.Context, userID, bookID string) 
 	var book models.ContactAddressBook
 	var isDefault int
 	err := db.Read().QueryRowContext(ctx, `
-		SELECT ab.id, ab.account_id, COALESCE(NULLIF(a.display_name, ''), a.email_address), ab.name, ab.url, ab.is_default, ab.last_sync_token
+		SELECT ab.id, ab.account_id, COALESCE(NULLIF(a.label, ''), NULLIF(a.display_name, ''), a.email_address), ab.name, ab.url, ab.is_default, ab.last_sync_token
 		FROM account_contact_address_books ab
 		JOIN accounts a ON a.id = ab.account_id
 		JOIN account_contact_sync_configs acc ON acc.account_id = ab.account_id AND acc.user_id = ab.user_id

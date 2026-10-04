@@ -77,11 +77,11 @@ templ ComposeDialog(accounts []models.Account) {
 											"data-compose-account-selected": fmt.Sprintf("%t", acc.ID == composeDefaultAccountID(accounts)),
 											"data-account-id":               acc.ID,
 											"data-account-email":            acc.Email,
-											"data-account-name":             acc.Name,
+											"data-account-name":             composeAccountName(acc),
 											"onclick":                       "selectComposeAccount(this)",
 										},
 									}) {
-										<span class="truncate select-item-text">{ acc.Name } &lt;{ acc.Email }&gt;</span>
+										<span class="truncate select-item-text">{ composeAccountName(acc) } &lt;{ acc.Email }&gt;</span>
 									}
 								}
 							}
@@ -533,11 +533,11 @@ templ ComposePane(accounts []models.Account) {
 												"data-compose-account-selected": fmt.Sprintf("%t", acc.ID == composeDefaultAccountID(accounts)),
 												"data-account-id":               acc.ID,
 												"data-account-email":            acc.Email,
-												"data-account-name":             acc.Name,
+												"data-account-name":             composeAccountName(acc),
 												"onclick":                       "selectComposeAccount(this, true)",
 											},
 										}) {
-											<span class="truncate select-item-text">{ acc.Name } &lt;{ acc.Email }&gt;</span>
+											<span class="truncate select-item-text">{ composeAccountName(acc) } &lt;{ acc.Email }&gt;</span>
 										}
 									}
 								}

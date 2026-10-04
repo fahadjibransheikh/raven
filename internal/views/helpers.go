@@ -155,9 +155,19 @@ func composeDefaultEmail(accounts []models.Account) string {
 
 func composeDefaultName(accounts []models.Account) string {
 	if len(accounts) > 0 {
-		return accounts[0].Name
+		return composeAccountName(accounts[0])
 	}
 	return ""
+}
+
+// composeAccountName is the From-picker text: label, else name, never the email
+// (the picker prints the address next to it). It is display-only; the sent
+// From name always comes from account.Name.
+func composeAccountName(account models.Account) string {
+	if strings.TrimSpace(account.Label) == "" && strings.TrimSpace(account.Name) == "" {
+		return ""
+	}
+	return account.DisplayLabel()
 }
 
 func syncAccountDisplayName(account models.AccountSyncStatus) string {
@@ -537,11 +547,8 @@ func mailListAccountDisplay(accounts []models.Account, accountID string) string 
 		if account.ID != accountID {
 			continue
 		}
-		if strings.TrimSpace(account.Name) != "" {
-			return account.Name
-		}
-		if strings.TrimSpace(account.Email) != "" {
-			return account.Email
+		if label := account.DisplayLabel(); label != "" {
+			return label
 		}
 		return account.ID
 	}

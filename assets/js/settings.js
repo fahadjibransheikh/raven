@@ -3,6 +3,7 @@ document.addEventListener("DOMContentLoaded", function () {
   setupSettingsSidebar()
   setupModePickers()
   setupAccountColorPickers()
+  setupAccountLabelEditing()
   setupAccountSignaturesDialog(document)
   setupEmailLinkHandler()
 })
@@ -184,6 +185,98 @@ function saveAccountColor(picker, rawColor, source) {
   }).finally(function () {
     setAccountColorSaving(picker, false)
   })
+}
+
+// Inline account label editing. The label is display-only; the From name on
+// outgoing mail is never touched.
+function setupAccountLabelEditing() {
+  if (setupAccountLabelEditing.ready) return
+  setupAccountLabelEditing.ready = true
+
+  document.addEventListener("dblclick", function (e) {
+    var span = e.target.closest && e.target.closest("[data-account-label]")
+    if (!span) return
+    e.preventDefault()
+    startAccountLabelEdit(span)
+  })
+
+  document.addEventListener("click", function (e) {
+    var item = e.target.closest && e.target.closest("[data-account-rename]")
+    if (!item) return
+    var accountId = item.getAttribute("data-account-rename")
+    var spans = document.querySelectorAll("[data-account-label]")
+    for (var i = 0; i < spans.length; i++) {
+      if (spans[i].getAttribute("data-account-label") === accountId) {
+        setTimeout(function (span) { startAccountLabelEdit(span) }, 0, spans[i])
+        return
+      }
+    }
+  })
+}
+
+function updateAccountLabelUI(accountId, label, displayLabel) {
+  document.querySelectorAll("[data-account-label]").forEach(function (span) {
+    if (span.getAttribute("data-account-label") !== accountId) return
+    span.textContent = displayLabel
+    span.setAttribute("data-account-label-value", label)
+  })
+}
+
+function startAccountLabelEdit(span) {
+  if (span.dataset.accountLabelEditing === "true") return
+  var accountId = span.getAttribute("data-account-label")
+  if (!accountId) return
+  span.dataset.accountLabelEditing = "true"
+
+  // Inputs inside a <button> are not reliably focusable (Firefox), so hide the
+  // sidebar toggle button and put the input next to it instead.
+  var host = span.closest("[data-sidebar-account-toggle]") || span
+  var previousDisplay = host.style.display
+  var original = span.getAttribute("data-account-label-value") || ""
+  var input = document.createElement("input")
+  input.type = "text"
+  input.maxLength = 64
+  input.value = original
+  input.placeholder = span.textContent.trim()
+  input.setAttribute("aria-label", "Account label")
+  input.className = "w-full min-w-0 rounded-md border border-input bg-background px-2 py-1 text-sm font-semibold text-foreground outline-none focus:ring-2 focus:ring-ring"
+  host.style.display = "none"
+  host.parentNode.insertBefore(input, host.nextSibling)
+
+  var finished = false
+  function finish(save) {
+    if (finished) return
+    finished = true
+    var next = input.value.trim()
+    input.remove()
+    host.style.display = previousDisplay
+    delete span.dataset.accountLabelEditing
+    if (!save || next === original) return
+    fetch("/api/accounts/" + encodeURIComponent(accountId) + "/label", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json" },
+      body: new URLSearchParams({ label: next }).toString()
+    }).then(function (res) {
+      return res.json().catch(function () { return {} }).then(function (data) {
+        if (!res.ok) throw new Error(data.error || "Failed to rename account")
+        return data
+      })
+    }).then(function (data) {
+      updateAccountLabelUI(accountId, data.label || "", data.display_label || data.label || "")
+    }).catch(function (err) {
+      if (window.showGoferToast) window.showGoferToast({ title: "Rename failed", description: err && err.message ? err.message : "Failed to rename account", variant: "error", icon: "error", duration: 4000 })
+    })
+  }
+
+  input.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") { e.preventDefault(); finish(true) }
+    else if (e.key === "Escape") { e.preventDefault(); finish(false) }
+    e.stopPropagation()
+  })
+  input.addEventListener("blur", function () { finish(true) })
+  input.addEventListener("click", function (e) { e.stopPropagation() })
+  input.focus()
+  input.select()
 }
 
 function sanitizeSignatureStyle(style) {

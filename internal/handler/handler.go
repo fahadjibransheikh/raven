@@ -38,6 +38,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
+	"unicode/utf8"
 )
 
 type Handler struct {
@@ -435,6 +437,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/accounts/{id}/edit", h.handleUpdateAccount)
 	mux.HandleFunc("POST /api/accounts/{id}/services", h.handleUpdateAccountService)
 	mux.HandleFunc("POST /api/accounts/{id}/color", h.handleUpdateAccountColor)
+	mux.HandleFunc("POST /api/accounts/{id}/label", h.handleUpdateAccountLabel)
 	mux.HandleFunc("POST /api/accounts/{id}/contacts/sync", h.handleSaveAccountContactSync)
 	mux.HandleFunc("POST /api/accounts/{id}/contacts/sync/test", h.handleTestAccountContactSync)
 	mux.HandleFunc("POST /api/accounts/{id}/contacts/sync/discover", h.handleDiscoverAccountContactSync)
@@ -2565,6 +2568,16 @@ func (h *Handler) handleUpdateAccount(w http.ResponseWriter, r *http.Request) {
 		SmtpPassword: r.FormValue("smtp_password"),
 	}
 
+	if r.Form.Has("label") {
+		label, ok := normalizeAccountLabel(r.FormValue("label"))
+		if !ok {
+			w.Header().Set("Content-Type", "text/html")
+			views.AccountFormError(fmt.Sprintf("Sidebar label must be %d characters or fewer", maxAccountLabelRunes)).Render(r.Context(), w)
+			return
+		}
+		req.Label = &label
+	}
+
 	if strings.EqualFold(strings.TrimSpace(req.Provider), providers.ProviderOutlook) {
 		if strings.TrimSpace(req.EmailAddress) == "" {
 			w.Header().Set("Content-Type", "text/html")
@@ -2684,6 +2697,68 @@ func (h *Handler) handleUpdateAccountColor(w http.ResponseWriter, r *http.Reques
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"color": color})
+}
+
+const maxAccountLabelRunes = 64
+
+// normalizeAccountLabel trims the label and enforces the length and
+// no-control-character limits. An empty result clears the label.
+func normalizeAccountLabel(raw string) (string, bool) {
+	label := strings.TrimSpace(raw)
+	if utf8.RuneCountInString(label) > maxAccountLabelRunes {
+		return "", false
+	}
+	for _, r := range label {
+		if unicode.IsControl(r) {
+			return "", false
+		}
+	}
+	return label, true
+}
+
+func (h *Handler) handleUpdateAccountLabel(w http.ResponseWriter, r *http.Request) {
+	accountID := r.PathValue("id")
+	if accountID == "" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": "account id required"})
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": "invalid form data"})
+		return
+	}
+
+	label, ok := normalizeAccountLabel(r.FormValue("label"))
+	if !ok {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": fmt.Sprintf("label must be %d characters or fewer and contain no control characters", maxAccountLabelRunes)})
+		return
+	}
+
+	userID := h.userID(r.Context())
+	if err := h.accountStore.UpdateAccountLabel(r.Context(), userID, accountID, label); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		if err == sql.ErrNoRows {
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(map[string]string{"error": "account not found"})
+			return
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "failed to update account label"})
+		return
+	}
+
+	displayLabel := label
+	if account, err := h.accountStore.GetAccountByIDForUser(r.Context(), userID, accountID); err == nil && account != nil {
+		displayLabel = account.DisplayLabel()
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"label": label, "display_label": displayLabel})
 }
 
 func (h *Handler) handleAccountSignatures(w http.ResponseWriter, r *http.Request) {
@@ -3388,7 +3463,7 @@ func (h *Handler) buildSyncSettings(ctx context.Context, accounts []models.Accou
 
 		var status models.AccountSyncStatus
 		status.AccountID = account.ID
-		status.AccountName = account.Name
+		status.AccountName = account.DisplayLabel()
 		status.AccountEmail = account.Email
 		status.Provider = account.Provider
 		status.Color = account.Color

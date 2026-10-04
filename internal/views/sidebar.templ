@@ -98,7 +98,7 @@ templ ContactsSidebarAccountSection(account models.Account, filters models.Conta
 			aria-expanded={ fmt.Sprintf("%t", !collapsed) }
 		>
 			<div class="account-color-marker size-2.5 shrink-0" style={ accountColorStyle(account.Color) } data-account-marker={ account.ID }></div>
-			<span class="flex-1 truncate text-left">{ contactSidebarAccountName(account) }</span>
+			<span class="flex-1 truncate text-left" data-account-label={ account.ID } data-account-label-value={ account.Label } title="Double-click to rename">{ contactSidebarAccountName(account) }</span>
 			@icon.ChevronDown(icon.Props{Class: "sidebar-account-chevron size-3.5 shrink-0 text-sidebar-foreground/60 transition-transform duration-200"})
 		</button>
 		<div class="sidebar-account-folders" data-sidebar-account-folders={ sectionID }>
@@ -204,10 +204,7 @@ func contactSidebarURL(filters models.ContactFilters, saveTarget string) string 
 }
 
 func contactSidebarAccountName(account models.Account) string {
-	if strings.TrimSpace(account.Name) != "" {
-		return strings.TrimSpace(account.Name)
-	}
-	return strings.TrimSpace(account.Email)
+	return account.DisplayLabel()
 }
 
 func contactSidebarAccountVisible(account models.Account) bool {
@@ -483,11 +480,11 @@ templ SidebarSyncControls(accounts []models.Account, activeApp string) {
 										hx-on::after-request="handleMailSidebarSyncResult(event)"
 										data-mail-account-sync-button={ account.ID }
 										class="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-										aria-label={ "Force sync " + account.Name + ", including IDLE folders" }
+										aria-label={ "Force sync " + account.DisplayLabel() + ", including IDLE folders" }
 									>
 										@icon.RefreshCw(icon.Props{Class: "size-3.5 shrink-0"})
 										<span class="min-w-0 flex-1">
-											<span class="block truncate font-medium">{ account.Name }</span>
+											<span class="block truncate font-medium">{ account.DisplayLabel() }</span>
 											<span class="block truncate text-[11px] text-sidebar-foreground/60">{ account.Email }</span>
 										</span>
 									</button>
@@ -545,7 +542,7 @@ templ SidebarMailSyncErrorSummaryTooltip(accounts []models.Account) {
 				for _, account := range accounts {
 					if account.EmailSyncEnabled && !account.IsDeleting && strings.TrimSpace(account.EmailSyncError) != "" {
 						<div class="rounded-md border border-sidebar-border/70 bg-sidebar-accent/20 px-2 py-1.5">
-							<div class="truncate font-semibold">{ account.Name }</div>
+							<div class="truncate font-semibold">{ account.DisplayLabel() }</div>
 							<div class="truncate text-[11px] opacity-70">{ account.Email }</div>
 							if strings.TrimSpace(account.EmailSyncErrorAt) != "" {
 								<div class="mt-1 opacity-85">Last failure: { formatAccountSyncErrorAt(account.EmailSyncErrorAt, nil) }</div>
@@ -630,7 +627,7 @@ templ SidebarAccountSection(account models.Account, activeFolder string, uiSetti
 			aria-expanded={ fmt.Sprintf("%t", !collapsed) }
 		>
 			<div class="account-color-marker size-2.5 shrink-0" style={ accountColorStyle(account.Color) } data-account-marker={ account.ID }></div>
-			<span class="flex-1 truncate text-left">{ account.Name }</span>
+			<span class="flex-1 truncate text-left" data-account-label={ account.ID } data-account-label-value={ account.Label } title="Double-click to rename">{ account.DisplayLabel() }</span>
 			if strings.TrimSpace(account.EmailSyncError) != "" {
 				@SidebarAccountSyncErrorTooltip(account, uiSettings)
 			}
@@ -797,7 +794,7 @@ templ SidebarAccountSyncErrorTooltip(account models.Account, uiSettings map[stri
 		@tooltip.Trigger(tooltip.TriggerProps{Class: "inline-flex shrink-0"}) {
 			<span
 				data-account-sync-error={ account.ID }
-				data-account-sync-error-name={ account.Name }
+				data-account-sync-error-name={ account.DisplayLabel() }
 				data-account-sync-error-email={ account.Email }
 				data-account-sync-error-message={ strings.TrimSpace(account.EmailSyncError) }
 				data-account-sync-error-failed-at={ strings.TrimSpace(account.EmailSyncErrorAt) }

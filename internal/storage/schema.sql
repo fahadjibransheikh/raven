@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS accounts (
     provider_account_id TEXT NOT NULL DEFAULT '',
     email_address TEXT NOT NULL,
     display_name TEXT NOT NULL DEFAULT '',
+    label TEXT NOT NULL DEFAULT '',
     color TEXT NOT NULL DEFAULT '',
     initials TEXT NOT NULL DEFAULT '',
     imap_host TEXT NOT NULL DEFAULT '',
@@ -1349,4 +1350,4 @@ CREATE INDEX IF NOT EXISTS idx_mail_security_exceptions_lookup
 ON mail_security_exceptions(kind, protocol, host, port);
 
 -- Schema version marker for fresh installs
-INSERT OR REPLACE INTO schema_version (version) VALUES (93);
+INSERT OR REPLACE INTO schema_version (version) VALUES (94);

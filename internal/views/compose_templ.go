@@ -341,9 +341,9 @@ func ComposeDialog(accounts []models.Account) templ.Component {
 									return templ_7745c5c3_Err
 								}
 								var templ_7745c5c3_Var17 string
-								templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(acc.Name)
+								templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(composeAccountName(acc))
 								if templ_7745c5c3_Err != nil {
-									return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/compose.templ`, Line: 84, Col: 60}
+									return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/compose.templ`, Line: 84, Col: 75}
 								}
 								_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 								if templ_7745c5c3_Err != nil {
@@ -356,7 +356,7 @@ func ComposeDialog(accounts []models.Account) templ.Component {
 								var templ_7745c5c3_Var18 string
 								templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(acc.Email)
 								if templ_7745c5c3_Err != nil {
-									return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/compose.templ`, Line: 84, Col: 78}
+									return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/compose.templ`, Line: 84, Col: 93}
 								}
 								_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 								if templ_7745c5c3_Err != nil {
@@ -376,7 +376,7 @@ func ComposeDialog(accounts []models.Account) templ.Component {
 									"data-compose-account-selected": fmt.Sprintf("%t", acc.ID == composeDefaultAccountID(accounts)),
 									"data-account-id":               acc.ID,
 									"data-account-email":            acc.Email,
-									"data-account-name":             acc.Name,
+									"data-account-name":             composeAccountName(acc),
 									"onclick":                       "selectComposeAccount(this)",
 								},
 							}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var16), templ_7745c5c3_Buffer)
@@ -2524,9 +2524,9 @@ func ComposePane(accounts []models.Account) templ.Component {
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var104 string
-						templ_7745c5c3_Var104, templ_7745c5c3_Err = templ.JoinStringErrs(acc.Name)
+						templ_7745c5c3_Var104, templ_7745c5c3_Err = templ.JoinStringErrs(composeAccountName(acc))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/compose.templ`, Line: 540, Col: 61}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/compose.templ`, Line: 540, Col: 76}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var104))
 						if templ_7745c5c3_Err != nil {
@@ -2539,7 +2539,7 @@ func ComposePane(accounts []models.Account) templ.Component {
 						var templ_7745c5c3_Var105 string
 						templ_7745c5c3_Var105, templ_7745c5c3_Err = templ.JoinStringErrs(acc.Email)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/compose.templ`, Line: 540, Col: 79}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/compose.templ`, Line: 540, Col: 94}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var105))
 						if templ_7745c5c3_Err != nil {
@@ -2559,7 +2559,7 @@ func ComposePane(accounts []models.Account) templ.Component {
 							"data-compose-account-selected": fmt.Sprintf("%t", acc.ID == composeDefaultAccountID(accounts)),
 							"data-account-id":               acc.ID,
 							"data-account-email":            acc.Email,
-							"data-account-name":             acc.Name,
+							"data-account-name":             composeAccountName(acc),
 							"onclick":                       "selectComposeAccount(this, true)",
 						},
 					}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var103), templ_7745c5c3_Buffer)

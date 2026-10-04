@@ -4373,7 +4373,7 @@ func (db *DB) GetFolderHighestUID(ctx context.Context, folderID string) (uint32,
 
 func (db *DB) GetAccounts(ctx context.Context, userID string) ([]models.Account, error) {
 	rows, err := db.Read().QueryContext(ctx,
-		`SELECT a.id, a.provider, a.email_address, a.display_name, a.color, a.initials, COALESCE(a.is_deleting, 0), COALESCE(a.email_sync_enabled, 1),
+		`SELECT a.id, a.provider, a.email_address, a.display_name, a.label, a.color, a.initials, COALESCE(a.is_deleting, 0), COALESCE(a.email_sync_enabled, 1),
 		        COALESCE(a.email_sync_error, ''), COALESCE(a.email_sync_error_at, ''),
 		        CASE WHEN a.provider IN ('gmail', 'outlook') THEN COALESCE(acc.enabled, 1) ELSE COALESCE(acc.enabled, 0) END AS contact_sync_enabled,
 		        CASE WHEN a.provider IN ('gmail', 'outlook') THEN a.provider ELSE COALESCE(acc.provider, '') END AS contact_sync_provider
@@ -4390,7 +4390,7 @@ func (db *DB) GetAccounts(ctx context.Context, userID string) ([]models.Account,
 	for rows.Next() {
 		var a models.Account
 		var isDeleting, emailSyncEnabled, contactSyncEnabled int
-		if err := rows.Scan(&a.ID, &a.Provider, &a.Email, &a.Name, &a.Color, &a.Initials, &isDeleting, &emailSyncEnabled, &a.EmailSyncError, &a.EmailSyncErrorAt, &contactSyncEnabled, &a.ContactSyncProvider); err != nil {
+		if err := rows.Scan(&a.ID, &a.Provider, &a.Email, &a.Name, &a.Label, &a.Color, &a.Initials, &isDeleting, &emailSyncEnabled, &a.EmailSyncError, &a.EmailSyncErrorAt, &contactSyncEnabled, &a.ContactSyncProvider); err != nil {
 			return nil, fmt.Errorf("scan account: %w", err)
 		}
 		a.IsDeleting = isDeleting == 1
@@ -4416,7 +4416,7 @@ func (db *DB) GetAccounts(ctx context.Context, userID string) ([]models.Account,
 
 func (db *DB) GetAccountsIncludingDeleting(ctx context.Context, userID string) ([]models.Account, error) {
 	rows, err := db.Read().QueryContext(ctx,
-		`SELECT a.id, a.provider, a.email_address, a.display_name, a.color, a.initials, COALESCE(a.is_deleting, 0), COALESCE(a.email_sync_enabled, 1),
+		`SELECT a.id, a.provider, a.email_address, a.display_name, a.label, a.color, a.initials, COALESCE(a.is_deleting, 0), COALESCE(a.email_sync_enabled, 1),
 		        COALESCE(a.email_sync_error, ''), COALESCE(a.email_sync_error_at, ''),
 		        CASE WHEN a.provider IN ('gmail', 'outlook') THEN COALESCE(acc.enabled, 1) ELSE COALESCE(acc.enabled, 0) END AS contact_sync_enabled,
 		        CASE WHEN a.provider IN ('gmail', 'outlook') THEN a.provider ELSE COALESCE(acc.provider, '') END AS contact_sync_provider
@@ -4433,7 +4433,7 @@ func (db *DB) GetAccountsIncludingDeleting(ctx context.Context, userID string) (
 	for rows.Next() {
 		var a models.Account
 		var isDeleting, emailSyncEnabled, contactSyncEnabled int
-		if err := rows.Scan(&a.ID, &a.Provider, &a.Email, &a.Name, &a.Color, &a.Initials, &isDeleting, &emailSyncEnabled, &a.EmailSyncError, &a.EmailSyncErrorAt, &contactSyncEnabled, &a.ContactSyncProvider); err != nil {
+		if err := rows.Scan(&a.ID, &a.Provider, &a.Email, &a.Name, &a.Label, &a.Color, &a.Initials, &isDeleting, &emailSyncEnabled, &a.EmailSyncError, &a.EmailSyncErrorAt, &contactSyncEnabled, &a.ContactSyncProvider); err != nil {
 			return nil, fmt.Errorf("scan account: %w", err)
 		}
 		a.IsDeleting = isDeleting == 1
