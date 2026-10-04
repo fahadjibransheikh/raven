@@ -478,13 +478,28 @@ func (db *DB) identitySuggestions(ctx context.Context, userID, accountID string)
 				  AND NOT EXISTS (
 				      SELECT 1 FROM message_folder_state s JOIN folders f ON f.id = s.folder_id
 				      WHERE s.message_id = m.id AND (s.is_draft = 1 OR f.role IN ('sent', 'drafts')))
+				  -- Only mail that reached us without naming a known address of ours, and
+				  -- addressed to a single recipient: that recipient is then most likely an
+				  -- alias or forward of ours. Without this, colleagues on shared threads
+				  -- dominate the list.
+				  AND NOT EXISTS (
+				      SELECT 1 FROM message_recipients r2
+				      WHERE r2.message_id = m.id AND r2.kind IN ('to', 'cc')
+				        AND (lower(trim(r2.email)) = lower(trim(a.email_address))
+				             OR lower(trim(r2.email)) IN (SELECT ai.email FROM account_identities ai WHERE ai.account_id = m.account_id)))
+				  AND (SELECT COUNT(*) FROM message_recipients r3
+				       WHERE r3.message_id = m.id AND r3.kind IN ('to', 'cc')) = 1
 				GROUP BY m.account_id, lower(trim(mr.email))
 				HAVING COUNT(DISTINCT m.id) >= `+fmt.Sprint(identitySuggestionThreshold)+`
 			) c
 			JOIN accounts a2 ON a2.id = c.account_id
 			WHERE c.email != lower(trim(a2.email_address))
 			  AND c.email NOT LIKE '%@lists.%' AND c.email NOT LIKE '%-list@%' AND c.email NOT LIKE '%-announce@%'
-			  AND NOT EXISTS (SELECT 1 FROM account_identities ai WHERE ai.account_id = c.account_id AND ai.email = c.email)
+			  -- Skip any address of the user's accounts (this one's identities, and the
+			  -- user's other accounts, which forward into each other).
+			  AND NOT EXISTS (SELECT 1 FROM account_identities ai JOIN accounts a3 ON a3.id = ai.account_id
+			                  WHERE a3.user_id = a2.user_id AND ai.email = c.email)
+			  AND NOT EXISTS (SELECT 1 FROM accounts a4 WHERE a4.user_id = a2.user_id AND lower(trim(a4.email_address)) = c.email)
 			  AND NOT EXISTS (SELECT 1 FROM account_identity_dismissals d WHERE d.account_id = c.account_id AND d.email = c.email)
 		) WHERE rn <= `+fmt.Sprint(MaxIdentitySuggestions)+`
 		ORDER BY account_id, n DESC, email`, args...)
