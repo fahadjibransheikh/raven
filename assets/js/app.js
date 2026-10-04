@@ -1203,7 +1203,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     document.addEventListener("click", function (e) {
       var rowLink = e.target.closest && e.target.closest(".mail-list-item[data-email-id] > a")
-      var rowClickIgnored = e.target.closest && (e.target.closest(".star-btn") || e.target.closest("[data-thread-toggle]"))
+      var rowClickIgnored = e.target.closest && (e.target.closest(".star-btn") || e.target.closest("[data-mail-row-action]") || e.target.closest("[data-thread-toggle]"))
       if (rowLink && !rowClickIgnored) {
         var linkRow = rowLink.closest(".mail-list-item[data-email-id]")
         if (linkRow && linkRow.dataset.emailId) {
@@ -1235,6 +1235,16 @@ document.addEventListener("DOMContentLoaded", function () {
       if (selectionAction) {
         e.preventDefault()
         if (!selectionAction.disabled) performMailSelectionAction(selectionAction.getAttribute("data-mail-selection-action"))
+        return
+      }
+
+      var rowAction = e.target.closest && e.target.closest("[data-mail-row-action]")
+      if (rowAction) {
+        e.preventDefault()
+        e.stopPropagation()
+        e.stopImmediatePropagation()
+        var rowActionId = rowAction.getAttribute("data-email-id")
+        if (rowActionId) performMailAction(rowAction.getAttribute("data-mail-row-action"), [rowActionId], { keepSelection: true })
         return
       }
 
@@ -1372,6 +1382,25 @@ document.addEventListener("DOMContentLoaded", function () {
       updateCachedRenderedRow(row)
     }
 
+    function applyOptimisticUnread(emailId) {
+      var row = document.querySelector('#mail-list-scroll .mail-list-item[data-email-id="' + cssEscape(emailId) + '"]')
+      if (!row) return
+      row.removeAttribute("data-mail-read-optimistic")
+      var anchor = row.querySelector(":scope > a")
+      if (anchor) {
+        anchor.removeAttribute("data-mail-read-optimistic")
+        var unreadFields = anchor.querySelectorAll('[data-mail-card-field="unread"]')
+        for (var u = 0; u < unreadFields.length; u++) {
+          var dot = document.createElement("span")
+          dot.dataset.mailCardField = "unread"
+          dot.className = "inline-flex size-4 shrink-0 items-center justify-center"
+          dot.innerHTML = '<span class="size-2 rounded-full bg-primary shadow-[0_0_6px_rgba(199,123,48,0.4)]"></span>'
+          unreadFields[u].replaceWith(dot)
+        }
+      }
+      updateCachedRenderedRow(row)
+    }
+
     function selectedMailTargets(ids) {
       return ids.map(function (emailId) {
         var row = document.querySelector('#mail-list-scroll .mail-list-item[data-email-id="' + cssEscape(emailId) + '"]')
@@ -1386,12 +1415,13 @@ document.addEventListener("DOMContentLoaded", function () {
       return mailActionCurrentFolderID()
     }
 
-    function markSelectedReadInBackground(ids) {
+    function markSelectedReadInBackground(ids, state, opts) {
       var targets = selectedMailTargets(ids)
-      for (var i = 0; i < ids.length; i++) applyOptimisticRead(ids[i])
-      clearMailSelection()
+      var unread = state === "unread"
+      for (var i = 0; i < ids.length; i++) unread ? applyOptimisticUnread(ids[i]) : applyOptimisticRead(ids[i])
+      if (!(opts && opts.keepSelection)) clearMailSelection()
 
-      sendBulkMessageAction("/api/messages/read", targets).then(function () {
+      sendBulkMessageAction("/api/messages/read", targets, unread ? { state: "unread" } : null).then(function () {
         if (virtualMailList && typeof virtualMailList.refreshCurrentFolder === "function") {
           virtualMailList.refreshCurrentFolder({ noAnimation: true }).catch(function () {})
         }
@@ -1423,12 +1453,19 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function performMailSelectionAction(action) {
       if (mailSelectionBusy || selectedMailIds.size === 0) return
-      var ids = Array.from(selectedMailIds)
+      performMailAction(action, Array.from(selectedMailIds))
+    }
+
+    // Shared by the selection toolbar and the per-row hover buttons. opts.keepSelection leaves the
+    // current multi-selection alone (row buttons act on one row only).
+    function performMailAction(action, ids, opts) {
+      var keepSelection = !!(opts && opts.keepSelection)
+      var clearSelection = keepSelection ? function () {} : clearMailSelection
       if (action === "label") {
         var labelName = promptMailLabelName()
         if (!labelName) return
         var labelTargets = selectedMailTargets(ids)
-        clearMailSelection()
+        clearSelection()
         sendBulkMessageAction("/api/messages/label", labelTargets, { label: labelName, folder_id: currentMailListFolderID() }).then(function () {
           if (virtualMailList && typeof virtualMailList.refreshCurrentFolder === "function") {
             virtualMailList.refreshCurrentFolder({ noAnimation: true }).catch(function () {})
@@ -1444,7 +1481,7 @@ document.addEventListener("DOMContentLoaded", function () {
         var removeLabelName = promptMailLabelName()
         if (!removeLabelName) return
         var unlabelTargets = selectedMailTargets(ids)
-        clearMailSelection()
+        clearSelection()
         sendBulkMessageAction("/api/messages/unlabel", unlabelTargets, { label: removeLabelName, folder_id: currentMailListFolderID() }).then(function () {
           if (virtualMailList && typeof virtualMailList.refreshCurrentFolder === "function") {
             virtualMailList.refreshCurrentFolder({ noAnimation: true }).catch(function () {})
@@ -1456,8 +1493,8 @@ document.addEventListener("DOMContentLoaded", function () {
         })
         return
       }
-      if (action === "read") {
-        markSelectedReadInBackground(ids)
+      if (action === "read" || action === "unread") {
+        markSelectedReadInBackground(ids, action, opts)
         return
       }
 
@@ -1468,7 +1505,11 @@ document.addEventListener("DOMContentLoaded", function () {
         var openedNext = removesFromFolder && openNextMailAfterRemoval(ids)
         if (removesFromFolder && !openedNext && current && ids.indexOf(current) !== -1) setMailViewEmpty()
         if (removesFromFolder) applyOptimisticRemove(ids)
-        clearMailSelection()
+        if (keepSelection && removesFromFolder) {
+          ids.forEach(function (id) { selectedMailIds.delete(id) })
+          syncMailSelectionControls()
+        }
+        clearSelection()
         var path = action === "archive" ? "/api/messages/archive" : (action === "delete" ? "/api/messages/delete" : (action === "spam" ? "/api/messages/spam" : (action === "not-spam" ? "/api/messages/not-spam" : "/api/messages/star")))
         var extra = action === "star" ? { state: "starred" } : null
         if (action === "delete") extra = { folder_id: currentMailListFolderID() }

@@ -815,6 +815,48 @@ templ MailCardLayoutDialog() {
 	}
 }
 
+// MailListRowActions are hover/focus quick actions overlaid on a list row. They are not a card-layout
+// field, so the layout settings never move or hide them. Clicks are handled in app.js.
+templ MailListRowActions(email models.Email) {
+	<div class="absolute right-2 top-1 z-10 flex items-center gap-0.5 rounded-md border border-border/70 bg-card p-0.5 shadow-sm opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto" data-mail-row-actions>
+		@button.Button(button.Props{
+			Variant:    button.VariantGhost,
+			Size:       button.SizeIcon,
+			Class:      "h-6 w-6",
+			Attributes: templ.Attributes{"data-mail-row-action": "archive", "data-email-id": email.ID, "aria-label": "Archive", "title": "Archive"},
+		}) {
+			@icon.Archive(icon.Props{Class: "size-3.5"})
+		}
+		@button.Button(button.Props{
+			Variant:    button.VariantGhost,
+			Size:       button.SizeIcon,
+			Class:      mailDeleteActionClass("h-6 w-6", "", mailRoleIsTrash(email.FolderRole)),
+			Attributes: templ.Attributes{"data-mail-row-action": "delete", "data-email-id": email.ID, "aria-label": mailRowDeleteLabel(email), "title": mailRowDeleteLabel(email)},
+		}) {
+			@icon.Trash2(icon.Props{Class: "size-3.5"})
+		}
+		if email.IsRead {
+			@button.Button(button.Props{
+				Variant:    button.VariantGhost,
+				Size:       button.SizeIcon,
+				Class:      "h-6 w-6",
+				Attributes: templ.Attributes{"data-mail-row-action": "unread", "data-email-id": email.ID, "aria-label": "Mark as unread", "title": "Mark as unread"},
+			}) {
+				@icon.Mail(icon.Props{Class: "size-3.5"})
+			}
+		} else {
+			@button.Button(button.Props{
+				Variant:    button.VariantGhost,
+				Size:       button.SizeIcon,
+				Class:      "h-6 w-6",
+				Attributes: templ.Attributes{"data-mail-row-action": "read", "data-email-id": email.ID, "aria-label": "Mark as read", "title": "Mark as read"},
+			}) {
+				@icon.MailOpen(icon.Props{Class: "size-3.5"})
+			}
+		}
+	</div>
+}
+
 templ MailListCardItem(accounts []models.Account, email models.Email, position int, selectedEmail *models.Email, senderDisplayMode string) {
 	<div class="mail-list-item" data-email-id={ email.ID } data-position={ fmt.Sprintf("%d", position) } data-thread-id={ email.ThreadID } data-has-thread={ fmt.Sprintf("%t", email.ThreadCount > 1) }>
 		<a
@@ -823,7 +865,7 @@ templ MailListCardItem(accounts []models.Account, email models.Email, position i
 			hx-target="#mail-view"
 			hx-swap="innerHTML"
 			class={
-				"mail-list-card px-3.5 py-2.5 rounded-lg cursor-pointer transition-all duration-200 group",
+				"mail-list-card relative px-3.5 py-2.5 rounded-lg cursor-pointer transition-all duration-200 group",
 				templ.KV("envelope-active", selectedEmail != nil && selectedEmail.ID == email.ID),
 				templ.KV("envelope", selectedEmail == nil || selectedEmail.ID != email.ID),
 			}
@@ -927,6 +969,7 @@ templ MailListCardItem(accounts []models.Account, email models.Email, position i
 				}
 			</div>
 			<div class="hidden" data-mail-card-zone="hidden"></div>
+			@MailListRowActions(email)
 		</a>
 	</div>
 }
@@ -939,7 +982,7 @@ templ MailListTableItem(email models.Email, position int, selectedEmail *models.
 			hx-target="#mail-view"
 			hx-swap="innerHTML"
 			class={
-				"mail-list-table-grid grid items-center gap-3 px-3 py-1.5 rounded-md cursor-pointer transition-all duration-150 group text-xs",
+				"mail-list-table-grid relative grid items-center gap-3 px-3 py-1.5 rounded-md cursor-pointer transition-all duration-150 group text-xs",
 				templ.KV("envelope-active", selectedEmail != nil && selectedEmail.ID == email.ID),
 				templ.KV("envelope", selectedEmail == nil || selectedEmail.ID != email.ID),
 			}
@@ -1007,6 +1050,7 @@ templ MailListTableItem(email models.Email, position int, selectedEmail *models.
 			<div class="flex items-center justify-end shrink-0 text-muted-foreground tabular-nums" data-mail-table-cell="date">
 				<span class={ templ.Classes("min-w-12 text-right", templ.KV("text-primary font-medium", !email.IsRead)) }>{ email.Date }</span>
 			</div>
+			@MailListRowActions(email)
 		</a>
 	</div>
 }

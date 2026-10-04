@@ -109,3 +109,55 @@ test("Unread toggle follows the popover status", async function () {
   applyPopover(w)
   assert.equal(unreadToggle(w).getAttribute("aria-pressed"), "false")
 })
+
+// Hover quick actions on list rows (real MailListCardItem / MailListTableItem markup).
+async function clickRowAction(id, action) {
+  const w = await loadPage()
+  const calls = []
+  w.fetch = function (url, init) {
+    calls.push({ url: String(url), body: init && init.body ? JSON.parse(init.body) : null })
+    return new Promise(function () {})
+  }
+  w.document.querySelector("[data-test-mail-list]").id = "mail-list-scroll"
+  const row = w.document.querySelector('#mail-list-scroll .mail-list-item[data-email-id="' + id + '"]')
+  let opened = 0
+  row.querySelector(":scope > a").addEventListener("click", function () { opened++ })
+  const button = row.querySelector('[data-mail-row-action="' + action + '"]')
+  const event = new w.MouseEvent("click", { bubbles: true, cancelable: true })
+  button.dispatchEvent(event)
+  return { calls, opened, event, w }
+}
+
+test("Row Archive posts one thread target and does not open the message", async function () {
+  const { calls, opened, event } = await clickRowAction("m1", "archive")
+  assert.equal(opened, 0)
+  assert.equal(event.defaultPrevented, true)
+  assert.equal(calls.length, 1)
+  assert.equal(calls[0].url, "/api/messages/archive")
+  assert.deepEqual(calls[0].body.targets, [{ id: "m1", thread: true }])
+})
+
+test("Row Delete sends a non-thread target to the delete endpoint", async function () {
+  const { calls, opened } = await clickRowAction("m2", "delete")
+  assert.equal(opened, 0)
+  assert.equal(calls[0].url, "/api/messages/delete")
+  assert.deepEqual(calls[0].body.targets, [{ id: "m2", thread: false }])
+})
+
+test("Row Mark as read posts no state; Mark as unread posts state=unread", async function () {
+  const read = await clickRowAction("m1", "read")
+  assert.equal(read.calls[0].url, "/api/messages/read")
+  assert.equal(read.calls[0].body.state, undefined)
+  assert.deepEqual(read.calls[0].body.targets, [{ id: "m1", thread: true }])
+  const unread = await clickRowAction("m2", "unread")
+  assert.equal(unread.calls[0].url, "/api/messages/read")
+  assert.equal(unread.calls[0].body.state, "unread")
+  assert.deepEqual(unread.calls[0].body.targets, [{ id: "m2", thread: false }])
+  assert.equal(unread.opened, 0)
+})
+
+test("Table row actions use the same path", async function () {
+  const { calls, opened } = await clickRowAction("m3", "archive")
+  assert.equal(opened, 0)
+  assert.deepEqual(calls[0].body.targets, [{ id: "m3", thread: false }])
+})

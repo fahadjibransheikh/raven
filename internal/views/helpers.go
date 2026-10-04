@@ -124,6 +124,13 @@ func mailDeleteSelectionLabel(permanent bool) string {
 	return "Delete selected messages"
 }
 
+func mailRowDeleteLabel(email models.Email) string {
+	if mailRoleIsTrash(email.FolderRole) {
+		return "Permanently delete"
+	}
+	return "Delete"
+}
+
 func mailViewPartialURL(emailID, folderID string, single bool) templ.SafeURL {
 	values := url.Values{}
 	if folderID = strings.TrimSpace(folderID); folderID != "" {
