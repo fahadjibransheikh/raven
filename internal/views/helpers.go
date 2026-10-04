@@ -925,3 +925,10 @@ func sidebarFolderHref(folderID, accountID string) templ.SafeURL {
 	}
 	return templ.URL(fmt.Sprintf("/?folder=%s&account=%s", folderID, accountID))
 }
+
+// folderMarkAllReadAvailable reports whether a sidebar folder can offer
+// "Mark all as read". Starred (a flag, not a folder) and Scheduled (local
+// queue) have no provider-side folder to mark.
+func folderMarkAllReadAvailable(folder models.Folder) bool {
+	return folder.ID != "" && folder.ID != "starred" && folder.ID != "scheduled"
+}

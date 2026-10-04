@@ -712,6 +712,7 @@ templ SidebarFolderItem(folder models.Folder, activeFolder string, accountID str
 			data-sidebar-folder-active?={ active }
 			data-sidebar-folder-collapsed={ fmt.Sprintf("%t", collapsed) }
 		>
+			<div class="group/folder flex items-center gap-0.5" data-sidebar-folder-menu-row>
 			<a
 				href={ sidebarFolderHref(folder.ID, accountID) }
 				hx-get={ templ.URL(fmt.Sprintf("/folder/%s", folder.ID)) }
@@ -745,6 +746,8 @@ templ SidebarFolderItem(folder models.Folder, activeFolder string, accountID str
 				}
 				@icon.ChevronDown(icon.Props{Class: "sidebar-folder-chevron size-3.5 shrink-0 text-sidebar-foreground/60 transition-transform duration-200"})
 			</a>
+			@SidebarFolderMenu(folder)
+			</div>
 			<div class="sidebar-folder-children" data-sidebar-folder-children={ groupID }>
 				<div class="sidebar-folder-children-inner pl-5 space-y-px">
 					for _, child := range folder.Children {
@@ -759,6 +762,7 @@ templ SidebarFolderItem(folder models.Folder, activeFolder string, accountID str
 }
 
 templ SidebarFolderLink(folder models.Folder, activeFolder string, accountID string) {
+	<div class="group/folder flex items-center gap-0.5" data-sidebar-folder-menu-row>
 	<a
 		href={ sidebarFolderHref(folder.ID, accountID) }
 		hx-get={ templ.URL(fmt.Sprintf("/folder/%s", folder.ID)) }
@@ -787,6 +791,32 @@ templ SidebarFolderLink(folder models.Folder, activeFolder string, accountID str
 			</span>
 		}
 	</a>
+	@SidebarFolderMenu(folder)
+	</div>
+}
+
+// SidebarFolderMenu is the hover/focus "⋯" menu next to a folder row. It is a
+// sibling of the folder link (a button cannot live inside an anchor).
+templ SidebarFolderMenu(folder models.Folder) {
+	if folderMarkAllReadAvailable(folder) {
+		<div class="w-0 shrink-0 overflow-hidden opacity-0 transition-opacity group-hover/folder:w-6 group-hover/folder:opacity-100 group-focus-within/folder:w-6 group-focus-within/folder:opacity-100 has-[[data-tui-popover-open=true]]:w-6 has-[[data-tui-popover-open=true]]:opacity-100" data-folder-menu>
+			@dropdown.Dropdown() {
+				@dropdown.Trigger() {
+					<button type="button" class="flex size-6 items-center justify-center rounded-md text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground" aria-label={ "Actions for " + folder.Name } data-folder-menu-trigger={ folder.ID }>
+						@icon.Ellipsis(icon.Props{Class: "size-4"})
+					</button>
+				}
+				@dropdown.Content(dropdown.ContentProps{Placement: dropdown.PlacementBottomStart, Class: "w-44 normal-case tracking-normal"}) {
+					@dropdown.Item(dropdown.ItemProps{Disabled: folder.Unread <= 0, Attributes: templ.Attributes{"data-folder-mark-all-read": folder.ID}}) {
+						<span class="flex items-center gap-2">
+							@icon.MailCheck(icon.Props{Class: "size-4"})
+							Mark all as read
+						</span>
+					}
+				}
+			}
+		</div>
+	}
 }
 
 templ SidebarAccountSyncErrorTooltip(account models.Account, uiSettings map[string]string) {

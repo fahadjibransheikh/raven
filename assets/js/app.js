@@ -1231,6 +1231,16 @@ document.addEventListener("DOMContentLoaded", function () {
         return
       }
 
+      var folderMenuTrigger = e.target.closest && e.target.closest("[data-folder-menu-trigger]")
+      if (folderMenuTrigger) syncFolderMarkReadItems()
+
+      var folderMarkRead = e.target.closest && e.target.closest("[data-folder-mark-all-read]")
+      if (folderMarkRead) {
+        e.preventDefault()
+        if (!folderMarkRead.disabled) markFolderAllRead(folderMarkRead.getAttribute("data-folder-mark-all-read"))
+        return
+      }
+
       var selectionAction = e.target.closest && e.target.closest("[data-mail-selection-action]")
       if (selectionAction) {
         e.preventDefault()
@@ -1397,6 +1407,42 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         refreshSidebarUnread()
       })
+    }
+
+    function markFolderAllRead(folderID) {
+      if (!folderID) return
+      if (currentMailListFolderID() === folderID) {
+        var rows = document.querySelectorAll("#mail-list-scroll .mail-list-item[data-email-id]")
+        for (var i = 0; i < rows.length; i++) applyOptimisticRead(rows[i].dataset.emailId)
+      }
+      fetch("/api/folders/" + encodeURIComponent(folderID) + "/read-all", { method: "POST", keepalive: true })
+        .then(function (r) {
+          if (!r.ok) throw new Error(r.status === 422 ? "This folder cannot be marked as read." : "The server could not mark the folder as read.")
+          return r.json()
+        })
+        .then(function (result) {
+          var n = (result && result.updated) || 0
+          showGoferToast({
+            id: "folder-mark-read-toast",
+            title: "Marked as read",
+            description: n === 1 ? "1 message marked as read." : n + " messages marked as read.",
+            variant: "success", icon: "success", position: "bottom-right", duration: 4000, dismissible: true,
+          })
+        })
+        .catch(function (err) {
+          showGoferToast({
+            id: "folder-mark-read-toast",
+            title: "Could not mark all as read",
+            description: (err && err.message) || "Try again.",
+            variant: "error", icon: "error", position: "bottom-right", duration: 6000, dismissible: true,
+          })
+        })
+        .then(function () {
+          if (virtualMailList && typeof virtualMailList.refreshCurrentFolder === "function") {
+            virtualMailList.refreshCurrentFolder({ noAnimation: true }).catch(function () {})
+          }
+          refreshSidebarUnread()
+        })
     }
 
     function sendBulkMessageAction(path, targets, extra) {
@@ -4265,6 +4311,22 @@ document.addEventListener("DOMContentLoaded", function () {
     pendingSyncEvents = remaining.slice(-50)
   }
 
+  // "Mark all as read" is only useful while the folder shows unread mail.
+  function syncFolderMarkReadItems() {
+    var items = document.querySelectorAll("[data-folder-mark-all-read]")
+    for (var i = 0; i < items.length; i++) {
+      var id = items[i].getAttribute("data-folder-mark-all-read")
+      var unread = 0
+      var badges = document.querySelectorAll("[data-folder-unread]")
+      for (var b = 0; b < badges.length; b++) {
+        if (badges[b].dataset.folderUnread === id && badges[b].style.display !== "none") unread = parseInt(badges[b].textContent, 10) || 0
+      }
+      items[i].disabled = unread <= 0
+      items[i].classList.toggle("opacity-50", unread <= 0)
+      items[i].classList.toggle("pointer-events-none", unread <= 0)
+    }
+  }
+
   function refreshSidebarUnread() {
     fetch("/api/folders/unread").then(function (r) { return r.json() }).then(function (counts) {
       var badges = document.querySelectorAll("[data-folder-unread]")
@@ -4295,6 +4357,7 @@ document.addEventListener("DOMContentLoaded", function () {
           }
         }
       }
+      syncFolderMarkReadItems()
     }).catch(function () {})
   }
 

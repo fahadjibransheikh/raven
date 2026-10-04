@@ -492,3 +492,49 @@ func TestSidebarFolderTreeCollapsesFolderChildrenFromSettings(t *testing.T) {
 		t.Fatalf("active parent folder should style the whole row including the toggle: %s", html)
 	}
 }
+
+func TestSidebarFolderMenuOffersMarkAllReadAndDisablesItWithoutUnread(t *testing.T) {
+	accounts := []models.Account{{
+		ID:               "acc",
+		Name:             "Personal",
+		EmailSyncEnabled: true,
+		Folders: []models.Folder{
+			{ID: "acc-inbox", Name: "Inbox", Icon: "inbox", Role: "inbox", Unread: 3},
+			{ID: "acc-sent", Name: "Sent", Icon: "send", Role: "sent"},
+		},
+	}}
+	var out bytes.Buffer
+	if err := SidebarFolderTree(accounts, "acc-inbox", nil, 2, models.EmailFilters{}).Render(context.Background(), &out); err != nil {
+		t.Fatalf("SidebarFolderTree.Render() error = %v", err)
+	}
+	html := out.String()
+
+	item := func(folderID string) string {
+		marker := `data-folder-mark-all-read="` + folderID + `"`
+		at := strings.Index(html, marker)
+		if at < 0 {
+			t.Fatalf("no Mark all as read item for %q in %s", folderID, html)
+		}
+		start := strings.LastIndex(html[:at], "<button")
+		end := strings.Index(html[at:], ">")
+		return html[start : at+end]
+	}
+	if tag := item("acc-inbox"); strings.Contains(tag, "disabled") {
+		t.Fatalf("inbox with unread mail has a disabled item: %s", tag)
+	}
+	if tag := item("acc-sent"); !strings.Contains(tag, "disabled") {
+		t.Fatalf("folder without unread mail has an enabled item: %s", tag)
+	}
+	// Unified folders get the menu too, but virtual Starred and Scheduled do not.
+	item("inbox")
+	if strings.Contains(html, `data-folder-mark-all-read="scheduled"`) || strings.Contains(html, `data-folder-mark-all-read="starred"`) {
+		t.Fatalf("virtual folders must not offer Mark all as read")
+	}
+	if !strings.Contains(html, "Mark all as read") {
+		t.Fatalf("menu label missing")
+	}
+	// The trigger is a sibling of the folder link, never nested inside the anchor.
+	if strings.Contains(html, `<a href="/folder/acc-inbox"`) && strings.Index(html, `data-folder-menu-trigger="acc-inbox"`) < 0 {
+		t.Fatalf("menu trigger missing")
+	}
+}
