@@ -1933,6 +1933,13 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function syncFilterButton(filters) {
+      var unreadToggle = document.querySelector("[data-mail-unread-toggle]")
+      if (unreadToggle) {
+        unreadToggle.setAttribute("aria-pressed", filters.unread ? "true" : "false")
+        unreadToggle.classList.toggle("bg-accent", !!filters.unread)
+        unreadToggle.classList.toggle("text-primary", !!filters.unread)
+        unreadToggle.classList.toggle("text-muted-foreground", !filters.unread)
+      }
       var count = (filters.unread ? 1 : 0) + (filters.starred ? 1 : 0) + (filters.attachments ? 1 : 0) +
         (filters.read ? 1 : 0) + (filters.noAttachments ? 1 : 0) + (filters.hasTags ? 1 : 0) + (filters.noTags ? 1 : 0) +
         (filters.threadsOnly ? 1 : 0) + (filters.noThreads ? 1 : 0) + (filters.participant ? 1 : 0) + (filters.from ? 1 : 0) + (filters.to ? 1 : 0) +
@@ -2772,6 +2779,12 @@ document.addEventListener("DOMContentLoaded", function () {
           syncAdvancedFilterCount()
           return
         }
+        applyCurrentFilters()
+        return
+      }
+
+      if (e.target && e.target.closest && e.target.closest("[data-mail-unread-toggle]")) {
+        setFilterTriState("status", readFilters().unread ? "" : "unread")
         applyCurrentFilters()
         return
       }

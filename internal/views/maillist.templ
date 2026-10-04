@@ -128,6 +128,18 @@ templ MailListToolbar(accounts []models.Account, activeFolder string, viewMode s
 			</button>
 		</div>
 		<div class="mail-list-toolbar-spacer flex-1"></div>
+		<button
+			type="button"
+			data-mail-unread-toggle
+			aria-pressed={ fmt.Sprintf("%t", filters.Unread) }
+			class={
+				"inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs font-medium hover:bg-accent hover:text-foreground",
+				templ.KV("bg-accent text-primary", filters.Unread),
+				templ.KV("text-muted-foreground", !filters.Unread),
+			}
+		>
+			Unread
+		</button>
 		@dropdown.Dropdown() {
 			@dropdown.Trigger() {
 				<button type="button" class="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground" aria-label="Sort messages">

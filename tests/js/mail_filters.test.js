@@ -8,11 +8,11 @@ const path = require("node:path")
 const { JSDOM } = require("jsdom")
 
 const root = path.join(__dirname, "..", "..")
-const popoverHTML = execFileSync("go", ["run", "./scripts/render-mail-filters"], { cwd: root, encoding: "utf8" })
+const renderedHTML = execFileSync("go", ["run", "./scripts/render-mail-filters"], { cwd: root, encoding: "utf8" })
 const appJS = fs.readFileSync(path.join(root, "assets", "js", "app.js"), "utf8")
 
 async function loadPage() {
-  const dom = new JSDOM("<!doctype html><body>" + popoverHTML + "</body>", { runScripts: "outside-only", pretendToBeVisual: true })
+  const dom = new JSDOM("<!doctype html><body>" + renderedHTML + "</body>", { runScripts: "outside-only", pretendToBeVisual: true })
   const w = dom.window
   // Browser APIs app.js touches at startup that jsdom lacks.
   w.EventSource = function () { this.addEventListener = function () {}; this.close = function () {} }
@@ -61,4 +61,51 @@ test("Apply count adds one per tri-state group and Clear all resets it", async f
   assert.equal(applyCount(w), 4)
   w.document.querySelector("[data-mail-advanced-filter-clear]").click()
   assert.equal(applyCount(w), 0)
+})
+
+function unreadToggle(w) {
+  return w.document.querySelector("[data-mail-unread-toggle]")
+}
+
+function filterButton(w) {
+  return w.document.querySelector("[data-mail-filter-button]")
+}
+
+function applyPopover(w) {
+  w.document.querySelector("[data-mail-advanced-filter-form]").dispatchEvent(new w.Event("submit", { bubbles: true, cancelable: true }))
+}
+
+function statusValue(w) {
+  return w.document.querySelector('[data-mail-tristate="status"]').getAttribute("data-mail-tristate-value")
+}
+
+test("Unread toggle sets status to unread and back to Any", async function () {
+  const w = await loadPage()
+  assert.equal(unreadToggle(w).getAttribute("aria-pressed"), "false")
+  unreadToggle(w).click()
+  assert.equal(statusValue(w), "unread")
+  assert.equal(unreadToggle(w).getAttribute("aria-pressed"), "true")
+  assert.equal(filterButton(w).dataset.active, "true") // readFilters().unread reached syncFilterButton
+  unreadToggle(w).click()
+  assert.equal(statusValue(w), "")
+  assert.equal(unreadToggle(w).getAttribute("aria-pressed"), "false")
+  assert.equal(filterButton(w).dataset.active, "false")
+})
+
+test("Unread toggle switches Read to Unread", async function () {
+  const w = await loadPage()
+  pick(w, "status", "read")
+  unreadToggle(w).click()
+  assert.equal(statusValue(w), "unread")
+  assert.equal(unreadToggle(w).getAttribute("aria-pressed"), "true")
+})
+
+test("Unread toggle follows the popover status", async function () {
+  const w = await loadPage()
+  pick(w, "status", "unread")
+  applyPopover(w)
+  assert.equal(unreadToggle(w).getAttribute("aria-pressed"), "true")
+  pick(w, "status", "read")
+  applyPopover(w)
+  assert.equal(unreadToggle(w).getAttribute("aria-pressed"), "false")
 })
