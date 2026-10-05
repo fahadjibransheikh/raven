@@ -13,7 +13,8 @@ import (
 
 // ErrFolderReadUnsupported means the folder has no provider-side identity the
 // bulk "mark all as read" operation can target (virtual folders, Gmail's
-// pseudo-archive, folders without a remote name).
+// folders without a remote name). Gmail's pseudo-archive is supported: it has
+// no label, so its job lists with a search query instead.
 var ErrFolderReadUnsupported = errors.New("mark all as read is not available for this folder")
 
 // FolderReadMutation is a queued whole-folder read operation. The cutoff makes
@@ -35,25 +36,31 @@ type FolderReadResult struct {
 	AccountID string
 	FolderID  string
 	Marked    int
+	// Skipped marks an account folder in a unified fan-out that has no
+	// provider identity to target; nothing was changed for it.
+	Skipped     bool
+	AccountName string
 }
 
 type folderReadTarget struct {
-	id, accountID, provider, remoteID, providerRemoteID string
-	uidValidity                                         int64
+	id, accountID, provider, remoteID, providerRemoteID, accountName string
+	uidValidity                                                      int64
 }
 
-func (db *DB) folderReadTargets(ctx context.Context, userID, folderID string) ([]folderReadTarget, error) {
+// folderReadTargets returns the folders a job can target plus, for a unified
+// folder only, the ones skipped for lacking a provider identity.
+func (db *DB) folderReadTargets(ctx context.Context, userID, folderID string) (out, skipped []folderReadTarget, err error) {
 	where := `a.user_id = ? AND COALESCE(a.is_deleting, 0) = 0 AND COALESCE(f.discovery_state, 'active') = 'active'`
 	args := []any{userID}
 	unified := isUnifiedFolderID(folderID)
 	if unified {
 		if folderID == "starred" || folderID == "scheduled" {
-			return nil, ErrFolderReadUnsupported
+			return nil, nil, ErrFolderReadUnsupported
 		}
 		rolePredicate, roleArgs := unifiedFolderRolePredicate("f", folderID)
 		accountFilter, accountArgs, err := db.unifiedFolderAccountFilter(ctx, userID, folderID, "a")
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		where += " AND " + rolePredicate + accountFilter
 		args = append(append(args, roleArgs...), accountArgs...)
@@ -62,18 +69,17 @@ func (db *DB) folderReadTargets(ctx context.Context, userID, folderID string) ([
 		args = append(args, folderID)
 	}
 	rows, err := db.Read().QueryContext(ctx, `
-		SELECT f.id, f.account_id, a.provider, COALESCE(f.remote_id, ''), COALESCE(f.provider_remote_id, ''), COALESCE(f.uid_validity, 0)
+		SELECT f.id, f.account_id, a.provider, COALESCE(f.remote_id, ''), COALESCE(f.provider_remote_id, ''), COALESCE(f.uid_validity, 0), COALESCE(NULLIF(a.display_name, ''), a.email_address, a.id)
 		FROM folders f JOIN accounts a ON a.id = f.account_id
 		WHERE `+where+` ORDER BY f.id`, args...)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer rows.Close()
-	var out []folderReadTarget
 	for rows.Next() {
 		var t folderReadTarget
-		if err := rows.Scan(&t.id, &t.accountID, &t.provider, &t.remoteID, &t.providerRemoteID, &t.uidValidity); err != nil {
-			return nil, err
+		if err := rows.Scan(&t.id, &t.accountID, &t.provider, &t.remoteID, &t.providerRemoteID, &t.uidValidity, &t.accountName); err != nil {
+			return nil, nil, err
 		}
 		t.provider = messageMutationProviderType(t.provider)
 		supported := false
@@ -81,23 +87,25 @@ func (db *DB) folderReadTargets(ctx context.Context, userID, folderID string) ([
 		case MessageMutationProviderIMAP:
 			supported = strings.TrimSpace(t.remoteID) != ""
 		case MessageMutationProviderGmail:
-			supported = strings.TrimSpace(t.providerRemoteID) != "" && t.providerRemoteID != "ARCHIVE"
+			supported = strings.TrimSpace(t.providerRemoteID) != ""
 		default:
 			supported = strings.TrimSpace(t.providerRemoteID) != ""
 		}
 		if supported {
 			out = append(out, t)
-		} else if !unified {
-			return nil, ErrFolderReadUnsupported
+		} else if unified {
+			skipped = append(skipped, t)
+		} else {
+			return nil, nil, ErrFolderReadUnsupported
 		}
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if !unified && len(out) == 0 {
-		return nil, sql.ErrNoRows
+		return nil, nil, sql.ErrNoRows
 	}
-	return out, nil
+	return out, skipped, nil
 }
 
 // MarkFolderReadAndQueueForUser marks every locally known unread message of
@@ -117,12 +125,16 @@ func (db *DB) MarkFolderReadAndQueueForUser(ctx context.Context, userID, folderI
 	if userID == "" {
 		return nil, fmt.Errorf("folder owner is required")
 	}
-	targets, err := db.folderReadTargets(ctx, userID, folderID)
+	targets, skipped, err := db.folderReadTargets(ctx, userID, folderID)
 	if err != nil {
 		return nil, err
 	}
+	var results []FolderReadResult
+	for _, t := range skipped {
+		results = append(results, FolderReadResult{AccountID: t.accountID, FolderID: t.id, Skipped: true, AccountName: t.accountName})
+	}
 	if len(targets) == 0 {
-		return nil, nil
+		return results, nil
 	}
 	tx, err := db.Write().BeginTx(ctx, nil)
 	if err != nil {
@@ -136,7 +148,6 @@ func (db *DB) MarkFolderReadAndQueueForUser(ctx context.Context, userID, folderI
 	const unreadInFolder = `SELECT message_id FROM message_folder_state
 		WHERE folder_id = ? AND is_deleted = 0 AND is_read = 0 AND message_id <= ?`
 	touched := map[string]struct{}{}
-	var results []FolderReadResult
 	for _, t := range targets {
 		var marked int
 		if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM (`+unreadInFolder+`)`, t.id, maxMessageID).Scan(&marked); err != nil {

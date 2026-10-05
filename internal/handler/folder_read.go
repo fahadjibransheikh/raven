@@ -76,14 +76,20 @@ func (h *Handler) handleMarkFolderRead(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	updated := 0
+	updated, folders := 0, 0
+	skipped := []string{} // accounts whose folder has no provider identity; the client names them in a toast
 	for _, result := range results {
+		if result.Skipped {
+			skipped = append(skipped, result.AccountName)
+			continue
+		}
 		updated += result.Marked
+		folders++
 		h.publishMutation(result.AccountID, result.FolderID)
 	}
 	h.signalMessageMutationWorker()
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]int{"updated": updated, "folders": len(results)})
+	_ = json.NewEncoder(w).Encode(map[string]any{"updated": updated, "folders": folders, "skipped": skipped})
 }
 
 // runDueFolderReads processes queued folder_read jobs and reports whether any
@@ -144,7 +150,7 @@ func (h *Handler) applyRemoteFolderRead(ctx context.Context, job storage.FolderR
 		if err != nil {
 			return fmt.Errorf("get Gmail token: %w", err)
 		}
-		if providerRemoteID == "" || providerRemoteID == "ARCHIVE" {
+		if providerRemoteID == "" {
 			return fmt.Errorf("Gmail folder has no label identity")
 		}
 		return h.markGmailLabelRead(ctx, token, providerRemoteID, job.CutoffAt)
@@ -200,17 +206,26 @@ func (h *Handler) applyRemoteFolderRead(ctx context.Context, job storage.FolderR
 }
 
 // markGmailLabelRead lists unread messages carrying the label that arrived
-// before the cutoff (users.messages.list, labelIds + q) and removes UNREAD in
+// before the cutoff (users.messages.list, labelIds + q; the ARCHIVE
+// pseudo-folder uses a q-only search) and removes UNREAD in
 // chunks of 1000 (users.messages.batchModify).
 func (h *Handler) markGmailLabelRead(ctx context.Context, token, labelID string, cutoff time.Time) error {
 	var ids []string
 	pageToken := ""
 	for {
 		query := url.Values{}
-		query.Set("labelIds", labelID)
 		// before: takes epoch seconds for an exact (timezone-free) instant:
 		// https://developers.google.com/workspace/gmail/api/guides/filtering
-		query.Set("q", "is:unread before:"+strconv.FormatInt(cutoff.Unix(), 10))
+		before := " before:" + strconv.FormatInt(cutoff.Unix(), 10)
+		if labelID == "ARCHIVE" {
+			// Gmail has no archive label; this mirrors the sync definition
+			// (gmailAPIMessageIsArchived / listGmailAPIMessageIDPage), so
+			// the remote set matches the local ARCHIVE folder's messages.
+			query.Set("q", "is:unread -in:inbox -in:sent -in:drafts -in:spam -in:trash"+before)
+		} else {
+			query.Set("labelIds", labelID)
+			query.Set("q", "is:unread"+before)
+		}
 		query.Set("maxResults", strconv.Itoa(gmailListPageSize))
 		query.Set("includeSpamTrash", "true") // otherwise SPAM and TRASH labels list nothing
 		if pageToken != "" {
