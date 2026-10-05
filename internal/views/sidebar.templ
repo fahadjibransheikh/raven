@@ -334,7 +334,9 @@ templ SidebarHeader(accounts []models.Account, activeApp string) {
 				<span class="text-lg font-bold tracking-tight text-sidebar-accent-foreground" style="font-family: var(--font-serif)">Raven</span>
 			</div>
 			<div id="sidebar-sync-controls">
-				@SidebarSyncControls(accounts, activeApp)
+				if activeApp != "calendar" {
+					@SidebarSyncControls(accounts, activeApp)
+				}
 			</div>
 		</div>
 		<div class="sidebar-app-nav relative grid h-8 w-full grid-cols-3 gap-0.5 rounded-lg border border-sidebar-border bg-sidebar-accent/35 p-0.5 mb-3" data-sidebar-app-nav>
@@ -379,10 +381,26 @@ templ SidebarHeader(accounts []models.Account, activeApp string) {
 				@icon.BookUser(icon.Props{Class: "size-3.5"})
 				<span class="sidebar-app-nav-label truncate">Contacts</span>
 			</a>
-			<button type="button" disabled data-sidebar-app-button="calendar" class="sidebar-app-nav-item relative z-10 inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md px-2 text-xs font-medium text-sidebar-foreground/40 transition-colors duration-200 disabled:cursor-not-allowed" title="Calendar is coming later" aria-label="Calendar">
+			<a
+				href="/calendar"
+				hx-get="/calendar"
+				hx-target="#mail-list"
+				hx-select="#mail-list"
+				hx-select-oob="#sidebar-app-body:outerHTML,#sidebar-sync-controls:outerHTML,#mail-view:outerHTML,#app-pane-dialogs:outerHTML"
+				hx-swap="outerHTML"
+				hx-push-url="/calendar"
+				data-sidebar-app-button="calendar"
+				aria-current?={ activeApp == "calendar" }
+				aria-label="Calendar"
+				class={
+					"sidebar-app-nav-item relative z-10 inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md px-2 text-xs font-medium transition-colors duration-200",
+					templ.KV("text-sidebar-accent-foreground", activeApp == "calendar"),
+					templ.KV("text-sidebar-foreground hover:text-sidebar-accent-foreground", activeApp != "calendar"),
+				}
+			>
 				@icon.CalendarDays(icon.Props{Class: "size-3.5"})
 				<span class="sidebar-app-nav-label truncate">Calendar</span>
-			</button>
+			</a>
 		</div>
 	</div>
 }

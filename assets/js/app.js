@@ -4880,6 +4880,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       if (mode === "contacts") document.title = "Contacts — Raven"
+      else if (mode === "calendar") document.title = "Calendar — Raven"
       else if (mode === "mail") document.title = "Raven"
 
       if (!href) return
@@ -4909,7 +4910,7 @@ document.addEventListener("DOMContentLoaded", function () {
   function setMainContentAppMode(mode) {
     var main = document.getElementById("main-content")
     if (!main) return
-    if (mode === "contacts") {
+    if (mode === "contacts" || mode === "calendar") {
       main.className = "flex flex-1 min-w-0 bg-background"
       main.removeAttribute("data-mail-pane-layout")
       return
@@ -5141,10 +5142,12 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function showAppSwitchPending(mode) {
-    if (mode !== "contacts" && mode !== "mail") return
+    if (mode !== "contacts" && mode !== "mail" && mode !== "calendar") return
     setMainContentAppMode(mode)
     virtualMailList = null
     virtualContactsList = null
+    // Calendar renders its own shell from the swapped #mail-list; no skeleton to paint.
+    if (mode === "calendar") return
     var viewMode = appSwitchListViewMode(mode)
     var sidebarBody = document.getElementById("sidebar-app-body")
     if (sidebarBody) {
