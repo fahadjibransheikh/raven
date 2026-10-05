@@ -821,6 +821,7 @@ templ MailViewBody(email *models.Email) {
 }
 
 templ MailViewBodyByID(emailID string) {
+	<div data-invite-slot={ emailID } class="invite-slot hidden"></div>
 	<div data-remote-content-banner={ emailID } class="hidden mb-3 w-full px-3 py-2.5 rounded-lg border border-amber-600/20 bg-amber-50/50 dark:bg-amber-900/10 flex items-center gap-3">
 			<div class="size-7 rounded-md bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
 				@icon.ImageOff(icon.Props{Class: "size-3.5 text-amber-600 dark:text-amber-400"})

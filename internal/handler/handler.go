@@ -413,6 +413,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	adminRoute("POST /admin/security/exceptions/{id}/delete", h.handleDeleteMailSecurityException)
 	mux.HandleFunc("GET /email/{id}", h.handleEmailPartial)
 	mux.HandleFunc("GET /email/{id}/body", h.handleEmailBody)
+	mux.HandleFunc("GET /email/{id}/invite", h.handleEmailInvite)
 	mux.HandleFunc("GET /email/{id}/body/translated", h.handleTranslatedEmailBody)
 	mux.HandleFunc("GET /folder/{id}", h.handleFolderPartial)
 	mux.HandleFunc("GET /folder/{id}/full", h.handleFolderFull)

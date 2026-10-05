@@ -35,7 +35,7 @@ const defaultCalendars = {
 async function load(opts) {
   opts = opts || {}
   const dom = new JSDOM("<!doctype html><html data-timezone=\"" + (opts.tz || LA) + "\"><body>" + (opts.body === undefined ? shell : opts.body) + "</body></html>",
-    { url: "http://localhost/calendar", runScripts: "outside-only", pretendToBeVisual: true })
+    { url: "http://localhost/calendar" + (opts.search || ""), runScripts: "outside-only", pretendToBeVisual: true })
   const w = dom.window
   windows.push(w)
   const calls = []
@@ -539,4 +539,11 @@ test("save errors keep the editor open and show the server message", async () =>
   assert.equal(d.querySelector("[data-cal-editor-save]").disabled, false)
   assert.equal(toasts.at(-1).variant, "error")
   assert.equal(calls.filter((c) => c.method === "POST").length, 0) // the failing fetch bypassed the recorder
+})
+
+test("?date= opens the calendar at that day (Open in Calendar link on invitation cards)", async () => {
+  const { d } = await load({ search: "?date=2026-11-03" })
+  assert.match(d.querySelector("[data-cal-title]").textContent, /Nov.*2026/)
+  const bad = await load({ search: "?date=garbage" })
+  assert.ok(bad.d.querySelector("[data-cal-body]"))
 })
