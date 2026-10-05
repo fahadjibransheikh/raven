@@ -1291,7 +1291,10 @@ document.addEventListener("DOMContentLoaded", function () {
     setupMailKeyboardShortcuts()
 
     function renderedMailRows() {
-      return Array.prototype.slice.call(document.querySelectorAll("#mail-list-scroll .mail-list-item[data-email-id]"))
+      // Rows hidden by applyOptimisticRemove are gone from the user's point of view.
+      return Array.prototype.slice.call(document.querySelectorAll("#mail-list-scroll .mail-list-item[data-email-id]")).filter(function (row) {
+        return row.style.display !== "none"
+      })
     }
 
     function setMailSelected(emailId, selected) {
@@ -1490,8 +1493,14 @@ document.addEventListener("DOMContentLoaded", function () {
       for (var i = 0; i < ids.length; i++) {
         var row = document.querySelector('#mail-list-scroll .mail-list-item[data-email-id="' + cssEscape(ids[i]) + '"]')
         if (!row) continue
-        row.style.opacity = "0.45"
-        row.style.pointerEvents = "none"
+        row.style.display = "none"
+      }
+    }
+
+    function restoreOptimisticRemove(ids) {
+      for (var i = 0; i < ids.length; i++) {
+        var row = document.querySelector('#mail-list-scroll .mail-list-item[data-email-id="' + cssEscape(ids[i]) + '"]')
+        if (row) row.style.display = ""
       }
     }
 
@@ -1558,7 +1567,17 @@ document.addEventListener("DOMContentLoaded", function () {
         var extra = action === "star" ? { state: "starred" } : null
         if (action === "delete") extra = { folder_id: currentMailListFolderID() }
         if (action === "spam" || action === "not-spam") extra = { folder_id: currentMailListFolderID() }
-        sendBulkMessageAction(path, targets, extra).then(function () {
+        sendBulkMessageAction(path, targets, extra).then(function (response) {
+          if (response && response.ok === false) throw new Error("HTTP " + response.status)
+        }).catch(function () {
+          if (removesFromFolder) restoreOptimisticRemove(ids)
+          showGoferToast({
+            id: "mail-action-error",
+            title: "Could not " + (action === "not-spam" ? "move out of spam" : action) + " the message",
+            description: "The change was undone. Try again.",
+            variant: "error", icon: "error", position: "bottom-right", duration: 6000, dismissible: true,
+          })
+        }).then(function () {
           if (virtualMailList && typeof virtualMailList.refreshCurrentFolder === "function") {
             virtualMailList.refreshCurrentFolder({ noAnimation: action === "star" }).catch(function () {})
           }
@@ -11018,8 +11037,7 @@ function finishOptimisticMailRemoval(vml) {
 function restoreOptimisticMailRemoval(emailId, vml) {
   var row = document.querySelector('.mail-list-item[data-email-id="' + String(emailId).replace(/"/g, '\\"') + '"]')
   if (row) {
-    row.style.opacity = ""
-    row.style.pointerEvents = ""
+    row.style.display = ""
   }
   if (vml) {
     vml.selectedEmailId = String(emailId)
