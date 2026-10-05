@@ -161,3 +161,52 @@ test("Table row actions use the same path", async function () {
   assert.equal(opened, 0)
   assert.deepEqual(calls[0].body.targets, [{ id: "m3", thread: false }])
 })
+
+// Keyboard shortcuts that remove a row must drop it from the list at once, not after the server answers.
+async function pressKey(key, respond) {
+  const w = await loadPage()
+  w.Element.prototype.scrollIntoView = function () {} // jsdom lacks it
+  const calls = []
+  w.fetch = function (url, init) {
+    if (!(init && init.body)) return new Promise(function () {}) // ignore unrelated GETs
+    calls.push({ url: String(url), body: JSON.parse(init.body) })
+    return respond ? respond() : new Promise(function () {})
+  }
+  w.document.querySelector("[data-test-mail-list]").id = "mail-list-scroll"
+  w.document.dispatchEvent(new w.KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }))
+  return { w, calls }
+}
+
+function rowVisible(w, id) {
+  const row = w.document.querySelector('#mail-list-scroll .mail-list-item[data-email-id="' + id + '"]')
+  return !!row && row.style.display !== "none"
+}
+
+for (const [key, url] of [["e", "/api/messages/archive"], ["#", "/api/messages/delete"], ["Delete", "/api/messages/delete"]]) {
+  test("Pressing " + key + " removes the row immediately while the request is pending", async function () {
+    const { w, calls } = await pressKey(key)
+    assert.equal(calls.length, 1)
+    assert.equal(calls[0].url, url)
+    const id = calls[0].body.targets[0].id
+    assert.equal(rowVisible(w, id), false)
+  })
+}
+
+test("A failed archive restores the row and shows an error toast", async function () {
+  let reject
+  const { w, calls } = await pressKey("e", function () { return new Promise(function (_, r) { reject = r }) })
+  const id = calls[0].body.targets[0].id
+  assert.equal(rowVisible(w, id), false)
+  reject(new Error("offline"))
+  await new Promise(function (resolve) { setTimeout(resolve, 20) })
+  assert.equal(rowVisible(w, id), true)
+  assert.ok(w.document.querySelector("#mail-action-error, [id^='mail-action-error']") || w.document.body.textContent.includes("Could not archive"))
+})
+
+test("A non-OK archive response restores the row", async function () {
+  const { w, calls } = await pressKey("e", function () { return Promise.resolve({ ok: false, status: 500 }) })
+  const id = calls[0].body.targets[0].id
+  assert.equal(rowVisible(w, id), false)
+  await new Promise(function (resolve) { setTimeout(resolve, 20) })
+  assert.equal(rowVisible(w, id), true)
+})
