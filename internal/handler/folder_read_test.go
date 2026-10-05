@@ -114,8 +114,10 @@ func TestFolderReadEndpointOwnerSucceedsAndForeignUserIsRejected(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("owner status = %d body = %q", rec.Code, rec.Body.String())
 	}
-	var body map[string]int
-	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil || body["updated"] != 1 {
+	var body struct {
+		Updated int `json:"updated"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil || body.Updated != 1 {
 		t.Fatalf("owner response = %q, %v", rec.Body.String(), err)
 	}
 	if unreadCount(t, db, "victim-inbox") != 0 || unreadCount(t, db, "attacker-inbox") != 1 {
@@ -439,5 +441,174 @@ func TestFolderReadJobForMissingFolderIsRemoved(t *testing.T) {
 	var n int
 	if err := db.Read().QueryRow(`SELECT COUNT(*) FROM folder_read_mutations`).Scan(&n); err != nil || n != 0 {
 		t.Fatalf("job for missing folder remains (%d, %v)", n, err)
+	}
+}
+
+// seedUnifiedArchive adds a Gmail pseudo-archive and an Outlook archive to the
+// owner's IMAP account, each folder holding one unread message.
+func seedUnifiedArchive(t *testing.T) (*Handler, *storage.DB) {
+	t.Helper()
+	h, db := seedFolderReadHandler(t)
+	for id, provider := range map[string]string{"gmail-acc": providers.ProviderGmail, "outlook-acc": providers.ProviderOutlook} {
+		if _, err := db.Write().ExecContext(t.Context(), `
+			INSERT INTO accounts (id, user_id, provider, provider_account_id, email_address)
+			VALUES (?, 'owner', ?, ?, ?)`, id, provider, id+"-subject", id+"@example.com"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := db.UpsertFolders(t.Context(), []storage.UpsertFolderInput{
+		{ID: "gmail-archive", AccountID: "gmail-acc", RemoteID: "[Gmail]/All Mail", ProviderRemoteID: "ARCHIVE", Name: "Archive", Role: "archive", Selectable: true},
+		{ID: "outlook-archive", AccountID: "outlook-acc", RemoteID: "Archive", ProviderRemoteID: "graph-archive", Name: "Archive", Role: "archive", Selectable: true},
+		{ID: "imap-archive", AccountID: "victim-account", RemoteID: "Archive", Name: "Archive", Role: "archive", Selectable: true},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	for i, f := range [][2]string{{"gmail-acc", "gmail-archive"}, {"outlook-acc", "outlook-archive"}, {"victim-account", "imap-archive"}} {
+		if err := db.UpsertSyncMessages(t.Context(), []storage.SyncMessage{{
+			AccountID: f[0], FolderID: f[1], RemoteUID: uint32(100 + i),
+			MessageID: fmt.Sprintf("<%s@example.com>", f[1]), Subject: "S", FromEmail: "sender@example.com",
+			DateSent: time.Now(), IsRead: false,
+		}}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return h, db
+}
+
+func queuedFolderJobs(t *testing.T, db *storage.DB) map[string]string {
+	t.Helper()
+	rows, err := db.Read().Query(`SELECT folder_id, provider_type FROM folder_read_mutations`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	out := map[string]string{}
+	for rows.Next() {
+		var f, p string
+		if err := rows.Scan(&f, &p); err != nil {
+			t.Fatal(err)
+		}
+		out[f] = p
+	}
+	return out
+}
+
+func TestFolderReadEndpointUnifiedArchiveCoversGmailOutlookAndIMAP(t *testing.T) {
+	h, db := seedUnifiedArchive(t)
+	rec := postFolderRead(h, "archive", ownerRequest)
+	t.Logf("status=%d body=%q", rec.Code, rec.Body.String())
+	t.Logf("unread gmail=%d outlook=%d imap=%d jobs=%v", unreadCount(t, db, "gmail-archive"), unreadCount(t, db, "outlook-archive"), unreadCount(t, db, "imap-archive"), queuedFolderJobs(t, db))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d body = %q, want 200", rec.Code, rec.Body.String())
+	}
+	var body struct {
+		Updated int      `json:"updated"`
+		Folders int      `json:"folders"`
+		Skipped []string `json:"skipped"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil || body.Updated != 3 || body.Folders != 3 || len(body.Skipped) != 0 {
+		t.Fatalf("body = %q (%v), want updated=3 folders=3 no skipped", rec.Body.String(), err)
+	}
+	for _, f := range []string{"gmail-archive", "outlook-archive", "imap-archive"} {
+		if n := unreadCount(t, db, f); n != 0 {
+			t.Errorf("%s still has %d unread", f, n)
+		}
+	}
+	want := map[string]string{"gmail-archive": "gmail", "outlook-archive": "outlook", "imap-archive": "imap"}
+	if got := queuedFolderJobs(t, db); fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Fatalf("queued jobs = %v, want %v", got, want)
+	}
+}
+
+func TestFolderReadEndpointDirectGmailArchiveIsSupported(t *testing.T) {
+	h, db := seedUnifiedArchive(t)
+	rec := postFolderRead(h, "gmail-archive", ownerRequest)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("direct Gmail archive status = %d body = %q, want 200", rec.Code, rec.Body.String())
+	}
+	if unreadCount(t, db, "gmail-archive") != 0 || unreadCount(t, db, "outlook-archive") != 1 {
+		t.Fatalf("direct archive read state wrong: gmail=%d outlook=%d", unreadCount(t, db, "gmail-archive"), unreadCount(t, db, "outlook-archive"))
+	}
+	if got := queuedFolderJobs(t, db); fmt.Sprint(got) != "map[gmail-archive:gmail]" {
+		t.Fatalf("queued jobs = %v", got)
+	}
+}
+
+func TestFolderReadEndpointUnifiedReportsSkippedAccounts(t *testing.T) {
+	h, db := seedUnifiedArchive(t)
+	// An Outlook archive that was never matched to a Graph folder id cannot be targeted.
+	if _, err := db.Write().Exec(`UPDATE folders SET provider_remote_id = '' WHERE id = 'outlook-archive'`); err != nil {
+		t.Fatal(err)
+	}
+	rec := postFolderRead(h, "archive", ownerRequest)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d body = %q", rec.Code, rec.Body.String())
+	}
+	var body struct {
+		Updated int      `json:"updated"`
+		Folders int      `json:"folders"`
+		Skipped []string `json:"skipped"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil || body.Updated != 2 || body.Folders != 2 || len(body.Skipped) != 1 || body.Skipped[0] != "outlook-acc@example.com" {
+		t.Fatalf("body = %q (%v), want updated=2 folders=2 skipped=[outlook-acc@example.com]", rec.Body.String(), err)
+	}
+	if unreadCount(t, db, "outlook-archive") != 1 {
+		t.Fatalf("skipped folder was marked read locally")
+	}
+}
+
+func TestFolderReadWorkerGmailArchiveUsesSearchQueryWithoutLabel(t *testing.T) {
+	ctx := t.Context()
+	h, db := newGmailAPITestHandler(t, ctx)
+	if err := db.UpsertFolders(ctx, []storage.UpsertFolderInput{{
+		ID: "acc_archive", AccountID: "acc", RemoteID: "[Gmail]/All Mail", ProviderRemoteID: "ARCHIVE", Name: "Archive", Role: "archive", Selectable: true,
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	cutoff := time.Now()
+	var batches []int
+	var listQueries []url.Values
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/users/me/messages":
+			listQueries = append(listQueries, r.URL.Query())
+			var msgs []map[string]string
+			for i := 0; i < 1200; i++ {
+				msgs = append(msgs, map[string]string{"id": fmt.Sprintf("m%d", i)})
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{"messages": msgs})
+		case r.Method == http.MethodPost && r.URL.Path == "/users/me/messages/batchModify":
+			var payload struct {
+				IDs            []string `json:"ids"`
+				RemoveLabelIDs []string `json:"removeLabelIds"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil || len(payload.RemoveLabelIDs) != 1 || payload.RemoveLabelIDs[0] != "UNREAD" {
+				t.Errorf("batchModify payload = %+v, %v", payload, err)
+			}
+			batches = append(batches, len(payload.IDs))
+		default:
+			t.Errorf("unexpected request %s %s", r.Method, r.URL.String())
+		}
+	}))
+	defer server.Close()
+	previous := gmailAPIBaseURL
+	gmailAPIBaseURL = server.URL
+	t.Cleanup(func() { gmailAPIBaseURL = previous })
+
+	if _, err := db.MarkFolderReadAndQueueForUser(ctx, "default", "acc_archive", cutoff); err != nil {
+		t.Fatal(err)
+	}
+	h.runDueMessageMutations(ctx)
+
+	if fmt.Sprint(batches) != "[1000 200]" {
+		t.Fatalf("batchModify sizes = %v, want [1000 200]", batches)
+	}
+	if len(listQueries) != 1 {
+		t.Fatalf("list calls = %d, want 1", len(listQueries))
+	}
+	q := listQueries[0]
+	want := "is:unread -in:inbox -in:sent -in:drafts -in:spam -in:trash before:" + strconv.FormatInt(cutoff.Unix(), 10)
+	if _, has := q["labelIds"]; has || q.Get("q") != want {
+		t.Fatalf("list query = %v, want no labelIds and q=%q", q, want)
 	}
 }

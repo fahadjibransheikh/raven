@@ -1450,6 +1450,17 @@ document.addEventListener("DOMContentLoaded", function () {
         })
         .then(function (result) {
           var n = (result && result.updated) || 0
+          var skipped = (result && result.skipped) || []
+          if (skipped.length) {
+            // A unified folder skips accounts whose folder has no provider identity; say so instead of reporting plain success.
+            showGoferToast({
+              id: "folder-mark-read-toast",
+              title: "Some accounts were not marked as read",
+              description: "Could not mark " + skipped.join(", ") + (n ? " (" + n + (n === 1 ? " message" : " messages") + " in the other accounts marked as read)." : "."),
+              variant: "error", icon: "error", position: "bottom-right", duration: 8000, dismissible: true,
+            })
+            return
+          }
           showGoferToast({
             id: "folder-mark-read-toast",
             title: "Marked as read",

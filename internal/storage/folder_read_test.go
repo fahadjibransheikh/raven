@@ -148,8 +148,18 @@ func TestMarkFolderReadRejectsForeignUserAndUnsupportedFolders(t *testing.T) {
 	}}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.MarkFolderReadAndQueueForUser(ctx, "default", "gmail-archive", time.Now()); !errors.Is(err, ErrFolderReadUnsupported) {
-		t.Fatalf("Gmail archive err = %v, want ErrFolderReadUnsupported", err)
+	// Gmail's pseudo-archive is supported (queried by search, not label); a Gmail
+	// folder with no provider identity at all is not.
+	if err := db.UpsertFolders(ctx, []UpsertFolderInput{{
+		ID: "gmail-nameless", AccountID: "acc", RemoteID: "Nameless", Name: "Nameless", Role: "custom", Selectable: true,
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.MarkFolderReadAndQueueForUser(ctx, "default", "gmail-nameless", time.Now()); !errors.Is(err, ErrFolderReadUnsupported) {
+		t.Fatalf("Gmail folder without provider id err = %v, want ErrFolderReadUnsupported", err)
+	}
+	if _, err := db.MarkFolderReadAndQueueForUser(ctx, "default", "gmail-archive", time.Now()); err != nil {
+		t.Fatalf("Gmail archive err = %v, want nil", err)
 	}
 	if _, err := db.MarkFolderReadAndQueueForUser(ctx, "default", "starred", time.Now()); !errors.Is(err, ErrFolderReadUnsupported) {
 		t.Fatalf("starred err = %v, want ErrFolderReadUnsupported", err)
