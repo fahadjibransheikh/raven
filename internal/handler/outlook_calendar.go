@@ -192,6 +192,17 @@ type graphEvent struct {
 	Removed          *struct{ Reason string } `json:"@removed"`
 }
 
+// isOutlookSeriesMaster reports whether a Graph event is the master of a
+// recurring series. Graph doesn't always include "type", so a recurrence
+// pattern also marks a master.
+func isOutlookSeriesMaster(g graphEvent) bool {
+	if g.Type == "seriesMaster" {
+		return true
+	}
+	rec := strings.TrimSpace(string(g.Recurrence))
+	return g.Type == "" && rec != "" && rec != "null"
+}
+
 type graphEventsPage struct {
 	Value     []graphEvent `json:"value"`
 	NextLink  string       `json:"@odata.nextLink"`
@@ -349,7 +360,7 @@ func (h *Handler) syncOutlookCalendarFull(ctx context.Context, token, selfEmail 
 			return err
 		}
 		for _, item := range page.Value {
-			if item.Removed != nil || item.IsCancelled {
+			if item.Removed != nil || item.IsCancelled || isOutlookSeriesMaster(item) {
 				continue
 			}
 			h.fillOutlookFromMaster(ctx, token, masters, &item)
@@ -393,7 +404,9 @@ func (h *Handler) syncOutlookCalendarIncremental(ctx context.Context, token, sel
 		var upserts []models.CalendarEvent
 		var deletes []string
 		for _, item := range page.Value {
-			if item.Removed != nil || item.IsCancelled {
+			// A series master stored as an event would show the series once more at
+			// its original start; its occurrences are stored separately.
+			if item.Removed != nil || item.IsCancelled || isOutlookSeriesMaster(item) {
 				deletes = append(deletes, item.ID)
 				continue
 			}

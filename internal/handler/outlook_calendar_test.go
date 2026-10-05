@@ -920,3 +920,24 @@ func TestOutlookSeriesDeleteClearsLocalRowsAndReportsFailure(t *testing.T) {
 		t.Fatalf("delete via master row = %d %s, rows left %d", code, body, count())
 	}
 }
+
+func TestIsOutlookSeriesMasterSkipsMastersWithoutType(t *testing.T) {
+	rec := json.RawMessage(`{"pattern":{"type":"absoluteYearly"}}`)
+	cases := []struct {
+		name string
+		g    graphEvent
+		want bool
+	}{
+		{"typed master", graphEvent{Type: "seriesMaster"}, true},
+		{"untyped with recurrence", graphEvent{Recurrence: rec}, true},
+		{"untyped null recurrence", graphEvent{Recurrence: json.RawMessage(`null`)}, false},
+		{"single instance", graphEvent{Type: "singleInstance"}, false},
+		{"occurrence", graphEvent{Type: "occurrence", SeriesMasterID: "m"}, false},
+		{"plain untyped", graphEvent{}, false},
+	}
+	for _, c := range cases {
+		if got := isOutlookSeriesMaster(c.g); got != c.want {
+			t.Errorf("%s: got %v, want %v", c.name, got, c.want)
+		}
+	}
+}
