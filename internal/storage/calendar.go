@@ -240,6 +240,70 @@ func (db *DB) FinishIncrementalCalendarSync(ctx context.Context, calendarID int6
 	return tx.Commit()
 }
 
+const calendarEventViewColumns = `e.id, e.calendar_id, e.account_id, e.provider_event_id, e.ical_uid, e.recurring_event_id, e.title,
+	e.location, e.description, e.start_at, e.end_at, e.all_day, e.start_date, e.end_date,
+	e.event_time_zone, e.status, e.organizer_email, e.self_response, e.attendees, e.html_link,
+	e.meeting_url, e.updated_at_provider, c.name, c.color`
+
+func scanCalendarEventView(row interface{ Scan(...any) error }) (models.CalendarEventView, error) {
+	var v models.CalendarEventView
+	var allDay int
+	var attendees string
+	var updated sql.NullTime
+	if err := row.Scan(&v.ID, &v.CalendarID, &v.AccountID, &v.ProviderEventID, &v.ICalUID, &v.RecurringEventID, &v.Title,
+		&v.Location, &v.Description, &v.StartAt, &v.EndAt, &allDay, &v.StartDate, &v.EndDate,
+		&v.EventTimeZone, &v.Status, &v.OrganizerEmail, &v.SelfResponse, &attendees, &v.HTMLLink,
+		&v.MeetingURL, &updated, &v.CalendarName, &v.CalendarColor); err != nil {
+		return v, err
+	}
+	v.AllDay = allDay == 1
+	v.StartAt, v.EndAt = v.StartAt.UTC(), v.EndAt.UTC()
+	v.UpdatedAtProvider = nullTimePtr(updated)
+	if err := json.Unmarshal([]byte(attendees), &v.Attendees); err != nil || v.Attendees == nil {
+		v.Attendees = []models.EventAttendee{}
+	}
+	return v, nil
+}
+
+// GetCalendarForUser returns one calendar of the user's accounts; foreign and
+// missing calendars are indistinguishable (ErrCalendarNotFound).
+func (db *DB) GetCalendarForUser(ctx context.Context, userID string, calendarID int64) (models.Calendar, error) {
+	c, err := scanCalendar(db.Read().QueryRowContext(ctx, `
+		SELECT `+calendarColumns+`
+		FROM calendars c JOIN accounts a ON a.id = c.account_id
+		WHERE c.id = ? AND a.user_id = ? AND COALESCE(a.is_deleting, 0) = 0`, calendarID, userID))
+	if errors.Is(err, sql.ErrNoRows) {
+		return c, ErrCalendarNotFound
+	}
+	return c, err
+}
+
+// GetCalendarEventForUser returns a stored event and its calendar, scoped to
+// the user's accounts (selected or not). Foreign and missing ids both yield
+// ErrCalendarNotFound.
+func (db *DB) GetCalendarEventForUser(ctx context.Context, userID string, eventID int64) (models.CalendarEventView, models.Calendar, error) {
+	var calID int64
+	if err := db.Read().QueryRowContext(ctx, `
+		SELECT e.calendar_id FROM calendar_events e JOIN calendars c ON c.id = e.calendar_id
+		JOIN accounts a ON a.id = c.account_id
+		WHERE e.id = ? AND a.user_id = ? AND COALESCE(a.is_deleting, 0) = 0`, eventID, userID).Scan(&calID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return models.CalendarEventView{}, models.Calendar{}, ErrCalendarNotFound
+		}
+		return models.CalendarEventView{}, models.Calendar{}, err
+	}
+	cal, err := db.GetCalendarForUser(ctx, userID, calID)
+	if err != nil {
+		return models.CalendarEventView{}, cal, err
+	}
+	v, err := scanCalendarEventView(db.Read().QueryRowContext(ctx, `
+		SELECT `+calendarEventViewColumns+` FROM calendar_events e JOIN calendars c ON c.id = e.calendar_id WHERE e.id = ?`, eventID))
+	if errors.Is(err, sql.ErrNoRows) {
+		return v, cal, ErrCalendarNotFound
+	}
+	return v, cal, err
+}
+
 // ListCalendarEvents returns events of the user's selected calendars that
 // overlap [start, end). Timed events overlap when start_at < end AND
 // end_at > start (a zero-length event overlaps when it starts inside the
@@ -252,10 +316,7 @@ func (db *DB) ListCalendarEvents(ctx context.Context, userID string, start, end 
 	startDate := start.In(loc).Format(calendarDateLayout)
 	endDateExcl := end.Add(-time.Nanosecond).In(loc).AddDate(0, 0, 1).Format(calendarDateLayout)
 	rows, err := db.Read().QueryContext(ctx, `
-		SELECT e.id, e.calendar_id, e.account_id, e.provider_event_id, e.ical_uid, e.recurring_event_id, e.title,
-		       e.location, e.description, e.start_at, e.end_at, e.all_day, e.start_date, e.end_date,
-		       e.event_time_zone, e.status, e.organizer_email, e.self_response, e.attendees, e.html_link,
-		       e.meeting_url, e.updated_at_provider, c.name, c.color
+		SELECT `+calendarEventViewColumns+`
 		FROM calendar_events e
 		JOIN calendars c ON c.id = e.calendar_id
 		JOIN accounts a ON a.id = c.account_id
@@ -270,21 +331,9 @@ func (db *DB) ListCalendarEvents(ctx context.Context, userID string, start, end 
 	defer rows.Close()
 	out := []models.CalendarEventView{}
 	for rows.Next() {
-		var v models.CalendarEventView
-		var allDay int
-		var attendees string
-		var updated sql.NullTime
-		if err := rows.Scan(&v.ID, &v.CalendarID, &v.AccountID, &v.ProviderEventID, &v.ICalUID, &v.RecurringEventID, &v.Title,
-			&v.Location, &v.Description, &v.StartAt, &v.EndAt, &allDay, &v.StartDate, &v.EndDate,
-			&v.EventTimeZone, &v.Status, &v.OrganizerEmail, &v.SelfResponse, &attendees, &v.HTMLLink,
-			&v.MeetingURL, &updated, &v.CalendarName, &v.CalendarColor); err != nil {
+		v, err := scanCalendarEventView(rows)
+		if err != nil {
 			return nil, err
-		}
-		v.AllDay = allDay == 1
-		v.StartAt, v.EndAt = v.StartAt.UTC(), v.EndAt.UTC()
-		v.UpdatedAtProvider = nullTimePtr(updated)
-		if err := json.Unmarshal([]byte(attendees), &v.Attendees); err != nil || v.Attendees == nil {
-			v.Attendees = []models.EventAttendee{}
 		}
 		out = append(out, v)
 	}

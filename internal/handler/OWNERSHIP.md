@@ -63,6 +63,12 @@ constrain every private lookup or mutation to that user:
   join `accounts.user_id`, so calendars and events are only visible to their
   owner; `{id}` of a foreign or missing calendar returns 404 with no write, and
   sync only touches the caller's own Google accounts.
+  Writes (`POST /api/calendar/events`, `PATCH`/`DELETE /api/calendar/events/{id}`,
+  `POST /api/calendar/events/{id}/rsvp`) resolve `calendar_id` / the event `{id}`
+  through the caller's accounts (`GetCalendarForUser`, `GetCalendarEventForUser`)
+  before any Google call; foreign and missing ids return 404, calendars without
+  owner/writer access return 403 `read_only`, and the Google token used is the
+  owning account's.
 - Accounts: account discovery/creation/edit/service/color/test/deletion,
   account contact settings, signatures, and `/api/mail/sync*`.
 - Sending addresses: `/api/accounts/{id}/identities*` (list, add, delete,
