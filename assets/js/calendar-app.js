@@ -1433,6 +1433,9 @@
     try { S.names = JSON.parse(root.getAttribute("data-account-names") || "{}") } catch (_) { S.names = {} }
     S.view = loadView()
     S.anchor = todayStr()
+    // /calendar?date=YYYY-MM-DD (the "Open in Calendar" link on invitation cards) opens at that day.
+    var want = new URLSearchParams(window.location.search).get("date")
+    if (want && /^\d{4}-\d{2}-\d{2}$/.test(want) && !isNaN(Date.parse(want))) S.anchor = want
     S.events = []
     S.byId = {}
     S.accounts = []

@@ -134,6 +134,8 @@ func ParseMessage(ctx context.Context, r io.Reader, blobStore *store.BlobStore, 
 			}
 
 			switch {
+			case ct == "text/calendar":
+				// An invitation, not body text; the invite card reads it from the raw message.
 			case ct == "text/plain":
 				parsed.TextBody = string(content)
 			case ct == "text/html":

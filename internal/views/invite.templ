@@ -1,0 +1,129 @@
+package views
+
+import (
+	"fmt"
+
+	"github.com/cristianadrielbraun/gofer/components/icon"
+)
+
+// InviteCard is everything the invitation card shows. The handler builds it
+// from an untrusted .ics; every field is rendered through templ's escaping.
+// assets/js/invite-card.js drives the buttons via the data-invite-* hooks.
+type InviteCard struct {
+	EmailID string
+	// Kind is "request" (buttons), "cancel" or "reply".
+	Kind     string
+	Title    string
+	When     string // pre-formatted fallback; invite-card.js re-formats StartISO/EndISO in the user's zone
+	StartISO string
+	EndISO   string
+	AllDay   bool
+	// StartDate/EndDate (YYYY-MM-DD, EndDate exclusive) are set for all-day events.
+	StartDate    string
+	EndDate      string
+	CalendarDate string // YYYY-MM-DD for "Open in Calendar"
+	Recurring    bool
+	TZNote       bool // the invite's time zone was not recognized
+	Location     string
+	LocationURL  string // set when Location is an http(s) URL
+	MeetingURL   string // http(s) only
+	Organizer    string
+	// EventID is the synced calendar event, 0 when not found (yet).
+	EventID  int64
+	Response string // accepted, tentative, declined, needsAction, ""
+	// ReplyLine is the whole text of a REPLY card ("Bob accepted").
+	ReplyLine string
+}
+
+func inviteResponseLabel(r string) string {
+	switch r {
+	case "accepted":
+		return "Going"
+	case "tentative":
+		return "Maybe"
+	case "declined":
+		return "Not going"
+	}
+	return "Not responded"
+}
+
+func inviteEventID(id int64) string {
+	if id == 0 {
+		return ""
+	}
+	return fmt.Sprint(id)
+}
+
+templ EmailInviteCard(c InviteCard) {
+	<div class="invite-card" data-invite-card data-email-id={ c.EmailID } data-event-id={ inviteEventID(c.EventID) } data-kind={ c.Kind } role="region" aria-label="Calendar invitation">
+		<div class="invite-kicker">
+			@icon.CalendarDays(icon.Props{Class: "size-3.5 shrink-0"})
+			switch c.Kind {
+				case "cancel":
+					<span>Cancelled event</span>
+				case "reply":
+					<span>Invitation reply</span>
+				default:
+					<span>Invitation</span>
+			}
+		</div>
+		if c.Kind == "reply" {
+			<p class="invite-title">{ c.ReplyLine }</p>
+			if c.Title != "" {
+				<p class="invite-meta">{ c.Title }</p>
+			}
+		} else {
+			<p class={ "invite-title", templ.KV("invite-struck", c.Kind == "cancel") }>{ c.Title }</p>
+			if c.Kind == "cancel" {
+				<p class="invite-state">This event was cancelled</p>
+			}
+			if c.When != "" {
+				<p class="invite-meta">
+					<time data-invite-when data-start={ c.StartISO } data-end={ c.EndISO } data-all-day?={ c.AllDay } data-start-date={ c.StartDate } data-end-date={ c.EndDate }>{ c.When }</time>
+					if c.Recurring {
+						<span class="invite-chip">Repeats</span>
+					}
+				</p>
+				if c.TZNote {
+					<p class="invite-note">Time zone not recognized; shown in your time zone, so it may be off.</p>
+				}
+			}
+			if c.Location != "" {
+				<p class="invite-meta">
+					if c.LocationURL != "" {
+						<a href={ templ.SafeURL(c.LocationURL) } target="_blank" rel="noopener noreferrer">{ c.Location }</a>
+					} else {
+						{ c.Location }
+					}
+				</p>
+			}
+			if c.MeetingURL != "" {
+				<p class="invite-meta"><a href={ templ.SafeURL(c.MeetingURL) } target="_blank" rel="noopener noreferrer">Join meeting</a></p>
+			}
+			if c.Organizer != "" {
+				<p class="invite-meta">Organizer: { c.Organizer }</p>
+			}
+			if c.Kind == "request" {
+				if c.EventID != 0 {
+					<div class="invite-actions">
+						<span class="invite-state" data-invite-response>{ inviteResponseLabel(c.Response) }</span>
+						<div class="cal-rsvp" role="group" aria-label="Your response">
+							<button type="button" class="cal-btn" data-invite-rsvp="accepted" aria-pressed={ fmt.Sprint(c.Response == "accepted") }>Yes</button>
+							<button type="button" class="cal-btn" data-invite-rsvp="tentative" aria-pressed={ fmt.Sprint(c.Response == "tentative") }>Maybe</button>
+							<button type="button" class="cal-btn" data-invite-rsvp="declined" aria-pressed={ fmt.Sprint(c.Response == "declined") }>No</button>
+						</div>
+					</div>
+				} else {
+					<div class="invite-actions">
+						<span class="invite-state">Not in your calendar yet</span>
+						<button type="button" class="cal-btn" data-invite-sync>Sync calendar</button>
+					</div>
+				}
+			}
+			if c.CalendarDate != "" && !(c.Kind == "request" && c.EventID == 0) {
+				<p class="invite-meta"><a data-invite-open href={ templ.SafeURL("/calendar?date=" + c.CalendarDate) }>Open in Calendar</a></p>
+			}
+		}
+		<p class="invite-error hidden" data-invite-error role="alert"></p>
+	</div>
+}
