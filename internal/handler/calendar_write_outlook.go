@@ -46,6 +46,9 @@ func outlookEventPath(id string, suffix ...string) string {
 }
 
 func (h *Handler) outlookWriteToken(ctx context.Context, cal models.Calendar) (string, *calendarError) {
+	if h.mailCredentials() == nil {
+		return "", &calendarError{http.StatusInternalServerError, "internal", "Calendar is not available."}
+	}
 	token, err := h.mailCredentials().GetMicrosoftGraphCalendarTokenForAccount(ctx, cal.AccountID)
 	if err == nil {
 		return token, nil

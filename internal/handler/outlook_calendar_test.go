@@ -749,3 +749,17 @@ func TestOutlookWritesRejectForeignUserWithoutGraphCall(t *testing.T) {
 	}
 	_ = auth.User{}
 }
+
+func TestOutlookCalendarList403FlagsReconnect(t *testing.T) {
+	ctx := context.Background()
+	fake := &fakeGraph{fn: func(*http.Request, map[string]any) (int, any) {
+		return http.StatusForbidden, map[string]any{"error": map[string]any{"code": "ErrorAccessDenied"}}
+	}}
+	h, db := newOutlookCalendarHandler(t, fake, outlookCalScope, "http://unused")
+	if err := h.SyncCalendarAccount(ctx, "oacc"); !isOutlookCalendarScopeError(err) {
+		t.Fatalf("err = %v, want calendar scope error", err)
+	}
+	if st, _ := db.ListCalendarAccountStates(ctx, "default"); !st["oacc"].NeedsReconnect {
+		t.Fatalf("state = %+v, want needs_reconnect", st["oacc"])
+	}
+}

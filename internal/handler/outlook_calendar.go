@@ -284,6 +284,12 @@ func (h *Handler) pullOutlookCalendarAccount(ctx context.Context, accountID stri
 	}
 	email := h.accountEmail(ctx, accountID)
 	calendars, err := h.fetchOutlookCalendarList(ctx, token, email)
+	var apiErr outlookAPIError
+	if errors.As(err, &apiErr) && apiErr.Status == http.StatusForbidden {
+		// Listing calendars is account-level, so a 403 here means the token lacks
+		// the scope (Microsoft may issue a token for only the consented scopes).
+		return fmt.Errorf("%w: %v", mailauth.ErrMicrosoftCalendarConsentRequired, err)
+	}
 	if err != nil {
 		return err
 	}
@@ -431,6 +437,8 @@ func parseGraphDateTime(t graphDateTime) (time.Time, error) {
 // nearestMidnight snaps a UTC instant to the closest 00:00 UTC. All-day events
 // are midnight-to-midnight in their own zone; if Graph renders them as a shifted
 // UTC instant (zone offset within +-12h) this recovers the intended calendar day.
+// ponytail: assumes |UTC offset| < 12h (wrong by a day for NZ summer, Tonga, Samoa,
+// Kiritimati); fixing it needs originalStartTimeZone (a Windows name) mapped to IANA.
 func nearestMidnight(t time.Time) time.Time {
 	d := t.Truncate(24 * time.Hour)
 	if t.Sub(d) >= 12*time.Hour {
