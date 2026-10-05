@@ -250,6 +250,31 @@ test("needs_reconnect shows a banner with the reconnect form", async () => {
   assert.deepEqual(f, { flow_action: "reconnect", provider: "gmail", email_address: "bob@example.com", display_name: "Ann Example" })
 })
 
+test("icloud accounts link to Settings > Accounts instead of an OAuth reconnect, and hide the meeting option", async () => {
+  const calendars = { accounts: [
+    { account_id: "acc4", email: "me@icloud.com", provider: "icloud", needs_reconnect: true, calendars: [] },
+    { account_id: "acc1", email: "ann@example.com", provider: "gmail", needs_reconnect: false, last_synced_at: "2026-10-01T00:00:00Z",
+      calendars: [{ id: 10, account_id: "acc1", provider: "gmail", name: "Work", color: "#3366cc", selected: true, is_primary: true, access_role: "owner" }] },
+    { account_id: "acc5", email: "me@me.com", provider: "icloud", needs_reconnect: false, last_synced_at: "2026-10-01T00:00:00Z",
+      calendars: [{ id: 50, account_id: "acc5", provider: "icloud", name: "Home", color: "#ff2968", selected: true, is_primary: true, access_role: "owner" }] },
+  ] }
+  const { w, d } = await load({ calendars })
+  const banner = d.querySelector("[data-cal-banner]")
+  assert.ok(!banner.classList.contains("hidden"))
+  assert.equal(banner.querySelector("form"), null)
+  assert.match(banner.textContent, /app-specific password for me@icloud\.com/)
+  assert.equal(banner.querySelector("a").getAttribute("href"), "/settings/accounts")
+  key(w, d.body, "c")
+  const sel = d.getElementById("cal-ed-calendar")
+  const hidden = () => d.getElementById("cal-ed-meet").closest("label").parentElement.classList.contains("hidden")
+  sel.value = "50"
+  sel.dispatchEvent(new w.Event("change", { bubbles: true }))
+  assert.ok(hidden())
+  sel.value = "10"
+  sel.dispatchEvent(new w.Event("change", { bubbles: true }))
+  assert.ok(!hidden())
+})
+
 test("outlook accounts reconnect as outlook and get outlook wording", async () => {
   const calendars = { accounts: [
     { account_id: "acc2", email: "pat@outlook.com", provider: "outlook", needs_reconnect: true, calendars: [] },
