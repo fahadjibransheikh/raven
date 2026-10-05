@@ -69,6 +69,8 @@ type Handler struct {
 	contactSyncMu              sync.Mutex
 	contactSyncRunning         map[string]struct{}
 	contactSyncQueue           chan struct{}
+	calendarSyncMu             sync.Mutex
+	calendarSyncRunning        map[string]struct{}
 	googleTranslator           *translation.GoogleWebConnector
 	vapidPublicKey             string
 	outgoingWake               chan struct{}
@@ -420,6 +422,10 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /contacts", h.handleContacts)
 	mux.HandleFunc("GET /contacts/items", h.handleContactItems)
 	mux.HandleFunc("GET /search", h.handleSearch)
+	mux.HandleFunc("GET /api/calendar/calendars", h.handleListCalendars)
+	mux.HandleFunc("POST /api/calendar/calendars/{id}/selected", h.handleSetCalendarSelected)
+	mux.HandleFunc("GET /api/calendar/events", h.handleListCalendarEvents)
+	mux.HandleFunc("POST /api/calendar/sync", h.handleSyncCalendars)
 	mux.HandleFunc("GET /api/contacts/export", h.handleExportContacts)
 	mux.HandleFunc("GET /api/contacts/{id}/export", h.handleExportContact)
 	mux.HandleFunc("GET /api/contacts/search", h.handleContactSearch)

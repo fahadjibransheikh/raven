@@ -24,6 +24,11 @@ func TestLoadConfigUsesMailboxCredentialsAndScopes(t *testing.T) {
 	if cfg.GoogleClient.ClientID != "google-mailbox-client" || cfg.GoogleClient.RedirectURL != "https://gofer.example/auth/google/mailbox/callback" {
 		t.Fatalf("Google mailbox client = %#v", cfg.GoogleClient)
 	}
+	for _, want := range []string{"https://www.googleapis.com/auth/calendar.calendarlist.readonly", "https://www.googleapis.com/auth/calendar.events"} {
+		if !slices.Contains(googleAccountScopes(), want) {
+			t.Fatalf("Google mailbox scopes missing %s", want)
+		}
+	}
 	if !slices.Equal(cfg.GoogleClient.Scopes, googleAccountScopes()) {
 		t.Fatalf("Google mailbox scopes = %#v", cfg.GoogleClient.Scopes)
 	}

@@ -15,6 +15,10 @@ func googleAccountScopes() []string {
 		"profile",
 		"https://mail.google.com/",
 		"https://www.googleapis.com/auth/contacts",
+		// Narrowest pair that lists calendars and reads/writes events; the full
+		// "calendar" scope would also allow editing calendar settings and sharing.
+		"https://www.googleapis.com/auth/calendar.calendarlist.readonly",
+		"https://www.googleapis.com/auth/calendar.events",
 	}
 }
 
