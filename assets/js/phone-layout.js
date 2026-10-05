@@ -23,11 +23,11 @@
     for (var i = 0; i < toggles.length; i++) toggles[i].setAttribute("aria-expanded", open ? "true" : "false")
   }
 
-  // Mail shell only; contacts keeps its own detail mechanism.
+  // Mail shell only; contacts and calendar keep their own detail mechanisms.
   function syncPane() {
     scheduled = false
     var view = document.getElementById("mail-view")
-    var isMail = document.getElementById("app-shell") && view && !document.getElementById("contacts-list-scroll")
+    var isMail = document.getElementById("app-shell") && view && !document.getElementById("contacts-list-scroll") && !document.querySelector("[data-calendar-app]")
     if (!isMail) {
       root.removeAttribute("data-phone-pane")
       return

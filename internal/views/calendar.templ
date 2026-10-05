@@ -1,0 +1,168 @@
+package views
+
+import (
+	"encoding/json"
+
+	"github.com/cristianadrielbraun/gofer/components/calendar"
+	"github.com/cristianadrielbraun/gofer/components/checkbox"
+	"github.com/cristianadrielbraun/gofer/components/copybutton"
+	"github.com/cristianadrielbraun/gofer/components/dialog"
+	"github.com/cristianadrielbraun/gofer/components/dropdown"
+	"github.com/cristianadrielbraun/gofer/components/icon"
+	"github.com/cristianadrielbraun/gofer/components/input"
+	"github.com/cristianadrielbraun/gofer/components/popover"
+	"github.com/cristianadrielbraun/gofer/components/selectbox"
+	"github.com/cristianadrielbraun/gofer/components/tabs"
+	"github.com/cristianadrielbraun/gofer/components/toast"
+	"github.com/cristianadrielbraun/gofer/components/tooltip"
+	"github.com/cristianadrielbraun/gofer/internal/models"
+)
+
+// The calendar app is client-rendered by assets/js/calendar-app.js from the
+// /api/calendar JSON API; these templates only provide the shell it fills in.
+// Element ids mirror the contacts page (#mail-list main pane, #mail-view
+// placeholder, #sidebar-app-body) so the sidebar app switcher can swap it in.
+
+// calendarAccountNamesJSON maps account id to display name; the reconnect form
+// needs the name and the calendar API does not return it.
+func calendarAccountNamesJSON(accounts []models.Account) string {
+	names := make(map[string]string, len(accounts))
+	for _, a := range accounts {
+		names[a.ID] = a.Name
+	}
+	b, err := json.Marshal(names)
+	if err != nil {
+		return "{}"
+	}
+	return string(b)
+}
+
+templ CalendarSidebar(accounts []models.Account, width string, uiSettings map[string]string) {
+	<aside class="hidden lg:flex flex-col surface-leather text-sidebar-foreground h-full overflow-hidden" style={ "width:" + width } data-app-sidebar data-phone-drawer>
+		@SidebarHeader(accounts, "calendar")
+		@CalendarSidebarBody()
+		@SidebarFooter()
+	</aside>
+}
+
+templ CalendarSidebarBody() {
+	<div id="sidebar-app-body" class="flex min-h-0 flex-1 flex-col" data-sidebar-app-body="calendar">
+		<div class="px-4 pb-3" data-cal-mini></div>
+		<hr class="divider-etched mx-4"/>
+		<nav class="flex-1 overflow-y-auto px-3 pt-3 pb-3" data-cal-list aria-label="Calendars"></nav>
+	</div>
+}
+
+templ CalendarMainPane(accounts []models.Account) {
+	<section
+		id="mail-list"
+		data-calendar-app
+		data-week-start="0"
+		data-account-names={ calendarAccountNamesJSON(accounts) }
+		class="cal-app relative flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-background"
+	>
+		<header class="cal-toolbar flex flex-wrap items-center gap-x-2 gap-y-2 border-b border-border px-3 py-2 sm:px-4">
+			@PhoneNavToggle("")
+			<button type="button" data-cal-today class="cal-btn">Today</button>
+			<div class="flex items-center">
+				<button type="button" data-cal-prev class="cal-icon-btn" aria-label="Previous">
+					@icon.ChevronLeft(icon.Props{Class: "size-4"})
+				</button>
+				<button type="button" data-cal-next class="cal-icon-btn" aria-label="Next">
+					@icon.ChevronRight(icon.Props{Class: "size-4"})
+				</button>
+			</div>
+			<h2 data-cal-title class="cal-title min-w-0 flex-1 truncate text-lg font-bold tracking-tight" style="font-family: var(--font-serif)" aria-live="polite"></h2>
+			<span data-cal-status class="hidden text-xs text-muted-foreground" role="status"></span>
+			<div class="cal-seg" role="group" aria-label="Calendar view">
+				<button type="button" data-cal-view="day" aria-pressed="false">Day</button>
+				<button type="button" data-cal-view="week" aria-pressed="false">Week</button>
+				<button type="button" data-cal-view="month" aria-pressed="false">Month</button>
+				<button type="button" data-cal-view="agenda" aria-pressed="false">Agenda</button>
+			</div>
+			<button type="button" data-cal-refresh class="cal-icon-btn" aria-label="Sync calendars" title="Sync calendars">
+				@icon.RefreshCw(icon.Props{Class: "size-4"})
+			</button>
+		</header>
+		<div data-cal-banner class="hidden"></div>
+		<div data-cal-body class="relative min-h-0 flex-1 overflow-hidden"></div>
+		<div data-cal-popover class="cal-popover hidden" role="dialog" aria-modal="false" aria-label="Event details"></div>
+	</section>
+}
+
+// CalendarViewPlaceholder keeps the #mail-view swap target alive so switching
+// back to Mail or Contacts can fill it. Event details use a popover instead.
+templ CalendarViewPlaceholder() {
+	<section id="mail-view" class="hidden"></section>
+}
+
+templ CalendarPage(accounts []models.Account) {
+	<div id="main-content" class="flex flex-1 min-w-0 bg-background">
+		@CalendarMainPane(accounts)
+		@CalendarViewPlaceholder()
+	</div>
+}
+
+templ CalendarShell(accounts []models.Account, uiSettings map[string]string) {
+	<div id="app-shell" class="flex h-screen overflow-hidden">
+		@CalendarSidebar(accounts, uiSettingGet(uiSettings, "sidebar_width", "256px"), uiSettings)
+		@ResizeHandle("sidebar")
+		@CalendarPage(accounts)
+	</div>
+}
+
+templ CalendarAppPartial(accounts []models.Account) {
+	@CalendarMainPane(accounts)
+	@CalendarSidebarBody()
+	<div id="sidebar-sync-controls"></div>
+	@CalendarViewPlaceholder()
+	<div id="app-pane-dialogs"></div>
+}
+
+templ CalendarLayout(accounts []models.Account, uiSettings map[string]string) {
+	<!DOCTYPE html>
+	<html lang="en" class={ themeClass(uiSettings) } data-theme={ themeStyle(uiSettings) }>
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+			<title>Calendar — Raven</title>
+			@AppIcon()
+			<link rel="preconnect" href="https://fonts.googleapis.com"/>
+			<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous"/>
+			<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;0,9..144,800;1,9..144,400&family=Nunito+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet"/>
+			@SavedPanelSizeStyle()
+			<link rel="stylesheet" href="/assets/css/output.css"/>
+			@dialog.Script()
+			@dropdown.Script()
+			@checkbox.Script()
+			@calendar.Script()
+			@input.Script()
+			@selectbox.Script()
+			@tabs.Script()
+			@tooltip.Script()
+			@popover.Script()
+			@copybutton.Script()
+			@toast.Script()
+			@AppSidebarResponsiveStyle()
+		</head>
+		<body class="bg-background text-foreground antialiased surface-desk" data-ui-settings={ uiSettingsJSON(uiSettings) }>
+			@CalendarShell(accounts, uiSettings)
+			<div id="app-pane-dialogs"></div>
+			@ComposeDialog(accounts)
+			@ChooseAccountTypeDialog()
+			@GmailAccountDialog()
+			@OutlookAccountDialog()
+			@AddAccountDialog()
+			<div id="edit-account-container"></div>
+			<script src="/assets/js/htmx.min.js"></script>
+			<script src="/assets/js/virtual-scroll.js"></script>
+			<script src="/assets/js/app.js"></script>
+			<script src="/assets/js/settings.js"></script>
+			<script src="/assets/js/ui-settings.js"></script>
+			<script src="/assets/js/raven.js"></script>
+			<script src="/assets/js/phone-layout.js"></script>
+			<script src="/assets/js/calendar-app.js"></script>
+			<script src="/assets/js/resize.js"></script>
+		</body>
+	</html>
+}
