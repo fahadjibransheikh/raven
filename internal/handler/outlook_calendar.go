@@ -188,6 +188,7 @@ type graphEvent struct {
 	OnlineMeetingURL string                   `json:"onlineMeetingUrl"`
 	WebLink          string                   `json:"webLink"`
 	LastModified     string                   `json:"lastModifiedDateTime"`
+	Recurrence       json.RawMessage          `json:"recurrence"`
 	Removed          *struct{ Reason string } `json:"@removed"`
 }
 
@@ -341,6 +342,7 @@ func (h *Handler) syncOutlookCalendarFull(ctx context.Context, token, selfEmail 
 		"startDateTime": {winStart.UTC().Format(time.RFC3339)}, "endDateTime": {winEnd.UTC().Format(time.RFC3339)},
 	})
 	var events []models.CalendarEvent
+	masters := map[string]*graphEvent{}
 	for {
 		var page graphEventsPage
 		if err := outlookCalendarDo(ctx, token, http.MethodGet, link, nil, &page, outlookDeltaPrefer); err != nil {
@@ -350,6 +352,7 @@ func (h *Handler) syncOutlookCalendarFull(ctx context.Context, token, selfEmail 
 			if item.Removed != nil || item.IsCancelled {
 				continue
 			}
+			h.fillOutlookFromMaster(ctx, token, masters, &item)
 			ev, err := outlookEventToModel(item, selfEmail)
 			if err != nil {
 				return fmt.Errorf("event %s: %w", item.ID, err)
@@ -375,6 +378,7 @@ func (h *Handler) syncOutlookCalendarFull(ctx context.Context, token, selfEmail 
 
 func (h *Handler) syncOutlookCalendarIncremental(ctx context.Context, token, selfEmail string, cal models.Calendar) error {
 	link := cal.SyncToken
+	masters := map[string]*graphEvent{}
 	for {
 		if checkGraphLink(link) != nil {
 			return errOutlookDeltaExpired // not a link we issued (e.g. base URL changed): start over
@@ -393,6 +397,7 @@ func (h *Handler) syncOutlookCalendarIncremental(ctx context.Context, token, sel
 				deletes = append(deletes, item.ID)
 				continue
 			}
+			h.fillOutlookFromMaster(ctx, token, masters, &item)
 			ev, err := outlookEventToModel(item, selfEmail)
 			if err != nil {
 				return fmt.Errorf("event %s: %w", item.ID, err)
@@ -540,4 +545,114 @@ func outlookEventToModel(g graphEvent, selfEmail string) (models.CalendarEvent, 
 		e.MeetingURL = g.OnlineMeetingURL
 	}
 	return e, nil
+}
+
+// fillOutlookFromMaster completes an occurrence or exception. calendarView/delta
+// returns occurrences with only a subset of properties (id, start, end, type,
+// seriesMasterId...), so subject, body, location, organizer, attendees, meeting
+// link and the user's response come from the series master, fetched once per
+// sync. Only fields the occurrence itself lacks are filled, so an exception that
+// carries its own subject keeps it. A failed master fetch is cached as nil and
+// leaves the occurrence as delivered.
+func (h *Handler) fillOutlookFromMaster(ctx context.Context, token string, masters map[string]*graphEvent, g *graphEvent) {
+	if (g.Type != "occurrence" && g.Type != "exception") || g.SeriesMasterID == "" {
+		return
+	}
+	m, seen := masters[g.SeriesMasterID]
+	if !seen {
+		var got graphEvent
+		if err := outlookCalendarDo(ctx, token, http.MethodGet, outlookCalendarURL(outlookEventPath(g.SeriesMasterID), nil), nil, &got); err != nil {
+			log.Printf("calendar sync: read series master %s: %v", g.SeriesMasterID, err)
+		} else {
+			m = &got
+		}
+		masters[g.SeriesMasterID] = m
+	}
+	if m == nil {
+		return
+	}
+	if g.Subject == "" {
+		g.Subject = m.Subject
+	}
+	if g.Body.Content == "" {
+		g.Body = m.Body
+	}
+	if g.Location.DisplayName == "" {
+		g.Location = m.Location
+	}
+	if g.Organizer.EmailAddress.Address == "" {
+		g.Organizer = m.Organizer
+	}
+	if len(g.Attendees) == 0 {
+		g.Attendees = m.Attendees
+	}
+	if g.OnlineMeeting == nil || g.OnlineMeeting.JoinURL == "" {
+		g.OnlineMeeting, g.OnlineMeetingURL = m.OnlineMeeting, m.OnlineMeetingURL
+	}
+	if g.WebLink == "" {
+		g.WebLink = m.WebLink
+	}
+	if g.ResponseStatus.Response == "" {
+		g.ResponseStatus = m.ResponseStatus
+	}
+	if !g.IsOrganizer {
+		g.IsOrganizer = m.IsOrganizer
+	}
+	if g.OriginalStartTimeZone == "" {
+		g.OriginalStartTimeZone = m.OriginalStartTimeZone
+	}
+}
+
+// refreshOutlookSeries re-reads one series' occurrences inside the calendar's
+// window from /instances and replaces the cached rows, so a create or series
+// edit shows up immediately and does not depend on what delta redelivers.
+func (h *Handler) refreshOutlookSeries(ctx context.Context, token string, cal models.Calendar, masterID string) bool {
+	now := time.Now()
+	winStart, winEnd := now.Add(-calendarInitialPast), now.Add(calendarInitialFuture)
+	if cal.WindowStart != nil && cal.WindowEnd != nil {
+		winStart, winEnd = *cal.WindowStart, *cal.WindowEnd
+	}
+	selfEmail := h.accountEmail(ctx, cal.AccountID)
+	masters := map[string]*graphEvent{}
+	link := outlookCalendarURL(outlookEventPath(masterID, "/instances"), url.Values{
+		"startDateTime": {winStart.UTC().Format(time.RFC3339)}, "endDateTime": {winEnd.UTC().Format(time.RFC3339)}, "$top": {"200"},
+	})
+	var events []models.CalendarEvent
+	for link != "" {
+		var page graphEventsPage
+		if err := outlookCalendarDo(ctx, token, http.MethodGet, link, nil, &page); err != nil {
+			log.Printf("calendar write: series instances %s: %v", masterID, err)
+			return false
+		}
+		for _, item := range page.Value {
+			if item.IsCancelled || item.Removed != nil {
+				continue
+			}
+			if item.SeriesMasterID == "" {
+				item.SeriesMasterID = masterID
+			}
+			if item.Type == "" {
+				item.Type = "occurrence"
+			}
+			h.fillOutlookFromMaster(ctx, token, masters, &item)
+			ev, err := outlookEventToModel(item, selfEmail)
+			if err != nil {
+				log.Printf("calendar write: series instance %s: %v", item.ID, err)
+				return false
+			}
+			events = append(events, ev)
+		}
+		if link = page.NextLink; link != "" && checkGraphLink(link) != nil {
+			return false
+		}
+	}
+	if err := h.db.DeleteCalendarSeries(ctx, cal.ID, masterID); err != nil {
+		log.Printf("calendar write: clear series %s: %v", masterID, err)
+		return false
+	}
+	if err := h.db.ApplyCalendarEventPage(ctx, cal.ID, cal.AccountID, events, nil); err != nil {
+		log.Printf("calendar write: store series %s: %v", masterID, err)
+		return false
+	}
+	return true
 }
