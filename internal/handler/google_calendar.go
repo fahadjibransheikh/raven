@@ -60,6 +60,7 @@ type googleCalendarEvent struct {
 	Description      string          `json:"description"`
 	HTMLLink         string          `json:"htmlLink"`
 	HangoutLink      string          `json:"hangoutLink"`
+	Recurrence       []string        `json:"recurrence"`
 	Updated          string          `json:"updated"`
 	Start            googleEventTime `json:"start"`
 	End              googleEventTime `json:"end"`

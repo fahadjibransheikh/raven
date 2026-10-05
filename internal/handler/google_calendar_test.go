@@ -27,6 +27,17 @@ type fakeGoogleCalendar struct {
 	listCode  int // non-zero: calendarList answers this status with an insufficientPermissions body
 	events    func(q url.Values) (int, map[string]any)
 	eventReqs []url.Values
+	// write answers every request that is not calendarList or an events list
+	// (insert/get/patch/delete); each call is recorded in writeReqs.
+	write     func(r *http.Request, body map[string]any) (int, map[string]any)
+	writeReqs []recordedWrite
+}
+
+type recordedWrite struct {
+	Method string
+	Path   string
+	Query  url.Values
+	Body   map[string]any
 }
 
 func (f *fakeGoogleCalendar) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -48,6 +59,15 @@ func (f *fakeGoogleCalendar) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			{"id": "user@example.com", "summary": "Me", "backgroundColor": "#9fe1e7", "timeZone": "America/Los_Angeles", "accessRole": "owner", "primary": true},
 			{"id": "holidays", "summary": "Holidays", "accessRole": "reader"},
 		}})
+	case f.write != nil && strings.HasPrefix(r.URL.Path, "/calendars/") && (r.Method != http.MethodGet || !strings.HasSuffix(r.URL.Path, "/events")):
+		var body map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		f.writeReqs = append(f.writeReqs, recordedWrite{r.Method, r.URL.Path, r.URL.Query(), body})
+		code, out := f.write(r, body)
+		w.WriteHeader(code)
+		if out != nil {
+			_ = json.NewEncoder(w).Encode(out)
+		}
 	case strings.HasSuffix(r.URL.Path, "/events"):
 		if !strings.Contains(r.URL.Path, "user@example.com") {
 			w.WriteHeader(http.StatusInternalServerError) // unselected calendar must not be fetched
