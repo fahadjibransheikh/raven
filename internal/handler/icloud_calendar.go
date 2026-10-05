@@ -234,7 +234,7 @@ func icloudCalendarFromResponse(home string, r davResponse) (models.Calendar, bo
 		color = "#0a84ff"
 	}
 	role := "reader"
-	if containsFold(p.Privileges.Names, "write") || containsFold(p.Privileges.Names, "all") {
+	if containsFold(p.Privileges.Names, "write") || containsFold(p.Privileges.Names, "write-content") || containsFold(p.Privileges.Names, "all") {
 		role = "owner"
 		if p.ResourceType.Shared {
 			role = "writer"
