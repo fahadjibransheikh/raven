@@ -20,11 +20,13 @@ import (
 	"unicode/utf8"
 
 	"github.com/cristianadrielbraun/gofer/internal/models"
+	"github.com/cristianadrielbraun/gofer/internal/providers"
 	"github.com/cristianadrielbraun/gofer/internal/storage"
 )
 
 // Calendar write API (C2): create, edit, delete and RSVP against Google
-// Calendar. {id} is the local calendar_events.id and, for create, calendar_id
+// Calendar (Outlook calendars are handed to calendar_write_outlook.go after
+// the shared validation below). {id} is the local calendar_events.id and, for create, calendar_id
 // is the local calendars.id; both are resolved through the request user's
 // accounts before any Google call. Only owner/writer calendars are written.
 //
@@ -133,6 +135,9 @@ func (h *Handler) calendarWriteToken(ctx context.Context, cal models.Calendar) (
 	if h.mailCredentials() == nil {
 		return "", &calendarError{http.StatusInternalServerError, "internal", "Calendar is not available."}
 	}
+	if cal.Provider == providers.ProviderOutlook {
+		return h.outlookWriteToken(ctx, cal)
+	}
 	token, err := h.mailCredentials().GetOAuthTokenForAccount(ctx, cal.AccountID)
 	if err != nil {
 		log.Printf("calendar write token account=%s: %v", cal.AccountID, err)
@@ -214,7 +219,11 @@ func (h *Handler) syncCalendarAfterWrite(ctx context.Context, token string, cal 
 	defer h.endCalendarSync(cal.AccountID)
 	fresh, err := h.db.GetCalendarForUser(ctx, h.userID(ctx), cal.ID)
 	if err == nil {
-		err = h.syncGoogleCalendarEvents(ctx, token, fresh)
+		if cal.Provider == providers.ProviderOutlook {
+			err = h.syncOutlookCalendarEvents(ctx, token, h.accountEmail(ctx, cal.AccountID), fresh)
+		} else {
+			err = h.syncGoogleCalendarEvents(ctx, token, fresh)
+		}
 	}
 	if err != nil {
 		log.Printf("calendar write: sync calendar=%d: %v", cal.ID, err)
@@ -499,6 +508,10 @@ func (h *Handler) handleCreateCalendarEvent(w http.ResponseWriter, r *http.Reque
 		writeCalendarError(w, cerr)
 		return
 	}
+	if cal.Provider == providers.ProviderOutlook {
+		h.createOutlookEvent(w, r, cal, form, times, guests, recurrence)
+		return
+	}
 	token, cerr := h.calendarWriteToken(ctx, cal)
 	if cerr != nil {
 		writeCalendarError(w, cerr)
@@ -598,6 +611,9 @@ func (h *Handler) handlePatchCalendarEvent(w http.ResponseWriter, r *http.Reques
 	var times calendarTimes
 	if cerr == nil {
 		defTZ := ev.EventTimeZone
+		if _, err := time.LoadLocation(defTZ); err != nil || defTZ == "Local" { // Outlook may store a Windows zone name
+			defTZ = ""
+		}
 		if defTZ == "" {
 			defTZ = h.calendarDefaultTZ(ctx, cal)
 		}
@@ -623,6 +639,10 @@ func (h *Handler) handlePatchCalendarEvent(w http.ResponseWriter, r *http.Reques
 	}
 	if cerr != nil {
 		writeCalendarError(w, cerr)
+		return
+	}
+	if cal.Provider == providers.ProviderOutlook {
+		h.patchOutlookEvent(w, r, ev, cal, form, targetID, series, times, guests, recurrence)
 		return
 	}
 	token, cerr := h.calendarWriteToken(ctx, cal)
@@ -759,6 +779,10 @@ func (h *Handler) handleDeleteCalendarEvent(w http.ResponseWriter, r *http.Reque
 		writeCalendarError(w, cerr)
 		return
 	}
+	if cal.Provider == providers.ProviderOutlook {
+		h.deleteOutlookEvent(w, r, ev, cal, targetID, series)
+		return
+	}
 	token, cerr := h.calendarWriteToken(ctx, cal)
 	if cerr != nil {
 		writeCalendarError(w, cerr)
@@ -808,12 +832,16 @@ func (h *Handler) handleRSVPCalendarEvent(w http.ResponseWriter, r *http.Request
 		for _, a := range ev.Attendees {
 			self = self || a.Self
 		}
-		if !self {
+		if !self && cal.Provider != providers.ProviderOutlook { // Outlook has no self flag; rsvpOutlookEvent checks
 			cerr = badCalendarRequest("you are not a guest of this event")
 		}
 	}
 	if cerr != nil {
 		writeCalendarError(w, cerr)
+		return
+	}
+	if cal.Provider == providers.ProviderOutlook {
+		h.rsvpOutlookEvent(w, r, ev, cal, targetID, series, response)
 		return
 	}
 	token, cerr := h.calendarWriteToken(ctx, cal)
