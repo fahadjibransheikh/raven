@@ -70,14 +70,15 @@ func (db *DB) UpsertCalendars(ctx context.Context, accountID string, calendars [
 }
 
 const calendarColumns = `c.id, c.account_id, c.provider_calendar_id, c.name, c.color, c.time_zone, c.is_primary,
-	c.access_role, c.selected, c.sync_token, c.window_start, c.window_end, c.synced_at`
+	c.access_role, c.selected, c.sync_token, c.window_start, c.window_end, c.synced_at,
+	(SELECT provider FROM accounts WHERE id = c.account_id)`
 
 func scanCalendar(row interface{ Scan(...any) error }) (models.Calendar, error) {
 	var c models.Calendar
 	var primary, selected int
 	var ws, we, sa sql.NullTime
 	if err := row.Scan(&c.ID, &c.AccountID, &c.ProviderCalendarID, &c.Name, &c.Color, &c.TimeZone, &primary,
-		&c.AccessRole, &selected, &c.SyncToken, &ws, &we, &sa); err != nil {
+		&c.AccessRole, &selected, &c.SyncToken, &ws, &we, &sa, &c.Provider); err != nil {
 		return c, err
 	}
 	c.IsPrimary, c.Selected = primary == 1, selected == 1
@@ -384,16 +385,17 @@ func (db *DB) ListCalendarAccountStates(ctx context.Context, userID string) (map
 
 // CalendarAccount is an account that can have calendars.
 type CalendarAccount struct {
-	ID    string
-	Email string
+	ID       string
+	Email    string
+	Provider string
 }
 
 // ListCalendarAccounts lists the user's accounts whose provider supports
-// calendar sync (Google only for now).
+// calendar sync (Google and Outlook).
 func (db *DB) ListCalendarAccounts(ctx context.Context, userID string) ([]CalendarAccount, error) {
 	rows, err := db.Read().QueryContext(ctx, `
-		SELECT id, email_address FROM accounts
-		WHERE user_id = ? AND provider = 'gmail' AND COALESCE(is_deleting, 0) = 0
+		SELECT id, email_address, provider FROM accounts
+		WHERE user_id = ? AND provider IN ('gmail', 'outlook') AND COALESCE(is_deleting, 0) = 0
 		ORDER BY email_address COLLATE NOCASE`, userID)
 	if err != nil {
 		return nil, err
@@ -402,7 +404,7 @@ func (db *DB) ListCalendarAccounts(ctx context.Context, userID string) ([]Calend
 	var out []CalendarAccount
 	for rows.Next() {
 		var a CalendarAccount
-		if err := rows.Scan(&a.ID, &a.Email); err != nil {
+		if err := rows.Scan(&a.ID, &a.Email, &a.Provider); err != nil {
 			return nil, err
 		}
 		out = append(out, a)
