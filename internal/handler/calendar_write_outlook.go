@@ -172,7 +172,16 @@ func (h *Handler) onlineMeetingFields(ctx context.Context, token string, cal mod
 // under the key delta sync uses; a series master (no instance rows exist for it)
 // triggers a per-calendar sync instead.
 func (h *Handler) storeWrittenOutlookEvent(ctx context.Context, token string, cal models.Calendar, written graphEvent, replacing string) bool {
-	if written.ID == "" || written.Type == "seriesMaster" {
+	// The create/update response does not reliably carry type, so a series master
+	// is also recognised by its recurrence. It has no instance rows of its own:
+	// expand it instead of caching it as a one-off event.
+	if written.ID != "" && (written.Type == "seriesMaster" || (written.Type == "" && len(written.Recurrence) > 0 && string(written.Recurrence) != "null")) {
+		if h.refreshOutlookSeries(ctx, token, cal, written.ID) {
+			return true
+		}
+		return h.syncCalendarAfterWrite(ctx, token, cal)
+	}
+	if written.ID == "" {
 		return h.syncCalendarAfterWrite(ctx, token, cal)
 	}
 	if written.IsCancelled {
@@ -335,7 +344,7 @@ func (h *Handler) patchOutlookEvent(w http.ResponseWriter, r *http.Request, ev m
 	}
 	var synced bool
 	if series {
-		synced = h.syncCalendarAfterWrite(ctx, token, cal)
+		synced = h.refreshOutlookSeries(ctx, token, cal, targetID) || h.syncCalendarAfterWrite(ctx, token, cal)
 	} else {
 		synced = h.storeWrittenOutlookEvent(ctx, token, cal, written, ev.ProviderEventID)
 	}
@@ -418,14 +427,19 @@ func (h *Handler) deleteOutlookEvent(w http.ResponseWriter, r *http.Request, ev 
 	err := outlookCalendarDo(ctx, token, http.MethodDelete, outlookCalendarURL(outlookEventPath(targetID), nil), nil, nil)
 	var apiErr outlookAPIError
 	if err != nil && !(errors.As(err, &apiErr) && (apiErr.Status == http.StatusGone || apiErr.Status == http.StatusNotFound)) {
+		if errors.As(err, &apiErr) {
+			log.Printf("calendar delete: graph DELETE %s failed with status %d: %v", targetID, apiErr.Status, err)
+		}
 		writeCalendarError(w, h.mapCalendarOutlookError(err, cal.AccountID)) // already deleted upstream counts as success
 		return
 	}
-	var synced bool
-	if series {
-		synced = h.syncCalendarAfterWrite(ctx, token, cal)
-	} else {
-		synced = h.deleteLocalEvents(ctx, cal, ev.ProviderEventID)
+	// Deleting a series master removes every occurrence upstream, and delta need
+	// not report them, so drop the whole series locally. targetID is the master
+	// for series scope; it is also a master when the row we were given is one
+	// (cached before it was recognised), and harmless for a plain occurrence.
+	synced := h.db.DeleteCalendarSeries(ctx, cal.ID, targetID) == nil
+	if !series {
+		synced = h.deleteLocalEvents(ctx, cal, ev.ProviderEventID) && synced
 	}
 	writeCalendarJSON(w, http.StatusOK, map[string]any{"ok": true, "synced": synced})
 }
@@ -452,7 +466,7 @@ func (h *Handler) rsvpOutlookEvent(w http.ResponseWriter, r *http.Request, ev mo
 	}
 	var synced bool
 	if series {
-		synced = h.syncCalendarAfterWrite(ctx, token, cal)
+		synced = h.refreshOutlookSeries(ctx, token, cal, targetID) || h.syncCalendarAfterWrite(ctx, token, cal)
 	} else {
 		// 202 carries no body: read the event back. Declining can remove it from the calendar.
 		var written graphEvent

@@ -411,3 +411,12 @@ func (db *DB) ListCalendarAccounts(ctx context.Context, userID string) ([]Calend
 	}
 	return out, rows.Err()
 }
+
+// DeleteCalendarSeries removes a recurring series from the cache: its master
+// row, if one was stored, and every row whose recurring_event_id is masterID.
+func (db *DB) DeleteCalendarSeries(ctx context.Context, calendarID int64, masterID string) error {
+	_, err := db.Write().ExecContext(ctx,
+		`DELETE FROM calendar_events WHERE calendar_id = ? AND (provider_event_id = ? OR recurring_event_id = ?)`,
+		calendarID, masterID, masterID)
+	return err
+}

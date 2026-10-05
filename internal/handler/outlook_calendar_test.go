@@ -763,3 +763,160 @@ func TestOutlookCalendarList403FlagsReconnect(t *testing.T) {
 		t.Fatalf("state = %+v, want needs_reconnect", st["oacc"])
 	}
 }
+
+func titlesOf(t *testing.T, db *storage.DB, calID int64) map[string]string { // provider id -> "title|recurring"
+	t.Helper()
+	rows, err := db.Read().Query(`SELECT provider_event_id, title, recurring_event_id FROM calendar_events WHERE calendar_id = ?`, calID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	out := map[string]string{}
+	for rows.Next() {
+		var id, title, rec string
+		_ = rows.Scan(&id, &title, &rec)
+		out[id] = title + "|" + rec
+	}
+	return out
+}
+
+// Live shape: delta delivers occurrences with only id/type/seriesMasterId/start/end.
+func TestOutlookDeltaOccurrencesAreFilledFromSeriesMaster(t *testing.T) {
+	ctx := context.Background()
+	d := time.Now().UTC().AddDate(0, 0, 3).Truncate(24 * time.Hour).Format("2006-01-02")
+	minimal := func(id, typ, hh string, over map[string]any) map[string]any {
+		e := map[string]any{"id": id, "type": typ, "seriesMasterId": "master-1",
+			"start": map[string]any{"dateTime": d + "T" + hh + ":00:00.0000000", "timeZone": "UTC"},
+			"end":   map[string]any{"dateTime": d + "T" + hh + ":30:00.0000000", "timeZone": "UTC"}}
+		for k, v := range over {
+			e[k] = v
+		}
+		return e
+	}
+	masterGets := 0
+	fake := &fakeGraph{}
+	fake.fn = func(r *http.Request, _ map[string]any) (int, any) {
+		switch {
+		case r.URL.Path == "/me/calendars":
+			return 200, map[string]any{"value": graphCalendarsPayload()["value"].([]map[string]any)[:1]}
+		case r.URL.Path == "/me/events/master-1":
+			masterGets++
+			return 200, map[string]any{"id": "master-1", "type": "seriesMaster", "subject": "Weekly sync", "location": map[string]any{"displayName": "Room 9"},
+				"organizer":     map[string]any{"emailAddress": map[string]any{"address": "boss@example.com"}},
+				"attendees":     []map[string]any{{"type": "required", "emailAddress": map[string]any{"address": "person@outlook.com"}, "status": map[string]any{"response": "accepted"}}},
+				"onlineMeeting": map[string]any{"joinUrl": "https://teams.example/j"}, "webLink": "https://outlook.live.com/m", "responseStatus": map[string]any{"response": "accepted"}}
+		}
+		return 200, map[string]any{"@odata.deltaLink": outlookGraphBaseURL + "/me/calendars/cal-main/calendarView/delta?$deltatoken=d", "value": []any{
+			minimal("occ-1", "occurrence", "09", nil), minimal("occ-2", "occurrence", "10", nil),
+			minimal("exc-1", "exception", "11", map[string]any{"subject": "Moved sync"})}}
+	}
+	h, db := newOutlookCalendarHandler(t, fake, outlookCalScope, "http://unused")
+	if err := h.SyncCalendarAccount(ctx, "oacc"); err != nil {
+		t.Fatal(err)
+	}
+	cal := seedOutlookCalendar(t, db, "cal-main", "owner")
+	got := titlesOf(t, db, cal.ID)
+	if got["occ-1"] != "Weekly sync|master-1" || got["occ-2"] != "Weekly sync|master-1" || got["exc-1"] != "Moved sync|master-1" {
+		t.Fatalf("rows = %+v", got)
+	}
+	if masterGets != 1 {
+		t.Errorf("series master fetched %d times, want once per sync", masterGets)
+	}
+	var loc, meet, att string
+	_ = db.Read().QueryRow(`SELECT location, meeting_url, attendees FROM calendar_events WHERE provider_event_id = 'occ-1'`).Scan(&loc, &meet, &att)
+	if loc != "Room 9" || meet != "https://teams.example/j" || !strings.Contains(att, "boss@example.com") {
+		t.Errorf("occurrence location=%q meeting=%q attendees=%s", loc, meet, att)
+	}
+}
+
+// Live shape: the create response has no "type", only a recurrence.
+func TestOutlookRecurringCreateStoresInstancesNotTheMaster(t *testing.T) {
+	fake := &fakeGraph{}
+	fake.fn = func(r *http.Request, body map[string]any) (int, any) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/me/calendars/cal-main/events":
+			e := writtenGraphEvent("master-1", map[string]any{"recurrence": body["recurrence"]})
+			delete(e, "type")
+			return 201, e
+		case r.URL.Path == "/me/events/master-1/instances":
+			if r.URL.Query().Get("startDateTime") == "" || r.URL.Query().Get("endDateTime") == "" {
+				t.Errorf("instances without window: %s", r.URL.RawQuery)
+			}
+			var v []any
+			for i, hh := range []string{"16", "17"} {
+				v = append(v, map[string]any{"id": "inst-" + strconv.Itoa(i), "type": "occurrence", "seriesMasterId": "master-1", "subject": "Lunch",
+					"start": map[string]any{"dateTime": "2026-10-2" + strconv.Itoa(7+i) + "T" + hh + ":00:00.0000000", "timeZone": "UTC"},
+					"end":   map[string]any{"dateTime": "2026-10-2" + strconv.Itoa(7+i) + "T" + hh + ":30:00.0000000", "timeZone": "UTC"}})
+			}
+			return 200, map[string]any{"value": v}
+		case r.URL.Path == "/me/events/master-1":
+			return 200, map[string]any{"id": "master-1", "type": "seriesMaster", "subject": "Lunch"}
+		}
+		return 500, nil
+	}
+	h, db := newOutlookCalendarHandler(t, fake, outlookCalScope, "http://unused")
+	cal := seedOutlookCalendar(t, db, "cal-main", "owner")
+	form := timedCreateForm(cal.ID)
+	form.Set("recurrence", "weekly")
+	rec := httptest.NewRecorder()
+	h.handleCreateCalendarEvent(rec, calendarReq("default", http.MethodPost, "/x", form, ""))
+	if rec.Code != 200 {
+		t.Fatalf("create = %d %s", rec.Code, rec.Body)
+	}
+	got := titlesOf(t, db, cal.ID)
+	if _, ok := got["master-1"]; ok || len(got) != 2 || got["inst-0"] != "Lunch|master-1" {
+		t.Fatalf("rows = %+v, want only the two instances", got)
+	}
+}
+
+func TestOutlookSeriesDeleteClearsLocalRowsAndReportsFailure(t *testing.T) {
+	status := http.StatusNoContent
+	fake := &fakeGraph{}
+	fake.fn = func(r *http.Request, _ map[string]any) (int, any) {
+		if r.Method == http.MethodDelete {
+			if status != http.StatusNoContent {
+				return status, map[string]any{"error": map[string]any{"code": "ErrorAccessDenied"}}
+			}
+			return 204, nil
+		}
+		return 200, map[string]any{"value": []any{}, "@odata.deltaLink": outlookGraphBaseURL + "/me/calendars/cal-main/calendarView/delta?$deltatoken=z"}
+	}
+	h, db := newOutlookCalendarHandler(t, fake, outlookCalScope, "http://unused")
+	cal := seedOutlookCalendar(t, db, "cal-main", "owner")
+	seed := func() (occ, master int64) {
+		for i := 0; i < 5; i++ {
+			id := seedOutlookEvent(t, db, cal, models.CalendarEvent{ProviderEventID: "inst-" + strconv.Itoa(i), RecurringEventID: "master-1", Title: "W"})
+			if i == 0 {
+				occ = id
+			}
+		}
+		seedOutlookEvent(t, db, cal, models.CalendarEvent{ProviderEventID: "other", Title: "Other"})
+		// A series master wrongly cached as a one-off row (the earlier bug).
+		master = seedOutlookEvent(t, db, cal, models.CalendarEvent{ProviderEventID: "master-1", Title: "W"})
+		return
+	}
+	del := func(id int64, q string) (int, string) {
+		rec := httptest.NewRecorder()
+		h.handleDeleteCalendarEvent(rec, calendarReq("default", http.MethodDelete, "/x?"+q, nil, strconv.FormatInt(id, 10)))
+		return rec.Code, rec.Body.String()
+	}
+	count := func() int { return len(titlesOf(t, db, cal.ID)) }
+
+	occ, master := seed()
+	status = http.StatusForbidden
+	if code, _ := del(occ, "scope=series"); code == 200 || count() != 7 {
+		t.Fatalf("failed Graph delete must be an error and keep rows: code=%d rows=%d", code, count())
+	}
+	status = http.StatusNoContent
+	if code, body := del(occ, "scope=series"); code != 200 || count() != 1 {
+		t.Fatalf("series delete = %d %s, rows left %d (want only 'other')", code, body, count())
+	}
+	if last := fake.last(); last.Method != http.MethodDelete || last.Path != "/me/events/master-1" {
+		t.Fatalf("graph delete = %+v, want the series master", last)
+	}
+	// Series scope on the stray master row itself.
+	_, master = seed()
+	if code, body := del(master, "scope=series"); code != 200 || count() != 1 {
+		t.Fatalf("delete via master row = %d %s, rows left %d", code, body, count())
+	}
+}
