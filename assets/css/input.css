@@ -3269,6 +3269,7 @@ body.mail-list-column-resizing {
 .cal-ed-desc { height: auto; padding: 0.375rem 0.5rem; resize: vertical; font-family: inherit; }
 .cal-ed-pair { display: flex; gap: 0.375rem; }
 .cal-ed-pair .cal-ed-input { flex: 1 1 0%; }
+.cal-ed-cb { width: 1rem; height: 1rem; flex: none; accent-color: var(--primary); }
 .cal-ed-check { display: flex; align-items: center; gap: 0.5rem; }
 .cal-chips { display: flex; flex-wrap: wrap; gap: 0.25rem; align-items: center; min-height: 2rem; padding: 0.1875rem 0.375rem; border: 1px solid var(--border); border-radius: 0.375rem; background: var(--background); }
 .cal-chip { display: inline-flex; align-items: center; gap: 0.25rem; max-width: 100%; padding: 0 0.25rem 0 0.5rem; border-radius: 9999px; background: var(--accent); color: var(--accent-foreground); }

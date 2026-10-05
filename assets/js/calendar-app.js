@@ -859,7 +859,7 @@
   }
 
   function input(type, cls, id) {
-    var i = h("input", "cal-ed-input" + (cls ? " " + cls : ""))
+    var i = h("input", (type === "checkbox" ? "cal-ed-cb" : "cal-ed-input") + (cls ? " " + cls : ""))
     i.type = type
     if (id) i.id = "cal-ed-" + id
     return i
