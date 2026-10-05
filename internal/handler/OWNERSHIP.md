@@ -58,6 +58,11 @@ constrain every private lookup or mutation to that user:
   `/api/remote-assets/*`.
 - Contacts: `/contacts*`, `/api/contacts*`, contact import/export, contact sync
   setup/confirmation, provider sync, suppression, and observed-contact cleanup.
+- Calendar: `GET /api/calendar/calendars`, `POST /api/calendar/calendars/{id}/selected`,
+  `GET /api/calendar/events`, and `POST /api/calendar/sync`. Storage queries
+  join `accounts.user_id`, so calendars and events are only visible to their
+  owner; `{id}` of a foreign or missing calendar returns 404 with no write, and
+  sync only touches the caller's own Google accounts.
 - Accounts: account discovery/creation/edit/service/color/test/deletion,
   account contact settings, signatures, and `/api/mail/sync*`.
 - Sending addresses: `/api/accounts/{id}/identities*` (list, add, delete,
