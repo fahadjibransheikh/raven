@@ -76,7 +76,7 @@ func TestMicrosoftAccountOAuthURLForcesConsentForContacts(t *testing.T) {
 	if values.Get("code_challenge_method") != "S256" || values.Get("code_challenge") != oauth2.S256ChallengeFromVerifier("verifier-value") {
 		t.Fatalf("PKCE challenge = %q (%q), want S256 of the verifier", values.Get("code_challenge"), values.Get("code_challenge_method"))
 	}
-	for _, scope := range []string{microsoftGraphContactsScope, microsoftGraphMailScope, microsoftGraphMailSendScope, microsoftGraphMailboxSettingsScope} {
+	for _, scope := range []string{microsoftGraphContactsScope, microsoftGraphMailScope, microsoftGraphMailSendScope, microsoftGraphMailboxSettingsScope, microsoftGraphCalendarScope} {
 		if !strings.Contains(values.Get("scope"), scope) {
 			t.Fatalf("scope = %q, want Graph scope %q", values.Get("scope"), scope)
 		}
@@ -127,6 +127,9 @@ func TestExchangeMicrosoftAccountCodeRequestsGraphMailScopes(t *testing.T) {
 	}
 	if gotScope != strings.Join(microsoftAccountTokenExchangeScopes(), " ") {
 		t.Fatalf("scope = %q, want Microsoft token exchange scopes", gotScope)
+	}
+	if !strings.Contains(gotScope, microsoftGraphCalendarScope) {
+		t.Fatalf("scope = %q, want the Graph calendar scope in the code exchange", gotScope)
 	}
 	if strings.Contains(gotScope, "outlook.office.com") {
 		t.Fatalf("scope = %q: a token request may name only one resource, keep SMTP.Send out of the code exchange", gotScope)

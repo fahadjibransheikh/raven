@@ -63,7 +63,7 @@ func microsoftAccountTokenScopes() []string {
 }
 
 func microsoftAccountTokenExchangeScopes() []string {
-	return []string{"openid", "email", "profile", "offline_access", microsoftGraphContactsScope, microsoftGraphMailScope, microsoftGraphMailSendScope, microsoftGraphMailboxSettingsScope}
+	return []string{"openid", "email", "profile", "offline_access", microsoftGraphContactsScope, microsoftGraphMailScope, microsoftGraphMailSendScope, microsoftGraphMailboxSettingsScope, microsoftGraphCalendarScope}
 }
 
 func (m *Service) accountOAuthConfig() *oauth2.Config {

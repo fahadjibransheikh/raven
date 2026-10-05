@@ -22,6 +22,10 @@ const (
 	microsoftGraphMailScope            = "https://graph.microsoft.com/Mail.ReadWrite"
 	microsoftGraphMailSendScope        = "https://graph.microsoft.com/Mail.Send"
 	microsoftGraphMailboxSettingsScope = "https://graph.microsoft.com/MailboxSettings.ReadWrite"
+	// Calendars.ReadWrite covers list/read/create/update/delete/RSVP on the
+	// user's own calendars, personal and work accounts alike. The .Shared
+	// variants are not used: ReadWrite.Shared is not offered to personal accounts.
+	microsoftGraphCalendarScope = "https://graph.microsoft.com/Calendars.ReadWrite"
 	// microsoftSMTPSendScope authorizes SMTP AUTH (XOAUTH2) submission for
 	// Outlook.com and Microsoft 365 mailboxes. It belongs to the
 	// outlook.office.com resource, not Graph.
@@ -32,6 +36,11 @@ const (
 // cover SMTP.Send (the account was connected before Raven asked for it), or the
 // grant is no longer valid. The user must reconnect the account.
 var ErrMicrosoftSMTPConsentRequired = errors.New("microsoft account has not granted SMTP send access")
+
+// ErrMicrosoftCalendarConsentRequired means the stored Microsoft grant does not
+// cover Calendars.ReadWrite (the account was connected before Raven asked for
+// it). Mail and contacts keep working; the user must reconnect for calendars.
+var ErrMicrosoftCalendarConsentRequired = errors.New("microsoft account has not granted calendar access")
 
 // OAuthTokenError keeps the non-secret parts of a token endpoint failure so
 // callers can distinguish a permanent authorization problem from a temporary
@@ -117,6 +126,17 @@ func (m *Manager) RefreshOAuthTokenForAccount(ctx context.Context, accountID str
 
 func (m *Manager) GetMicrosoftGraphContactsTokenForAccount(ctx context.Context, accountID string) (string, error) {
 	return m.getMicrosoftGraphTokenForAccount(ctx, accountID, "contacts", microsoftGraphContactsScope)
+}
+
+// GetMicrosoftGraphCalendarTokenForAccount returns a Graph token carrying only
+// the calendar scope. A grant without it yields ErrMicrosoftCalendarConsentRequired.
+func (m *Manager) GetMicrosoftGraphCalendarTokenForAccount(ctx context.Context, accountID string) (string, error) {
+	token, err := m.getMicrosoftGraphTokenForAccount(ctx, accountID, "calendar", microsoftGraphCalendarScope)
+	var tokenErr *OAuthTokenError
+	if errors.As(err, &tokenErr) && smtpConsentMissing(tokenErr) {
+		return "", fmt.Errorf("%w: %w", ErrMicrosoftCalendarConsentRequired, err)
+	}
+	return token, err
 }
 
 func (m *Manager) GetMicrosoftGraphMailTokenForAccount(ctx context.Context, accountID string) (string, error) {
