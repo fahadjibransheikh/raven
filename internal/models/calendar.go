@@ -6,6 +6,7 @@ import "time"
 type Calendar struct {
 	ID                 int64      `json:"id"`
 	AccountID          string     `json:"account_id"`
+	Provider           string     `json:"provider"` // owning account's provider: gmail or outlook
 	ProviderCalendarID string     `json:"provider_calendar_id"`
 	Name               string     `json:"name"`
 	Color              string     `json:"color"`

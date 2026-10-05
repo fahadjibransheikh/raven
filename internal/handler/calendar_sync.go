@@ -50,7 +50,15 @@ func (h *Handler) SyncCalendarAccount(ctx context.Context, accountID string) err
 	if err := h.db.Read().QueryRowContext(ctx, `SELECT provider FROM accounts WHERE id = ? AND COALESCE(is_deleting, 0) = 0`, accountID).Scan(&provider); err != nil {
 		return nil // missing or deleting account
 	}
-	if provider != providers.ProviderGmail || h.mailCredentials() == nil || !h.mailCredentials().HasGoogleOAuth() {
+	var pull func(context.Context, string) error
+	var isScopeErr func(error) bool
+	reconnectMsg := ""
+	switch {
+	case provider == providers.ProviderGmail && h.mailCredentials() != nil && h.mailCredentials().HasGoogleOAuth():
+		pull, isScopeErr, reconnectMsg = h.pullGoogleCalendarAccount, isGoogleCalendarScopeError, "reconnect Google to grant calendar access"
+	case provider == providers.ProviderOutlook && h.mailCredentials() != nil && h.mailCredentials().HasMicrosoftOAuth():
+		pull, isScopeErr, reconnectMsg = h.pullOutlookCalendarAccount, isOutlookCalendarScopeError, "reconnect Outlook to grant calendar access"
+	default:
 		return nil
 	}
 	if !h.beginCalendarSync(accountID) {
@@ -58,12 +66,12 @@ func (h *Handler) SyncCalendarAccount(ctx context.Context, accountID string) err
 	}
 	defer h.endCalendarSync(accountID)
 
-	err := h.pullGoogleCalendarAccount(ctx, accountID)
+	err := pull(ctx, accountID)
 	switch {
 	case err == nil:
 		err = h.db.SetCalendarAccountState(ctx, accountID, false, "")
-	case isGoogleCalendarScopeError(err):
-		if e := h.db.SetCalendarAccountState(ctx, accountID, true, "reconnect Google to grant calendar access"); e != nil {
+	case isScopeErr(err):
+		if e := h.db.SetCalendarAccountState(ctx, accountID, true, reconnectMsg); e != nil {
 			log.Printf("calendar sync %s: record reconnect state: %v", accountID, e)
 		}
 	default:

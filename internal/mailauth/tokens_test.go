@@ -462,3 +462,52 @@ func TestMicrosoftSMTPTokenTransientFailureIsNotConsentError(t *testing.T) {
 		t.Fatalf("error = %v, want a non-consent failure", err)
 	}
 }
+
+func TestMicrosoftCalendarTokenUsesCachedTokenWhenScopeGranted(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Fatalf("unexpected token refresh %s", r.URL)
+	}))
+	defer server.Close()
+	manager := newOutlookSMTPTokenManager(t, server.URL, microsoftGraphCalendarScope)
+	token, err := manager.GetMicrosoftGraphCalendarTokenForAccount(context.Background(), "acc")
+	if err != nil || token != "cached-graph-token" {
+		t.Fatalf("token = %q, err = %v", token, err)
+	}
+}
+
+func TestMicrosoftCalendarTokenMissingScopeRefreshesAndIsTyped(t *testing.T) {
+	var gotScope string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = r.ParseForm()
+		gotScope = r.FormValue("scope")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"error":"invalid_grant","error_description":"AADSTS65001: The user or administrator has not consented to use the application"}`))
+	}))
+	defer server.Close()
+	manager := newOutlookSMTPTokenManager(t, server.URL, microsoftGraphContactsScope)
+
+	_, err := manager.GetMicrosoftGraphCalendarTokenForAccount(context.Background(), "acc")
+	if !errors.Is(err, ErrMicrosoftCalendarConsentRequired) {
+		t.Fatalf("error = %v, want ErrMicrosoftCalendarConsentRequired", err)
+	}
+	if gotScope != microsoftGraphCalendarScope {
+		t.Fatalf("refresh scope = %q, want only the calendar scope", gotScope)
+	}
+	// Mail and contacts are unaffected: their cached grant still satisfies them.
+	if _, err := manager.GetMicrosoftGraphContactsTokenForAccount(context.Background(), "acc"); err != nil {
+		t.Fatalf("contacts token: %v", err)
+	}
+}
+
+func TestMicrosoftCalendarTokenTransientFailureIsNotConsentError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer server.Close()
+	manager := newOutlookSMTPTokenManager(t, server.URL, microsoftGraphContactsScope)
+	_, err := manager.GetMicrosoftGraphCalendarTokenForAccount(context.Background(), "acc")
+	if err == nil || errors.Is(err, ErrMicrosoftCalendarConsentRequired) {
+		t.Fatalf("error = %v, want a non-consent failure", err)
+	}
+}

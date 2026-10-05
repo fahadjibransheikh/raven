@@ -250,6 +250,36 @@ test("needs_reconnect shows a banner with the reconnect form", async () => {
   assert.deepEqual(f, { flow_action: "reconnect", provider: "gmail", email_address: "bob@example.com", display_name: "Ann Example" })
 })
 
+test("outlook accounts reconnect as outlook and get outlook wording", async () => {
+  const calendars = { accounts: [
+    { account_id: "acc2", email: "pat@outlook.com", provider: "outlook", needs_reconnect: true, calendars: [] },
+    { account_id: "acc1", email: "ann@example.com", provider: "gmail", needs_reconnect: false, last_synced_at: "2026-10-01T00:00:00Z",
+      calendars: [{ id: 10, account_id: "acc1", provider: "gmail", name: "Work", color: "#3366cc", selected: true, is_primary: true, access_role: "owner" }] },
+    { account_id: "acc3", email: "pat@msn.com", provider: "outlook", needs_reconnect: false, last_synced_at: "2026-10-01T00:00:00Z",
+      calendars: [{ id: 30, account_id: "acc3", provider: "outlook", name: "Calendar", color: "#0078d4", selected: true, is_primary: true, access_role: "owner" }] },
+  ] }
+  const events = [ev({ id: 7, calendar_id: 30, account_id: "acc3", html_link: "https://outlook.live.com/calendar/item/x" })]
+  const { w, d, cal } = await load({ calendars, events })
+  const f = Object.fromEntries([...d.querySelector("[data-cal-banner] form").querySelectorAll("input")].map((i) => [i.name, i.value]))
+  assert.equal(f.provider, "outlook")
+  await cal.goTo("2026-10-07", "week")
+  await flush()
+  d.querySelector("[data-cal-event]").click()
+  const pop = d.querySelector("[data-cal-popover]")
+  assert.ok([...pop.querySelectorAll("a")].some((a) => a.textContent === "Open in Outlook"))
+  assert.ok(![...pop.querySelectorAll("a")].some((a) => /Google/.test(a.textContent)))
+  key(w, d.body, "Escape")
+  key(w, d.body, "c")
+  const sel = d.getElementById("cal-ed-calendar")
+  const label = () => d.getElementById("cal-ed-meet").closest("label").textContent
+  sel.value = "30"
+  sel.dispatchEvent(new w.Event("change", { bubbles: true }))
+  assert.equal(label(), "Add online meeting")
+  sel.value = "10"
+  sel.dispatchEvent(new w.Event("change", { bubbles: true }))
+  assert.equal(label(), "Add Google Meet video conferencing")
+})
+
 test("calendar list groups by account and toggling on selects then syncs", async () => {
   const calendars = { accounts: [{ account_id: "acc1", email: "ann@example.com", needs_reconnect: false, last_synced_at: "2026-10-01T00:00:00Z",
     calendars: [{ id: 10, name: "Work", color: "#3366cc", selected: false }, { id: 11, name: "Home", color: "#cc3333", selected: true }] }] }

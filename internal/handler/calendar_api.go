@@ -27,6 +27,7 @@ func writeCalendarJSON(w http.ResponseWriter, status int, body any) {
 type calendarAccountJSON struct {
 	AccountID      string            `json:"account_id"`
 	Email          string            `json:"email"`
+	Provider       string            `json:"provider"`
 	NeedsReconnect bool              `json:"needs_reconnect"`
 	LastError      string            `json:"last_error,omitempty"`
 	LastSyncedAt   *time.Time        `json:"last_synced_at,omitempty"`
@@ -46,7 +47,7 @@ func (h *Handler) handleListCalendars(w http.ResponseWriter, r *http.Request) {
 				byAccount := map[string]*calendarAccountJSON{}
 				for _, a := range accounts {
 					st := states[a.ID]
-					out = append(out, calendarAccountJSON{AccountID: a.ID, Email: a.Email, NeedsReconnect: st.NeedsReconnect,
+					out = append(out, calendarAccountJSON{AccountID: a.ID, Email: a.Email, Provider: a.Provider, NeedsReconnect: st.NeedsReconnect,
 						LastError: st.LastError, LastSyncedAt: st.LastSyncedAt, Calendars: []models.Calendar{}})
 					byAccount[a.ID] = &out[len(out)-1]
 				}
@@ -150,7 +151,7 @@ func (h *Handler) handleSyncCalendars(w http.ResponseWriter, r *http.Request) {
 		case err != nil:
 			log.Printf("calendar sync %s: %v", a.ID, err)
 			res.Status, res.Error = "error", "sync failed"
-			if isGoogleCalendarScopeError(err) {
+			if isGoogleCalendarScopeError(err) || isOutlookCalendarScopeError(err) {
 				res.Error = "needs_reconnect"
 			}
 		}
