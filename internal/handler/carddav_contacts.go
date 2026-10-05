@@ -56,6 +56,15 @@ type davProp struct {
 	CurrentUserPrincipal davHrefProp     `xml:"current-user-principal"`
 	AddressBookHomeSet   davHrefProp     `xml:"addressbook-home-set"`
 	ResourceType         davResourceType `xml:"resourcetype"`
+
+	// CalDAV (RFC 4791, RFC 6578, RFC 6638); decoded by local name like the rest.
+	CalendarData          string        `xml:"calendar-data"`
+	CalendarHomeSet       davHrefProp   `xml:"calendar-home-set"`
+	CalendarUserAddresses davHrefsProp  `xml:"calendar-user-address-set"`
+	CalendarColor         string        `xml:"calendar-color"`
+	CalendarComponents    davNamedItems `xml:"supported-calendar-component-set"`
+	Privileges            davNamedItems `xml:"current-user-privilege-set"`
+	DAVSyncToken          string        `xml:"sync-token"`
 }
 
 type davHrefProp struct {
@@ -65,6 +74,8 @@ type davHrefProp struct {
 type davResourceType struct {
 	Collection  bool
 	AddressBook bool
+	Calendar    bool
+	Shared      bool // a calendar shared to this user (calendarserver.org "shared")
 }
 
 type cardDAVSyncResult struct {
@@ -95,6 +106,10 @@ func (r *davResourceType) UnmarshalXML(d *xml.Decoder, start xml.StartElement) e
 				r.Collection = true
 			case "addressbook":
 				r.AddressBook = true
+			case "calendar":
+				r.Calendar = true
+			case "shared":
+				r.Shared = true
 			}
 		case xml.EndElement:
 			if t.Name.Local == start.Name.Local {

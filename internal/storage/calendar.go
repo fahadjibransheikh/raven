@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/cristianadrielbraun/gofer/internal/models"
 )
@@ -69,9 +70,33 @@ func (db *DB) UpsertCalendars(ctx context.Context, accountID string, calendars [
 	return tx.Commit()
 }
 
-const calendarColumns = `c.id, c.account_id, c.provider_calendar_id, c.name, c.color, c.time_zone, c.is_primary,
+// CalendarProviderICloud is the calendar provider of iCloud mail accounts
+// (stored as provider imap).
+const CalendarProviderICloud = "icloud"
+
+// calendarProviderSQL yields the calendar provider of the accounts row aliased
+// alias: "icloud" for an imap account on iCloud Mail (host *mail.me.com or an
+// @icloud.com/@me.com/@mac.com address), otherwise the account's provider.
+func calendarProviderSQL(alias string) string {
+	a := alias + "."
+	return `CASE WHEN ` + a + `provider = 'imap' AND (lower(` + a + `imap_host) LIKE '%mail.me.com'
+		OR lower(` + a + `email_address) LIKE '%@icloud.com' OR lower(` + a + `email_address) LIKE '%@me.com'
+		OR lower(` + a + `email_address) LIKE '%@mac.com') THEN '` + CalendarProviderICloud + `' ELSE ` + a + `provider END`
+}
+
+// CalendarAccountProvider returns the calendar provider of an account ("" if missing or deleting).
+func (db *DB) CalendarAccountProvider(ctx context.Context, accountID string) (string, error) {
+	var p string
+	err := db.Read().QueryRowContext(ctx, `SELECT `+calendarProviderSQL("a")+` FROM accounts a WHERE a.id = ? AND COALESCE(a.is_deleting, 0) = 0`, accountID).Scan(&p)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	return p, err
+}
+
+var calendarColumns = `c.id, c.account_id, c.provider_calendar_id, c.name, c.color, c.time_zone, c.is_primary,
 	c.access_role, c.selected, c.sync_token, c.window_start, c.window_end, c.synced_at,
-	(SELECT provider FROM accounts WHERE id = c.account_id)`
+	(SELECT ` + calendarProviderSQL("pa") + ` FROM accounts pa WHERE pa.id = c.account_id)`
 
 func scanCalendar(row interface{ Scan(...any) error }) (models.Calendar, error) {
 	var c models.Calendar
@@ -187,6 +212,33 @@ func (db *DB) ApplyCalendarEventPage(ctx context.Context, calendarID int64, acco
 	for _, id := range deleteIDs {
 		if _, err := tx.ExecContext(ctx, `DELETE FROM calendar_events WHERE calendar_id = ? AND provider_event_id = ?`, calendarID, id); err != nil {
 			return fmt.Errorf("delete event %s: %w", id, err)
+		}
+	}
+	return tx.Commit()
+}
+
+// ApplyCalendarResources applies a CalDAV sync page. Events of CalDAV
+// resources are keyed "<href>" (a plain event) or "<href>#<recurrence-id>"
+// (an occurrence), and one changed resource can gain or lose occurrences, so
+// every listed href first loses all its stored events, then upserts are added.
+// A deleted resource is an href with no upserts.
+func (db *DB) ApplyCalendarResources(ctx context.Context, calendarID int64, accountID string, hrefs []string, upserts []models.CalendarEvent) error {
+	tx, err := db.Write().BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	for _, href := range hrefs {
+		if _, err := tx.ExecContext(ctx, `
+			DELETE FROM calendar_events WHERE calendar_id = ?
+			AND (provider_event_id = ? OR substr(provider_event_id, 1, ?) = ?)`,
+			calendarID, href, utf8.RuneCountInString(href)+1, href+"#"); err != nil {
+			return fmt.Errorf("delete resource %s: %w", href, err)
+		}
+	}
+	for _, e := range upserts {
+		if err := upsertCalendarEventTx(ctx, tx, calendarID, accountID, e); err != nil {
+			return fmt.Errorf("upsert event %s: %w", e.ProviderEventID, err)
 		}
 	}
 	return tx.Commit()
@@ -391,12 +443,13 @@ type CalendarAccount struct {
 }
 
 // ListCalendarAccounts lists the user's accounts whose provider supports
-// calendar sync (Google and Outlook).
+// calendar sync (Google, Outlook and iCloud). Provider is the calendar
+// provider: iCloud mail accounts report "icloud".
 func (db *DB) ListCalendarAccounts(ctx context.Context, userID string) ([]CalendarAccount, error) {
 	rows, err := db.Read().QueryContext(ctx, `
-		SELECT id, email_address, provider FROM accounts
-		WHERE user_id = ? AND provider IN ('gmail', 'outlook') AND COALESCE(is_deleting, 0) = 0
-		ORDER BY email_address COLLATE NOCASE`, userID)
+		SELECT a.id, a.email_address, `+calendarProviderSQL("a")+` FROM accounts a
+		WHERE a.user_id = ? AND `+calendarProviderSQL("a")+` IN ('gmail', 'outlook', 'icloud') AND COALESCE(a.is_deleting, 0) = 0
+		ORDER BY a.email_address COLLATE NOCASE`, userID)
 	if err != nil {
 		return nil, err
 	}

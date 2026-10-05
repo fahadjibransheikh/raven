@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/cristianadrielbraun/gofer/internal/providers"
+	"github.com/cristianadrielbraun/gofer/internal/storage"
 )
 
 var errCalendarSyncAlreadyRunning = errors.New("calendar sync already running for this account")
@@ -46,8 +47,8 @@ func (h *Handler) SyncCalendarsForAllAccounts(ctx context.Context) {
 // SyncCalendarAccount syncs one account; accounts whose provider has no
 // calendar support are skipped with a nil error.
 func (h *Handler) SyncCalendarAccount(ctx context.Context, accountID string) error {
-	var provider string
-	if err := h.db.Read().QueryRowContext(ctx, `SELECT provider FROM accounts WHERE id = ? AND COALESCE(is_deleting, 0) = 0`, accountID).Scan(&provider); err != nil {
+	provider, err := h.db.CalendarAccountProvider(ctx, accountID)
+	if err != nil || provider == "" {
 		return nil // missing or deleting account
 	}
 	var pull func(context.Context, string) error
@@ -58,6 +59,8 @@ func (h *Handler) SyncCalendarAccount(ctx context.Context, accountID string) err
 		pull, isScopeErr, reconnectMsg = h.pullGoogleCalendarAccount, isGoogleCalendarScopeError, "reconnect Google to grant calendar access"
 	case provider == providers.ProviderOutlook && h.mailCredentials() != nil && h.mailCredentials().HasMicrosoftOAuth():
 		pull, isScopeErr, reconnectMsg = h.pullOutlookCalendarAccount, isOutlookCalendarScopeError, "reconnect Outlook to grant calendar access"
+	case provider == storage.CalendarProviderICloud && h.accountStore != nil:
+		pull, isScopeErr, reconnectMsg = h.pullICloudCalendarAccount, isICloudAuthError, icloudReconnectMsg
 	default:
 		return nil
 	}
@@ -66,7 +69,7 @@ func (h *Handler) SyncCalendarAccount(ctx context.Context, accountID string) err
 	}
 	defer h.endCalendarSync(accountID)
 
-	err := pull(ctx, accountID)
+	err = pull(ctx, accountID)
 	switch {
 	case err == nil:
 		err = h.db.SetCalendarAccountState(ctx, accountID, false, "")
