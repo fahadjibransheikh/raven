@@ -124,7 +124,15 @@ func CalendarSidebarBody() templ.Component {
 			templ_7745c5c3_Var3 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<div id=\"sidebar-app-body\" class=\"flex min-h-0 flex-1 flex-col\" data-sidebar-app-body=\"calendar\"><div class=\"px-4 pb-3\" data-cal-mini></div><hr class=\"divider-etched mx-4\"><nav class=\"flex-1 overflow-y-auto px-3 pt-3 pb-3\" data-cal-list aria-label=\"Calendars\"></nav></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<div id=\"sidebar-app-body\" class=\"flex min-h-0 flex-1 flex-col\" data-sidebar-app-body=\"calendar\"><div class=\"px-4 pb-3\"><button type=\"button\" data-cal-new class=\"cal-btn cal-new-btn w-full justify-center\" title=\"New event (c)\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = icon.Plus(icon.Props{Class: "size-4"}).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "New event</button></div><div class=\"px-4 pb-3\" data-cal-mini></div><hr class=\"divider-etched mx-4\"><nav class=\"flex-1 overflow-y-auto px-3 pt-3 pb-3\" data-cal-list aria-label=\"Calendars\"></nav></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -153,20 +161,20 @@ func CalendarMainPane(accounts []models.Account) templ.Component {
 			templ_7745c5c3_Var4 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<section id=\"mail-list\" data-calendar-app data-week-start=\"0\" data-account-names=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<section id=\"mail-list\" data-calendar-app data-week-start=\"0\" data-account-names=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(calendarAccountNamesJSON(accounts))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/calendar.templ`, Line: 61, Col: 57}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/calendar.templ`, Line: 67, Col: 57}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "\" class=\"cal-app relative flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-background\"><header class=\"cal-toolbar flex flex-wrap items-center gap-x-2 gap-y-2 border-b border-border px-3 py-2 sm:px-4\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\" class=\"cal-app relative flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-background\"><header class=\"cal-toolbar flex flex-wrap items-center gap-x-2 gap-y-2 border-b border-border px-3 py-2 sm:px-4\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -174,7 +182,7 @@ func CalendarMainPane(accounts []models.Account) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<button type=\"button\" data-cal-today class=\"cal-btn\">Today</button><div class=\"flex items-center\"><button type=\"button\" data-cal-prev class=\"cal-icon-btn\" aria-label=\"Previous\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<button type=\"button\" data-cal-today class=\"cal-btn\">Today</button><div class=\"flex items-center\"><button type=\"button\" data-cal-prev class=\"cal-icon-btn\" aria-label=\"Previous\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -182,7 +190,7 @@ func CalendarMainPane(accounts []models.Account) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</button> <button type=\"button\" data-cal-next class=\"cal-icon-btn\" aria-label=\"Next\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</button> <button type=\"button\" data-cal-next class=\"cal-icon-btn\" aria-label=\"Next\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -190,7 +198,15 @@ func CalendarMainPane(accounts []models.Account) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</button></div><h2 data-cal-title class=\"cal-title min-w-0 flex-1 truncate text-lg font-bold tracking-tight\" style=\"font-family: var(--font-serif)\" aria-live=\"polite\"></h2><span data-cal-status class=\"hidden text-xs text-muted-foreground\" role=\"status\"></span><div class=\"cal-seg\" role=\"group\" aria-label=\"Calendar view\"><button type=\"button\" data-cal-view=\"day\" aria-pressed=\"false\">Day</button> <button type=\"button\" data-cal-view=\"week\" aria-pressed=\"false\">Week</button> <button type=\"button\" data-cal-view=\"month\" aria-pressed=\"false\">Month</button> <button type=\"button\" data-cal-view=\"agenda\" aria-pressed=\"false\">Agenda</button></div><button type=\"button\" data-cal-refresh class=\"cal-icon-btn\" aria-label=\"Sync calendars\" title=\"Sync calendars\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</button></div><h2 data-cal-title class=\"cal-title min-w-0 flex-1 truncate text-lg font-bold tracking-tight\" style=\"font-family: var(--font-serif)\" aria-live=\"polite\"></h2><span data-cal-status class=\"hidden text-xs text-muted-foreground\" role=\"status\"></span><div class=\"cal-seg\" role=\"group\" aria-label=\"Calendar view\"><button type=\"button\" data-cal-view=\"day\" aria-pressed=\"false\">Day</button> <button type=\"button\" data-cal-view=\"week\" aria-pressed=\"false\">Week</button> <button type=\"button\" data-cal-view=\"month\" aria-pressed=\"false\">Month</button> <button type=\"button\" data-cal-view=\"agenda\" aria-pressed=\"false\">Agenda</button></div><button type=\"button\" data-cal-new class=\"cal-icon-btn lg:hidden\" aria-label=\"New event\" title=\"New event (c)\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = icon.Plus(icon.Props{Class: "size-4"}).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</button> <button type=\"button\" data-cal-refresh class=\"cal-icon-btn\" aria-label=\"Sync calendars\" title=\"Sync calendars\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -198,7 +214,7 @@ func CalendarMainPane(accounts []models.Account) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</button></header><div data-cal-banner class=\"hidden\"></div><div data-cal-body class=\"relative min-h-0 flex-1 overflow-hidden\"></div><div data-cal-popover class=\"cal-popover hidden\" role=\"dialog\" aria-modal=\"false\" aria-label=\"Event details\"></div></section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</button></header><div data-cal-banner class=\"hidden\"></div><div data-cal-body class=\"relative min-h-0 flex-1 overflow-hidden\"></div><div data-cal-popover class=\"cal-popover hidden\" role=\"dialog\" aria-modal=\"false\" aria-label=\"Event details\"></div></section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -229,7 +245,7 @@ func CalendarViewPlaceholder() templ.Component {
 			templ_7745c5c3_Var6 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<section id=\"mail-view\" class=\"hidden\"></section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<section id=\"mail-view\" class=\"hidden\"></section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -258,7 +274,7 @@ func CalendarPage(accounts []models.Account) templ.Component {
 			templ_7745c5c3_Var7 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<div id=\"main-content\" class=\"flex flex-1 min-w-0 bg-background\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<div id=\"main-content\" class=\"flex flex-1 min-w-0 bg-background\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -270,7 +286,7 @@ func CalendarPage(accounts []models.Account) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -299,7 +315,7 @@ func CalendarShell(accounts []models.Account, uiSettings map[string]string) temp
 			templ_7745c5c3_Var8 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<div id=\"app-shell\" class=\"flex h-screen overflow-hidden\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<div id=\"app-shell\" class=\"flex h-screen overflow-hidden\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -315,7 +331,7 @@ func CalendarShell(accounts []models.Account, uiSettings map[string]string) temp
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -352,7 +368,7 @@ func CalendarAppPartial(accounts []models.Account) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<div id=\"sidebar-sync-controls\"></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<div id=\"sidebar-sync-controls\"></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -360,7 +376,7 @@ func CalendarAppPartial(accounts []models.Account) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<div id=\"app-pane-dialogs\"></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<div id=\"app-pane-dialogs\"></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -389,7 +405,7 @@ func CalendarLayout(accounts []models.Account, uiSettings map[string]string) tem
 			templ_7745c5c3_Var10 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<!doctype html>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<!doctype html>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -398,7 +414,7 @@ func CalendarLayout(accounts []models.Account, uiSettings map[string]string) tem
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<html lang=\"en\" class=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<html lang=\"en\" class=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -411,20 +427,20 @@ func CalendarLayout(accounts []models.Account, uiSettings map[string]string) tem
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "\" data-theme=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "\" data-theme=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var13 string
 		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(themeStyle(uiSettings))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/calendar.templ`, Line: 124, Col: 85}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/calendar.templ`, Line: 133, Col: 85}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, viewport-fit=cover\"><title>Calendar — Raven</title>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, viewport-fit=cover\"><title>Calendar — Raven</title>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -432,7 +448,7 @@ func CalendarLayout(accounts []models.Account, uiSettings map[string]string) tem
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\"><link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin=\"anonymous\"><link href=\"https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;0,9..144,800;1,9..144,400&family=Nunito+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap\" rel=\"stylesheet\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\"><link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin=\"anonymous\"><link href=\"https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;0,9..144,800;1,9..144,400&family=Nunito+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap\" rel=\"stylesheet\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -440,7 +456,7 @@ func CalendarLayout(accounts []models.Account, uiSettings map[string]string) tem
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<link rel=\"stylesheet\" href=\"/assets/css/output.css\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<link rel=\"stylesheet\" href=\"/assets/css/output.css\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -492,20 +508,20 @@ func CalendarLayout(accounts []models.Account, uiSettings map[string]string) tem
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</head><body class=\"bg-background text-foreground antialiased surface-desk\" data-ui-settings=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "</head><body class=\"bg-background text-foreground antialiased surface-desk\" data-ui-settings=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var14 string
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(uiSettingsJSON(uiSettings))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/calendar.templ`, Line: 148, Col: 116}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/calendar.templ`, Line: 157, Col: 116}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -513,7 +529,7 @@ func CalendarLayout(accounts []models.Account, uiSettings map[string]string) tem
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<div id=\"app-pane-dialogs\"></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<div id=\"app-pane-dialogs\"></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -537,7 +553,7 @@ func CalendarLayout(accounts []models.Account, uiSettings map[string]string) tem
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<div id=\"edit-account-container\"></div><script src=\"/assets/js/htmx.min.js\"></script><script src=\"/assets/js/virtual-scroll.js\"></script><script src=\"/assets/js/app.js\"></script><script src=\"/assets/js/settings.js\"></script><script src=\"/assets/js/ui-settings.js\"></script><script src=\"/assets/js/raven.js\"></script><script src=\"/assets/js/phone-layout.js\"></script><script src=\"/assets/js/calendar-app.js\"></script><script src=\"/assets/js/resize.js\"></script></body></html>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<div id=\"edit-account-container\"></div><script src=\"/assets/js/htmx.min.js\"></script><script src=\"/assets/js/virtual-scroll.js\"></script><script src=\"/assets/js/app.js\"></script><script src=\"/assets/js/settings.js\"></script><script src=\"/assets/js/ui-settings.js\"></script><script src=\"/assets/js/raven.js\"></script><script src=\"/assets/js/phone-layout.js\"></script><script src=\"/assets/js/calendar-app.js\"></script><script src=\"/assets/js/resize.js\"></script></body></html>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

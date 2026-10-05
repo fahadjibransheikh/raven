@@ -47,6 +47,12 @@ templ CalendarSidebar(accounts []models.Account, width string, uiSettings map[st
 
 templ CalendarSidebarBody() {
 	<div id="sidebar-app-body" class="flex min-h-0 flex-1 flex-col" data-sidebar-app-body="calendar">
+		<div class="px-4 pb-3">
+			<button type="button" data-cal-new class="cal-btn cal-new-btn w-full justify-center" title="New event (c)">
+				@icon.Plus(icon.Props{Class: "size-4"})
+				New event
+			</button>
+		</div>
 		<div class="px-4 pb-3" data-cal-mini></div>
 		<hr class="divider-etched mx-4"/>
 		<nav class="flex-1 overflow-y-auto px-3 pt-3 pb-3" data-cal-list aria-label="Calendars"></nav>
@@ -80,6 +86,9 @@ templ CalendarMainPane(accounts []models.Account) {
 				<button type="button" data-cal-view="month" aria-pressed="false">Month</button>
 				<button type="button" data-cal-view="agenda" aria-pressed="false">Agenda</button>
 			</div>
+			<button type="button" data-cal-new class="cal-icon-btn lg:hidden" aria-label="New event" title="New event (c)">
+				@icon.Plus(icon.Props{Class: "size-4"})
+			</button>
 			<button type="button" data-cal-refresh class="cal-icon-btn" aria-label="Sync calendars" title="Sync calendars">
 				@icon.RefreshCw(icon.Props{Class: "size-4"})
 			</button>

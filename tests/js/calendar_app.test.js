@@ -27,7 +27,7 @@ function ev(over) {
 const defaultCalendars = {
   accounts: [{
     account_id: "acc1", email: "ann@example.com", needs_reconnect: false, last_synced_at: "2026-10-01T00:00:00Z",
-    calendars: [{ id: 10, account_id: "acc1", name: "Work", color: "#3366cc", selected: true }],
+    calendars: [{ id: 10, account_id: "acc1", name: "Work", color: "#3366cc", selected: true, is_primary: true, access_role: "owner" }],
   }],
 }
 
@@ -319,4 +319,224 @@ test("shortcuts do nothing when the calendar app is not on the page", async () =
   key(w, d.body, "j")
   assert.deepEqual(seen, ["w", "j"])
   assert.equal(cal.state.root, null)
+})
+
+// ---------- C2: editing ----------
+
+const writes = (calls) => calls.filter((c) => c.method !== "GET" && c.url !== "/api/calendar/sync" && !/\/selected$/.test(c.url))
+const params = (c) => Object.fromEntries(new URLSearchParams(c.body))
+const click = (w, el, init) => el.dispatchEvent(new w.MouseEvent("click", Object.assign({ bubbles: true, cancelable: true }, init)))
+const field = (d, id) => d.getElementById("cal-ed-" + id)
+
+for (const [tz, offset] of [[LA, "-07:00"], ["Asia/Kolkata", "+05:30"]]) {
+  test("clicking an empty slot opens the editor prefilled in " + tz + " and saves with that offset", async () => {
+    const { w, d, cal, calls } = await load({ tz })
+    await cal.goTo("2026-10-07", "week")
+    await flush()
+    const col = d.querySelector('.cal-daycol[data-cal-day="2026-10-07"]')
+    col.getBoundingClientRect = () => ({ top: 0, left: 0, right: 100, bottom: 1152, width: 100, height: 1152 })
+    click(w, col, { clientY: 10.6 * 48 }) // 10:36 -> the 10:30 half hour
+    assert.ok(d.querySelector("[data-cal-editor]"))
+    assert.equal(field(d, "sd").value, "2026-10-07")
+    assert.equal(field(d, "st").value, "10:30")
+    assert.equal(field(d, "et").value, "11:30")
+    assert.equal(field(d, "calendar").value, "10")
+    assert.ok(field(d, "tz").closest(".cal-ed-row").classList.contains("hidden"), "zone hidden when it is the user's")
+    field(d, "title").value = "Lunch"
+    d.querySelector("[data-cal-editor-save]").click()
+    await flush()
+    const [post] = writes(calls)
+    assert.equal(post.method, "POST")
+    assert.equal(post.url, "/api/calendar/events")
+    const p = params(post)
+    assert.equal(p.start, "2026-10-07T10:30:00" + offset)
+    assert.equal(p.end, "2026-10-07T11:30:00" + offset)
+    assert.equal(p.time_zone, tz)
+    assert.equal(p.calendar_id, "10")
+    assert.equal(p.title, "Lunch")
+    assert.equal(d.querySelector("[data-cal-editor]"), null, "closed after saving")
+    assert.ok(eventsCalls(calls).length >= 2, "range reloaded after the write")
+  })
+}
+
+test("a 1-day all-day event is sent with an exclusive end date", async () => {
+  const { w, d, cal, calls } = await load({})
+  await cal.goTo("2026-10-07", "month")
+  await flush()
+  click(w, d.querySelector('.cal-cell[data-cal-day="2026-10-08"]'))
+  assert.ok(field(d, "allday").checked)
+  assert.equal(field(d, "sd").value, "2026-10-08")
+  assert.equal(field(d, "ed").value, "2026-10-08", "the form shows the inclusive last day")
+  d.querySelector("[data-cal-editor-save]").click()
+  await flush()
+  let p = params(writes(calls)[0])
+  assert.equal(p.all_day, "1")
+  assert.equal(p.start_date, "2026-10-08")
+  assert.equal(p.end_date, "2026-10-09")
+  assert.equal(p.start, undefined)
+  // Three days: Oct 8..10 inclusive -> end 11 exclusive. Moving the start keeps the length.
+  click(w, d.querySelector('.cal-cell[data-cal-day="2026-10-08"]'))
+  field(d, "ed").value = "2026-10-10"
+  field(d, "ed").dispatchEvent(new w.Event("change", { bubbles: true }))
+  field(d, "sd").value = "2026-10-12"
+  field(d, "sd").dispatchEvent(new w.Event("change", { bubbles: true }))
+  assert.equal(field(d, "ed").value, "2026-10-14")
+  d.querySelector("[data-cal-editor-save]").click()
+  await flush()
+  p = params(writes(calls)[1])
+  assert.deepEqual([p.start_date, p.end_date], ["2026-10-12", "2026-10-15"])
+})
+
+test("editor validates the end, collects guest chips and Enter in the title saves", async () => {
+  const { w, d, cal, calls } = await load({})
+  await cal.goTo("2026-10-07", "week")
+  key(w, d.body, "c")
+  field(d, "et").value = "09:00"
+  field(d, "st").value = "10:00"
+  d.querySelector("[data-cal-editor-save]").click()
+  await flush()
+  assert.equal(writes(calls).length, 0)
+  assert.match(d.querySelector(".cal-ed-error").textContent, /End must be after/)
+  field(d, "et").value = "23:00"
+  const g = field(d, "guests")
+  g.value = "a@example.com, nope"
+  key(w, g, "Enter")
+  assert.deepEqual([...d.querySelectorAll(".cal-chip > span")].map((n) => n.textContent), ["a@example.com"])
+  assert.equal(g.value, "nope")
+  g.value = "b@example.com"
+  key(w, g, "Enter")
+  field(d, "meet").checked = true
+  field(d, "repeat").value = "weekly"
+  key(w, field(d, "title"), "Enter")
+  await flush()
+  const p = params(writes(calls)[0])
+  assert.equal(p.attendees, "a@example.com,b@example.com")
+  assert.equal(p.add_meet, "1")
+  assert.equal(p.recurrence, "weekly")
+})
+
+test("recurring delete asks which events; non-recurring asks for confirmation", async () => {
+  const events = [ev({ id: 1, title: "Weekly", recurring_event_id: "rec" }), ev({ id: 2, title: "Once", start: "2026-10-08T16:00:00Z", end: "2026-10-08T17:00:00Z" })]
+  const { w, d, cal, calls } = await load({ events })
+  await cal.goTo("2026-10-07", "week")
+  await flush()
+  d.querySelector('[data-cal-event="1"]').click()
+  d.querySelector("[data-cal-delete]").click()
+  const prompt = d.querySelector("[data-cal-scope]")
+  assert.ok(prompt)
+  assert.deepEqual([...prompt.querySelectorAll("[data-cal-scope-choice]")].map((b) => b.textContent), ["This event", "All events"])
+  assert.equal(writes(calls).length, 0, "nothing is deleted before the choice")
+  key(w, d.body, "Escape")
+  assert.equal(d.querySelector("[data-cal-scope]"), null, "Esc cancels")
+  assert.equal(writes(calls).length, 0)
+  d.querySelector("[data-cal-delete]").click()
+  d.querySelector('[data-cal-scope-choice="series"]').click()
+  await flush()
+  assert.deepEqual(writes(calls).map((c) => [c.method, c.url]), [["DELETE", "/api/calendar/events/1?scope=series"]])
+  // Non-recurring: one confirm button, cancel does nothing.
+  d.querySelector('[data-cal-event="2"]').click()
+  d.querySelector("[data-cal-delete]").click()
+  assert.deepEqual([...d.querySelectorAll("[data-cal-scope-choice]")].map((b) => b.textContent), ["Delete"])
+  d.querySelector("[data-cal-scope-cancel]").click()
+  await flush()
+  assert.equal(writes(calls).length, 1)
+})
+
+test("editing a recurring event asks for scope on save and sends only what changed", async () => {
+  const events = [ev({ id: 1, title: "Weekly", recurring_event_id: "rec", attendees: [{ email: "x@example.com", response: "accepted" }] })]
+  const { d, cal, calls } = await load({ events })
+  await cal.goTo("2026-10-07", "week")
+  await flush()
+  d.querySelector('[data-cal-event="1"]').click()
+  d.querySelector("[data-cal-edit]").click()
+  assert.equal(field(d, "title").value, "Weekly")
+  assert.equal(field(d, "calendar").disabled, true)
+  assert.equal(field(d, "repeat").disabled, true)
+  assert.deepEqual([...d.querySelectorAll(".cal-chip > span")].map((n) => n.textContent), ["x@example.com"])
+  field(d, "title").value = "Weekly sync"
+  d.querySelector("[data-cal-editor-save]").click()
+  assert.equal(writes(calls).length, 0)
+  d.querySelector('[data-cal-scope-choice="this"]').click()
+  await flush()
+  const [patch] = writes(calls)
+  assert.deepEqual([patch.method, patch.url], ["PATCH", "/api/calendar/events/1"])
+  const p = params(patch)
+  assert.equal(p.title, "Weekly sync")
+  assert.equal(p.scope, "this")
+  for (const k of ["start", "end", "all_day", "attendees", "recurrence", "reminder_minutes"]) assert.equal(p[k], undefined, k + " unchanged, not sent")
+})
+
+test("RSVP buttons appear only for non-organizer attendees on writable calendars", async () => {
+  const me = { email: "ann@example.com", self: true, response: "needsAction" }
+  const boss = { email: "boss@example.com", organizer: true, response: "accepted" }
+  const events = [
+    ev({ id: 1, title: "Invite", attendees: [boss, me], self_response: "needsAction" }),
+    ev({ id: 2, title: "Mine", start: "2026-10-08T16:00:00Z", end: "2026-10-08T17:00:00Z", attendees: [Object.assign({}, me, { organizer: true, response: "accepted" })] }),
+    ev({ id: 3, title: "Solo", start: "2026-10-09T16:00:00Z", end: "2026-10-09T17:00:00Z" }),
+    ev({ id: 4, title: "Foreign", calendar_id: 11, start: "2026-10-10T16:00:00Z", end: "2026-10-10T17:00:00Z", attendees: [boss, me] }),
+  ]
+  const calendars = { accounts: [{ account_id: "acc1", email: "ann@example.com", last_synced_at: "2026-10-01T00:00:00Z", calendars: [
+    { id: 10, name: "Work", selected: true, is_primary: true, access_role: "owner" }, { id: 11, name: "Shared", selected: true, access_role: "reader" }] }] }
+  const { d, cal, calls } = await load({ events, calendars })
+  await cal.goTo("2026-10-07", "week")
+  await flush()
+  const rsvpFor = (id) => { d.querySelector('[data-cal-event="' + id + '"]').click(); return [...d.querySelectorAll("[data-cal-rsvp]")].map((b) => b.getAttribute("data-cal-rsvp")) }
+  assert.deepEqual(rsvpFor(1), ["accepted", "tentative", "declined"])
+  assert.deepEqual(rsvpFor(2), [], "organizer")
+  assert.deepEqual(rsvpFor(3), [], "no attendees")
+  assert.deepEqual(rsvpFor(4), [], "read-only calendar")
+  assert.equal(d.querySelector("[data-cal-edit]"), null, "no Edit on a read-only calendar")
+  rsvpFor(1)
+  d.querySelector('[data-cal-rsvp="tentative"]').click()
+  await flush()
+  const [post] = writes(calls)
+  assert.deepEqual([post.method, post.url, params(post).response], ["POST", "/api/calendar/events/1/rsvp", "tentative"])
+})
+
+test("c opens a new event without reaching mail compose; e edits the open event; Esc closes the editor", async () => {
+  const { w, d, cal, calls } = await load({ events: [ev({ id: 1, title: "Standup" })] })
+  const mailSaw = []
+  d.addEventListener("keydown", (e) => mailSaw.push(e.key))
+  await cal.goTo("2026-10-07", "week")
+  await flush()
+  const e1 = key(w, d.body, "c")
+  assert.ok(d.querySelector("[data-cal-editor]"), "c opens the editor")
+  assert.ok(e1.defaultPrevented)
+  const typed = key(w, field(d, "title"), "c")
+  assert.equal(typed.defaultPrevented, false, "typing in the title is untouched")
+  key(w, d.querySelector("[data-cal-editor-cancel]"), "c") // a non-typing target inside the editor: swallowed
+  key(w, field(d, "title"), "Escape")
+  assert.equal(d.querySelector("[data-cal-editor]"), null, "Esc closes the editor")
+  assert.deepEqual(mailSaw.filter((k) => k !== "c"), [], "no stray keys")
+  assert.deepEqual(mailSaw, ["c"], "only the key typed into the title input reached other listeners")
+  d.querySelector('[data-cal-event="1"]').click()
+  key(w, d.body, "e")
+  assert.equal(field(d, "title").value, "Standup")
+  assert.equal(writes(calls).length, 0)
+  key(w, field(d, "title"), "Escape")
+  key(w, d.body, "e") // nothing open: swallowed, no editor
+  assert.equal(d.querySelector("[data-cal-editor]"), null)
+  assert.deepEqual(mailSaw, ["c"], "e never reaches mail archive")
+})
+
+test("save errors keep the editor open and show the server message", async () => {
+  const { w, d, cal, calls } = await load({})
+  const toasts = []
+  w.showGoferToast = (o) => toasts.push(o)
+  const realFetch = w.fetch
+  w.fetch = (url, init) => {
+    if (init && init.method === "POST" && url === "/api/calendar/events") {
+      return Promise.resolve({ ok: false, status: 403, json: () => Promise.resolve({ error: "read_only", message: "This calendar is read-only." }) })
+    }
+    return realFetch(url, init)
+  }
+  await cal.goTo("2026-10-07", "week")
+  key(w, d.body, "c")
+  d.querySelector("[data-cal-editor-save]").click()
+  await flush()
+  assert.ok(d.querySelector("[data-cal-editor]"))
+  assert.match(d.querySelector(".cal-ed-error").textContent, /read-only/)
+  assert.equal(d.querySelector("[data-cal-editor-save]").disabled, false)
+  assert.equal(toasts.at(-1).variant, "error")
+  assert.equal(calls.filter((c) => c.method === "POST").length, 0) // the failing fetch bypassed the recorder
 })

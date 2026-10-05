@@ -1,10 +1,11 @@
-// Calendar app (read-only). Renders the week/day grid, month, agenda, mini month, calendar list and event
+// Calendar app. Renders the week/day grid, month, agenda, mini month, calendar list and event
 // details from /api/calendar JSON. The shell comes from internal/views/calendar.templ ([data-calendar-app] is the
 // #mail-list pane, [data-cal-mini]/[data-cal-list] live in the sidebar body). Everything is event-delegated on
 // document and re-bound by init() after htmx swaps, so it survives the sidebar app switcher.
 //
-// Editing hook points (C2): showDetails() builds the details popover; reload() refetches the visible range; every
-// event element carries data-cal-event="<id>" and S.byId maps id -> normalized event.
+// Writes (C2): the editor, the recurring-scope prompt, delete and RSVP talk to POST/PATCH/DELETE /api/calendar/events;
+// after a write the visible range is simply reload()ed. Every event element carries data-cal-event="<id>" and S.byId
+// maps id -> normalized event.
 (function () {
   "use strict"
 
@@ -30,6 +31,8 @@
     autoSynced: false,
     scrollTop: null,
     openId: null,
+    editor: null,
+    scope: null,
   }
   var tzOverride = null
   var fmtCache = {}
@@ -292,6 +295,33 @@
       if (!res.ok) throw new Error("HTTP " + res.status)
       return res.json()
     })
+  }
+
+  // Write requests: errors carry the server's {error, message} so the UI can show Google's reason.
+  function sendForm(method, url, params) {
+    return window.fetch(url, {
+      method: method, credentials: "same-origin",
+      headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
+      body: params ? params.toString() : undefined,
+    }).then(function (res) {
+      return res.json().catch(function () { return null }).then(function (data) {
+        if (!res.ok) {
+          var err = new Error((data && data.message) || "Request failed (HTTP " + res.status + ")")
+          err.code = data && data.error
+          throw err
+        }
+        return data
+      })
+    })
+  }
+
+  function toast(title, description, variant) {
+    variant = variant || "success"
+    if (typeof window.showGoferToast === "function") {
+      window.showGoferToast({ title: title, description: description || "", variant: variant, icon: variant, position: "bottom-right", duration: variant === "error" ? 6000 : 3000, dismissible: true })
+    } else {
+      setStatus(description || title)
+    }
   }
 
   function setStatus(text, sticky) {
@@ -673,7 +703,18 @@
     if (ev.location) box.appendChild(row("Where", h("div", "", ev.location)))
     box.appendChild(row("Calendar", h("div", "", ev.calendar_name || "")))
     if (ev.organizer_email) box.appendChild(row("Organizer", h("div", "", ev.organizer_email)))
-    if (isTentative(ev)) box.appendChild(row("Your response", h("div", "", "Maybe")))
+    if (canRSVP(ev)) {
+      var rs = h("div", "cal-rsvp")
+      ;[["accepted", "Yes"], ["tentative", "Maybe"], ["declined", "No"]].forEach(function (o) {
+        var b = h("button", "cal-btn", o[1])
+        b.type = "button"
+        b.setAttribute("data-cal-rsvp", o[0])
+        b.setAttribute("data-cal-event-id", ev.id)
+        b.setAttribute("aria-pressed", ev.self_response === o[0] ? "true" : "false")
+        rs.appendChild(b)
+      })
+      box.appendChild(row("Going?", rs))
+    } else if (isTentative(ev)) box.appendChild(row("Your response", h("div", "", "Maybe")))
     else if (isDeclined(ev)) box.appendChild(row("Your response", h("div", "", "Declined")))
 
     var atts = (ev.attendees || []).filter(function (a) { return !a.resource })
@@ -704,6 +745,14 @@
       var o = h("a", "cal-btn cal-pop-link", "Open in Google Calendar")
       o.href = open; o.target = "_blank"; o.rel = "noopener noreferrer"
       actions.appendChild(o)
+    }
+    if (isWritable(ev)) {
+      var edit = h("button", "cal-btn", "Edit")
+      edit.type = "button"; edit.setAttribute("data-cal-edit", ev.id)
+      var del = h("button", "cal-btn cal-btn-danger", "Delete")
+      del.type = "button"; del.setAttribute("data-cal-delete", ev.id)
+      actions.appendChild(edit)
+      actions.appendChild(del)
     }
     if (actions.firstChild) box.appendChild(actions)
     return box
@@ -743,6 +792,507 @@
     pop.classList.add("hidden")
     clear(pop)
     return was
+  }
+
+  // ---------- writes (C2): editor, delete, RSVP ----------
+
+  var WRITABLE = { owner: true, writer: true }
+  var SLOT_MIN = 60
+  var EMAIL_RE = /^[^\s@<>,;]+@[^\s@<>,;]+\.[^\s@<>,;]+$/
+  var REPEATS = [["none", "Does not repeat"], ["daily", "Daily"], ["weekly", "Weekly"], ["monthly", "Monthly"], ["yearly", "Yearly"]]
+  var REMINDERS = [["none", "No reminder"], ["10", "10 minutes before"], ["30", "30 minutes before"], ["60", "1 hour before"], ["1440", "1 day before"]]
+
+  function calendarById(id) {
+    for (var i = 0; i < S.accounts.length; i++) {
+      var cals = S.accounts[i].calendars || []
+      for (var j = 0; j < cals.length; j++) if (cals[j].id === id) return cals[j]
+    }
+    return null
+  }
+
+  function isWritable(ev) {
+    var c = calendarById(ev.calendar_id)
+    return !!(c && WRITABLE[c.access_role])
+  }
+
+  function isRecurring(ev) { return !!ev.recurring_event_id }
+
+  // The user's own attendee entry. They can answer when they are a guest, not the organizer.
+  function canRSVP(ev) {
+    var me = (ev.attendees || []).filter(function (a) { return a.self })[0]
+    return !!me && !me.organizer && isWritable(ev)
+  }
+
+  function writableCalendars() {
+    var out = []
+    S.accounts.forEach(function (acc) {
+      (acc.calendars || []).forEach(function (c) { if (WRITABLE[c.access_role]) out.push({ cal: c, email: acc.email }) })
+    })
+    return out
+  }
+
+  // The primary calendar of the first account, else any writable calendar.
+  function defaultCalendarId() {
+    for (var i = 0; i < S.accounts.length; i++) {
+      var cals = S.accounts[i].calendars || []
+      for (var j = 0; j < cals.length; j++) if (cals[j].is_primary && WRITABLE[cals[j].access_role]) return cals[j].id
+    }
+    var all = writableCalendars()
+    return all.length ? all[0].cal.id : null
+  }
+
+  function hhmm(ms, tz) {
+    var p = zonedParts(ms, tz)
+    return pad2(p.hour) + ":" + pad2(p.minute)
+  }
+
+  function hmToMin(v) {
+    var m = /^(\d{1,2}):(\d{2})/.exec(v || "")
+    return m ? parseInt(m[1], 10) * 60 + parseInt(m[2], 10) : NaN
+  }
+
+  function opt(value, label) {
+    var o = document.createElement("option")
+    o.value = value
+    o.textContent = label
+    return o
+  }
+
+  function input(type, cls, id) {
+    var i = h("input", "cal-ed-input" + (cls ? " " + cls : ""))
+    i.type = type
+    if (id) i.id = "cal-ed-" + id
+    return i
+  }
+
+  function edRow(label, node, forId) {
+    var r = h("div", "cal-ed-row")
+    var l = h("label", "cal-ed-label", label)
+    if (forId) l.htmlFor = "cal-ed-" + forId
+    r.appendChild(l)
+    r.appendChild(node)
+    return r
+  }
+
+  function setEditorError(text) {
+    var ed = S.editor
+    if (!ed) return
+    ed.els.error.textContent = text || ""
+    ed.els.error.classList.toggle("hidden", !text)
+  }
+
+  // Opens the editor. init: {ev} to edit, or {startMs,endMs} (timed) / {startDay,endDay} (all-day, endDay inclusive)
+  // to create. Times are shown in the event's own zone, which is only exposed as a field when it is not the user's.
+  function openEditor(init) {
+    closeDetails()
+    closeEditor()
+    var ev = init.ev || null
+    var tz = ev && !ev.all_day && ev.time_zone && validTZ(ev.time_zone) ? ev.time_zone : S.tz
+    var allDay, startDay, endDay, startMs, endMs
+    if (ev) {
+      allDay = !!ev.all_day
+      startDay = ev._startDay; endDay = ev._endDay
+      startMs = ev._sMs; endMs = ev._eMs > ev._sMs ? ev._eMs : ev._sMs + SLOT_MIN * 60000
+    } else {
+      allDay = !!init.allDay
+      startDay = init.startDay; endDay = init.endDay || init.startDay
+      startMs = init.startMs; endMs = init.endMs
+      if (!allDay) { startDay = dayKeyOf(startMs, tz); endDay = dayKeyOf(endMs, tz) }
+    }
+    var ed = S.editor = { mode: ev ? "edit" : "create", ev: ev, tz: tz, saving: false, guests: [], els: {}, dur: 0 }
+    var overlay = h("div", "cal-editor-overlay")
+    overlay.setAttribute("data-cal-editor", "")
+    var form = h("form", "cal-editor")
+    form.setAttribute("role", "dialog")
+    form.setAttribute("aria-modal", "true")
+    form.setAttribute("aria-label", ev ? "Edit event" : "New event")
+    form.noValidate = true
+    var E = ed.els
+
+    E.title = input("text", "cal-ed-title", "title")
+    E.title.placeholder = "Add title"
+    E.title.maxLength = 1024
+    E.title.value = ev ? ev.title || "" : ""
+    form.appendChild(E.title)
+
+    E.calendar = h("select", "cal-ed-input")
+    E.calendar.id = "cal-ed-calendar"
+    var calId = ev ? ev.calendar_id : defaultCalendarId()
+    writableCalendars().forEach(function (c) {
+      var o = opt(String(c.cal.id), c.cal.name + (S.accounts.length > 1 ? " (" + c.email + ")" : ""))
+      E.calendar.appendChild(o)
+    })
+    if (ev && !E.calendar.querySelector('[value="' + ev.calendar_id + '"]')) E.calendar.appendChild(opt(String(ev.calendar_id), ev.calendar_name || "Calendar"))
+    if (calId != null) E.calendar.value = String(calId)
+    E.calendar.disabled = !!ev // moving an event between calendars is not supported
+    form.appendChild(edRow("Calendar", E.calendar, "calendar"))
+
+    E.allDay = input("checkbox", "", "allday")
+    E.allDay.checked = allDay
+    var ad = h("label", "cal-ed-check")
+    ad.appendChild(E.allDay)
+    ad.appendChild(h("span", "", "All day"))
+    form.appendChild(edRow("", ad))
+
+    E.sd = input("date", "", "sd"); E.st = input("time", "", "st")
+    E.ed = input("date", "", "ed"); E.et = input("time", "", "et")
+    var whenStart = h("div", "cal-ed-pair"); whenStart.appendChild(E.sd); whenStart.appendChild(E.st)
+    var whenEnd = h("div", "cal-ed-pair"); whenEnd.appendChild(E.ed); whenEnd.appendChild(E.et)
+    form.appendChild(edRow("Start", whenStart, "sd"))
+    form.appendChild(edRow("End", whenEnd, "ed"))
+    E.sd.value = startDay
+    E.ed.value = endDay
+    if (!allDay) { E.st.value = hhmm(startMs, tz); E.et.value = hhmm(endMs, tz) }
+    else { E.st.value = "09:00"; E.et.value = "10:00" }
+    ed.dur = durationOf(ed)
+    function syncAllDay() {
+      E.st.classList.toggle("hidden", E.allDay.checked)
+      E.et.classList.toggle("hidden", E.allDay.checked)
+    }
+    syncAllDay()
+    E.allDay.addEventListener("change", function () { syncAllDay(); ed.dur = durationOf(ed) })
+    ;[E.sd, E.st].forEach(function (el) {
+      el.addEventListener("change", function () { applyStartChange(ed) })
+    })
+    ;[E.ed, E.et].forEach(function (el) {
+      el.addEventListener("change", function () { ed.dur = durationOf(ed) })
+    })
+
+    E.tz = input("text", "", "tz")
+    E.tz.value = tz
+    E.tz.setAttribute("autocomplete", "off")
+    E.tzRow = edRow("Time zone", E.tz, "tz")
+    E.tzRow.classList.toggle("hidden", tz === S.tz)
+    form.appendChild(E.tzRow)
+
+    E.repeat = h("select", "cal-ed-input")
+    E.repeat.id = "cal-ed-repeat"
+    if (ev && isRecurring(ev)) {
+      E.repeat.appendChild(opt("", "Repeats (rule unchanged)"))
+      E.repeat.disabled = true
+    } else {
+      REPEATS.forEach(function (r) { E.repeat.appendChild(opt(r[0], r[1])) })
+    }
+    form.appendChild(edRow("Repeat", E.repeat, "repeat"))
+
+    E.location = input("text", "", "location")
+    E.location.maxLength = 1024
+    E.location.value = ev ? ev.location || "" : ""
+    form.appendChild(edRow("Location", E.location, "location"))
+
+    ed.guests = ev ? (ev.attendees || []).filter(function (a) { return !a.self && !a.organizer && !a.resource }).map(function (a) { return a.email }) : []
+    ed.origGuests = ed.guests.slice()
+    E.chips = h("div", "cal-chips")
+    E.guestInput = h("input", "cal-chip-input")
+    E.guestInput.type = "text"
+    E.guestInput.id = "cal-ed-guests"
+    E.guestInput.placeholder = "Add guests (email)"
+    E.guestInput.setAttribute("autocomplete", "off")
+    E.chips.appendChild(E.guestInput)
+    form.appendChild(edRow("Guests", E.chips, "guests"))
+    renderChips(ed)
+    E.guestInput.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === ",") { e.preventDefault(); e.stopPropagation(); commitGuests(ed) }
+      else if (e.key === "Backspace" && !E.guestInput.value && ed.guests.length) { ed.guests.pop(); renderChips(ed) }
+    })
+    E.guestInput.addEventListener("blur", function () { commitGuests(ed) })
+    E.chips.addEventListener("click", function (e) {
+      var rm = e.target.closest && e.target.closest("[data-cal-chip-remove]")
+      if (rm) { ed.guests.splice(parseInt(rm.getAttribute("data-cal-chip-remove"), 10), 1); renderChips(ed) }
+    })
+
+    E.meet = input("checkbox", "", "meet")
+    var meetBox = h("label", "cal-ed-check")
+    meetBox.appendChild(E.meet)
+    meetBox.appendChild(h("span", "", ev && ev.meeting_url ? "Google Meet added" : "Add Google Meet video conferencing"))
+    if (ev && ev.meeting_url) { E.meet.checked = true; E.meet.disabled = true }
+    form.appendChild(edRow("", meetBox))
+
+    E.description = h("textarea", "cal-ed-input cal-ed-desc")
+    E.description.id = "cal-ed-description"
+    E.description.rows = 3
+    E.description.maxLength = 8192
+    E.description.value = ev ? ev.description || "" : ""
+    form.appendChild(edRow("Description", E.description, "description"))
+
+    E.reminder = h("select", "cal-ed-input")
+    E.reminder.id = "cal-ed-reminder"
+    E.reminder.appendChild(opt(ev ? "" : "default", ev ? "Keep current" : "Calendar default"))
+    REMINDERS.forEach(function (r) { E.reminder.appendChild(opt(r[0], r[1])) })
+    form.appendChild(edRow("Reminder", E.reminder, "reminder"))
+
+    E.error = h("div", "cal-ed-error hidden")
+    E.error.setAttribute("role", "alert")
+    form.appendChild(E.error)
+
+    var actions = h("div", "cal-ed-actions")
+    var cancel = h("button", "cal-btn", "Cancel")
+    cancel.type = "button"
+    cancel.setAttribute("data-cal-editor-cancel", "")
+    cancel.addEventListener("click", closeEditor)
+    E.save = h("button", "cal-pop-primary", "Save")
+    E.save.type = "submit"
+    E.save.setAttribute("data-cal-editor-save", "")
+    actions.appendChild(cancel)
+    actions.appendChild(E.save)
+    form.appendChild(actions)
+
+    form.addEventListener("submit", function (e) { e.preventDefault(); saveEditor() })
+    E.title.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); saveEditor() }
+    })
+    form.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); saveEditor() }
+    })
+    overlay.appendChild(form)
+    S.root.appendChild(overlay)
+    ed.overlay = overlay
+    E.title.focus()
+  }
+
+  function closeEditor() {
+    var ed = S.editor
+    if (!ed) return false
+    S.editor = null
+    if (ed.overlay && ed.overlay.parentNode) ed.overlay.parentNode.removeChild(ed.overlay)
+    return true
+  }
+
+  // Length of the event as currently typed, in ms (days for all-day, using the inclusive end day).
+  function durationOf(ed) {
+    var t = readTimes(ed, true)
+    return t ? t.endMs - t.startMs : 0
+  }
+
+  // Moving the start moves the end with it, keeping the length (like Google Calendar).
+  function applyStartChange(ed) {
+    var E = ed.els
+    var t = readTimes(ed, true)
+    if (!t || !(ed.dur >= 0)) return
+    if (E.allDay.checked) {
+      E.ed.value = addDays(E.sd.value, Math.round(ed.dur / 86400000))
+    } else {
+      var endMs = t.startMs + ed.dur
+      E.ed.value = dayKeyOf(endMs, ed.tz)
+      E.et.value = hhmm(endMs, ed.tz)
+    }
+  }
+
+  // Reads the typed times. All-day: startMs/endMs are UTC midnights of the (inclusive) start and end days.
+  function readTimes(ed, lenient) {
+    var E = ed.els
+    var tzv = E.tz ? E.tz.value.trim() : ""
+    var tz = tzv && validTZ(tzv) ? tzv : ed.tz
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(E.sd.value) || !/^\d{4}-\d{2}-\d{2}$/.test(E.ed.value)) return null
+    if (E.allDay.checked) {
+      var a = parseDay(E.sd.value), b = parseDay(E.ed.value)
+      return { allDay: true, tz: tz, startDay: E.sd.value, endDay: E.ed.value, startMs: Date.UTC(a[0], a[1] - 1, a[2]), endMs: Date.UTC(b[0], b[1] - 1, b[2]) }
+    }
+    var sm = hmToMin(E.st.value), em = hmToMin(E.et.value)
+    if (isNaN(sm) || isNaN(em)) return null
+    return { allDay: false, tz: tz, startDay: E.sd.value, endDay: E.ed.value, startMs: zonedToMs(E.sd.value, sm, tz), endMs: zonedToMs(E.ed.value, em, tz) }
+  }
+
+  function renderChips(ed) {
+    var E = ed.els
+    Array.prototype.slice.call(E.chips.querySelectorAll(".cal-chip")).forEach(function (c) { E.chips.removeChild(c) })
+    ed.guests.forEach(function (email, i) {
+      var chip = h("span", "cal-chip")
+      chip.appendChild(h("span", "", email))
+      var x = h("button", "", "×")
+      x.type = "button"
+      x.setAttribute("data-cal-chip-remove", i)
+      x.setAttribute("aria-label", "Remove " + email)
+      chip.appendChild(x)
+      E.chips.insertBefore(chip, E.guestInput)
+    })
+  }
+
+  // Turns whatever is typed in the guest box into chips; anything that is not an email stays in the box.
+  function commitGuests(ed) {
+    var E = ed.els
+    var raw = E.guestInput.value.split(/[,;\s]+/).filter(Boolean)
+    var rest = []
+    raw.forEach(function (tok) {
+      tok = tok.replace(/^<|>$/g, "")
+      if (!EMAIL_RE.test(tok)) { rest.push(tok); return }
+      if (!ed.guests.some(function (g) { return g.toLowerCase() === tok.toLowerCase() })) ed.guests.push(tok)
+    })
+    E.guestInput.value = rest.join(" ")
+    if (rest.length) setEditorError("Not a valid email address: " + rest[0])
+    else setEditorError("")
+    renderChips(ed)
+    return !rest.length
+  }
+
+  function guestKey(list) { return list.map(function (g) { return g.toLowerCase() }).sort().join(",") }
+
+  // Resolves to "this", "series" or null (cancelled). Always shown for recurring events; non-recurring deletes get a
+  // single confirm button.
+  function askChoice(title, detail, choices) {
+    return new Promise(function (resolve) {
+      var overlay = h("div", "cal-editor-overlay cal-scope-overlay")
+      overlay.setAttribute("data-cal-scope", "")
+      var box = h("div", "cal-editor cal-scope")
+      box.setAttribute("role", "alertdialog")
+      box.setAttribute("aria-modal", "true")
+      box.appendChild(h("div", "cal-pop-title", title))
+      if (detail) box.appendChild(h("div", "cal-scope-detail", detail))
+      var actions = h("div", "cal-ed-actions cal-scope-actions")
+      function done(v) {
+        S.scope = null
+        if (overlay.parentNode) overlay.parentNode.removeChild(overlay)
+        resolve(v)
+      }
+      var cancel = h("button", "cal-btn", "Cancel")
+      cancel.type = "button"
+      cancel.setAttribute("data-cal-scope-cancel", "")
+      cancel.addEventListener("click", function () { done(null) })
+      actions.appendChild(cancel)
+      choices.forEach(function (c) {
+        var b = h("button", c[2] || "cal-btn", c[1])
+        b.type = "button"
+        b.setAttribute("data-cal-scope-choice", c[0])
+        b.addEventListener("click", function () { done(c[0]) })
+        actions.appendChild(b)
+      })
+      box.appendChild(actions)
+      overlay.appendChild(box)
+      S.root.appendChild(overlay)
+      S.scope = { cancel: function () { done(null) } }
+      var first = actions.querySelector("[data-cal-scope-choice]")
+      if (first) first.focus()
+    })
+  }
+
+  var SCOPE_CHOICES = [["this", "This event"], ["series", "All events"]]
+
+  function saveEditor() {
+    var ed = S.editor
+    if (!ed || ed.saving) return
+    if (!commitGuests(ed)) return
+    var E = ed.els
+    var ev = ed.ev
+    var tzv = E.tz.value.trim()
+    if (!validTZ(tzv)) { setEditorError("Time zone must be an IANA name such as Europe/Paris"); return }
+    var t = readTimes(ed)
+    if (!t) { setEditorError("Enter a start and end"); return }
+    if (t.allDay ? t.endMs < t.startMs : t.endMs <= t.startMs) { setEditorError("End must be after the start"); return }
+    var p = new URLSearchParams()
+    var timesChanged = true
+    if (ev) {
+      var origDay = ev._startDay, origEnd = ev._endDay
+      timesChanged = t.allDay !== !!ev.all_day ||
+        (t.allDay ? (t.startDay !== origDay || t.endDay !== origEnd)
+          : (t.startMs !== ev._sMs || t.endMs !== (ev._eMs > ev._sMs ? ev._eMs : ev._sMs + SLOT_MIN * 60000)))
+    }
+    p.set("title", E.title.value.trim())
+    p.set("location", E.location.value)
+    p.set("description", E.description.value)
+    if (timesChanged) {
+      p.set("time_zone", tzv)
+      if (t.allDay) {
+        p.set("all_day", "1")
+        p.set("start_date", t.startDay)
+        p.set("end_date", addDays(t.endDay, 1)) // Google's all-day end is exclusive
+      } else {
+        p.set("all_day", "0")
+        p.set("start", fmtRFC3339(t.startMs, tzv))
+        p.set("end", fmtRFC3339(t.endMs, tzv))
+      }
+    }
+    if (!ev || guestKey(ed.guests) !== guestKey(ed.origGuests)) p.set("attendees", ed.guests.join(","))
+    if (E.meet.checked && !E.meet.disabled) p.set("add_meet", "1")
+    if (!E.repeat.disabled && E.repeat.value && E.repeat.value !== "none") p.set("recurrence", E.repeat.value)
+    if (E.reminder.value) p.set("reminder_minutes", E.reminder.value)
+
+    var scopeP = ev && isRecurring(ev) ? askChoice("Edit recurring event", ev.title || "", SCOPE_CHOICES.map(function (c) { return [c[0], c[1], c[0] === "series" ? "cal-pop-primary" : "cal-btn"] })) : Promise.resolve("this")
+    scopeP.then(function (scope) {
+      if (!scope || S.editor !== ed) return
+      ed.saving = true
+      E.save.disabled = true
+      E.save.textContent = "Saving…"
+      setEditorError("")
+      var req
+      if (ev) {
+        p.set("scope", scope)
+        req = sendForm("PATCH", "/api/calendar/events/" + ev.id, p)
+      } else {
+        p.set("calendar_id", E.calendar.value)
+        req = sendForm("POST", "/api/calendar/events", p)
+      }
+      return req.then(function () {
+        if (S.editor === ed) closeEditor()
+        toast(ev ? "Event saved" : "Event created")
+        return reload()
+      }).catch(function (err) {
+        ed.saving = false
+        E.save.disabled = false
+        E.save.textContent = "Save"
+        setEditorError(err.message)
+        toast("Could not save event", err.message, "error")
+      })
+    })
+  }
+
+  function deleteEvent(id) {
+    var ev = S.byId[id]
+    if (!ev || !isWritable(ev)) return
+    var choices = isRecurring(ev)
+      ? [["this", "This event", "cal-btn cal-btn-danger"], ["series", "All events", "cal-btn cal-btn-danger"]]
+      : [["this", "Delete", "cal-btn cal-btn-danger"]]
+    return askChoice(isRecurring(ev) ? "Delete recurring event" : "Delete event?", ev.title || "(No title)", choices).then(function (scope) {
+      if (!scope) return
+      closeDetails()
+      return sendForm("DELETE", "/api/calendar/events/" + ev.id + "?scope=" + scope).then(function () {
+        toast("Event deleted")
+        return reload()
+      }).catch(function (err) { toast("Could not delete event", err.message, "error") })
+    })
+  }
+
+  function rsvp(id, response) {
+    var ev = S.byId[id]
+    if (!ev || !canRSVP(ev)) return
+    var p = new URLSearchParams()
+    p.set("response", response)
+    return sendForm("POST", "/api/calendar/events/" + ev.id + "/rsvp", p).then(function () {
+      return reload()
+    }).then(function () {
+      var el = document.querySelector('[data-cal-event="' + id + '"]')
+      if (S.byId[id] && S.openId === ev.id) showDetails(id, el)
+    }).catch(function (err) { toast("Could not send response", err.message, "error") })
+  }
+
+  function editEvent(id) {
+    var ev = S.byId[id]
+    if (ev && isWritable(ev)) openEditor({ ev: ev })
+  }
+
+  function newTimed(day, minutes) {
+    var startMs = zonedToMs(day, minutes, S.tz)
+    openEditor({ startMs: startMs, endMs: zonedToMs(day, minutes + SLOT_MIN, S.tz) })
+  }
+
+  // `c`, and the New event buttons: the next half hour today, 9:00 on any other day.
+  function newEventDefault() {
+    if (defaultCalendarId() == null) { toast("No writable calendar", "Connect a Google account with calendar access first.", "error"); return }
+    var today = todayStr()
+    var day = S.anchor || today
+    var min = 9 * 60
+    if (day === today) min = Math.min(Math.ceil((minutesOfDay(Date.now(), S.tz) + 1) / 30) * 30, 23 * 60)
+    newTimed(day, min)
+  }
+
+  // Click on an empty part of a day column: the half hour under the pointer.
+  function slotClick(col, clientY) {
+    var r = col.getBoundingClientRect()
+    var min = Math.floor((clientY - r.top) / HOUR_PX * 2) * 30
+    newTimed(col.getAttribute("data-cal-day"), Math.max(0, Math.min(min, 23 * 60 + 30)))
+  }
+
+  function allDayClick(day) {
+    openEditor({ allDay: true, startDay: day, endDay: day })
   }
 
   // ---------- navigation ----------
@@ -796,10 +1346,23 @@
       !!(t.closest && t.closest('[contenteditable=""],[contenteditable="true"]'))
   }
 
-  // Window capture + stopImmediatePropagation so mail shortcuts in app.js never see keys the calendar handles.
+  // Window capture + stopImmediatePropagation so mail shortcuts in app.js never see keys the calendar handles. While
+  // the editor or the scope prompt is open every unmodified key is swallowed too, so `c`/`e`/`a` pressed on a button
+  // inside it cannot compose, archive or reply in the mail app behind.
   function onKey(e) {
-    if (!$("[data-calendar-app]") || e.ctrlKey || e.metaKey || e.altKey || typing(e.target)) return
+    if (!$("[data-calendar-app]")) return
     var k = e.key
+    if (S.scope || S.editor) {
+      if (k === "Escape") {
+        if (S.scope) S.scope.cancel()
+        else closeEditor()
+        e.preventDefault(); e.stopImmediatePropagation()
+      } else if (!typing(e.target) && !e.ctrlKey && !e.metaKey && !e.altKey && k.length === 1) {
+        e.stopImmediatePropagation()
+      }
+      return
+    }
+    if (e.ctrlKey || e.metaKey || e.altKey || typing(e.target)) return
     if (k === "Escape") {
       if (closeDetails()) { e.preventDefault(); e.stopImmediatePropagation() }
       return
@@ -813,6 +1376,8 @@
     else if (k === "w") goTo(null, "week")
     else if (k === "m") goTo(null, "month")
     else if (k === "a") goTo(null, "agenda")
+    else if (k === "c") newEventDefault()
+    else if (k === "e") { if (S.openId != null) editEvent(S.openId) } // mail's `e` (archive) must not fire here either
     else handled = false
     if (handled) { e.preventDefault(); e.stopImmediatePropagation() }
   }
@@ -832,7 +1397,16 @@
     if (t.closest("[data-cal-refresh]")) { syncAll(); return }
     if (t.closest("[data-cal-mini-prev]")) { S.miniMonth = addMonths(S.miniMonth, -1); renderMini(); return }
     if (t.closest("[data-cal-mini-next]")) { S.miniMonth = addMonths(S.miniMonth, 1); renderMini(); return }
-    if (!t.closest("[data-cal-popover]")) closeDetails()
+    if (t.closest("[data-cal-new]")) { newEventDefault(); return }
+    if ((el = t.closest("[data-cal-edit]"))) { editEvent(el.getAttribute("data-cal-edit")); return }
+    if ((el = t.closest("[data-cal-delete]"))) { deleteEvent(el.getAttribute("data-cal-delete")); return }
+    if ((el = t.closest("[data-cal-rsvp]"))) { rsvp(el.getAttribute("data-cal-event-id"), el.getAttribute("data-cal-rsvp")); return }
+    if (S.editor || S.scope || t.closest("[data-cal-popover]")) return
+    // Empty space: a time slot (Day/Week), the all-day strip or a month cell starts a new event there.
+    if (closeDetails()) return // the first click outside only dismisses the popover
+    if ((el = t.closest(".cal-daycol[data-cal-day]"))) { slotClick(el, e.clientY); return }
+    if ((el = t.closest("[data-cal-allday]"))) { allDayClick(el.getAttribute("data-cal-allday")); return }
+    if ((el = t.closest(".cal-cell[data-cal-day]"))) { allDayClick(el.getAttribute("data-cal-day")); return }
   }
 
   function onChange(e) {

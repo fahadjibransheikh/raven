@@ -3246,6 +3246,39 @@ body.mail-list-column-resizing {
 .cal-list-item input:checked + .cal-dot { background: var(--cal-color, var(--primary)); }
 .cal-list-item input:focus-visible + .cal-dot { outline: 2px solid var(--ring); outline-offset: 2px; }
 
+/* Event editor + recurring-scope prompt (C2). */
+.cal-new-btn { display: inline-flex; align-items: center; gap: 0.375rem; background: var(--sidebar-accent, var(--accent)); color: var(--sidebar-accent-foreground, var(--accent-foreground)); font-weight: 600; }
+.cal-btn-danger { color: var(--destructive); border-color: color-mix(in srgb, var(--destructive) 45%, var(--border)); }
+.cal-btn-danger:hover { background: color-mix(in srgb, var(--destructive) 12%, transparent); color: var(--destructive); }
+.cal-btn[aria-pressed="true"] { background: var(--accent); color: var(--accent-foreground); font-weight: 600; }
+.cal-rsvp { display: flex; gap: 0.375rem; }
+.cal-editor-overlay { position: absolute; inset: 0; z-index: 30; display: flex; align-items: flex-start; justify-content: center; overflow-y: auto;
+  padding: 2rem 1rem; background: rgb(0 0 0 / 0.35); }
+.cal-editor-overlay.hidden, .cal-editor .hidden, .cal-ed-pair .hidden { display: none; }
+.cal-scope-overlay { z-index: 40; align-items: center; }
+.cal-editor { width: 34rem; max-width: 100%; display: flex; flex-direction: column; gap: 0.625rem; padding: 1rem; font-size: 0.8125rem;
+  background: var(--popover, var(--card)); color: var(--popover-foreground, var(--foreground)); border: 1px solid var(--border); border-radius: 0.75rem;
+  box-shadow: 0 10px 40px rgb(0 0 0 / 0.3); }
+.cal-scope { width: 22rem; }
+.cal-scope-detail { color: var(--muted-foreground); overflow-wrap: anywhere; }
+.cal-ed-row { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr); gap: 0.5rem; align-items: center; }
+.cal-ed-label { font-size: 0.75rem; color: var(--muted-foreground); }
+.cal-ed-input { width: 100%; min-width: 0; height: 2rem; padding: 0 0.5rem; border: 1px solid var(--border); border-radius: 0.375rem; background: var(--background); color: var(--foreground); }
+.cal-ed-input:focus-visible, .cal-chips:focus-within { outline: 2px solid var(--ring); outline-offset: 1px; }
+.cal-ed-title { height: 2.5rem; font-size: 1.125rem; font-weight: 600; border-width: 0 0 2px; border-radius: 0; background: transparent; padding: 0; }
+.cal-ed-desc { height: auto; padding: 0.375rem 0.5rem; resize: vertical; font-family: inherit; }
+.cal-ed-pair { display: flex; gap: 0.375rem; }
+.cal-ed-pair .cal-ed-input { flex: 1 1 0%; }
+.cal-ed-check { display: flex; align-items: center; gap: 0.5rem; }
+.cal-chips { display: flex; flex-wrap: wrap; gap: 0.25rem; align-items: center; min-height: 2rem; padding: 0.1875rem 0.375rem; border: 1px solid var(--border); border-radius: 0.375rem; background: var(--background); }
+.cal-chip { display: inline-flex; align-items: center; gap: 0.25rem; max-width: 100%; padding: 0 0.25rem 0 0.5rem; border-radius: 9999px; background: var(--accent); color: var(--accent-foreground); }
+.cal-chip > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cal-chip button { line-height: 1; padding: 0 0.25rem; color: var(--muted-foreground); }
+.cal-chip-input { flex: 1 1 8rem; min-width: 6rem; border: 0; outline: 0; background: transparent; color: var(--foreground); height: 1.625rem; }
+.cal-ed-error { padding: 0.375rem 0.625rem; border-radius: 0.375rem; background: color-mix(in srgb, var(--destructive) 12%, var(--background)); color: var(--destructive); }
+.cal-ed-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.25rem; }
+.cal-pop-primary:disabled { opacity: 0.6; }
+
 @media (max-width: 1023.98px) {
   .cal-toolbar .cal-title { flex-basis: 100%; order: 5; font-size: 1rem; }
   .cal-toolbar .cal-seg { order: 6; }
@@ -3253,6 +3286,12 @@ body.mail-list-column-resizing {
   .cal-agenda-row .cal-event-time { flex-basis: 3.75rem; }
   .cal-cols { grid-template-columns: 2.5rem repeat(var(--cal-days, 7), minmax(0, 1fr)); }
   /* Event details go full screen on phones. */
+  /* The editor goes full screen too. */
+  .cal-editor-overlay { position: fixed; padding: 0; z-index: 60; background: var(--popover, var(--card)); }
+  .cal-editor-overlay > .cal-editor:not(.cal-scope) { width: 100%; min-height: 100%; border: 0; border-radius: 0; box-shadow: none;
+    padding: calc(env(safe-area-inset-top) + 1rem) calc(env(safe-area-inset-right) + 1rem) calc(env(safe-area-inset-bottom) + 1rem) calc(env(safe-area-inset-left) + 1rem); }
+  .cal-scope-overlay { z-index: 70; align-items: center; padding: 1rem; background: rgb(0 0 0 / 0.45); }
+  .cal-ed-row { grid-template-columns: 1fr; gap: 0.25rem; }
   .cal-popover { position: fixed; inset: 0 !important; width: auto; max-width: none; max-height: none; border: 0; border-radius: 0;
     padding: calc(env(safe-area-inset-top) + 1rem) calc(env(safe-area-inset-right) + 1rem) calc(env(safe-area-inset-bottom) + 1rem) calc(env(safe-area-inset-left) + 1rem); z-index: 60; }
 }
