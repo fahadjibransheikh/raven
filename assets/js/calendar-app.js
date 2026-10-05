@@ -297,7 +297,7 @@
     })
   }
 
-  // Write requests: errors carry the server's {error, message} so the UI can show Google's reason.
+  // Write requests: errors carry the server's {error, message} so the UI can show the provider's reason.
   function sendForm(method, url, params) {
     return window.fetch(url, {
       method: method, credentials: "same-origin",
@@ -459,7 +459,7 @@
     })
   }
 
-  // One row per account that needs Google re-authorization; the button posts the same form as Settings > Accounts.
+  // One row per account that needs re-authorization; the button posts the same form as Settings > Accounts.
   function renderBanner() {
     var box = $("[data-cal-banner]")
     if (!box) return
@@ -472,7 +472,7 @@
       var form = h("form")
       form.method = "POST"
       form.action = "/api/accounts/oauth2/authorize"
-      ;[["flow_action", "reconnect"], ["provider", "gmail"], ["email_address", acc.email], ["display_name", S.names[acc.account_id] || ""]].forEach(function (kv) {
+      ;[["flow_action", "reconnect"], ["provider", acc.provider || "gmail"], ["email_address", acc.email], ["display_name", S.names[acc.account_id] || ""]].forEach(function (kv) {
         var i = h("input")
         i.type = "hidden"; i.name = kv[0]; i.value = kv[1]
         form.appendChild(i)
@@ -742,7 +742,7 @@
     }
     var open = safeURL(ev.html_link)
     if (open) {
-      var o = h("a", "cal-btn cal-pop-link", "Open in Google Calendar")
+      var o = h("a", "cal-btn cal-pop-link", isOutlookCalendar(ev.calendar_id) ? "Open in Outlook" : "Open in Google Calendar")
       o.href = open; o.target = "_blank"; o.rel = "noopener noreferrer"
       actions.appendChild(o)
     }
@@ -808,6 +808,12 @@
       for (var j = 0; j < cals.length; j++) if (cals[j].id === id) return cals[j]
     }
     return null
+  }
+
+  // Provider-specific wording only; the API is the same for both. Missing provider means Google.
+  function isOutlookCalendar(calId) {
+    var c = calendarById(calId)
+    return !!(c && c.provider === "outlook")
   }
 
   function isWritable(ev) {
@@ -1001,10 +1007,17 @@
       if (rm) { ed.guests.splice(parseInt(rm.getAttribute("data-cal-chip-remove"), 10), 1); renderChips(ed) }
     })
 
+    E.meetLabel = function (ev0) {
+      var outlook = ev0 ? isOutlookCalendar(ev0.calendar_id) : isOutlookCalendar(parseInt(E.calendar.value, 10))
+      if (outlook) return ev0 && ev0.meeting_url ? "Online meeting added" : "Add online meeting"
+      return ev0 && ev0.meeting_url ? "Google Meet added" : "Add Google Meet video conferencing"
+    }
     E.meet = input("checkbox", "", "meet")
     var meetBox = h("label", "cal-ed-check")
     meetBox.appendChild(E.meet)
-    meetBox.appendChild(h("span", "", ev && ev.meeting_url ? "Google Meet added" : "Add Google Meet video conferencing"))
+    var meetText = h("span", "", E.meetLabel(ev))
+    meetBox.appendChild(meetText)
+    E.calendar.addEventListener("change", function () { meetText.textContent = E.meetLabel(ev) })
     if (ev && ev.meeting_url) { E.meet.checked = true; E.meet.disabled = true }
     form.appendChild(edRow("", meetBox))
 
@@ -1221,9 +1234,9 @@
         p.set("calendar_id", E.calendar.value)
         req = sendForm("POST", "/api/calendar/events", p)
       }
-      return req.then(function () {
+      return req.then(function (res) {
         if (S.editor === ed) closeEditor()
-        toast(ev ? "Event saved" : "Event created")
+        toast(ev ? "Event saved" : "Event created", res && res.warning, res && res.warning ? "error" : "success")
         return reload()
       }).catch(function (err) {
         ed.saving = false
@@ -1276,7 +1289,7 @@
 
   // `c`, and the New event buttons: the next half hour today, 9:00 on any other day.
   function newEventDefault() {
-    if (defaultCalendarId() == null) { toast("No writable calendar", "Connect a Google account with calendar access first.", "error"); return }
+    if (defaultCalendarId() == null) { toast("No writable calendar", "Connect a Google or Outlook account with calendar access first.", "error"); return }
     var today = todayStr()
     var day = S.anchor || today
     var min = 9 * 60
