@@ -512,6 +512,10 @@ func (h *Handler) handleCreateCalendarEvent(w http.ResponseWriter, r *http.Reque
 		h.createOutlookEvent(w, r, cal, form, times, guests, recurrence)
 		return
 	}
+	if cal.Provider == storage.CalendarProviderICloud {
+		h.createICloudEvent(w, r, cal, form, times, guests, recurrence)
+		return
+	}
 	token, cerr := h.calendarWriteToken(ctx, cal)
 	if cerr != nil {
 		writeCalendarError(w, cerr)
@@ -643,6 +647,10 @@ func (h *Handler) handlePatchCalendarEvent(w http.ResponseWriter, r *http.Reques
 	}
 	if cal.Provider == providers.ProviderOutlook {
 		h.patchOutlookEvent(w, r, ev, cal, form, targetID, series, times, guests, recurrence)
+		return
+	}
+	if cal.Provider == storage.CalendarProviderICloud {
+		h.patchICloudEvent(w, r, ev, cal, form, targetID, series, times, guests, recurrence)
 		return
 	}
 	token, cerr := h.calendarWriteToken(ctx, cal)
@@ -783,6 +791,10 @@ func (h *Handler) handleDeleteCalendarEvent(w http.ResponseWriter, r *http.Reque
 		h.deleteOutlookEvent(w, r, ev, cal, targetID, series)
 		return
 	}
+	if cal.Provider == storage.CalendarProviderICloud {
+		h.deleteICloudEvent(w, r, ev, cal, series)
+		return
+	}
 	token, cerr := h.calendarWriteToken(ctx, cal)
 	if cerr != nil {
 		writeCalendarError(w, cerr)
@@ -842,6 +854,10 @@ func (h *Handler) handleRSVPCalendarEvent(w http.ResponseWriter, r *http.Request
 	}
 	if cal.Provider == providers.ProviderOutlook {
 		h.rsvpOutlookEvent(w, r, ev, cal, targetID, series, response)
+		return
+	}
+	if cal.Provider == storage.CalendarProviderICloud {
+		h.rsvpICloudEvent(w, r, ev, cal, series, response)
 		return
 	}
 	token, cerr := h.calendarWriteToken(ctx, cal)

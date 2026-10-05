@@ -151,7 +151,7 @@ func (h *Handler) handleSyncCalendars(w http.ResponseWriter, r *http.Request) {
 		case err != nil:
 			log.Printf("calendar sync %s: %v", a.ID, err)
 			res.Status, res.Error = "error", "sync failed"
-			if isGoogleCalendarScopeError(err) || isOutlookCalendarScopeError(err) {
+			if isGoogleCalendarScopeError(err) || isOutlookCalendarScopeError(err) || isICloudAuthError(err) {
 				res.Error = "needs_reconnect"
 			}
 		}

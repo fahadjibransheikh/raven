@@ -468,6 +468,15 @@
     box.classList.toggle("hidden", !bad.length)
     bad.forEach(function (acc) {
       var row = h("div", "cal-banner")
+      if (acc.provider === "icloud") {
+        // iCloud has no OAuth: the fix is a new app-specific password in the account's settings.
+        row.appendChild(h("span", "", "iCloud rejected the app-specific password for " + acc.email))
+        var edit = h("a", "cal-btn", "Edit account")
+        edit.href = "/settings/accounts"
+        row.appendChild(edit)
+        box.appendChild(row)
+        return
+      }
       row.appendChild(h("span", "", "Reconnect " + acc.email + " to show its calendar"))
       var form = h("form")
       form.method = "POST"
@@ -816,6 +825,11 @@
     return !!(c && c.provider === "outlook")
   }
 
+  function isICloudCalendar(calId) {
+    var c = calendarById(calId)
+    return !!(c && c.provider === "icloud")
+  }
+
   function isWritable(ev) {
     var c = calendarById(ev.calendar_id)
     return !!(c && WRITABLE[c.access_role])
@@ -1017,9 +1031,17 @@
     meetBox.appendChild(E.meet)
     var meetText = h("span", "", E.meetLabel(ev))
     meetBox.appendChild(meetText)
-    E.calendar.addEventListener("change", function () { meetText.textContent = E.meetLabel(ev) })
+    var meetRow = edRow("", meetBox)
+    // iCloud Calendar cannot add online meetings, so the option is hidden for its calendars.
+    function syncMeetRow() {
+      var ic = isICloudCalendar(ev ? ev.calendar_id : parseInt(E.calendar.value, 10))
+      meetRow.classList.toggle("hidden", ic)
+      if (ic) E.meet.checked = false
+    }
+    E.calendar.addEventListener("change", function () { meetText.textContent = E.meetLabel(ev); syncMeetRow() })
     if (ev && ev.meeting_url) { E.meet.checked = true; E.meet.disabled = true }
-    form.appendChild(edRow("", meetBox))
+    form.appendChild(meetRow)
+    syncMeetRow()
 
     E.description = h("textarea", "cal-ed-input cal-ed-desc")
     E.description.id = "cal-ed-description"
