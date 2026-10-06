@@ -306,3 +306,25 @@ func TestMiddlewareAcceptsExactLoopbackOriginAliases(t *testing.T) {
 		})
 	}
 }
+
+func TestMiddlewareAllowsCrossOriginEmbeddingOnlyForEmailImages(t *testing.T) {
+	cfg, err := newConfig(DefaultListenAddr, DefaultBaseURL, false)
+	if err != nil {
+		t.Fatalf("newConfig() error = %v", err)
+	}
+	for path, want := range map[string]string{
+		"/api/inline-content/4/logo123@raven": "cross-origin",
+		"/api/remote-assets/4/0123abcd.png":   "cross-origin",
+		"/api/attachments/4/preview":          "same-origin",
+		"/api/inline-content":                 "same-origin",
+		"/":                                   "same-origin",
+	} {
+		request := httptest.NewRequest(http.MethodGet, path, nil)
+		request.Host = "localhost:8090"
+		recorder := httptest.NewRecorder()
+		cfg.Middleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {})).ServeHTTP(recorder, request)
+		if got := recorder.Header().Get("Cross-Origin-Resource-Policy"); got != want {
+			t.Errorf("%s: Cross-Origin-Resource-Policy = %q, want %q", path, got, want)
+		}
+	}
+}

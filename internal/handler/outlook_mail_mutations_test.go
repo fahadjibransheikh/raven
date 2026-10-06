@@ -469,7 +469,7 @@ func TestOutlookGraphInlineContentMaterializesProviderAttachment(t *testing.T) {
 		t.Fatalf("UpsertOAuthAccount() error = %v", err)
 	}
 
-	const inlineBody = "pngdata"
+	const inlineBody = "\x89PNG\r\n\x1a\n" + "pngdata" // real PNG signature: inline type is decided from the bytes
 	var sawFetch bool
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {

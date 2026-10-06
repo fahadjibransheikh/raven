@@ -11,6 +11,7 @@ import (
 
 	webpush "github.com/SherClockHolmes/webpush-go"
 	"github.com/cristianadrielbraun/gofer/internal/mail"
+	"github.com/cristianadrielbraun/gofer/internal/netguard"
 	"github.com/cristianadrielbraun/gofer/internal/storage"
 )
 
@@ -20,6 +21,7 @@ type Service struct {
 	vapidPublicKey  string
 	vapidPrivateKey string
 	vapidSubject    string
+	httpClient      *http.Client
 }
 
 func New(db *storage.DB, events *mail.EventBus, vapidPublicKey, vapidPrivateKey, vapidSubject string) *Service {
@@ -29,6 +31,8 @@ func New(db *storage.DB, events *mail.EventBus, vapidPublicKey, vapidPrivateKey,
 		vapidPublicKey:  vapidPublicKey,
 		vapidPrivateKey: vapidPrivateKey,
 		vapidSubject:    vapidSubject,
+		// Endpoints are user-supplied URLs: never connect to internal addresses.
+		httpClient: netguard.NewClient(10 * time.Second),
 	}
 }
 
@@ -138,6 +142,7 @@ func (s *Service) sendWebPush(ctx context.Context, userID string, event mail.Eve
 			TTL:             60,
 			Topic:           "gofer-new-mail",
 			Urgency:         webpush.UrgencyNormal,
+			HTTPClient:      s.httpClient,
 		})
 		cancel()
 		if resp != nil {

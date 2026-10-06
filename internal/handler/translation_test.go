@@ -31,14 +31,14 @@ func (fakeTextBatchProvider) TranslateTexts(ctx context.Context, sourceLanguage,
 }
 
 func TestTranslateHTMLTextNodesPreservesStructure(t *testing.T) {
-	input := `<div class="message"><p>Hello <strong>world</strong></p><img src="/logo.png" alt="Logo"></div>`
+	input := `<div class="message"><p>Hello <strong>world</strong></p><img src="/api/inline-content/1/logo" alt="Logo"></div>`
 
 	_, translated, err := translateHTMLTextNodes(context.Background(), fakeTextBatchProvider{}, "auto", "es", input)
 	if err != nil {
 		t.Fatalf("translateHTMLTextNodes() error = %v", err)
 	}
 
-	for _, want := range []string{`class="message"`, `<strong>mundo</strong>`, `src="/logo.png"`, `alt="Logo"`} {
+	for _, want := range []string{`class="message"`, `<strong>mundo</strong>`, `src="/api/inline-content/1/logo"`, `alt="Logo"`} {
 		if !strings.Contains(translated, want) {
 			t.Fatalf("translated html = %q, want to contain %q", translated, want)
 		}

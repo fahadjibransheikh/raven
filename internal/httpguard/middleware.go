@@ -8,6 +8,12 @@ import (
 func (c *Config) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		setSecurityHeaders(w)
+		if isEmailImageRoute(r.URL.Path) {
+			// The message body renders in a sandboxed opaque-origin iframe, which
+			// same-origin CORP blocks (ERR_BLOCKED_BY_RESPONSE.NotSameOrigin).
+			// These routes only serve sandboxed, download-only or raster bytes.
+			w.Header().Set("Cross-Origin-Resource-Policy", "cross-origin")
+		}
 
 		if !c.trustsHost(r.Host) {
 			http.Error(w, "request host is not trusted", http.StatusMisdirectedRequest)
@@ -20,6 +26,10 @@ func (c *Config) Middleware(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+func isEmailImageRoute(path string) bool {
+	return strings.HasPrefix(path, "/api/inline-content/") || strings.HasPrefix(path, "/api/remote-assets/")
 }
 
 func requiresSameOrigin(r *http.Request) bool {

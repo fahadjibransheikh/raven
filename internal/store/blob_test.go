@@ -72,3 +72,25 @@ func TestDeleteAccountRejectsPathsOutsideAnAccountDirectory(t *testing.T) {
 		t.Fatalf("account path rejection removed base marker: %v", err)
 	}
 }
+
+func TestAssetExtensionComesFromContentNotURL(t *testing.T) {
+	png := []byte("\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR")
+	html := []byte("<html><script>alert(1)</script></html>")
+	svg := []byte(`<svg xmlns="http://www.w3.org/2000/svg"/>`)
+	cases := []struct {
+		name, url string
+		data      []byte
+		want      string
+	}{
+		{"png bytes, misleading url", "https://evil.example/x?.svg", png, ".png"},
+		{"html bytes, image url", "https://evil.example/x.png", html, ""},
+		{"html bytes, svg in query", "https://evil.example/x?.svg", html, ""},
+		{"svg bytes, svg path", "https://cdn.example/logo.svg?v=2", svg, ".svg"},
+		{"svg bytes, no svg path", "https://cdn.example/logo", svg, ""},
+	}
+	for _, tc := range cases {
+		if got := assetExtension(tc.url, tc.data); got != tc.want {
+			t.Errorf("%s: assetExtension(%q) = %q, want %q", tc.name, tc.url, got, tc.want)
+		}
+	}
+}

@@ -3,6 +3,7 @@ package handler
 import (
 	"bytes"
 	"context"
+	cryptorand "crypto/rand"
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
@@ -18,6 +19,7 @@ import (
 	smtpclient "github.com/cristianadrielbraun/gofer/internal/mail/smtp"
 	"github.com/cristianadrielbraun/gofer/internal/mailauth"
 	"github.com/cristianadrielbraun/gofer/internal/models"
+	"github.com/cristianadrielbraun/gofer/internal/netguard"
 	"github.com/cristianadrielbraun/gofer/internal/providers"
 	"github.com/cristianadrielbraun/gofer/internal/storage"
 	"github.com/cristianadrielbraun/gofer/internal/store"
@@ -1364,11 +1366,51 @@ func emailResizeScript(emailID string) []byte {
 }
 
 func remoteImagesDetectScript(emailID string) []byte {
-	return []byte(fmt.Sprintf(`<script>(function(){var id=%q;if(document.querySelector('[data-remote-src]')){parent.postMessage({type:'remoteContentBlocked',emailId:id},'*')}})();</script>`, emailID))
+	return []byte(fmt.Sprintf(`<script>(function(){var id=%q;if(document.querySelector('[data-remote-src],[data-remote-bg]')||document.documentElement.innerHTML.indexOf('raven-'+'remote:')>-1){parent.postMessage({type:'remoteContentBlocked',emailId:id},'*')}})();</script>`, emailID))
 }
 
+// emailExternalLinksScript hands link clicks to the parent page, which opens
+// absolute http(s)/mailto links in a new window. The iframe has no popup
+// permission: a popup that escaped the sandbox would run on the app origin.
+// Relative and cid: hrefs are dropped so a message cannot point the user at
+// app routes.
 func emailExternalLinksScript() []byte {
-	return []byte(`<script>(function(){function secureLink(link){if(!link)return;var href=(link.getAttribute('href')||'').trim();if(!href||href.charAt(0)==='#'||/^(?:javascript|data):/i.test(href))return;link.setAttribute('target','_blank');if(link.relList){link.relList.add('noopener','noreferrer')}else{link.setAttribute('rel','noopener noreferrer')}}document.querySelectorAll('a[href]').forEach(secureLink);document.addEventListener('click',function(event){var target=event.target;var link=target&&target.closest?target.closest('a[href]'):null;secureLink(link)},true)})();</script>`)
+	return []byte(`<script>document.addEventListener('click',function(e){var t=e.target,a=t&&t.closest?t.closest('a[href]'):null;if(!a)return;var h=(a.getAttribute('href')||'').trim();if(h.charAt(0)==='#')return;e.preventDefault();if(/^(?:https?:|mailto:)/i.test(h))parent.postMessage({type:'emailLinkClick',href:a.href},'*')},true);</script>`)
+}
+
+// newCSPNonce returns a per-response script nonce.
+func newCSPNonce() string {
+	b := make([]byte, 16)
+	if _, err := cryptorand.Read(b); err != nil {
+		panic(err) // crypto/rand failing is unrecoverable
+	}
+	return base64.RawURLEncoding.EncodeToString(b)
+}
+
+// withScriptNonce adds the nonce to the <script> tags of trusted, server
+// generated script. It must only be given our own markup, never mail content.
+func withScriptNonce(script, nonce string) string {
+	return strings.ReplaceAll(script, "<script>", `<script nonce="`+nonce+`">`)
+}
+
+// emailBodyDocument sets the response CSP and returns the iframe document.
+// The CSP is what contains a sanitizer miss: only our nonced scripts run, and
+// sandbox applies even if the URL is opened top-level (no app origin).
+func emailBodyDocument(w http.ResponseWriter, emailID string, body []byte, theme, bg, fg, link string, original, loadRemote, reportBlocked bool) []byte {
+	nonce := newCSPNonce()
+	img := "img-src 'self' data:"
+	if loadRemote {
+		// Images and CSS backgrounds only. The sanitizer drops @font-face and
+		// @import, and default-src 'none' keeps remote fonts blocked even if one slipped through.
+		img += " https: http:"
+	}
+	// Add, not Set: keep the global frame-ancestors policy.
+	w.Header().Add("Content-Security-Policy", "sandbox allow-scripts; default-src 'none'; script-src 'nonce-"+nonce+"'; style-src 'unsafe-inline'; "+img+"; form-action 'none'; base-uri 'none'")
+	doc := buildBodyDocument(body, emailResizeScript(emailID), nonce, theme, bg, fg, link, original)
+	if reportBlocked {
+		doc = append(doc, withScriptNonce(string(remoteImagesDetectScript(emailID)), nonce)...)
+	}
+	return doc
 }
 
 func (h *Handler) handleEmailBody(w http.ResponseWriter, r *http.Request) {
@@ -1437,11 +1479,7 @@ func (h *Handler) handleEmailBody(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
-	doc := buildBodyDocument(body, emailResizeScript(emailID), theme, bg, fg, link, original)
-	if !loadRemote {
-		doc = append(doc, remoteImagesDetectScript(emailID)...)
-	}
-	w.Write(doc)
+	w.Write(emailBodyDocument(w, emailID, body, theme, bg, fg, link, original, loadRemote, !loadRemote))
 }
 
 // remoteImagesAllowed reports whether a message body should load its remote
@@ -1590,11 +1628,11 @@ var oc=p(cs.outlineColor);if(oc&&bw(cs.outlineWidth)>0&&(!nbg||cr(oc,nbg)<2.2||d
 })();</script>`, bgColor, fgColor, linkColor))
 }
 
-func buildBodyDocument(body []byte, resizeScript []byte, theme string, bgColor string, fgColor string, linkColor string, original bool) []byte {
+func buildBodyDocument(body []byte, resizeScript []byte, nonce, theme string, bgColor string, fgColor string, linkColor string, original bool) []byte {
 	s := string(body)
 	lower := strings.ToLower(s)
 	isDark := theme == "dark"
-	injection := string(emailExternalLinksScript()) + string(resizeScript)
+	injection := withScriptNonce(string(emailExternalLinksScript())+string(resizeScript), nonce)
 
 	if original {
 		if strings.Contains(lower, "<html") {
@@ -1642,24 +1680,24 @@ func buildBodyDocument(body []byte, resizeScript []byte, theme string, bgColor s
 		lowerAfter := strings.ToLower(s)
 		if idx := strings.LastIndex(lowerAfter, "</body>"); idx != -1 {
 			if isDark {
-				injection = string(buildDarkModeScript(bgColor, fgColor)) + injection
+				injection = withScriptNonce(string(buildDarkModeScript(bgColor, fgColor)), nonce) + injection
 			} else {
-				injection = string(buildLightModeScript(bgColor, fgColor, linkColor)) + injection
+				injection = withScriptNonce(string(buildLightModeScript(bgColor, fgColor, linkColor)), nonce) + injection
 			}
 			return []byte(s[:idx] + injection + s[idx:])
 		}
 		if isDark {
-			injection = string(buildDarkModeScript(bgColor, fgColor)) + injection
+			injection = withScriptNonce(string(buildDarkModeScript(bgColor, fgColor)), nonce) + injection
 		} else {
-			injection = string(buildLightModeScript(bgColor, fgColor, linkColor)) + injection
+			injection = withScriptNonce(string(buildLightModeScript(bgColor, fgColor, linkColor)), nonce) + injection
 		}
 		return []byte(s + injection)
 	}
 
 	if isDark {
-		injection = string(buildDarkModeScript(bgColor, fgColor)) + injection
+		injection = withScriptNonce(string(buildDarkModeScript(bgColor, fgColor)), nonce) + injection
 	} else {
-		injection = string(buildLightModeScript(bgColor, fgColor, linkColor)) + injection
+		injection = withScriptNonce(string(buildLightModeScript(bgColor, fgColor, linkColor)), nonce) + injection
 	}
 	doc := "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><style>" +
 		"html{margin:0;overflow:hidden;color-scheme:" + scheme + ";background:" + bgColor + ";color:" + fgColor + "}" +
@@ -3692,7 +3730,7 @@ func (h *Handler) handleSavePushSubscription(w http.ResponseWriter, r *http.Requ
 	req.Endpoint = strings.TrimSpace(req.Endpoint)
 	req.Keys.P256DH = strings.TrimSpace(req.Keys.P256DH)
 	req.Keys.Auth = strings.TrimSpace(req.Keys.Auth)
-	if req.Endpoint == "" || req.Keys.P256DH == "" || req.Keys.Auth == "" {
+	if !netguard.ValidEndpoint(req.Endpoint) || req.Keys.P256DH == "" || req.Keys.Auth == "" {
 		http.Error(w, "invalid subscription", http.StatusBadRequest)
 		return
 	}
@@ -3828,9 +3866,7 @@ func (h *Handler) handleAttachmentDownload(w http.ResponseWriter, r *http.Reques
 	}
 	defer f.Close()
 
-	w.Header().Set("Content-Type", info.ContentType)
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, info.Filename))
-	http.ServeContent(w, r, info.Filename, time.Time{}, f)
+	serveUntrusted(w, r, info.Filename, info.ContentType, f, "", false)
 }
 
 func (h *Handler) handleAttachmentPreview(w http.ResponseWriter, r *http.Request) {
@@ -3990,19 +4026,53 @@ func attachmentPreviewURL(id int64, contentType, filename string) string {
 	return "/api/attachments/" + strconv.FormatInt(id, 10) + "/preview"
 }
 
-func isPreviewableImage(contentType, filename string) bool {
-	contentType = strings.ToLower(strings.TrimSpace(strings.Split(contentType, ";")[0]))
-	switch contentType {
-	case "image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp", "image/svg+xml", "image/bmp", "image/x-icon", "image/vnd.microsoft.icon":
-		return true
-	}
-	lower := strings.ToLower(filename)
-	for _, ext := range []string{".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp", ".ico"} {
-		if strings.HasSuffix(lower, ext) {
-			return true
+// isPreviewableImage reports whether the declared type is a raster image that
+// serveUntrusted will render inline. The filename is deliberately ignored: a
+// sender controls it as freely as the content type.
+func isPreviewableImage(contentType, _ string) bool {
+	return inlineImageTypes[strings.ToLower(strings.TrimSpace(strings.Split(contentType, ";")[0]))]
+}
+
+var inlineImageTypes = map[string]bool{"image/png": true, "image/jpeg": true, "image/gif": true, "image/webp": true}
+
+// serveUntrusted serves email-derived bytes (attachments, inline parts, remote
+// assets). The sender controls the bytes, the declared type and the filename,
+// so: the response is sandboxed (opaque origin, no scripts), nosniff stops type
+// guessing, and only content that really is a safe raster image, judged by its
+// bytes, is shown inline. Everything else is a download. SVG/BMP/ICO keep their
+// image type (so <img> in an email still renders) but are never shown inline.
+func serveUntrusted(w http.ResponseWriter, r *http.Request, filename, declaredType string, f *os.File, cacheControl string, allowInline bool) {
+	buf := make([]byte, 512)
+	n, _ := f.Read(buf)
+	_, _ = f.Seek(0, io.SeekStart)
+	sniffed := strings.ToLower(strings.Split(http.DetectContentType(buf[:n]), ";")[0])
+	declared := strings.ToLower(strings.TrimSpace(strings.Split(declaredType, ";")[0]))
+
+	contentType, disposition := "application/octet-stream", "attachment"
+	switch {
+	case inlineImageTypes[sniffed]:
+		contentType = sniffed
+		if allowInline {
+			disposition = "inline"
 		}
+	case sniffed == "image/bmp" || sniffed == "image/x-icon":
+		contentType = sniffed
+	case declared == "image/svg+xml":
+		contentType = declared
 	}
-	return false
+	h := w.Header()
+	h.Add("Content-Security-Policy", "sandbox; default-src 'none'") // Add: keep the global frame-ancestors policy
+	h.Set("X-Content-Type-Options", "nosniff")
+	h.Set("Content-Type", contentType)
+	if cd := mime.FormatMediaType(disposition, map[string]string{"filename": filename}); cd != "" {
+		h.Set("Content-Disposition", cd)
+	} else {
+		h.Set("Content-Disposition", disposition)
+	}
+	if cacheControl != "" {
+		h.Set("Cache-Control", cacheControl)
+	}
+	http.ServeContent(w, r, filename, time.Time{}, f)
 }
 
 func serveAttachmentPreview(w http.ResponseWriter, r *http.Request, filename, contentType, storagePath string) {
@@ -4012,10 +4082,7 @@ func serveAttachmentPreview(w http.ResponseWriter, r *http.Request, filename, co
 		return
 	}
 	defer f.Close()
-	w.Header().Set("Content-Type", contentType)
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`inline; filename="%s"`, filename))
-	w.Header().Set("Cache-Control", "private, max-age=300")
-	http.ServeContent(w, r, filename, time.Time{}, f)
+	serveUntrusted(w, r, filename, contentType, f, "private, max-age=300", true)
 }
 
 func (h *Handler) handleInlineContent(w http.ResponseWriter, r *http.Request) {
@@ -4051,9 +4118,7 @@ func (h *Handler) handleInlineContent(w http.ResponseWriter, r *http.Request) {
 	}
 	defer f.Close()
 
-	w.Header().Set("Content-Type", info.ContentType)
-	w.Header().Set("Cache-Control", "private, max-age=31536000")
-	http.ServeContent(w, r, info.Filename, time.Time{}, f)
+	serveUntrusted(w, r, info.Filename, info.ContentType, f, "private, max-age=31536000", true)
 }
 
 func (h *Handler) handleAllowRemoteContent(w http.ResponseWriter, r *http.Request) {
@@ -4168,16 +4233,7 @@ func (h *Handler) handleAllowRemoteContent(w http.ResponseWriter, r *http.Reques
 }
 
 func downloadRemoteResource(url string) ([]byte, error) {
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
-	}
-	return io.ReadAll(io.LimitReader(resp.Body, 5*1024*1024))
+	return netguard.Fetch(url, 5*1024*1024)
 }
 
 func validRemoteAssetFilename(filename string) bool {
@@ -4234,8 +4290,7 @@ func (h *Handler) handleRemoteAsset(w http.ResponseWriter, r *http.Request) {
 	}
 	defer f.Close()
 
-	w.Header().Set("Cache-Control", "private, max-age=31536000")
-	http.ServeContent(w, r, filename, time.Time{}, f)
+	serveUntrusted(w, r, filename, mime.TypeByExtension(filepath.Ext(filename)), f, "private, max-age=31536000", true)
 }
 
 func (h *Handler) handleSSE(w http.ResponseWriter, r *http.Request) {

@@ -11648,6 +11648,13 @@ window.addEventListener("message", function (e) {
       }
     }
   }
+  if (e.data.type === "emailLinkClick") {
+    // The sandboxed message frame cannot open popups; open its links here.
+    // Only a real message frame may ask, and only for web/mail links.
+    var linkFrame = Array.prototype.find.call(document.querySelectorAll("[data-email-body-frame]"), function (f) { return f.contentWindow === e.source })
+    if (linkFrame && /^(https?:|mailto:)/i.test(String(e.data.href || ""))) window.open(String(e.data.href), "_blank", "noopener,noreferrer")
+    return
+  }
   if (e.data.type === "remoteContentBlocked" && e.data.emailId) {
     var banner = document.querySelector('[data-remote-content-banner="' + e.data.emailId + '"]')
     if (banner) banner.classList.remove("hidden")
