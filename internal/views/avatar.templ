@@ -1,18 +1,35 @@
 package views
 
 import (
+	"fmt"
 	"net/url"
 	"strings"
 
 	"github.com/cristianadrielbraun/gofer/internal/models"
 )
 
+// contactAvatarFallbackClass fills the initials circle with one of eight
+// fixed tones (see .avatar-tone-N in input.css), chosen from the address so a
+// sender keeps its colour. fallbackClass is accepted for caller compatibility;
+// the tone replaces the old per-caller amber/grey fills.
 func contactAvatarFallbackClass(contact models.Contact, fallbackClass string) string {
 	base := "flex h-full w-full items-center justify-center rounded-full "
 	if contact.AvatarURL != "" {
 		base = "hidden h-full w-full items-center justify-center rounded-full "
 	}
-	return base + fallbackClass
+	return base + contactAvatarTone(contact)
+}
+
+func contactAvatarTone(contact models.Contact) string {
+	key := strings.ToLower(strings.TrimSpace(contact.Email))
+	if key == "" {
+		key = strings.ToLower(strings.TrimSpace(contact.Name))
+	}
+	var h uint32 = 2166136261
+	for i := 0; i < len(key); i++ {
+		h = (h ^ uint32(key[i])) * 16777619
+	}
+	return fmt.Sprintf("avatar-tone-%d", h%8)
 }
 
 func contactAvatarImageClass(contact models.Contact) string {

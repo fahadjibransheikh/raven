@@ -347,7 +347,7 @@ templ AdminSidebar(activeSection string) {
 		<div class="px-5 py-5 border-b border-border">
 			<a href="/admin" class="inline-flex items-center gap-2.5 text-foreground hover:text-primary transition-colors">
 				<img src="/assets/logo.svg" alt="Raven" class="h-8 w-8 shrink-0 p-1"/>
-				<span class="text-lg font-bold tracking-tight">Raven Admin</span>
+				<span class="text-lg font-semibold tracking-tight">Raven Admin</span>
 			</a>
 			<p class="mt-2 text-xs text-muted-foreground leading-relaxed">Operational controls and diagnostics.</p>
 		</div>
@@ -477,7 +477,7 @@ templ AdminSecurityActivityPage(data AdminSecurityActivityData, verification ...
 			<div class="max-w-7xl px-6 py-8 lg:px-8 lg:py-10">
 				<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 					<div>
-						<h2 class="text-2xl font-bold text-foreground">Admin security activity</h2>
+						<h2 class="text-2xl font-semibold text-foreground">Admin security activity</h2>
 						<p class="mt-1 max-w-3xl text-sm text-muted-foreground">Review sanitized authentication and account-security events across this Raven instance.</p>
 					</div>
 					<div class="flex shrink-0 items-center gap-3">
@@ -576,7 +576,7 @@ templ AdminSecurityActivityPage(data AdminSecurityActivityData, verification ...
 												<td class="px-4 py-3">
 													<span class="font-medium text-foreground">{ event.Subject }</span>
 													if event.SubjectDeleted {
-														<span class="ml-1.5 rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Deleted</span>
+														<span class="ml-1.5 rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Deleted</span>
 													}
 												</td>
 												<td class="max-w-xs break-words px-4 py-3 text-xs text-muted-foreground">{ event.Client }</td>
@@ -681,7 +681,7 @@ templ AdminUsersPage(data AdminUsersData, verification ...AdminSecurityVerificat
 			<div class="max-w-6xl px-6 py-8 lg:px-8 lg:py-10">
 				<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 					<div>
-						<h2 class="text-2xl font-bold text-foreground">Users</h2>
+						<h2 class="text-2xl font-semibold text-foreground">Users</h2>
 						<p class="mt-1 max-w-3xl text-sm text-muted-foreground">Review Raven application users, account state, and role. Invite a new standard user without setting their credentials.</p>
 					</div>
 					<div class="flex flex-wrap items-center gap-2">
@@ -762,7 +762,7 @@ templ AdminUsersPage(data AdminUsersData, verification ...AdminSecurityVerificat
 												<div class="flex flex-wrap items-center gap-2">
 													<span class="font-semibold text-foreground">{ adminUserUsername(user.Username) }</span>
 													if user.Current {
-														<span class="rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">You</span>
+														<span class="rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-primary">You</span>
 													}
 												</div>
 											</td>
@@ -1411,7 +1411,7 @@ templ AdminSecurityPage(data models.MailSecurityAdminData, verification ...Admin
 		<div class="flex-1 overflow-y-auto">
 			<div class="max-w-6xl px-6 py-8 lg:px-8 lg:py-10">
 				<div class="mb-7">
-					<h2 class="text-2xl font-bold text-foreground">Mail security</h2>
+					<h2 class="text-2xl font-semibold text-foreground">Mail security</h2>
 					<p class="mt-1 max-w-3xl text-sm text-muted-foreground">Manage narrow exceptions for test labs and local mail servers. Normal account discovery and mail connections remain encrypted by default.</p>
 				</div>
 				if data.Notice != "" {
@@ -1541,7 +1541,7 @@ templ AdminSecurityPage(data models.MailSecurityAdminData, verification ...Admin
 											<span class="font-mono text-sm font-bold text-foreground">{ adminMailSecurityEndpoint(item) }</span>
 											<span
 												class={
-													"rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+													"rounded-md px-2 py-0.5 text-xs font-semibold uppercase tracking-wider",
 													templ.KV("bg-amber-500/12 text-amber-800 dark:text-amber-200", item.Kind == models.MailSecurityExceptionHTTPDiscovery),
 													templ.KV("bg-red-500/12 text-red-800 dark:text-red-200", item.Kind == models.MailSecurityExceptionPlaintextTransport),
 													templ.KV("bg-red-500/12 text-red-800 dark:text-red-200", item.Kind == models.MailSecurityExceptionPrivateTarget),
@@ -1659,7 +1659,7 @@ func adminScopeDescription(scope models.AdminWebmailScope) string {
 
 templ AdminWebmailScopeFilter(scope models.AdminWebmailScope, path string) {
 	<form method="get" action={ path } class="w-full sm:w-72" data-admin-webmail-scope-form>
-		<label class="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Webmail account</label>
+		<label class="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Webmail account</label>
 		@selectbox.SelectBox() {
 			@selectbox.Trigger(selectbox.TriggerProps{Name: "user_id", Class: "bg-background", DisableClear: true, Attributes: templ.Attributes{"data-admin-webmail-scope": ""}}) {
 				@selectbox.Value(selectbox.ValueProps{Placeholder: "All webmail accounts"})
@@ -1688,7 +1688,7 @@ templ AdminPage(status models.AvatarStatus, activeTab string) {
 			<div class="max-w-6xl px-6 py-8 lg:px-8 lg:py-10">
 				<div class="mb-7 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
 					<div>
-						<h2 class="text-2xl font-bold text-foreground">Avatar checks</h2>
+						<h2 class="text-2xl font-semibold text-foreground">Avatar checks</h2>
 						<p class="mt-1 max-w-2xl text-sm text-muted-foreground">Inspect avatar outcomes and sender history for the selected webmail scope. Scheduled checks remain instance-wide.</p>
 					</div>
 					<div class="flex w-full shrink-0 flex-col items-end gap-3 lg:w-auto">
@@ -1741,7 +1741,7 @@ templ AdminPage(status models.AvatarStatus, activeTab string) {
 								</div>
 								<span
 									class={
-										"inline-flex w-fit shrink-0 items-center rounded-md px-2.5 py-1 text-[11px] font-semibold",
+										"inline-flex w-fit shrink-0 items-center rounded-md px-2.5 py-1 text-xs font-semibold",
 										templ.KV("bg-red-500/12 text-red-700 dark:text-red-300", status.Backfill.CancelRequested || status.Backfill.Canceled),
 										templ.KV("bg-amber-500/12 text-amber-700 dark:text-amber-300", status.Backfill.InProgress && !status.Backfill.CancelRequested),
 										templ.KV("bg-emerald-500/12 text-emerald-700 dark:text-emerald-300", !status.Backfill.InProgress && !status.Backfill.Canceled),
@@ -1780,7 +1780,7 @@ templ AdminPage(status models.AvatarStatus, activeTab string) {
 						</div>
 						<div class="grid gap-4 lg:grid-cols-2">
 							<div class="rounded-lg border border-border bg-card p-4">
-								<div class="mb-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Avatar outcomes</div>
+								<div class="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Avatar outcomes</div>
 								<div class="flex min-h-[10.75rem] flex-col justify-between gap-3">
 									@AdminCompactMetric("total", "Total senders", status.Cache.Total)
 									@AdminCompactMetric("found", "Found avatars", status.Cache.Found)
@@ -1790,7 +1790,7 @@ templ AdminPage(status models.AvatarStatus, activeTab string) {
 								</div>
 							</div>
 							<div class="rounded-lg border border-border bg-card p-4">
-								<div class="mb-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Run status</div>
+								<div class="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Run status</div>
 								<div class="space-y-3">
 									@AdminCompactDetail("started", "Started", adminTime(status.Backfill.StartedAt))
 									@AdminCompactDetail("finished", "Finished", adminTime(status.Backfill.FinishedAt))
@@ -1814,11 +1814,11 @@ templ AdminPage(status models.AvatarStatus, activeTab string) {
 							</div>
 							<div class="grid gap-3 lg:grid-cols-[minmax(16rem,1fr)_10rem_10rem_auto]">
 								<label class="block">
-									<span class="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Sender search</span>
+									<span class="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Sender search</span>
 									@input.Input(input.Props{Type: input.TypeSearch, Placeholder: "sender@example.com", Class: "bg-background", Attributes: templ.Attributes{"data-avatar-filter": "query"}})
 								</label>
 								<label class="block">
-									<span class="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Provider checked</span>
+									<span class="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Provider checked</span>
 									@selectbox.SelectBox() {
 										@selectbox.Trigger(selectbox.TriggerProps{Class: "bg-background", DisableClear: true, Attributes: templ.Attributes{"data-avatar-filter": "provider"}}) {
 											@selectbox.Value(selectbox.ValueProps{Placeholder: "All providers"}) {
@@ -1838,7 +1838,7 @@ templ AdminPage(status models.AvatarStatus, activeTab string) {
 									}
 								</label>
 								<label class="block">
-									<span class="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Final status</span>
+									<span class="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Final status</span>
 									@selectbox.SelectBox() {
 										@selectbox.Trigger(selectbox.TriggerProps{Class: "bg-background", DisableClear: true, Attributes: templ.Attributes{"data-avatar-filter": "status"}}) {
 											@selectbox.Value(selectbox.ValueProps{Placeholder: "All statuses"}) {
@@ -1865,7 +1865,7 @@ templ AdminPage(status models.AvatarStatus, activeTab string) {
 									}
 								</label>
 								<label class="block">
-									<span class="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Errors only</span>
+									<span class="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Errors only</span>
 									@selectbox.SelectBox() {
 										@selectbox.Trigger(selectbox.TriggerProps{Class: "bg-background", DisableClear: true, Attributes: templ.Attributes{"data-avatar-filter": "errors"}}) {
 											@selectbox.Value(selectbox.ValueProps{Placeholder: "No"}) {
@@ -1886,7 +1886,7 @@ templ AdminPage(status models.AvatarStatus, activeTab string) {
 							<div class="mt-3 text-xs font-medium text-muted-foreground" data-avatar-log-count>Loading senders...</div>
 							<div class="mt-4 overflow-x-auto rounded-lg border border-border bg-muted/25 shadow-inner">
 								<div class="min-w-[48rem]">
-									<div class="grid gap-2 border-b border-border bg-muted/70 px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground" data-avatar-sender-header>
+									<div class="grid gap-2 border-b border-border bg-muted/70 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground" data-avatar-sender-header>
 										<div>Sender</div>
 										<div>In use</div>
 										<div>Providers</div>
@@ -1910,7 +1910,7 @@ templ AdminPage(status models.AvatarStatus, activeTab string) {
 								</div>
 								<div class="rounded-lg border border-border bg-background/35 p-4">
 									<div class="mb-3 flex items-center justify-between gap-3">
-										<div class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Usage per provider</div>
+										<div class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Usage per provider</div>
 										<div class="text-xs font-semibold tabular-nums text-muted-foreground">{ fmt.Sprintf("%d assigned", adminProviderInUseTotal(status.Cache.ProviderStats)) }</div>
 									</div>
 									<div class="space-y-3">
@@ -1940,11 +1940,11 @@ templ AdminPage(status models.AvatarStatus, activeTab string) {
 							</div>
 							<div class="grid gap-3 lg:grid-cols-[minmax(16rem,1fr)_10rem_10rem_auto]">
 								<label class="block">
-									<span class="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Sender search</span>
+									<span class="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Sender search</span>
 									@input.Input(input.Props{Type: input.TypeSearch, Placeholder: "sender@example.com", Class: "bg-background", Attributes: templ.Attributes{"data-avatar-event-filter": "query"}})
 								</label>
 								<label class="block">
-									<span class="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Provider</span>
+									<span class="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Provider</span>
 									@selectbox.SelectBox() {
 										@selectbox.Trigger(selectbox.TriggerProps{Class: "bg-background", DisableClear: true, Attributes: templ.Attributes{"data-avatar-event-filter": "provider"}}) {
 											@selectbox.Value(selectbox.ValueProps{Placeholder: "All providers"}) {
@@ -1964,7 +1964,7 @@ templ AdminPage(status models.AvatarStatus, activeTab string) {
 									}
 								</label>
 								<label class="block">
-									<span class="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Outcome</span>
+									<span class="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Outcome</span>
 									@selectbox.SelectBox() {
 										@selectbox.Trigger(selectbox.TriggerProps{Class: "bg-background", DisableClear: true, Attributes: templ.Attributes{"data-avatar-event-filter": "status"}}) {
 											@selectbox.Value(selectbox.ValueProps{Placeholder: "All outcomes"}) {
@@ -1991,7 +1991,7 @@ templ AdminPage(status models.AvatarStatus, activeTab string) {
 									}
 								</label>
 								<label class="block">
-									<span class="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Errors only</span>
+									<span class="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Errors only</span>
 									@selectbox.SelectBox() {
 										@selectbox.Trigger(selectbox.TriggerProps{Class: "bg-background", DisableClear: true, Attributes: templ.Attributes{"data-avatar-event-filter": "errors"}}) {
 											@selectbox.Value(selectbox.ValueProps{Placeholder: "No"}) {
@@ -2012,7 +2012,7 @@ templ AdminPage(status models.AvatarStatus, activeTab string) {
 							<div class="mt-3 text-xs font-medium text-muted-foreground" data-avatar-event-count>Loading events...</div>
 							<div class="mt-4 overflow-x-auto rounded-lg border border-border bg-muted/25 shadow-inner">
 								<div class="min-w-[58rem]">
-									<div class="grid grid-cols-[10rem_minmax(15rem,1fr)_8rem_8rem_minmax(18rem,1.3fr)] gap-3 border-b border-border bg-muted/70 px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+									<div class="grid grid-cols-[10rem_minmax(15rem,1fr)_8rem_8rem_minmax(18rem,1.3fr)] gap-3 border-b border-border bg-muted/70 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
 										<div>Time</div>
 										<div>Sender</div>
 										<div>Provider</div>
@@ -2331,7 +2331,7 @@ templ AdminLabelsPage(status models.LabelAdminStatus) {
 			<div class="max-w-6xl px-6 py-8 lg:px-8 lg:py-10">
 				<div class="mb-7 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
 					<div>
-						<h2 class="text-2xl font-bold text-foreground">Labels</h2>
+						<h2 class="text-2xl font-semibold text-foreground">Labels</h2>
 						<p class="mt-1 max-w-2xl text-sm text-muted-foreground">Inspect provider label coverage, unresolved message identities, and queued label mutations for the selected webmail scope.</p>
 					</div>
 					<div class="flex w-full flex-col items-end gap-3 lg:w-auto">
@@ -2407,11 +2407,11 @@ templ AdminLabelAccountCard(account models.LabelAccountSyncStatus) {
 				<div class="truncate text-sm font-bold text-foreground">{ account.AccountName }</div>
 				<div class="mt-0.5 truncate text-xs font-medium text-muted-foreground">{ account.AccountEmail }</div>
 				if account.OwnerUsername != "" {
-					<div class="mt-1 truncate text-[11px] font-medium text-muted-foreground">Owned by { account.OwnerUsername }</div>
+					<div class="mt-1 truncate text-xs font-medium text-muted-foreground">Owned by { account.OwnerUsername }</div>
 				}
-				<div class="mt-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{ adminLabelProviderLabel(account.LabelProvider) }</div>
+				<div class="mt-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{ adminLabelProviderLabel(account.LabelProvider) }</div>
 			</div>
-			<span class={ "inline-flex shrink-0 rounded-md px-2.5 py-1 text-[11px] font-semibold", adminLabelSyncClass(account) }>{ adminLabelSyncLabel(account) }</span>
+			<span class={ "inline-flex shrink-0 rounded-md px-2.5 py-1 text-xs font-semibold", adminLabelSyncClass(account) }>{ adminLabelSyncLabel(account) }</span>
 		</div>
 		<div class="mb-4">
 			<div class="flex items-center justify-between gap-3">
@@ -2435,8 +2435,8 @@ templ AdminLabelAccountCard(account models.LabelAccountSyncStatus) {
 		if account.OutlookGraph != nil {
 			<div class="mt-4 rounded-lg border border-border bg-background/35 p-3">
 				<div class="mb-2 flex items-center justify-between gap-3">
-					<div class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Outlook Graph parity</div>
-					<div class="text-[11px] font-bold tabular-nums text-foreground">{ fmt.Sprintf("%d/%d folders", account.OutlookGraph.GraphBackedFolders, account.OutlookGraph.LocalFolders) }</div>
+					<div class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Outlook Graph parity</div>
+					<div class="text-xs font-bold tabular-nums text-foreground">{ fmt.Sprintf("%d/%d folders", account.OutlookGraph.GraphBackedFolders, account.OutlookGraph.LocalFolders) }</div>
 				</div>
 				<div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
 					@AdminCompactMetric("labels_graph_messages_"+account.AccountID, "Graph IDs", account.OutlookGraph.GraphBackedMessages)
@@ -2453,8 +2453,8 @@ templ AdminLabelAccountCard(account models.LabelAccountSyncStatus) {
 		if account.GmailAPI != nil {
 			<div class="mt-4 rounded-lg border border-border bg-background/35 p-3">
 				<div class="mb-2 flex items-center justify-between gap-3">
-					<div class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Gmail API parity</div>
-					<div class="text-[11px] font-bold tabular-nums text-foreground">{ fmt.Sprintf("%d/%d folders", account.GmailAPI.GmailBackedFolders, account.GmailAPI.LocalFolders) }</div>
+					<div class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Gmail API parity</div>
+					<div class="text-xs font-bold tabular-nums text-foreground">{ fmt.Sprintf("%d/%d folders", account.GmailAPI.GmailBackedFolders, account.GmailAPI.LocalFolders) }</div>
 				</div>
 				<div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
 					@AdminCompactMetric("labels_gmail_messages_"+account.AccountID, "Gmail IDs", account.GmailAPI.APIBackedMessages)
@@ -2471,7 +2471,7 @@ templ AdminLabelAccountCard(account models.LabelAccountSyncStatus) {
 		}
 		<div class="mt-4 grid gap-3 lg:grid-cols-2">
 			<div class="rounded-lg border border-border bg-background/35 p-3">
-				<div class="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Last sync run</div>
+				<div class="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Last sync run</div>
 				<div class="space-y-2">
 					@AdminCompactDetail("labels_sync_finished_"+account.AccountID, "Finished", adminTime(account.Sync.LastRunFinishedAt))
 					@AdminCompactMetric("labels_sync_total_"+account.AccountID, "Scanned", account.Sync.LastTotalMessages)
@@ -2482,7 +2482,7 @@ templ AdminLabelAccountCard(account models.LabelAccountSyncStatus) {
 				</div>
 			</div>
 			<div class="rounded-lg border border-border bg-background/35 p-3">
-				<div class="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Top labels</div>
+				<div class="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Top labels</div>
 				if len(account.TopLabels) == 0 {
 					<div class="rounded-md border border-dashed border-border px-3 py-5 text-center text-xs text-muted-foreground">No labels on visible messages.</div>
 				} else {
@@ -2496,7 +2496,7 @@ templ AdminLabelAccountCard(account models.LabelAccountSyncStatus) {
 								<div class="mt-1 h-1.5 overflow-hidden rounded-md bg-muted">
 									<div class="h-full rounded-md bg-primary/80" style={ fmt.Sprintf("width:%d%%", adminPercent(label.Count, account.MessagesWithLabels)) }></div>
 								</div>
-								<div class="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{ adminLabelProviderLabel(label.ProviderType) }</div>
+								<div class="mt-0.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{ adminLabelProviderLabel(label.ProviderType) }</div>
 							</div>
 						}
 					</div>
@@ -2518,7 +2518,7 @@ templ AdminContactsPage(status models.ContactAdminStatus) {
 			<div class="max-w-6xl px-6 py-8 lg:px-8 lg:py-10">
 				<div class="mb-7 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
 					<div>
-						<h2 class="text-2xl font-bold text-foreground">Contacts</h2>
+						<h2 class="text-2xl font-semibold text-foreground">Contacts</h2>
 						<p class="mt-1 max-w-2xl text-sm text-muted-foreground">Track contact discovery, deletion, sync, and backfill activity for the selected webmail scope.</p>
 					</div>
 					<div class="flex w-full shrink-0 flex-col items-end gap-3 lg:w-auto">
@@ -2552,7 +2552,7 @@ templ AdminContactsPage(status models.ContactAdminStatus) {
 								</div>
 								<span
 									class={
-										"inline-flex w-fit shrink-0 items-center rounded-md px-2.5 py-1 text-[11px] font-semibold",
+										"inline-flex w-fit shrink-0 items-center rounded-md px-2.5 py-1 text-xs font-semibold",
 										templ.KV("bg-amber-500/12 text-amber-700 dark:text-amber-300", status.Backfill.InProgress),
 										templ.KV("bg-red-500/12 text-red-700 dark:text-red-300", !status.Backfill.InProgress && status.Backfill.LastError != ""),
 										templ.KV("bg-emerald-500/12 text-emerald-700 dark:text-emerald-300", !status.Backfill.InProgress && status.Backfill.LastError == ""),
@@ -2572,7 +2572,7 @@ templ AdminContactsPage(status models.ContactAdminStatus) {
 						</div>
 						<div class="grid gap-4 lg:grid-cols-2">
 							<div class="rounded-lg border border-border bg-card p-4">
-								<div class="mb-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Contact registry</div>
+								<div class="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Contact registry</div>
 								<div class="flex min-h-[10.75rem] flex-col justify-between gap-3">
 									@AdminCompactMetric("contacts_total", "Active contacts", status.Total)
 									@AdminCompactMetric("contacts_observed", "Observed contacts", status.Observed)
@@ -2582,7 +2582,7 @@ templ AdminContactsPage(status models.ContactAdminStatus) {
 								</div>
 							</div>
 							<div class="rounded-lg border border-border bg-card p-4">
-								<div class="mb-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Run status</div>
+								<div class="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Run status</div>
 								<div class="space-y-3">
 									@AdminCompactDetail("contacts_started", "Started", adminTime(status.Backfill.StartedAt))
 									@AdminCompactDetail("contacts_finished", "Finished", adminTime(status.Backfill.FinishedAt))
@@ -2623,7 +2623,7 @@ templ AdminContactsPage(status models.ContactAdminStatus) {
 							<div class="mt-3 text-xs font-medium text-muted-foreground" data-contact-event-count>{ fmt.Sprintf("%d recent events", len(status.RecentEvents)) }</div>
 							<div class="mt-4 overflow-x-auto rounded-lg border border-border bg-muted/25 shadow-inner">
 								<div class="min-w-[58rem]">
-									<div class="grid grid-cols-[10rem_minmax(15rem,1fr)_12rem_8rem_minmax(18rem,1.3fr)] gap-3 border-b border-border bg-muted/70 px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+									<div class="grid grid-cols-[10rem_minmax(15rem,1fr)_12rem_8rem_minmax(18rem,1.3fr)] gap-3 border-b border-border bg-muted/70 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
 										<div>Time</div>
 										<div>User / contact</div>
 										<div>Event</div>
@@ -2656,10 +2656,10 @@ templ AdminContactSyncCard(sync models.ContactSyncStatus) {
 				<div class="truncate text-sm font-bold text-foreground">{ sync.AccountName }</div>
 				<div class="mt-0.5 truncate text-xs font-medium text-muted-foreground">{ sync.AccountEmail }</div>
 				if sync.OwnerUsername != "" {
-					<div class="mt-1 truncate text-[11px] font-medium text-muted-foreground">Owned by { sync.OwnerUsername }</div>
+					<div class="mt-1 truncate text-xs font-medium text-muted-foreground">Owned by { sync.OwnerUsername }</div>
 				}
 			</div>
-			<span class={ "inline-flex shrink-0 rounded-md px-2.5 py-1 text-[11px] font-semibold", adminContactSyncClass(sync) }>{ adminContactSyncLabel(sync) }</span>
+			<span class={ "inline-flex shrink-0 rounded-md px-2.5 py-1 text-xs font-semibold", adminContactSyncClass(sync) }>{ adminContactSyncLabel(sync) }</span>
 		</div>
 		<div class="grid gap-2 sm:grid-cols-2">
 			@AdminDetail("contact_sync_provider_"+sync.AccountID, "Provider", adminContactSyncProviderLabel(sync.Provider))
@@ -2692,7 +2692,7 @@ templ AdminContactEventRow(event models.ContactActivityEvent) {
 				}
 			</div>
 		</div>
-		<div><span class={ "inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold", adminContactEventClass(event.Type) }>{ adminContactEventLabel(event.Type) }</span></div>
+		<div><span class={ "inline-flex rounded-full px-2 py-0.5 text-xs font-semibold", adminContactEventClass(event.Type) }>{ adminContactEventLabel(event.Type) }</span></div>
 		<div class="text-sm font-semibold tabular-nums text-foreground">{ fmt.Sprintf("%d", event.Count) }</div>
 		<div class="min-w-0 truncate text-sm text-muted-foreground">{ event.Message }</div>
 	</div>
@@ -2709,7 +2709,7 @@ templ AdminAttemptRow(attempt models.AvatarAttemptLog, errorMode bool) {
 	<div class="grid gap-2 px-4 py-3 text-sm lg:grid-cols-[10rem_1fr_12rem] lg:items-start" data-log-row data-log-id={ adminAttemptID(attempt) }>
 		<div class="flex items-center gap-2">
 			<span class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{ attempt.Provider }</span>
-			<span class={ "inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold", adminAttemptStatusClass(attempt.Status) }>{ attempt.Status }</span>
+			<span class={ "inline-flex rounded-full px-2 py-0.5 text-xs font-semibold", adminAttemptStatusClass(attempt.Status) }>{ attempt.Status }</span>
 		</div>
 		<div class="min-w-0">
 			<div class="truncate font-medium text-foreground">{ adminAttemptEmail(attempt.Email) }</div>
@@ -2725,7 +2725,7 @@ templ AdminAttemptRow(attempt models.AvatarAttemptLog, errorMode bool) {
 
 templ AdminMetric(key string, label string, value int) {
 	<div class="rounded-lg border border-border bg-background/45 px-3 py-3 transition-colors duration-300" data-admin-metric={ key }>
-		<div class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{ label }</div>
+		<div class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{ label }</div>
 		<div class="mt-1 text-xl font-bold tabular-nums text-foreground" data-admin-metric-value>{ fmt.Sprintf("%d", value) }</div>
 	</div>
 }
@@ -2753,7 +2753,7 @@ templ AdminErrorDetail(key string, label string, value string) {
 
 templ AdminInlineMetric(key string, label string, value int) {
 	<div class="rounded-md border border-border bg-card px-2.5 py-1.5 transition-colors duration-300" data-admin-metric={ key }>
-		<div class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{ label }</div>
+		<div class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{ label }</div>
 		<div class="text-sm font-bold tabular-nums text-foreground" data-admin-metric-value>{ fmt.Sprintf("%d", value) }</div>
 	</div>
 }
@@ -2802,7 +2802,7 @@ templ AdminProviderCard(provider models.AvatarProviderStats) {
 				<div class="truncate text-base font-bold text-foreground">{ adminProviderLabel(provider.Provider) }</div>
 				<div class="mt-0.5 text-xs font-medium text-muted-foreground">{ adminProviderRole(provider.Provider) }</div>
 			</div>
-			<div class="rounded-md border border-border bg-background px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{ provider.Provider }</div>
+			<div class="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{ provider.Provider }</div>
 		</div>
 		<div class="grid gap-3 sm:grid-cols-2">
 			@AdminMetric(adminProviderMetricKey(provider.Provider, "in_use"), "In use", provider.InUse)
@@ -2820,14 +2820,14 @@ templ AdminProviderCard(provider models.AvatarProviderStats) {
 			<div class="h-1.5 overflow-hidden rounded-md bg-muted">
 				<div class="h-full rounded-md bg-emerald-500/80" style={ fmt.Sprintf("width:%d%%", adminProviderPercent(provider.Found, provider.Checked)) }></div>
 			</div>
-			<div class="mt-2 text-[11px] text-muted-foreground">{ fmt.Sprintf("%d total lookup outcomes", adminProviderAttemptTotal(provider)) }</div>
+			<div class="mt-2 text-xs text-muted-foreground">{ fmt.Sprintf("%d total lookup outcomes", adminProviderAttemptTotal(provider)) }</div>
 		</div>
 	</div>
 }
 
 templ AdminDetail(key string, label string, value string) {
 	<div class="rounded-lg border border-border bg-background/35 px-3 py-3 min-w-0" data-admin-detail={ key }>
-		<div class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{ label }</div>
+		<div class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{ label }</div>
 		<div class="mt-1 truncate text-sm font-medium text-foreground" data-admin-detail-value>{ value }</div>
 	</div>
 }
@@ -2873,10 +2873,10 @@ templ AdminMailHealthCard(label string, value int, warning bool, danger bool) {
 			templ.KV("border-border", !warning && !danger),
 		}
 	>
-		<div class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{ label }</div>
+		<div class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{ label }</div>
 		<div
 			class={
-				"mt-2 text-2xl font-bold tabular-nums",
+				"mt-2 text-2xl font-semibold tabular-nums",
 				templ.KV("text-amber-700 dark:text-amber-300", warning && !danger),
 				templ.KV("text-red-700 dark:text-red-300", danger),
 				templ.KV("text-foreground", !warning && !danger),
@@ -2891,15 +2891,15 @@ templ AdminMailOperationsPage(status models.MailOperationsAdminStatus) {
 			<div class="max-w-6xl px-6 py-8 lg:px-8 lg:py-10">
 				<div class="mb-7 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
 					<div>
-						<h2 class="text-2xl font-bold text-foreground">Mail operations</h2>
+						<h2 class="text-2xl font-semibold text-foreground">Mail operations</h2>
 						<p class="mt-1 max-w-3xl text-sm text-muted-foreground">Aggregate health for durable provider work. This page avoids message content and raw provider errors.</p>
 					</div>
 					@AdminWebmailScopeFilter(status.Scope, "/admin/operations")
 				</div>
 				<div class="grid gap-3 sm:grid-cols-2">
 					<div class="rounded-lg border border-border bg-card p-4">
-						<div class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Retained operations</div>
-						<div class="mt-2 text-2xl font-bold tabular-nums text-foreground">{ fmt.Sprintf("%d", status.Total) }</div>
+						<div class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Retained operations</div>
+						<div class="mt-2 text-2xl font-semibold tabular-nums text-foreground">{ fmt.Sprintf("%d", status.Total) }</div>
 					</div>
 					<div
 						class={
@@ -2908,10 +2908,10 @@ templ AdminMailOperationsPage(status models.MailOperationsAdminStatus) {
 							templ.KV("border-border", status.ActionRequired == 0),
 						}
 					>
-						<div class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Need attention</div>
+						<div class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Need attention</div>
 						<div
 							class={
-								"mt-2 text-2xl font-bold tabular-nums",
+								"mt-2 text-2xl font-semibold tabular-nums",
 								templ.KV("text-amber-700 dark:text-amber-300", status.ActionRequired > 0),
 								templ.KV("text-foreground", status.ActionRequired == 0),
 							}
@@ -3001,7 +3001,7 @@ templ AdminMailOperationsPage(status models.MailOperationsAdminStatus) {
 						<section class="mt-5 rounded-lg border border-border/70 bg-background/35 p-4">
 							<div class="flex items-baseline justify-between gap-3">
 								<div class="text-xs font-semibold text-foreground">SMTP baseline</div>
-								<div class="text-[11px] text-muted-foreground">Process lifetime</div>
+								<div class="text-xs text-muted-foreground">Process lifetime</div>
 							</div>
 							<p class="mt-1 text-xs text-muted-foreground">Timing data for generic SMTP only. These counters reset when Raven restarts and are used to decide whether connection reuse is worth the extra state.</p>
 							<div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
@@ -3032,7 +3032,7 @@ templ AdminMailOperationsPage(status models.MailOperationsAdminStatus) {
 									<div class="flex items-center justify-between gap-3 rounded-md border border-border/70 bg-background/40 px-3 py-2.5">
 										<div class="min-w-0">
 											<div class="text-xs font-semibold text-foreground">{ mailOperationTypeLabel(item.Type) }</div>
-											<div class="mt-0.5 text-[11px] text-muted-foreground">{ item.Provider }</div>
+											<div class="mt-0.5 text-xs text-muted-foreground">{ item.Provider }</div>
 										</div>
 										<div class="shrink-0 text-right text-xs tabular-nums text-muted-foreground">
 											<div>{ fmt.Sprintf("%d total", item.Total) }</div>
@@ -3055,7 +3055,7 @@ templ AdminMailOperationsPage(status models.MailOperationsAdminStatus) {
 									<div class="flex items-center justify-between gap-3 rounded-md border border-border/70 bg-background/40 px-3 py-2.5">
 										<div class="min-w-0">
 											<div class="truncate text-xs font-semibold text-foreground">{ item.AccountLabel }</div>
-											<div class="mt-0.5 text-[11px] text-muted-foreground">{ item.Provider }</div>
+											<div class="mt-0.5 text-xs text-muted-foreground">{ item.Provider }</div>
 										</div>
 										<div class="shrink-0 text-right text-xs tabular-nums text-muted-foreground">
 											<div>{ fmt.Sprintf("%d total", item.Total) }</div>

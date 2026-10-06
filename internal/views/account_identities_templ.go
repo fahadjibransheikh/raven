@@ -94,7 +94,7 @@ func SettingsAccountIdentitiesLoader(account models.Account) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" hx-trigger=\"load\" hx-swap=\"outerHTML\" class=\"mt-4 border-t border-border/60 pt-3\"><p class=\"text-[11px] font-semibold uppercase tracking-wider text-muted-foreground\">Sending addresses</p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" hx-trigger=\"load\" hx-swap=\"outerHTML\" class=\"mt-4 border-t border-border/60 pt-3\"><p class=\"text-xs font-semibold uppercase tracking-wider text-muted-foreground\">Sending addresses</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -150,12 +150,12 @@ func SettingsAccountIdentities(data AccountIdentitiesData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "\" hx-target=\"this\" hx-swap=\"outerHTML\" class=\"mt-4 border-t border-border/60 pt-3\"><div class=\"mb-2 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between\"><p class=\"text-[11px] font-semibold uppercase tracking-wider text-muted-foreground\">Sending addresses</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "\" hx-target=\"this\" hx-swap=\"outerHTML\" class=\"mt-4 border-t border-border/60 pt-3\"><div class=\"mb-2 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between\"><p class=\"text-xs font-semibold uppercase tracking-wider text-muted-foreground\">Sending addresses</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if account.Provider == "gmail" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<button type=\"button\" class=\"inline-flex items-center gap-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground\" hx-post=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<button type=\"button\" class=\"inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground\" hx-post=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -271,7 +271,7 @@ func SettingsAccountIdentities(data AccountIdentitiesData) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</p><p class=\"mt-0.5 flex items-center gap-1.5 text-[10px] text-muted-foreground\"><span class=\"rounded border border-border/70 bg-muted/35 px-1 font-semibold uppercase tracking-wide\" data-identity-badge>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</p><p class=\"mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground\"><span class=\"rounded border border-border/70 bg-muted/35 px-1 font-semibold uppercase tracking-wide\" data-identity-badge>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -294,7 +294,7 @@ func SettingsAccountIdentities(data AccountIdentitiesData) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</p></div><div class=\"flex shrink-0 items-center gap-2 text-[11px]\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</p></div><div class=\"flex shrink-0 items-center gap-2 text-xs\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -367,7 +367,7 @@ func SettingsAccountIdentities(data AccountIdentitiesData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if len(data.Suggestions) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "<div class=\"mt-3\" data-identity-suggestions><p class=\"mb-1 text-[11px] text-muted-foreground\">Raven keeps seeing mail sent to these addresses. Add any you can send from.</p><ul class=\"space-y-1\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "<div class=\"mt-3\" data-identity-suggestions><p class=\"mb-1 text-xs text-muted-foreground\">Raven keeps seeing mail sent to these addresses. Add any you can send from.</p><ul class=\"space-y-1\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -411,7 +411,7 @@ func SettingsAccountIdentities(data AccountIdentitiesData) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, " messages)</span></span> <span class=\"flex shrink-0 items-center gap-2 text-[11px]\"><form hx-post=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, " messages)</span></span> <span class=\"flex shrink-0 items-center gap-2 text-xs\"><form hx-post=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

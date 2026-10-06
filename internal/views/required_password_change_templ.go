@@ -39,7 +39,7 @@ func RequiredPasswordChangePage(message, csrf, logoutCSRF string) templ.Componen
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<link rel=\"stylesheet\" href=\"/assets/css/output.css\"></head><body class=\"bg-background text-foreground antialiased\"><main class=\"min-h-screen flex items-center justify-center p-4\"><div class=\"w-full max-w-sm space-y-6\"><div><h1 class=\"text-2xl font-bold\">Change your password</h1><p class=\"mt-2 text-sm text-muted-foreground\">Your administrator requires a new password before you can access webmail.</p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<link rel=\"stylesheet\" href=\"/assets/css/output.css\"></head><body class=\"bg-background text-foreground antialiased\"><main class=\"min-h-screen flex items-center justify-center p-4\"><div class=\"w-full max-w-sm space-y-6\"><div><h1 class=\"text-2xl font-semibold\">Change your password</h1><p class=\"mt-2 text-sm text-muted-foreground\">Your administrator requires a new password before you can access webmail.</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

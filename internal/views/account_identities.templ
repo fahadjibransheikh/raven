@@ -48,7 +48,7 @@ templ SettingsAccountIdentitiesLoader(account models.Account) {
 		hx-swap="outerHTML"
 		class="mt-4 border-t border-border/60 pt-3"
 	>
-		<p class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Sending addresses</p>
+		<p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Sending addresses</p>
 	</div>
 }
 
@@ -62,11 +62,11 @@ templ SettingsAccountIdentities(data AccountIdentitiesData) {
 		class="mt-4 border-t border-border/60 pt-3"
 	>
 		<div class="mb-2 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-			<p class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Sending addresses</p>
+			<p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Sending addresses</p>
 			if account.Provider == "gmail" {
 				<button
 					type="button"
-					class="inline-flex items-center gap-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+					class="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
 					hx-post={ accountIdentitiesURL(account.ID, "refresh") }
 					data-identities-refresh
 				>
@@ -88,14 +88,14 @@ templ SettingsAccountIdentities(data AccountIdentitiesData) {
 								<span class="font-normal text-muted-foreground">({ identity.Name })</span>
 							}
 						</p>
-						<p class="mt-0.5 flex items-center gap-1.5 text-[10px] text-muted-foreground">
+						<p class="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
 							<span class="rounded border border-border/70 bg-muted/35 px-1 font-semibold uppercase tracking-wide" data-identity-badge>{ identitySourceBadge(identity.Source) }</span>
 							if identity.IsDefault {
 								<span class="rounded bg-primary/10 px-1 font-semibold uppercase tracking-wide text-primary" data-identity-default>Default</span>
 							}
 						</p>
 					</div>
-					<div class="flex shrink-0 items-center gap-2 text-[11px]">
+					<div class="flex shrink-0 items-center gap-2 text-xs">
 						if !identity.IsDefault {
 							<button type="button" class="text-muted-foreground transition-colors hover:text-foreground" hx-post={ accountIdentitiesURL(account.ID, fmt.Sprint(identity.ID), "default") } data-identity-set-default>
 								Set default
@@ -112,12 +112,12 @@ templ SettingsAccountIdentities(data AccountIdentitiesData) {
 		</ul>
 		if len(data.Suggestions) > 0 {
 			<div class="mt-3" data-identity-suggestions>
-				<p class="mb-1 text-[11px] text-muted-foreground">Raven keeps seeing mail sent to these addresses. Add any you can send from.</p>
+				<p class="mb-1 text-xs text-muted-foreground">Raven keeps seeing mail sent to these addresses. Add any you can send from.</p>
 				<ul class="space-y-1">
 					for _, s := range data.Suggestions {
 						<li class="flex items-center justify-between gap-2 text-xs" data-identity-suggestion={ s.Email }>
 							<span class="min-w-0 truncate text-foreground">{ s.Email } <span class="text-muted-foreground">({ fmt.Sprint(s.Count) } messages)</span></span>
-							<span class="flex shrink-0 items-center gap-2 text-[11px]">
+							<span class="flex shrink-0 items-center gap-2 text-xs">
 								<form hx-post={ accountIdentitiesURL(account.ID) }>
 									<input type="hidden" name="email" value={ s.Email }/>
 									<button type="submit" class="text-primary hover:underline" data-identity-suggestion-add>Add</button>

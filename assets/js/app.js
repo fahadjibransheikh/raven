@@ -569,7 +569,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         if (status) {
           status.textContent = "New picture ready"
-          status.classList.remove("hidden", "text-ink/45")
+          status.classList.remove("hidden", "text-subtle-foreground")
           status.classList.add("text-emerald-700")
         }
         if (chooseLabel) chooseLabel.textContent = "Replace"
@@ -584,7 +584,7 @@ document.addEventListener("DOMContentLoaded", function () {
           status.textContent = "Picture will be removed"
           status.classList.remove("hidden")
           status.classList.remove("text-emerald-700")
-          status.classList.add("text-ink/45")
+          status.classList.add("text-subtle-foreground")
         }
         if (chooseLabel) chooseLabel.textContent = "Choose image"
       }
@@ -758,7 +758,7 @@ document.addEventListener("DOMContentLoaded", function () {
           label.classList.toggle("dark:text-emerald-300", enabled)
           label.classList.toggle("border-ink/10", !enabled)
           label.classList.toggle("bg-ink/[0.03]", !enabled)
-          label.classList.toggle("text-ink/35", !enabled)
+          label.classList.toggle("text-subtle-foreground", !enabled)
         }
         return
       }
@@ -1956,7 +1956,7 @@ document.addEventListener("DOMContentLoaded", function () {
       return '<div id="mail-shortcut-help" class="fixed inset-0 z-[1000] flex items-center justify-center bg-background/70 px-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">' +
         '<div class="w-full max-w-lg rounded-2xl border border-border bg-card p-5 shadow-menu animate-fade-in">' +
           '<div class="mb-4 flex items-start justify-between gap-3">' +
-            '<div><h2 class="text-lg font-bold tracking-tight">Keyboard shortcuts</h2><p class="mt-1 text-xs text-muted-foreground">Shortcuts are disabled while typing or composing.</p></div>' +
+            '<div><h2 class="text-lg font-semibold tracking-tight">Keyboard shortcuts</h2><p class="mt-1 text-xs text-muted-foreground">Shortcuts are disabled while typing or composing.</p></div>' +
             '<button type="button" class="rounded-md border border-border px-2 py-1 text-xs font-semibold text-muted-foreground hover:bg-accent hover:text-foreground" data-mail-shortcut-help-close>Esc</button>' +
           '</div>' +
           '<div class="grid gap-2 sm:grid-cols-2">' +
@@ -2911,7 +2911,7 @@ document.addEventListener("DOMContentLoaded", function () {
       if (search) {
         search.dataset.mailCommittedQuery = committedQuery
         search.value = ""
-        search.placeholder = "Search, or use from: subject: body: then Enter"
+        search.placeholder = "Search mail"
       }
       renderActivePills()
       syncFilterButton(readFilters())
@@ -3356,8 +3356,8 @@ document.addEventListener("DOMContentLoaded", function () {
           '<div class="flex items-start justify-between gap-3">' +
             '<div class="min-w-0" data-processing-content-wrap>' +
               '<p data-processing-title class="text-[12px] font-semibold leading-5 text-amber-600 dark:text-amber-400 inline-flex items-center gap-1.5"><span class="inline-block size-2 rounded-full bg-amber-500 animate-pulse"></span><span>Processing structure</span></p>' +
-              '<p data-processing-text class="text-[11px] leading-4 text-muted-foreground mt-0.5 transition-opacity duration-180 ease-out"></p>' +
-              '<p data-processing-mini-text class="hidden text-[11px] leading-4 text-muted-foreground mt-0 items-center gap-1.5"><span class="inline-block size-2 rounded-full bg-amber-500 animate-pulse"></span><span>Processing...</span></p>' +
+              '<p data-processing-text class="text-xs leading-4 text-muted-foreground mt-0.5 transition-opacity duration-180 ease-out"></p>' +
+              '<p data-processing-mini-text class="hidden text-xs leading-4 text-muted-foreground mt-0 items-center gap-1.5"><span class="inline-block size-2 rounded-full bg-amber-500 animate-pulse"></span><span>Processing...</span></p>' +
             '</div>' +
             '<span data-processing-minimize class="shrink-0 rounded p-1 hover:bg-muted" aria-hidden="true">' +
               '<svg xmlns="http://www.w3.org/2000/svg" class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg>' +
@@ -4412,7 +4412,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function mailListNearTop(vml) {
     if (!vml || !vml.container) return true
-    return vml.container.scrollTop < (vml.itemHeight || 100) * 2
+    return vml.container.scrollTop < (vml.itemHeight || MAIL_ROW_HEIGHT.cards) * 2
   }
 
   function refreshActiveMailListAfterAccountSync(data) {
@@ -4530,7 +4530,7 @@ document.addEventListener("DOMContentLoaded", function () {
               if (span) {
                 var badge = document.createElement("span")
                 badge.dataset.folderUnread = id
-                badge.className = "min-w-5 h-5 px-1.5 flex items-center justify-center rounded-full text-[11px] font-semibold tabular-nums bg-sidebar-accent text-sidebar-foreground/80"
+                badge.className = "min-w-5 h-5 flex items-center justify-end text-xs tabular-nums text-subtle-foreground"
                 badge.textContent = String(counts[id])
                 link.appendChild(badge)
               }
@@ -4616,8 +4616,8 @@ document.addEventListener("DOMContentLoaded", function () {
         sidebarLinks[i].classList.add("text-sidebar-foreground")
         var badge = sidebarLinks[i].querySelector("[data-folder-unread]")
         if (badge) {
-          badge.classList.remove("bg-sidebar-primary/20", "text-sidebar-primary")
-          badge.classList.add("bg-sidebar-accent", "text-sidebar-foreground/80")
+          badge.classList.remove("text-sidebar-accent-foreground")
+          badge.classList.add("text-subtle-foreground")
         }
       }
       var folderRows = sidebar.querySelectorAll("[data-sidebar-folder-row]")
@@ -4626,8 +4626,8 @@ document.addEventListener("DOMContentLoaded", function () {
         folderRows[r].classList.add("text-sidebar-foreground", "hover:bg-sidebar-accent/60", "hover:text-sidebar-accent-foreground")
         var rowBadge = folderRows[r].querySelector("[data-folder-unread]")
         if (rowBadge) {
-          rowBadge.classList.remove("bg-sidebar-primary/20", "text-sidebar-primary")
-          rowBadge.classList.add("bg-sidebar-accent", "text-sidebar-foreground/80")
+          rowBadge.classList.remove("text-sidebar-accent-foreground")
+          rowBadge.classList.add("text-subtle-foreground")
         }
       }
     }
@@ -4779,8 +4779,8 @@ document.addEventListener("DOMContentLoaded", function () {
       }
       var activeBadge = link.querySelector("[data-folder-unread]")
       if (activeBadge) {
-        activeBadge.classList.remove("bg-sidebar-accent", "text-sidebar-foreground/80")
-        activeBadge.classList.add("bg-sidebar-primary/20", "text-sidebar-primary")
+        activeBadge.classList.remove("text-subtle-foreground")
+        activeBadge.classList.add("text-sidebar-accent-foreground")
       }
 
       var mainContent = document.getElementById("main-content")
@@ -4810,15 +4810,15 @@ document.addEventListener("DOMContentLoaded", function () {
       '<div class="mail-list-header px-4 py-4 space-y-3">' +
       '<div class="mail-list-title-row flex items-center justify-between">' +
       '<div class="mail-list-title flex items-center gap-2 min-w-0">' +
-      '<h2 id="mail-folder-name" class="text-lg font-bold tracking-tight">' + escapeHTML(folderName) + '</h2>' +
+      '<h2 id="mail-folder-name" class="text-lg font-semibold tracking-tight">' + escapeHTML(folderName) + '</h2>' +
       (count ? '<span id="mail-folder-count" class="inline-flex h-5 min-w-10 items-center justify-center rounded-full bg-muted px-2 text-xs font-medium text-muted-foreground shadow-[0_1px_2px_rgba(0,0,0,0.06)]">' + escapeHTML(count) + '</span>' : '') +
       '</div>' +
       '<div class="h-8 w-8 rounded-md bg-muted/50"></div>' +
       '</div>' +
       '<div class="mail-list-search-section">' +
       '<div class="mail-list-search-primary">' +
-      '<div class="mail-list-search-input-wrap relative rounded-lg min-w-0">' +
-      '<input type="text" placeholder="Search, or use from: subject: body: then Enter" disabled class="h-9 w-full pl-3 pr-3 rounded-lg text-sm bg-background border border-border/50 opacity-60" />' +
+      '<div class="mail-list-search-input-wrap relative rounded-md min-w-0">' +
+      '<input type="text" placeholder="Search mail" disabled class="h-9 w-full pl-3 pr-3 rounded-lg text-sm bg-background border border-border/50 opacity-60" />' +
       '</div>' +
       '<div class="mail-list-search-actions">' +
       '<button type="button" disabled class="mail-list-advanced-filter-button inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-xs font-semibold text-muted-foreground opacity-60"><span>Filters</span>' + pendingIcon("size-3.5") + '</button>' +
@@ -4991,12 +4991,12 @@ document.addEventListener("DOMContentLoaded", function () {
     var html = '<div class="px-4 pb-4">'
     if (mode === "contacts") {
       html += '<div class="inline-flex w-full items-stretch rounded-lg shadow-sm">'
-      html += '<div class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors flex h-10 min-w-0 flex-1 items-center justify-center gap-2 rounded-l-lg rounded-r-none text-sm font-semibold text-sidebar-primary-foreground opacity-75">'
+      html += '<div class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors flex h-9 min-w-0 flex-1 items-center justify-center gap-2 rounded-l-md rounded-r-none text-sm font-medium text-sidebar-primary-foreground opacity-75">'
       html += pendingSidebarIcon("user-plus", "size-4") + '<span>New contact</span></div>'
-      html += '<div class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-l-none rounded-r-lg border-l border-sidebar-border/70 text-sidebar-primary-foreground opacity-75">'
+      html += '<div class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-l-none rounded-r-md border-l border-sidebar-border/70 text-sidebar-primary-foreground opacity-75">'
       html += pendingSidebarIcon("ellipsis-vertical", "size-4") + '</div></div>'
     } else {
-      html += '<div class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors flex h-10 w-full items-center justify-center gap-2 rounded-lg text-sm font-semibold text-sidebar-primary-foreground opacity-75">'
+      html += '<div class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors flex h-9 w-full items-center justify-center gap-2 rounded-md text-sm font-medium text-sidebar-primary-foreground opacity-75">'
       html += pendingSidebarIcon("pen", "size-4") + '<span>Compose</span></div>'
     }
     html += '</div>'
@@ -5037,7 +5037,7 @@ document.addEventListener("DOMContentLoaded", function () {
   function pendingRowCount(list, mode, viewMode) {
     var height = list && list.getBoundingClientRect ? list.getBoundingClientRect().height : 0
     var reserved = mode === "contacts" ? 148 : 160
-    var itemHeight = viewMode === "table" ? 44 : 100
+    var itemHeight = mailRowHeight(viewMode)
     var count = Math.ceil(Math.max(0, height - reserved) / itemHeight) + 2
     if (!isFinite(count) || count <= 0) count = viewMode === "table" ? 14 : 8
     return Math.max(viewMode === "table" ? 10 : 6, Math.min(viewMode === "table" ? 28 : 12, count))
@@ -5059,19 +5059,19 @@ document.addEventListener("DOMContentLoaded", function () {
     var cardsClass = viewMode === "cards" ? "text-foreground" : "text-muted-foreground"
     var tableClass = viewMode === "table" ? "text-foreground" : "text-muted-foreground"
     var indicator = viewMode === "table" ? "transform:translateX(100%)" : "transform:translateX(0)"
-    return '<div class="relative inline-flex h-7 shrink-0 rounded-lg border border-border bg-background p-0.5 gap-0.5" aria-hidden="true">' +
-      '<div class="absolute top-0.5 bottom-0.5 left-0.5 w-[calc(50%-2px)] rounded-md border border-border bg-card shadow-sm transition-transform duration-200 ease-out" style="' + indicator + '"></div>' +
-      '<button type="button" disabled class="relative z-10 inline-flex h-6 items-center gap-1 px-2 rounded-md text-xs font-medium ' + cardsClass + '">' + pendingIcon("size-3.5") + 'Cards</button>' +
-      '<button type="button" disabled class="relative z-10 inline-flex h-6 items-center gap-1 px-2 rounded-md text-xs font-medium ' + tableClass + '">' + pendingIcon("size-3.5") + 'Table</button>' +
+    return '<div class="relative inline-flex h-7 shrink-0 rounded-md bg-muted p-0.5 gap-0.5" aria-hidden="true">' +
+      '<div class="absolute top-0.5 bottom-0.5 left-0.5 w-[calc(50%-2px)] rounded border border-border bg-background transition-transform duration-200 ease-out" style="' + indicator + '"></div>' +
+      '<button type="button" disabled class="relative z-10 inline-flex h-6 w-7 items-center justify-center rounded text-xs font-medium ' + cardsClass + '">' + pendingIcon("size-3.5") + '</button>' +
+      '<button type="button" disabled class="relative z-10 inline-flex h-6 w-7 items-center justify-center rounded text-xs font-medium ' + tableClass + '">' + pendingIcon("size-3.5") + '</button>' +
     '</div>'
   }
 
   function mailPendingHeaderHTML() {
     return '<div class="mail-list-header px-4 py-4 space-y-3">' +
-      '<div class="mail-list-title-row flex items-center justify-between"><div class="mail-list-title flex items-center gap-2 min-w-0"><h2 id="mail-folder-name" class="text-lg font-bold tracking-tight">Inbox</h2><span id="mail-folder-count" class="inline-flex h-5 min-w-10 items-center justify-center rounded-full bg-muted px-2 text-xs font-medium text-muted-foreground shadow-[0_1px_2px_rgba(0,0,0,0.06)] animate-pulse"></span></div></div>' +
-      '<div class="mail-list-search-section"><div class="mail-list-search-primary"><div class="mail-list-search-input-wrap relative rounded-lg min-w-0">' +
+      '<div class="mail-list-title-row flex items-center justify-between"><div class="mail-list-title flex items-center gap-2 min-w-0"><h2 id="mail-folder-name" class="text-lg font-semibold tracking-tight">Inbox</h2><span id="mail-folder-count" class="inline-flex h-5 min-w-10 items-center justify-center rounded-full bg-muted px-2 text-xs font-medium text-muted-foreground shadow-[0_1px_2px_rgba(0,0,0,0.06)] animate-pulse"></span></div></div>' +
+      '<div class="mail-list-search-section"><div class="mail-list-search-primary"><div class="mail-list-search-input-wrap relative rounded-md min-w-0">' +
           '<span class="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 rounded-sm bg-muted-foreground/30"></span>' +
-          '<input type="text" disabled placeholder="Search, or use from: subject: body: then Enter" class="h-9 w-full pl-8 pr-3 rounded-lg text-sm bg-background border border-border/50 outline-none opacity-70"/>' +
+          '<input type="text" disabled placeholder="Search mail" class="h-9 w-full pl-8 pr-3 rounded-md text-sm bg-background border border-input outline-none opacity-70"/>' +
         '</div><div class="mail-list-search-actions">' +
           '<button type="button" disabled class="mail-list-advanced-filter-button inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-xs font-semibold text-foreground opacity-70"><span>Filters</span>' + pendingIcon("size-3.5") + '</button>' +
         '</div></div></div>' +
@@ -5080,7 +5080,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function contactsPendingHeaderHTML() {
     return '<div class="px-4 py-4 space-y-3">' +
-      '<div class="flex items-center justify-between"><div class="flex items-center gap-2"><h2 class="text-lg font-bold tracking-tight">Contacts</h2><span id="contacts-count" class="inline-flex h-5 min-w-10 items-center justify-center rounded-md bg-muted px-2 text-xs font-medium text-muted-foreground shadow-[0_1px_2px_rgba(0,0,0,0.06)] animate-pulse"></span></div></div>' +
+      '<div class="flex items-center justify-between"><div class="flex items-center gap-2"><h2 class="text-lg font-semibold tracking-tight">Contacts</h2><span id="contacts-count" class="inline-flex h-5 min-w-10 items-center justify-center rounded-md bg-muted px-2 text-xs font-medium text-muted-foreground shadow-[0_1px_2px_rgba(0,0,0,0.06)] animate-pulse"></span></div></div>' +
       '<div class="flex items-center gap-2"><div class="relative rounded-lg flex-1 min-w-0">' +
         '<span class="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 rounded-sm bg-muted-foreground/30"></span>' +
         '<input type="search" disabled placeholder="Search contacts" class="h-9 w-full rounded-lg border border-border/50 bg-background pl-8 pr-3 text-sm text-foreground placeholder:text-muted-foreground opacity-70"/>' +
@@ -5091,7 +5091,7 @@ document.addEventListener("DOMContentLoaded", function () {
   function mailPendingToolbarHTML(viewMode) {
     var sortBy = window.GoferSettings ? GoferSettings.get("mail_list_sort_by") : "date"
     var sortLabel = sortBy === "sender" ? "Sender" : (sortBy === "subject" ? "Subject" : "Date")
-    return '<div class="mail-list-toolbar flex items-center gap-1 px-4 py-1.5">' +
+    return '<div class="mail-list-toolbar flex items-center gap-1 px-3">' +
       pendingViewToggleHTML(viewMode) +
       '<div class="mail-list-toolbar-spacer flex-1"></div>' +
       '<button type="button" disabled class="inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground opacity-60">' + pendingIcon("size-3.5") + '<span class="hidden sm:inline">' + sortLabel + '</span></button>' +
@@ -5112,7 +5112,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function mailPendingTableHeaderHTML() {
-    return '<div class="mail-list-table-header mail-list-table-grid grid items-center gap-3 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-card/95 border-b border-border/70 sticky top-0 z-20 backdrop-blur-sm">' +
+    return '<div class="mail-list-table-header mail-list-table-grid grid items-center gap-3 px-3 py-1.5 text-xs font-medium text-muted-foreground bg-card/95 border-b border-border/70 sticky top-0 z-20 backdrop-blur-sm">' +
       '<div class="mail-list-table-heading flex items-center justify-center" data-mail-table-column="0" data-mail-table-column-id="accountMarker" data-mail-table-cell="accountMarker" title="Account Marker"><span class="account-color-marker size-2.5 bg-muted"></span><span class="mail-list-column-separator"></span></div>' +
       '<div class="mail-list-table-heading text-center" data-mail-table-column="1" data-mail-table-column-id="starred" data-mail-table-cell="starred" title="Starred">' + pendingIcon("mx-auto size-3") + '<span class="mail-list-column-separator"></span></div>' +
       '<div class="mail-list-table-heading text-center" data-mail-table-column="2" data-mail-table-column-id="attachment" data-mail-table-cell="attachment" title="Attachment">' + pendingIcon("mx-auto size-3") + '<span class="mail-list-column-separator"></span></div>' +
@@ -5125,7 +5125,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function contactsPendingTableHeaderHTML() {
-    return '<div class="mail-list-table-header mail-list-table-grid grid items-center gap-3 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-card/95 border-b border-border/70 sticky top-0 z-20 backdrop-blur-sm" style="--mail-list-table-columns:minmax(10rem,1.4fr) minmax(8rem,0.9fr) minmax(3.5rem,auto)">' +
+    return '<div class="mail-list-table-header mail-list-table-grid grid items-center gap-3 px-3 py-1.5 text-xs font-medium text-muted-foreground bg-card/95 border-b border-border/70 sticky top-0 z-20 backdrop-blur-sm" style="--mail-list-table-columns:minmax(10rem,1.4fr) minmax(8rem,0.9fr) minmax(3.5rem,auto)">' +
       '<div class="mail-list-table-heading">Name</div><div class="mail-list-table-heading">Origin</div><div class="mail-list-table-heading min-w-12 text-right">Msgs</div>' +
     '</div>'
   }
@@ -5205,7 +5205,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function readPanePendingHTML(mode) {
     var label = mode === "contacts" ? "Loading contacts..." : "Loading message..."
-    return '<div class="flex flex-col h-full p-2"><div class="bg-paper text-ink rounded-md flex flex-col h-full overflow-hidden"><div class="flex items-center justify-between px-6 py-2.5"><div class="flex items-center gap-1"><div class="size-8 rounded-md bg-ink/[0.03] border border-ink/6"></div><div class="size-8 rounded-md bg-ink/[0.03] border border-ink/6"></div></div><div class="h-4 w-20 rounded bg-ink/5 animate-pulse"></div></div><div class="h-px bg-gradient-to-r from-transparent via-amber-900/10 to-transparent"></div><div class="flex-1 overflow-y-auto"><div class="mx-auto px-8 py-6"><div class="flex items-center gap-2 text-sm text-ink/45"><div class="size-4 border-2 border-ink/15 border-t-ink/45 rounded-full animate-spin"></div><span>' + label + '</span></div><div class="space-y-3 mt-5"><div class="h-4 w-full rounded bg-ink/5 animate-pulse"></div><div class="h-4 w-11/12 rounded bg-ink/5 animate-pulse"></div><div class="h-4 w-4/5 rounded bg-ink/5 animate-pulse"></div></div></div></div></div></div>'
+    return '<div class="flex flex-col h-full p-2"><div class="bg-paper text-ink rounded-md flex flex-col h-full overflow-hidden"><div class="flex items-center justify-between px-6 py-2.5"><div class="flex items-center gap-1"><div class="size-8 rounded-md bg-ink/[0.03] border border-ink/6"></div><div class="size-8 rounded-md bg-ink/[0.03] border border-ink/6"></div></div><div class="h-4 w-20 rounded bg-ink/5 animate-pulse"></div></div><div class="h-px bg-border"></div><div class="flex-1 overflow-y-auto"><div class="mx-auto px-8 py-6"><div class="flex items-center gap-2 text-sm text-subtle-foreground"><div class="size-4 border-2 border-ink/15 border-t-ink/45 rounded-full animate-spin"></div><span>' + label + '</span></div><div class="space-y-3 mt-5"><div class="h-4 w-full rounded bg-ink/5 animate-pulse"></div><div class="h-4 w-11/12 rounded bg-ink/5 animate-pulse"></div><div class="h-4 w-4/5 rounded bg-ink/5 animate-pulse"></div></div></div></div></div></div>'
   }
 
   function showAppSwitchPending(mode) {
@@ -5498,7 +5498,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function contactDetailSkeletonField(label, widthClass, className) {
     return '<div class="min-w-0 border-b border-ink/10 py-3 last:border-b-0 lg:[&:nth-last-child(-n+2)]:border-b-0 xl:last:border-b-0 ' + (className || "") + '">' +
-      '<div class="text-[10px] font-semibold uppercase tracking-wider text-ink/35">' + label + '</div>' +
+      '<div class="text-xs font-medium text-subtle-foreground">' + label + '</div>' +
       '<div class="mt-1 flex min-h-5 items-center">' +
         '<div class="h-3 ' + widthClass + ' max-w-full rounded bg-ink/5 animate-pulse"></div>' +
       '</div>' +
@@ -5506,9 +5506,9 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function contactDetailSkeletonSectionHeader(label) {
-    return '<div class="flex items-center gap-2 border-b border-ink/10 px-4 py-3 text-ink/40">' +
+    return '<div class="flex items-center gap-2 border-b border-ink/10 px-4 py-3 text-subtle-foreground">' +
       pendingIcon("size-3.5") +
-      '<h2 class="text-xs font-semibold uppercase tracking-wider text-ink/45">' + label + '</h2>' +
+      '<h2 class="text-xs font-medium text-subtle-foreground">' + label + '</h2>' +
     '</div>'
   }
 
@@ -5529,11 +5529,11 @@ document.addEventListener("DOMContentLoaded", function () {
     return '<div class="w-full rounded-lg border border-ink/10 bg-ink/[0.025] p-4">' +
       '<div class="mb-3 flex items-center justify-between gap-3">' +
         '<div>' +
-          '<h2 class="text-xs font-semibold uppercase tracking-wider text-ink/45">Recent activity</h2>' +
-          '<p class="mt-1 text-xs text-ink/35">Latest emails involving this contact.</p>' +
+          '<h2 class="text-xs font-medium text-subtle-foreground">Recent activity</h2>' +
+          '<p class="mt-1 text-xs text-subtle-foreground">Latest emails involving this contact.</p>' +
         '</div>' +
         '<div class="flex shrink-0 items-center gap-2">' +
-          '<span class="rounded bg-ink/[0.05] px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-ink/40">Top 10</span>' +
+          '<span class="rounded bg-ink/[0.05] px-2 py-1 text-xs font-medium text-subtle-foreground">Top 10</span>' +
           '<div class="h-7 w-16 rounded-md border border-ink/10 bg-paper/45"></div>' +
         '</div>' +
       '</div>' +
@@ -5549,8 +5549,8 @@ document.addEventListener("DOMContentLoaded", function () {
     var avatar = escapeHTML(preview.avatar || "")
     var name = escapeHTML(preview.name || "Loading contact")
     var avatarHTML = avatar
-      ? '<div class="size-14 shrink-0 overflow-hidden rounded-full bg-ink/5 shadow-[0_8px_22px_rgba(0,0,0,0.16)]"><img src="' + avatar + '" alt="" class="block size-full object-cover"/></div>'
-      : '<div class="flex size-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-b from-amber-700/70 to-amber-900/70 text-base font-bold text-amber-100 shadow-[0_8px_22px_rgba(0,0,0,0.16)]">' + initials + '</div>'
+      ? '<div class="size-14 shrink-0 overflow-hidden rounded-full bg-ink/5"><img src="' + avatar + '" alt="" class="block size-full object-cover"/></div>'
+      : '<div class="flex size-14 shrink-0 items-center justify-center rounded-full bg-muted text-base font-medium text-muted-foreground">' + initials + '</div>'
     detail.setAttribute("aria-busy", "true")
     detail.innerHTML =
       '<div class="bg-paper text-ink rounded-md flex flex-col h-full overflow-hidden" data-contact-detail-loading>' +
@@ -5560,8 +5560,8 @@ document.addEventListener("DOMContentLoaded", function () {
             '<div class="flex min-w-0 items-start gap-4">' +
               avatarHTML +
               '<div class="min-w-0 pt-0.5">' +
-                '<h1 class="min-w-0 truncate text-2xl font-bold leading-tight tracking-tight text-ink">' + name + '</h1>' +
-                '<div class="mt-1 text-sm text-ink/45">Contact entry</div>' +
+                '<h1 class="min-w-0 truncate text-[22px] font-semibold leading-7 tracking-tight text-foreground">' + name + '</h1>' +
+                '<div class="mt-1 text-sm text-subtle-foreground">Contact entry</div>' +
               '</div>' +
             '</div>' +
             '<div class="flex flex-wrap items-center gap-2 xl:justify-end" aria-hidden="true">' +
@@ -5589,9 +5589,9 @@ document.addEventListener("DOMContentLoaded", function () {
             '</section>' +
             '<section class="rounded-lg border border-ink/10 bg-ink/[0.02]">' +
               '<div class="flex flex-wrap items-center justify-between gap-3 border-b border-ink/10 px-4 py-3">' +
-                '<div class="flex flex-wrap items-center gap-2 text-ink/40">' +
+                '<div class="flex flex-wrap items-center gap-2 text-subtle-foreground">' +
                   pendingIcon("size-3.5") +
-                  '<h2 class="text-xs font-semibold uppercase tracking-wider text-ink/55">Raven Sync</h2>' +
+                  '<h2 class="text-xs font-medium text-ink/55">Raven Sync</h2>' +
                   '<div class="h-6 w-16 rounded-md border border-ink/10 bg-ink/[0.03] animate-pulse"></div>' +
                 '</div>' +
                 '<div class="h-7 w-24 rounded-md border border-ink/10 bg-ink/[0.025] animate-pulse"></div>' +
@@ -5633,32 +5633,32 @@ document.addEventListener("DOMContentLoaded", function () {
         '<div class="bg-paper text-ink rounded-md flex flex-col h-full overflow-hidden">' +
           '<div class="flex items-center justify-between px-6 py-2.5">' +
             '<div class="flex items-center gap-1">' +
-              '<div class="size-8 rounded-md flex items-center justify-center text-ink/45 bg-ink/[0.03] border border-ink/6">↩</div>' +
-              '<div class="size-8 rounded-md flex items-center justify-center text-ink/45 bg-ink/[0.03] border border-ink/6">↪</div>' +
-              '<div class="size-8 rounded-md flex items-center justify-center text-ink/45 bg-ink/[0.03] border border-ink/6">⌫</div>' +
-              '<div class="size-8 rounded-md flex items-center justify-center text-ink/45 bg-ink/[0.03] border border-ink/6">⋯</div>' +
+              '<div class="size-8 rounded-md flex items-center justify-center text-subtle-foreground bg-ink/[0.03] border border-ink/6">↩</div>' +
+              '<div class="size-8 rounded-md flex items-center justify-center text-subtle-foreground bg-ink/[0.03] border border-ink/6">↪</div>' +
+              '<div class="size-8 rounded-md flex items-center justify-center text-subtle-foreground bg-ink/[0.03] border border-ink/6">⌫</div>' +
+              '<div class="size-8 rounded-md flex items-center justify-center text-subtle-foreground bg-ink/[0.03] border border-ink/6">⋯</div>' +
             '</div>' +
             '<div class="flex items-center gap-2">' +
-              '<div class="text-xs text-ink/40">' + time + '</div>' +
-              '<div class="size-8 rounded-md flex items-center justify-center text-ink/45 bg-ink/[0.03] border border-ink/6">◐</div>' +
+              '<div class="text-xs text-subtle-foreground">' + time + '</div>' +
+              '<div class="size-8 rounded-md flex items-center justify-center text-subtle-foreground bg-ink/[0.03] border border-ink/6">◐</div>' +
             '</div>' +
           '</div>' +
-          '<div class="h-px bg-gradient-to-r from-transparent via-amber-900/10 to-transparent"></div>' +
+          '<div class="h-px bg-border"></div>' +
           '<div class="flex-1 overflow-y-auto">' +
             '<div class="max-w-3xl mx-auto px-8 py-6">' +
               '<div class="flex items-start gap-4">' +
-                '<div class="size-11 rounded-full bg-gradient-to-b from-amber-700/70 to-amber-900/70 flex items-center justify-center text-sm font-bold text-amber-100 shrink-0 shadow-[0_2px_6px_rgba(0,0,0,0.2)]">' + initials + '</div>' +
+                '<div class="size-10 rounded-full bg-muted flex items-center justify-center text-sm font-medium text-muted-foreground shrink-0">' + initials + '</div>' +
                 '<div class="flex-1 space-y-2">' +
                   '<div class="flex items-center gap-2">' +
                     '<div class="font-semibold text-ink">' + sender + '</div>' +
-                    '<div class="text-xs text-ink/40">' + time + '</div>' +
+                    '<div class="text-xs text-subtle-foreground">' + time + '</div>' +
                   '</div>' +
-                  '<div class="text-xs text-ink/40">Preparing message...</div>' +
+                  '<div class="text-xs text-subtle-foreground">Preparing message...</div>' +
                 '</div>' +
               '</div>' +
-              '<h1 class="text-xl font-bold mt-5 tracking-tight text-ink">' + subject + '</h1>' +
-              '<div class="h-px bg-gradient-to-r from-transparent via-ink/10 to-transparent my-6"></div>' +
-              '<p class="text-sm text-ink/45 mb-4">' + bodyHint + '</p>' +
+              '<h1 class="text-[22px] leading-7 font-semibold mt-5 tracking-tight text-foreground text-balance">' + subject + '</h1>' +
+              '<div class="h-px bg-border my-6"></div>' +
+              '<p class="text-sm text-subtle-foreground mb-4">' + bodyHint + '</p>' +
               '<div class="space-y-3">' +
                 '<div class="h-4 w-full rounded bg-ink/5 animate-pulse"></div>' +
                 '<div class="h-4 w-5/6 rounded bg-ink/5 animate-pulse"></div>' +
@@ -5668,9 +5668,9 @@ document.addEventListener("DOMContentLoaded", function () {
           '</div>' +
           '<div class="px-6 py-3 border-t border-ink/6">' +
             '<div class="flex items-center gap-2">' +
-              '<div class="flex-1 h-9 rounded-md border border-ink/8 bg-ink/[0.02] flex items-center justify-center text-[13px] text-ink/45">Reply</div>' +
-              '<div class="flex-1 h-9 rounded-md border border-ink/8 bg-ink/[0.02] flex items-center justify-center text-[13px] text-ink/45">Reply All</div>' +
-              '<div class="flex-1 h-9 rounded-md border border-ink/8 bg-ink/[0.02] flex items-center justify-center text-[13px] text-ink/45">Forward</div>' +
+              '<div class="flex-1 h-9 rounded-md border border-ink/8 bg-ink/[0.02] flex items-center justify-center text-[13px] text-subtle-foreground">Reply</div>' +
+              '<div class="flex-1 h-9 rounded-md border border-ink/8 bg-ink/[0.02] flex items-center justify-center text-[13px] text-subtle-foreground">Reply All</div>' +
+              '<div class="flex-1 h-9 rounded-md border border-ink/8 bg-ink/[0.02] flex items-center justify-center text-[13px] text-subtle-foreground">Forward</div>' +
             '</div>' +
           '</div>' +
         '</div>' +
@@ -5771,13 +5771,13 @@ function outgoingSendStatusMarkup(summary) {
   if (!label) return ""
   var error = outgoingSendStatusError(summary)
   var title = error ? " title=\"" + outgoingStatusEscape(error) + "\"" : ""
-  var html = '<span data-outgoing-status="" class="inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium ' + outgoingSendStatusClasses(summary) + '"' + title + '>' + outgoingStatusEscape(label) + '</span>'
+  var html = '<span data-outgoing-status="" class="inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-xs font-medium ' + outgoingSendStatusClasses(summary) + '"' + title + '>' + outgoingStatusEscape(label) + '</span>'
   var actions = []
   if (summary.can_retry) actions.push({ action: "retry", label: "Retry" })
   if (summary.can_retry_now && (Number(summary.attempt_count) > 0 || summary.is_scheduled)) actions.push({ action: "retry-now", label: summary.is_scheduled ? "Send now" : "Try now" })
   if (summary.can_cancel) actions.push({ action: "cancel", label: "Cancel" })
   for (var i = 0; i < actions.length; i++) {
-    html += '<button type="button" data-outgoing-action="' + actions[i].action + '" data-outgoing-id="' + outgoingStatusEscape(summary.id) + '" class="text-[10px] font-medium underline decoration-dotted underline-offset-2 hover:no-underline" aria-label="' + outgoingStatusEscape(actions[i].label) + ' outgoing message">' + outgoingStatusEscape(actions[i].label) + '</button>'
+    html += '<button type="button" data-outgoing-action="' + actions[i].action + '" data-outgoing-id="' + outgoingStatusEscape(summary.id) + '" class="text-xs font-medium underline decoration-dotted underline-offset-2 hover:no-underline" aria-label="' + outgoingStatusEscape(actions[i].label) + ' outgoing message">' + outgoingStatusEscape(actions[i].label) + '</button>'
   }
   return '<span class="inline-flex items-center gap-1.5" data-outgoing-status-group="">' + html + '</span>'
 }
@@ -6928,7 +6928,7 @@ function mailSyncErrorSummaryHTML(issues) {
     }) : ""
     html += '<div class="rounded-md border border-sidebar-border/70 bg-sidebar-accent/20 px-2 py-1.5">' +
       '<div class="truncate font-semibold">' + _escapeComposeHTML(name) + '</div>' +
-      (email ? '<div class="truncate text-[11px] opacity-70">' + _escapeComposeHTML(email) + '</div>' : '') +
+      (email ? '<div class="truncate text-xs opacity-70">' + _escapeComposeHTML(email) + '</div>' : '') +
       (formattedAt ? '<div class="mt-1 opacity-85">Last failure: ' + _escapeComposeHTML(formattedAt) + '</div>' : '') +
       '<div class="mt-1 break-words opacity-90">' + _escapeComposeHTML(message) + '</div>' +
     '</div>'
@@ -10891,13 +10891,13 @@ function savedMailListWidth() {
       value = settings.mail_list_width
     } catch (_) {}
   }
-  var raw = String(value || "50%").trim()
+  var raw = String(value || "30%").trim()
   if (raw.charAt(raw.length - 1) === "%") {
     var percent = parseFloat(raw)
     if (!isNaN(percent) && percent > 0) return "clamp(300px," + percent + "%,calc(100% - 300px))"
   }
   var width = parseFloat(raw)
-  if (isNaN(width) || width <= 0) return "clamp(300px,50%,calc(100% - 300px))"
+  if (isNaN(width) || width <= 0) return "clamp(320px,30%,480px)"
   return Math.max(300, width) + "px"
 }
 
@@ -10907,7 +10907,7 @@ function composeOpeningShellHTML() {
     '<div class="px-4 py-4 space-y-3">' +
       '<div class="flex items-center justify-between">' +
         '<div class="flex items-center gap-2">' +
-          '<h2 class="text-lg font-bold tracking-tight">Inbox</h2>' +
+          '<h2 class="text-lg font-semibold tracking-tight">Inbox</h2>' +
           '<span class="h-5 w-10 rounded-full bg-muted animate-pulse"></span>' +
         '</div>' +
         '<div class="h-8 w-8 rounded-md bg-muted/50"></div>' +
@@ -11078,9 +11078,9 @@ function toggleStar(emailId) {
         var svg = starBtn.querySelector('svg')
         if (svg) {
           if (data.is_starred) {
-            svg.setAttribute('class', 'size-4 text-amber-500 fill-amber-500 drop-shadow-[0_1px_1px_rgba(180,120,0,0.3)]')
+            svg.setAttribute('class', 'size-4 text-warning fill-warning drop-shadow-[0_1px_1px_rgba(180,120,0,0.3)]')
           } else {
-            svg.setAttribute('class', 'size-4 text-ink/30')
+            svg.setAttribute('class', 'size-4 text-subtle-foreground')
           }
         }
       }

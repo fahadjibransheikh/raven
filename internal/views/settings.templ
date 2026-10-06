@@ -27,7 +27,7 @@ templ SettingsPage(accounts []models.Account, syncSettings models.SyncSettings, 
 			<div id="settings-content" class="max-w-3xl px-8 py-10">
 				<div class="mb-6">
 					@PhoneNavToggle("-ml-2 mb-2")
-					<h2 class="text-2xl font-bold text-foreground mb-1">Settings</h2>
+					<h2 class="text-2xl font-semibold text-foreground mb-1">Settings</h2>
 					<p class="text-sm text-muted-foreground">Manage your accounts and preferences</p>
 				</div>
 				if activeTab == "accounts" {
@@ -56,7 +56,7 @@ templ SettingsComposeDisplayTab(uiSettings map[string]string, signatureData []mo
 	<div class="mt-6 space-y-6">
 		<div class="bg-card rounded-lg border p-6 space-y-5">
 			<div>
-				<h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-1">Compose windows</h3>
+				<h3 class="text-sm font-semibold text-muted-foreground mb-1">Compose windows</h3>
 				<p class="text-xs text-muted-foreground">Choose where compose opens for new messages, replies, and forwards.</p>
 			</div>
 			<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -163,7 +163,7 @@ templ SettingsComposeDisplayTab(uiSettings map[string]string, signatureData []mo
 		@AccountSignaturesSettings(signatureData)
 		<div class="bg-card rounded-lg border p-6 space-y-5">
 			<div>
-				<h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-1">List view</h3>
+				<h3 class="text-sm font-semibold text-muted-foreground mb-1">List view</h3>
 				<p class="text-xs text-muted-foreground">Control how messages are summarized in the email list.</p>
 			</div>
 			<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -283,7 +283,7 @@ templ SettingsComposeDisplayTab(uiSettings map[string]string, signatureData []mo
 		</div>
 		<div class="bg-card rounded-lg border p-6 space-y-5">
 			<div>
-				<h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-1">Translation</h3>
+				<h3 class="text-sm font-semibold text-muted-foreground mb-1">Translation</h3>
 				<p class="text-xs text-muted-foreground">Choose the read-pane translation service and default target language.</p>
 			</div>
 			<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -319,7 +319,7 @@ templ SettingsComposeDisplayTab(uiSettings map[string]string, signatureData []mo
 							@selectbox.Item(selectbox.ItemProps{Value: "google_web_basic", Selected: translationProviderSettingValue(uiSettingGet(uiSettings, "translation_provider", "google_web_basic")) == "google_web_basic", Class: "items-start py-2 pr-8"}) {
 								<span class="flex min-w-0 flex-col whitespace-normal">
 									<span class="font-medium leading-tight">Google Web Translate (Basic)</span>
-									<span class="mt-0.5 text-[11px] leading-snug text-muted-foreground group-hover:text-accent-foreground/75">Best-effort translation using Google's web translation endpoint.</span>
+									<span class="mt-0.5 text-xs leading-snug text-muted-foreground group-hover:text-accent-foreground/75">Best-effort translation using Google's web translation endpoint.</span>
 								</span>
 							}
 						}
@@ -555,7 +555,7 @@ templ SettingsRegionalTab(uiSettings map[string]string) {
 	<div class="mt-6 space-y-6">
 		<div class="bg-card rounded-lg border p-6 space-y-5">
 			<div>
-				<h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-1">Regional</h3>
+				<h3 class="text-sm font-semibold text-muted-foreground mb-1">Regional</h3>
 				<p class="text-xs text-muted-foreground">Set locale preferences for dates, times, and future language options.</p>
 			</div>
 			<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -653,7 +653,7 @@ templ SettingsAdvancedTab(uiSettings map[string]string) {
 	<div class="mt-6 space-y-6">
 		<div class="bg-card rounded-lg border p-6 space-y-5">
 			<div>
-				<h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-1">Advanced</h3>
+				<h3 class="text-sm font-semibold text-muted-foreground mb-1">Advanced</h3>
 				<p class="text-xs text-muted-foreground">Tune behavior that affects performance and network usage.</p>
 			</div>
 			<div class="flex items-start justify-between gap-6 rounded-lg border border-border/60 bg-background/40 p-4">
@@ -740,7 +740,7 @@ templ SettingsContactsTab(accounts []models.Account, uiSettings map[string]strin
 	<div class="mt-6 space-y-6">
 		<div class="bg-card rounded-lg border p-6 space-y-5">
 			<div>
-				<h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-1">Local contacts</h3>
+				<h3 class="text-sm font-semibold text-muted-foreground mb-1">Local contacts</h3>
 				<p class="text-xs text-muted-foreground">Control how Raven builds and maintains your local address book from mail you already have.</p>
 			</div>
 			<div class="rounded-lg border border-border/60 bg-background/40 p-4 space-y-5">
@@ -858,7 +858,7 @@ templ SettingsContactsTab(accounts []models.Account, uiSettings map[string]strin
 		</div>
 		<div class="bg-card rounded-lg border p-6 space-y-3">
 			<div>
-				<h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-1">Provider sync</h3>
+				<h3 class="text-sm font-semibold text-muted-foreground mb-1">Provider sync</h3>
 				<p class="text-xs text-muted-foreground">Sync contacts with connected accounts. Gmail and Outlook use their existing account authorization; generic accounts appear here when contact sync is configured.</p>
 			</div>
 			<div class="rounded-lg border border-border bg-background/40 p-4 space-y-3">
@@ -866,7 +866,7 @@ templ SettingsContactsTab(accounts []models.Account, uiSettings map[string]strin
 					<div class="min-w-0">
 						<div class="flex flex-wrap items-center gap-2">
 							<h4 class="text-sm font-medium text-foreground">Account contacts</h4>
-							<span class="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">{ fmt.Sprintf("%d accounts", len(contactSyncAccounts(accounts))) }</span>
+							<span class="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">{ fmt.Sprintf("%d accounts", len(contactSyncAccounts(accounts))) }</span>
 						</div>
 						<p class="text-xs text-muted-foreground mt-1 leading-relaxed">Pull provider changes and keep contacts linked to selected accounts up to date.</p>
 					</div>
@@ -886,12 +886,12 @@ templ SettingsContactsTab(accounts []models.Account, uiSettings map[string]strin
 				</div>
 				if len(contactSyncAccounts(accounts)) > 0 {
 					<div class="space-y-2 border-t border-border/60 pt-3">
-						<p class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Account sync</p>
+						<p class="text-xs font-semibold text-muted-foreground">Account sync</p>
 						for _, account := range contactSyncAccounts(accounts) {
 							<div class="flex items-center justify-between gap-3 rounded-md border border-border/70 bg-card/60 px-3 py-2">
 								<div class="min-w-0">
 									<p class="truncate text-xs font-medium text-foreground">{ account.DisplayLabel() }</p>
-									<p class="truncate text-[11px] text-muted-foreground">{ contactProviderLabel(account) } - { account.Email }</p>
+									<p class="truncate text-xs text-muted-foreground">{ contactProviderLabel(account) } - { account.Email }</p>
 								</div>
 								<form hx-post="/api/settings/contacts/accounts/sync" hx-target="#account-contact-sync-status" hx-swap="innerHTML">
 									<input type="hidden" name="account_id" value={ account.ID }/>
@@ -1050,7 +1050,7 @@ templ SettingsSuppressedContacts(contacts []models.Contact, totalCount int) {
 						<div class="max-h-80 overflow-y-auto rounded-lg border border-border/60 bg-background/35">
 							for _, contact := range contacts {
 								<div class="flex items-center gap-3 border-b border-border/50 px-3 py-2.5 last:border-b-0">
-									@ContactAvatar(contact, "size-8 rounded-full text-[10px] font-bold shrink-0", "bg-muted text-muted-foreground")
+									@ContactAvatar(contact, "size-8 rounded-full text-xs font-bold shrink-0", "bg-muted text-muted-foreground")
 									<div class="min-w-0 flex-1">
 										<div class="truncate text-sm font-medium text-foreground">{ contact.Name }</div>
 										<div class="truncate text-xs text-muted-foreground">{ contact.Email }</div>
@@ -1075,7 +1075,7 @@ templ SettingsAccountsTab(accounts []models.Account) {
 	<div class="mt-6 bg-card rounded-lg border p-6 space-y-5">
 		<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 			<div class="min-w-0">
-				<h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-1">Accounts</h3>
+				<h3 class="text-sm font-semibold text-muted-foreground mb-1">Accounts</h3>
 				<p class="text-xs text-muted-foreground leading-relaxed">See which connected services each account provides. Email is available for existing mail accounts; contacts appear when provider sync is enabled.</p>
 			</div>
 			@dialog.Trigger(dialog.TriggerProps{For: "choose-account-type-dialog"}) {
@@ -1117,7 +1117,7 @@ templ SettingsSyncTab(settings models.SyncSettings, uiSettings map[string]string
 				<div class="bg-card rounded-lg border p-6">
 					<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 						<div class="min-w-0">
-							<h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-1">Sync Frequency</h3>
+							<h3 class="text-sm font-semibold text-muted-foreground mb-1">Sync Frequency</h3>
 							<p class="text-xs text-muted-foreground leading-relaxed">Controls how often polled folders are checked for changes.</p>
 						</div>
 						<div class="w-full sm:w-40 shrink-0">
@@ -1144,7 +1144,7 @@ templ SettingsSyncTab(settings models.SyncSettings, uiSettings map[string]string
 					<div class="bg-card rounded-lg border p-6 space-y-5">
 						<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 							<div>
-								<h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-1">Account Sync Mode</h3>
+								<h3 class="text-sm font-semibold text-muted-foreground mb-1">Account Sync Mode</h3>
 								if syncSettingsHasConfigurableFolderModes(settings) {
 									<p class="text-xs text-muted-foreground leading-relaxed">IMAP folders can use real-time push notifications or periodic polling. Gmail uses Gmail API history checks, and Outlook uses Microsoft Graph delta sync.</p>
 								} else {
@@ -1192,7 +1192,7 @@ templ SettingsSyncTab(settings models.SyncSettings, uiSettings map[string]string
 													@icon.MailCheck(icon.Props{Class: "size-3.5"})
 												</div>
 												<div class="min-w-0">
-													<div class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{ syncSettingsProviderAPITitle(account.Provider) }</div>
+													<div class="text-xs font-semibold text-muted-foreground">{ syncSettingsProviderAPITitle(account.Provider) }</div>
 													<p class="mt-1 text-xs leading-relaxed text-muted-foreground">
 														{ syncSettingsProviderAPIDescription(account.Provider) }
 													</p>
@@ -1204,7 +1204,7 @@ templ SettingsSyncTab(settings models.SyncSettings, uiSettings map[string]string
 											<div class="rounded-md border border-border/70 bg-card/60 p-3">
 												<div class="flex items-center gap-1.5 mb-2">
 													@icon.Zap(icon.Props{Class: "size-3 text-amber-700/70 dark:text-amber-300/70"})
-											<span class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Real-time</span>
+											<span class="text-xs font-semibold text-muted-foreground">Real-time</span>
 										</div>
 										<div class="flex flex-wrap gap-1.5 min-h-[28px]" data-idle-zone={ account.AccountID }>
 											for _, f := range account.Folders {
@@ -1217,7 +1217,7 @@ templ SettingsSyncTab(settings models.SyncSettings, uiSettings map[string]string
 											<div class="rounded-md border border-border/70 bg-card/60 p-3">
 												<div class="flex items-center gap-1.5 mb-2">
 													@icon.Clock(icon.Props{Class: "size-3 text-muted-foreground"})
-											<span class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider" data-sync-polling-title>Polling ({ strconv.Itoa(settings.SyncIntervalMinutes) } min)</span>
+											<span class="text-xs font-semibold text-muted-foreground" data-sync-polling-title>Polling ({ strconv.Itoa(settings.SyncIntervalMinutes) } min)</span>
 										</div>
 										<div class="flex flex-wrap gap-1.5 min-h-[28px]" data-poll-zone={ account.AccountID }>
 											for _, f := range account.Folders {
@@ -1239,7 +1239,7 @@ templ SettingsSyncTab(settings models.SyncSettings, uiSettings map[string]string
 		@tabs.Content(tabs.ContentProps{Value: "unified"}) {
 			<div class="bg-card rounded-lg border p-6 space-y-5">
 				<div>
-					<h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-1">Unified folders</h3>
+					<h3 class="text-sm font-semibold text-muted-foreground mb-1">Unified folders</h3>
 					<p class="text-xs text-muted-foreground leading-relaxed">Control how Raven groups matching folders across connected mail accounts.</p>
 				</div>
 				<div class="rounded-lg border border-border/60 bg-background/40 p-4">
@@ -1295,7 +1295,7 @@ templ SettingsSyncTab(settings models.SyncSettings, uiSettings map[string]string
 				pill.className = pill.className.replace(/bg-muted\/50 border-border text-muted-foreground/g, 'bg-amber-800/10 border-amber-700/20 text-amber-800 dark:bg-amber-300/10 dark:border-amber-300/20 dark:text-amber-200');
 				if (!label && toggle) {
 					label = document.createElement('span');
-					label.className = 'sync-label text-[10px] opacity-70';
+					label.className = 'sync-label text-xs opacity-70';
 					toggle.appendChild(label);
 				}
 				if (label) label.textContent = 'real-time';
@@ -1397,7 +1397,7 @@ templ SettingsSyncTab(settings models.SyncSettings, uiSettings map[string]string
 			var existing = zone.querySelector('.sync-empty-state');
 			if (pills.length === 0 && !existing) {
 				var el = document.createElement('span');
-				el.className = 'sync-empty-state inline-flex items-center px-2.5 rounded-md border border-dashed border-border text-[11px] text-muted-foreground/50';
+				el.className = 'sync-empty-state inline-flex items-center px-2.5 rounded-md border border-dashed border-border text-xs text-muted-foreground/50';
 				el.style.height = '26px';
 				el.textContent = 'None selected';
 				zone.appendChild(el);
@@ -1658,7 +1658,7 @@ templ UnifiedFolderAccountPopover(folder unifiedFolderOption, accounts []models.
 				</button>
 			}
 			@popover.Content(popover.ContentProps{Placement: popover.PlacementBottomEnd, Offset: 8, ShowArrow: true, Class: "w-72 p-2"}) {
-				<div class="border-b border-border/60 px-2 pb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Accounts</div>
+				<div class="border-b border-border/60 px-2 pb-2 text-xs font-semibold text-muted-foreground">Accounts</div>
 				<div class="max-h-72 overflow-y-auto pt-1">
 					for _, account := range accounts {
 						@UnifiedFolderAccountRow(folder, account, uiSettings, masterEnabled)
@@ -1678,7 +1678,7 @@ templ UnifiedFolderAccountRow(folder unifiedFolderOption, account models.Account
 			<div class="min-w-0">
 				<label for={ "unified-folder-" + folder.ID + "-account-" + account.AccountID } class="block truncate text-sm font-medium text-foreground">{ syncAccountDisplayName(account) }</label>
 				if account.AccountEmail != "" && account.AccountEmail != syncAccountDisplayName(account) {
-					<p class="truncate text-[11px] text-muted-foreground">{ account.AccountEmail }</p>
+					<p class="truncate text-xs text-muted-foreground">{ account.AccountEmail }</p>
 				}
 			</div>
 		</div>
@@ -1719,7 +1719,7 @@ templ syncFolderPill(f models.FolderSyncStatus, interval int, accountID string) 
 				@folderIcon(icon.Props{Class: "size-3 shrink-0"})
 				<span class="truncate">{ syncFolderDisplayName(f) }</span>
 				if syncFolderUsesEffectiveIDLE(f) {
-					<span class="sync-label text-[10px] opacity-70">
+					<span class="sync-label text-xs opacity-70">
 						real-time
 					</span>
 				}
@@ -1826,15 +1826,15 @@ templ SettingsAccountCard(account models.Account) {
 			</div>
 			<div class="mt-4 border-t border-border/60 pt-3">
 				<div class="mb-2 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-					<p class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Enabled services</p>
-					<p class="text-[11px] text-muted-foreground">Use Edit to enable/disable services.</p>
+					<p class="text-xs font-semibold text-muted-foreground">Enabled services</p>
+					<p class="text-xs text-muted-foreground">Use Edit to enable/disable services.</p>
 				</div>
 				<div class="flex items-end justify-between gap-3">
 					<div class="flex flex-wrap gap-2">
 						@AccountServiceIndicator(account, "email", "Email", "Fetches mail and keeps folders up to date.", account.EmailSyncEnabled)
 						@AccountServiceIndicator(account, "contacts", "Contacts", accountContactSyncStatusDescription(account), account.ContactSyncEnabled)
 					</div>
-					<span class="inline-flex shrink-0 items-center gap-1 rounded-md border border-border/70 bg-muted/35 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+					<span class="inline-flex shrink-0 items-center gap-1 rounded-md border border-border/70 bg-muted/35 px-2 py-0.5 text-xs font-semibold text-muted-foreground">
 						@AccountProviderIcon(account.Provider, "size-3.5 shrink-0")
 						{ accountProviderName(account.Provider) }
 					</span>
@@ -1961,7 +1961,7 @@ templ SettingsAccountSyncErrorPopover(account models.Account, syncError string, 
 						<p
 							data-settings-account-sync-error-at-wrapper
 							hidden?={ syncErrorAt == "" }
-							class="mt-0.5 text-[11px] text-muted-foreground"
+							class="mt-0.5 text-xs text-muted-foreground"
 						>
 							Last failure:
 							<span data-account-sync-error-at={ syncErrorAt }>{ formatAccountSyncErrorAt(syncErrorAt, nil) }</span>
@@ -2042,7 +2042,7 @@ templ SettingsAccountConnectionTestDialog(account models.Account) {
 						>
 							@AccountConnectionTestStateIcon()
 							<div class="min-w-0 flex-1">
-								<p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{ service.Label }</p>
+								<p class="text-xs font-semibold text-muted-foreground">{ service.Label }</p>
 								<p class="mt-0.5 text-xs font-medium text-foreground" data-account-test-service-status>{ service.Description }</p>
 								<p class="mt-0.5 hidden break-words text-xs text-muted-foreground" data-account-test-service-detail></p>
 							</div>
@@ -2090,7 +2090,7 @@ templ SettingsAccountActionsMenu(account models.Account) {
 			}
 		}
 		@dropdown.Content(dropdown.ContentProps{Placement: dropdown.PlacementBottomEnd, Class: "w-48 normal-case tracking-normal", Attributes: templ.Attributes{"data-account-actions-menu": account.ID}}) {
-			@dropdown.Label(dropdown.LabelProps{Class: "text-[10px] uppercase tracking-wider text-muted-foreground"}) {
+			@dropdown.Label(dropdown.LabelProps{Class: "text-xs text-muted-foreground"}) {
 				Account actions
 			}
 			@dialog.Trigger(dialog.TriggerProps{For: fmt.Sprintf("test-account-%s", account.ID)}) {
@@ -2176,7 +2176,7 @@ templ SettingsAccountActionsMenu(account models.Account) {
 				@icon.Users(icon.Props{Class: "size-3"})
 		}
 		<span>{ label }</span>
-		<span class="text-[10px] font-semibold uppercase tracking-wide opacity-75">{ serviceStateLabel(enabled) }</span>
+		<span class="text-xs font-semibold opacity-75">{ serviceStateLabel(enabled) }</span>
 		</div>
 	}
 
@@ -2243,7 +2243,7 @@ templ AccountColorPopover(account models.Account) {
 			<div class="p-3" data-account-color-picker data-account-id={ account.ID }>
 				<div class="mb-3 flex items-start justify-between gap-3">
 					<div class="min-w-0">
-						<p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Marker color</p>
+						<p class="text-xs font-semibold text-muted-foreground">Marker color</p>
 						<p class="mt-0.5 truncate text-sm font-medium text-popover-foreground">{ account.DisplayLabel() }</p>
 					</div>
 					<div class="account-color-marker size-6 shrink-0" style={ accountColorStyle(account.Color) } data-account-marker={ account.ID }></div>
@@ -2281,7 +2281,7 @@ templ AccountSignaturesSettings(accounts []models.AccountSignatureData) {
 	<div class="bg-card rounded-lg border p-6">
 		<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 			<div class="min-w-0">
-				<h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-1">Signatures</h3>
+				<h3 class="text-sm font-semibold text-muted-foreground mb-1">Signatures</h3>
 				<p class="text-xs text-muted-foreground">Create reusable signatures and choose which accounts use them for new messages, replies, and forwards.</p>
 				<div class="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
 					<span class="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-2 py-1">
@@ -2336,7 +2336,7 @@ templ SignatureManagerGrid(accounts []models.AccountSignatureData) {
 			</div>
 			<div class="min-w-0 rounded-lg border border-border bg-background/60 p-4 space-y-4">
 				<div class="space-y-2">
-					<label class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Account</label>
+					<label class="text-xs font-semibold text-muted-foreground">Account</label>
 					@selectbox.SelectBox(selectbox.Props{Class: "settings-select"}) {
 						@selectbox.Trigger(selectbox.TriggerProps{Name: "signature_account_id", Class: "bg-background", DisableClear: true, Attributes: templ.Attributes{"data-signature-account-select": ""}}) {
 							<span class="flex min-w-0 flex-1 items-center gap-2">
@@ -2383,7 +2383,7 @@ templ SignatureLibrary(data models.AccountSignatureData) {
 	<div class="min-w-0 rounded-lg border border-border bg-background/60 p-4 space-y-3">
 		<div class="flex items-center justify-between gap-3">
 			<div>
-				<h4 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Signature library</h4>
+				<h4 class="text-xs font-semibold text-muted-foreground">Signature library</h4>
 				<p class="text-xs text-muted-foreground mt-1">These signatures can be assigned to any account.</p>
 			</div>
 		</div>
@@ -2420,7 +2420,7 @@ templ SignatureLibrary(data models.AccountSignatureData) {
 			<div>
 				<div class="mb-1.5 flex items-center justify-between gap-3">
 					<label class="text-xs font-medium text-muted-foreground">Signature</label>
-					<div class="inline-flex shrink-0 rounded-[var(--radius)] border border-border bg-background p-0.5 text-[11px]" data-signature-editor-mode>
+					<div class="inline-flex shrink-0 rounded-[var(--radius)] border border-border bg-background p-0.5 text-xs" data-signature-editor-mode>
 						<button type="button" class="rounded-[calc(var(--radius)-2px)] px-2 py-0.5 font-medium text-foreground bg-card shadow-sm" data-signature-mode-button="visual">Rendered</button>
 						<button type="button" class="rounded-[calc(var(--radius)-2px)] px-2 py-0.5 font-medium text-muted-foreground hover:text-foreground" data-signature-mode-button="source">HTML</button>
 					</div>
@@ -2428,7 +2428,7 @@ templ SignatureLibrary(data models.AccountSignatureData) {
 				<textarea name="html_body" class="hidden" data-signature-html></textarea>
 				<div class="min-h-28 max-w-full overflow-x-auto rounded-md border border-border bg-card px-3 py-2 text-sm leading-6 outline-none focus:ring-2 focus:ring-ring" contenteditable="true" role="textbox" data-signature-editor data-placeholder="Write your signature..." oninput="syncSignatureEditor(this)"></div>
 				<textarea class="hidden min-h-28 w-full resize-y rounded-md border border-border bg-card px-3 py-2 font-mono text-xs leading-5 text-foreground outline-none focus:ring-2 focus:ring-ring" spellcheck="false" placeholder="Paste full HTML here, then switch back to Rendered to preview it." data-signature-source></textarea>
-				<p class="text-[11px] text-muted-foreground mt-1">Use Rendered for normal editing or HTML to paste source. Unsafe tags are stripped when rendered and saved.</p>
+				<p class="text-xs text-muted-foreground mt-1">Use Rendered for normal editing or HTML to paste source. Unsafe tags are stripped when rendered and saved.</p>
 			</div>
 			<div class="flex items-center justify-between gap-3">
 				<span class="text-xs text-muted-foreground" data-signature-save-status></span>
@@ -2460,7 +2460,7 @@ templ AccountSignaturesDialog(data models.AccountSignatureData) {
 					<div class="min-w-0 rounded-lg border border-border bg-background/60 p-4 space-y-3">
 						<div class="flex items-center justify-between gap-3">
 							<div>
-								<h3 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Signature library</h3>
+								<h3 class="text-xs font-semibold text-muted-foreground">Signature library</h3>
 								<p class="text-xs text-muted-foreground mt-1">Create reusable signatures that any account can use.</p>
 							</div>
 						</div>
@@ -2497,7 +2497,7 @@ templ AccountSignaturesDialog(data models.AccountSignatureData) {
 							<div>
 								<div class="mb-1.5 flex items-center justify-between gap-3">
 									<label class="text-xs font-medium text-muted-foreground">Signature</label>
-									<div class="inline-flex shrink-0 rounded-[var(--radius)] border border-border bg-background p-0.5 text-[11px]" data-signature-editor-mode>
+									<div class="inline-flex shrink-0 rounded-[var(--radius)] border border-border bg-background p-0.5 text-xs" data-signature-editor-mode>
 										<button type="button" class="rounded-[calc(var(--radius)-2px)] px-2 py-0.5 font-medium text-foreground bg-card shadow-sm" data-signature-mode-button="visual">Rendered</button>
 										<button type="button" class="rounded-[calc(var(--radius)-2px)] px-2 py-0.5 font-medium text-muted-foreground hover:text-foreground" data-signature-mode-button="source">HTML</button>
 									</div>
@@ -2505,7 +2505,7 @@ templ AccountSignaturesDialog(data models.AccountSignatureData) {
 								<textarea name="html_body" class="hidden" data-signature-html></textarea>
 								<div class="min-h-28 max-w-full overflow-x-auto rounded-md border border-border bg-card px-3 py-2 text-sm leading-6 outline-none focus:ring-2 focus:ring-ring" contenteditable="true" role="textbox" data-signature-editor data-placeholder="Write your signature..." oninput="syncSignatureEditor(this)"></div>
 								<textarea class="hidden min-h-28 w-full resize-y rounded-md border border-border bg-card px-3 py-2 font-mono text-xs leading-5 text-foreground outline-none focus:ring-2 focus:ring-ring" spellcheck="false" placeholder="Paste full HTML here, then switch back to Rendered to preview it." data-signature-source></textarea>
-								<p class="text-[11px] text-muted-foreground mt-1">Use Rendered for normal editing or HTML to paste source. Unsafe tags are stripped when rendered and saved.</p>
+								<p class="text-xs text-muted-foreground mt-1">Use Rendered for normal editing or HTML to paste source. Unsafe tags are stripped when rendered and saved.</p>
 							</div>
 							<div class="flex items-center justify-between gap-3">
 								<span class="text-xs text-muted-foreground" data-signature-save-status></span>
@@ -2523,7 +2523,7 @@ templ AccountSignaturesDialog(data models.AccountSignatureData) {
 
 				<form class="rounded-lg border border-border bg-background/60 p-4 space-y-4" data-account-signature-settings>
 					<div>
-						<h3 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Use on this account</h3>
+						<h3 class="text-xs font-semibold text-muted-foreground">Use on this account</h3>
 						<p class="text-xs text-muted-foreground mt-1">Choose when signatures are automatically inserted.</p>
 					</div>
 					@AccountSignatureAssignmentRow("new", "New messages", data.Settings.NewEnabled, data.Settings.NewSignatureID, "", data.Signatures)
@@ -2563,7 +2563,7 @@ templ AccountSignatureAssignmentRow(kind string, label string, enabled bool, sel
 		}
 		if kind != "new" {
 			<div class="grid gap-1.5">
-				<label class="text-[11px] font-medium text-muted-foreground">Place signature</label>
+				<label class="text-xs font-medium text-muted-foreground">Place signature</label>
 				@selectbox.SelectBox(selectbox.Props{Class: "settings-select"}) {
 					@selectbox.Trigger(selectbox.TriggerProps{Name: kind + "_placement", Class: "bg-background", DisableClear: true}) {
 						@selectbox.Value(selectbox.ValueProps{Placeholder: "Before quoted content"}) {
@@ -3129,9 +3129,9 @@ templ AddAccountDialog() {
 						var title = mailDiscoverySourceLabel(candidate.source);
 						var summary = mailDiscoveryEscape(candidate.imap_host) + ':' + mailDiscoveryEscape(candidate.imap_port) + ' ' + mailDiscoveryEscape(candidate.imap_tls_mode) + ' / ' + mailDiscoveryEscape(candidate.smtp_host) + ':' + mailDiscoveryEscape(candidate.smtp_port) + ' ' + mailDiscoveryEscape(candidate.smtp_tls_mode);
 						var notes = Array.isArray(candidate.notes) ? candidate.notes.filter(Boolean).slice(0, 2) : [];
-						var card = '<button type="button" data-mail-discovery-candidate class="w-full rounded-md border border-border bg-card px-3 py-2 text-left transition-colors hover:bg-accent" onclick="applyMailDiscoveryCandidate(' + index + ')"><span class="flex items-center justify-between gap-3"><span class="font-semibold text-foreground">' + mailDiscoveryEscape(title) + '</span><span class="text-[11px] text-muted-foreground">' + mailDiscoveryEscape(candidate.confidence) + '%</span></span><span class="mt-1 block truncate text-muted-foreground">' + summary + '</span>';
+						var card = '<button type="button" data-mail-discovery-candidate class="w-full rounded-md border border-border bg-card px-3 py-2 text-left transition-colors hover:bg-accent" onclick="applyMailDiscoveryCandidate(' + index + ')"><span class="flex items-center justify-between gap-3"><span class="font-semibold text-foreground">' + mailDiscoveryEscape(title) + '</span><span class="text-xs text-muted-foreground">' + mailDiscoveryEscape(candidate.confidence) + '%</span></span><span class="mt-1 block truncate text-muted-foreground">' + summary + '</span>';
 						if (notes.length) {
-							card += '<span class="mt-1 block text-[11px] leading-relaxed text-muted-foreground">' + mailDiscoveryEscape(notes.join(' ')) + '</span>';
+							card += '<span class="mt-1 block text-xs leading-relaxed text-muted-foreground">' + mailDiscoveryEscape(notes.join(' ')) + '</span>';
 						}
 						html += card + '</button>';
 					});
@@ -3310,7 +3310,7 @@ templ AddAccountDialog() {
 						title.textContent = 'Choose address books';
 						wrap.appendChild(title);
 						var hint = document.createElement('p');
-						hint.className = 'mt-1 text-[11px] leading-relaxed text-muted-foreground';
+						hint.className = 'mt-1 text-xs leading-relaxed text-muted-foreground';
 						hint.textContent = 'Select one or more address books to sync. The default is used for new contacts.';
 						wrap.appendChild(hint);
 						var list = document.createElement('div');
@@ -3350,7 +3350,7 @@ templ AddAccountDialog() {
 							url.className = 'mt-0.5 truncate text-muted-foreground';
 							url.textContent = book.url || '';
 							var defaultWrap = document.createElement('label');
-							defaultWrap.className = 'mt-2 inline-flex items-center gap-1.5 text-[11px] text-muted-foreground';
+							defaultWrap.className = 'mt-2 inline-flex items-center gap-1.5 text-xs text-muted-foreground';
 							var radio = document.createElement('input');
 							radio.type = 'radio';
 							radio.name = 'default_addressbook_url';
@@ -3523,7 +3523,7 @@ templ AddAccountDialog() {
 									<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 										<div class="min-w-0">
 											<div class="text-xs font-semibold text-foreground">Automatic settings</div>
-											<p class="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">Fill IMAP and SMTP fields from provider records when available.</p>
+											<p class="mt-0.5 text-xs leading-relaxed text-muted-foreground">Fill IMAP and SMTP fields from provider records when available.</p>
 										</div>
 										<button type="button" onclick="discoverMailSettings(this)" class="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md border border-border px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-60">
 											@icon.Radar(icon.Props{Class: "size-3.5"})
@@ -3582,7 +3582,7 @@ templ AddAccountDialog() {
 										@selectbox.Item(selectbox.ItemProps{Value: "plaintext"}) { Unencrypted (admin exception) }
 									}
 								}
-								<p class="mt-1.5 text-[11px] leading-relaxed text-amber-700 dark:text-amber-300">Unencrypted connections only work for an exact endpoint approved under Admin → Mail security.</p>
+								<p class="mt-1.5 text-xs leading-relaxed text-amber-700 dark:text-amber-300">Unencrypted connections only work for an exact endpoint approved under Admin → Mail security.</p>
 								</div>
 							</div>
 							<hr class="my-4 border-border"/>
@@ -3608,7 +3608,7 @@ templ AddAccountDialog() {
 										Placeholder: "••••••••",
 										Required:    true,
 									})
-									<p id="icloud-password-hint" class="hidden mt-1.5 text-[11px] leading-relaxed text-muted-foreground">Use an Apple app-specific password, not your Apple Account password. <a href="https://support.apple.com/en-us/102654" target="_blank" rel="noopener noreferrer" class="underline hover:text-foreground">How to create one</a></p>
+									<p id="icloud-password-hint" class="hidden mt-1.5 text-xs leading-relaxed text-muted-foreground">Use an Apple app-specific password, not your Apple Account password. <a href="https://support.apple.com/en-us/102654" target="_blank" rel="noopener noreferrer" class="underline hover:text-foreground">How to create one</a></p>
 								</div>
 								<div class="col-span-2">
 									<label class="text-xs font-medium text-muted-foreground mb-1.5 block">Method</label>
@@ -3676,7 +3676,7 @@ templ AddAccountDialog() {
 										@selectbox.Item(selectbox.ItemProps{Value: "plaintext"}) { Unencrypted (admin exception) }
 									}
 								}
-								<p class="mt-1.5 text-[11px] leading-relaxed text-amber-700 dark:text-amber-300">Unencrypted connections only work for an exact endpoint approved under Admin → Mail security.</p>
+								<p class="mt-1.5 text-xs leading-relaxed text-amber-700 dark:text-amber-300">Unencrypted connections only work for an exact endpoint approved under Admin → Mail security.</p>
 								</div>
 							</div>
 							<hr class="my-4 border-border"/>
@@ -3753,8 +3753,8 @@ templ AddAccountDialog() {
 templ AccountWizardAddSidebar() {
 	<aside class="rounded-lg border border-border bg-muted/25 p-2 md:min-h-[28rem]">
 		<div class="mb-2 px-2">
-			<div class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Setup sections</div>
-			<p class="mt-0.5 text-[11px] leading-snug text-muted-foreground/80">Enable/disable the services you need</p>
+			<div class="text-xs font-semibold text-muted-foreground">Setup sections</div>
+			<p class="mt-0.5 text-xs leading-snug text-muted-foreground/80">Enable/disable the services you need</p>
 		</div>
 		@AccountWizardEmailSection("wizardGo", "", true, true, false)
 		@AccountWizardTopStep("wizardGo", 3, "2", "Contacts", "Optional sync", true, true, "", "contacts", true, false, templ.Attributes{"data-add-contact-sync-switch": ""})
@@ -3765,8 +3765,8 @@ templ AccountWizardAddSidebar() {
 templ AccountWizardEditSidebar(data models.EditAccountData) {
 	<aside class="rounded-lg border border-border bg-muted/25 p-2 md:min-h-[28rem]">
 		<div class="mb-2 px-2">
-			<div class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Settings sections</div>
-			<p class="mt-0.5 text-[11px] leading-snug text-muted-foreground/80">Enable/disable the services you need</p>
+			<div class="text-xs font-semibold text-muted-foreground">Settings sections</div>
+			<p class="mt-0.5 text-xs leading-snug text-muted-foreground/80">Enable/disable the services you need</p>
 		</div>
 		if accountEditUsesProviderAPI(data.Provider) {
 			@AccountWizardProviderAPIEmailSection("editWizardGo", data.AccountID, data.Provider, data.EmailSyncEnabled, true)
@@ -3815,7 +3815,7 @@ templ AccountWizardProviderAPIEmailSection(goFn string, accountID string, provid
 templ AccountWizardSubStep(goFn string, step int, index string, title string, description string, disabled bool, active bool) {
 	<button type="button" data-account-wizard-action={ goFn } data-account-wizard-target-step={ strconv.Itoa(step) } class="account-wizard-step" data-account-wizard-step={ strconv.Itoa(step) } data-active={ strconv.FormatBool(active) } disabled?={ disabled }>
 		<span class="account-wizard-index">{ index }</span>
-		<span class="min-w-0"><span class="block text-xs font-semibold">{ title }</span><span class="block text-[11px] text-muted-foreground">{ description }</span></span>
+		<span class="min-w-0"><span class="block text-xs font-semibold">{ title }</span><span class="block text-xs text-muted-foreground">{ description }</span></span>
 	</button>
 }
 
@@ -3923,7 +3923,7 @@ templ ProviderAPIMailPanel(provider string, mode string) {
 				}
 			</div>
 			<div class="min-w-0">
-				<div class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{ providerAPIMailTransportLabel(provider) }</div>
+				<div class="text-xs font-semibold text-muted-foreground">{ providerAPIMailTransportLabel(provider) }</div>
 				<p class="mt-1 text-xs leading-relaxed text-muted-foreground">{ providerAPIMailPanelDescription(provider, mode) }</p>
 			</div>
 		</div>
@@ -4104,7 +4104,7 @@ templ EditAccountDialog(data models.EditAccountData) {
 											@selectbox.Item(selectbox.ItemProps{Value: "plaintext", Selected: data.IMAPTLSMode == "plaintext"}) { Unencrypted (admin exception) }
 										}
 									}
-									<p class="mt-1.5 text-[11px] leading-relaxed text-amber-700 dark:text-amber-300">Unencrypted connections only work while this exact endpoint remains approved under Admin → Mail security.</p>
+									<p class="mt-1.5 text-xs leading-relaxed text-amber-700 dark:text-amber-300">Unencrypted connections only work while this exact endpoint remains approved under Admin → Mail security.</p>
 									</div>
 								</div>
 								<hr class="my-4 border-border"/>
@@ -4197,7 +4197,7 @@ templ EditAccountDialog(data models.EditAccountData) {
 										@selectbox.Item(selectbox.ItemProps{Value: "plaintext", Selected: data.SMTPTLSMode == "plaintext"}) { Unencrypted (admin exception) }
 									}
 								}
-								<p class="mt-1.5 text-[11px] leading-relaxed text-amber-700 dark:text-amber-300">Unencrypted connections only work while this exact endpoint remains approved under Admin → Mail security.</p>
+								<p class="mt-1.5 text-xs leading-relaxed text-amber-700 dark:text-amber-300">Unencrypted connections only work while this exact endpoint remains approved under Admin → Mail security.</p>
 								</div>
 							</div>
 							<hr class="my-4 border-border"/>
@@ -4348,9 +4348,9 @@ templ ContactSyncSettings(data models.EditAccountData) {
 				<p class="mt-1 text-xs text-muted-foreground leading-relaxed">Control whether this account appears as a contact sync target.</p>
 			</div>
 			if data.ContactSync.Enabled {
-				<span class="shrink-0 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">Enabled</span>
+				<span class="shrink-0 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">Enabled</span>
 			} else {
-				<span class="shrink-0 rounded-md bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">Not configured</span>
+				<span class="shrink-0 rounded-md bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">Not configured</span>
 			}
 		</div>
 		if isBuiltinOAuthContactSync {
@@ -4387,7 +4387,7 @@ templ ContactSyncSettings(data models.EditAccountData) {
 					if len(data.ContactSync.AddressBooks) > 1 {
 						<div class="sm:col-span-2 rounded-lg border border-border bg-background/45 p-3" data-carddav-addressbook-section>
 							<div class="text-xs font-semibold text-foreground">Selected address books</div>
-							<p class="mt-1 text-[11px] leading-relaxed text-muted-foreground">Select one or more address books to sync. The default is used for new contacts.</p>
+							<p class="mt-1 text-xs leading-relaxed text-muted-foreground">Select one or more address books to sync. The default is used for new contacts.</p>
 							<div class="mt-3 space-y-2">
 								for i, book := range data.ContactSync.AddressBooks {
 									<label class="flex w-full items-start gap-3 rounded-md border border-primary bg-primary/10 px-3 py-2 text-xs">
@@ -4399,7 +4399,7 @@ templ ContactSyncSettings(data models.EditAccountData) {
 										<div class="min-w-0 flex-1">
 											<div class="font-semibold text-foreground">{ contactAddressBookName(book) }</div>
 											<div class="mt-0.5 truncate text-muted-foreground">{ book.URL }</div>
-											<label class="mt-2 inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+											<label class="mt-2 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
 												if book.Default || (!contactSyncHasDefaultBook(data.ContactSync.AddressBooks) && i == 0) {
 													@radio.Radio(radio.Props{Name: "default_addressbook_url", Value: book.URL, Checked: true})
 												} else {
@@ -4560,7 +4560,7 @@ templ AddAccountPostCreateStep(accountID string) {
 					</h4>
 					<p class="mt-1 text-xs leading-relaxed text-muted-foreground">Enable this only if the account has a CardDAV address book.</p>
 				</div>
-				<span class="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">Optional</span>
+				<span class="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">Optional</span>
 			</div>
 			<div id={ fmt.Sprintf("add-contact-sync-fields-%s", accountID) } class="space-y-3">
 				<div class="grid gap-3 sm:grid-cols-2">
@@ -4743,7 +4743,7 @@ templ ConnectionTestResults(results []models.ConnectionTestResult, accountID str
 					}
 					<div class="flex-1 min-w-0">
 						<div class="flex items-center gap-2">
-							<span class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{ r.Service }</span>
+							<span class="text-xs font-semibold text-muted-foreground">{ r.Service }</span>
 							if r.Success {
 								<span class="text-xs text-muted-foreground font-medium">{ r.Message }</span>
 							}
@@ -4861,7 +4861,7 @@ templ SettingsOperationsTab() {
 					@icon.ClipboardList(icon.Props{Class: "size-4"})
 				</div>
 				<div>
-					<h3 class="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Mail operations</h3>
+					<h3 class="text-sm font-semibold text-muted-foreground">Mail operations</h3>
 					<p class="mt-1 text-xs leading-relaxed text-muted-foreground">See background message changes, draft sync, labels, and Sent copies that are still queued or need attention. Retrying here keeps the original operation identity.</p>
 				</div>
 			</div>
@@ -4876,11 +4876,11 @@ templ SettingsOperationsContent(status models.MailOperationsStatus) {
 	<div id="mail-operations-content" hx-get="/settings/operations/content" hx-trigger="every 30s" hx-swap="outerHTML" class="space-y-4">
 		<div class="flex items-start justify-between gap-3">
 			<div>
-				<h3 class="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Background mail work</h3>
+				<h3 class="text-sm font-semibold text-muted-foreground">Background mail work</h3>
 				<p class="mt-1 text-xs text-muted-foreground">{ fmt.Sprintf("%d operation(s) currently retained locally", status.Total) }</p>
 			</div>
 			if status.ActionRequired > 0 {
-				<span class="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-1 text-[11px] font-semibold text-amber-800 dark:text-amber-200">
+				<span class="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-800 dark:text-amber-200">
 					@icon.TriangleAlert(icon.Props{Class: "size-3.5"})
 					{ fmt.Sprintf("%d need attention", status.ActionRequired) }
 				</span>
@@ -4901,7 +4901,7 @@ templ SettingsOperationsContent(status models.MailOperationsStatus) {
 								<div class="flex flex-wrap items-center gap-2">
 									<span class="text-sm font-semibold text-foreground">{ mailOperationTypeLabel(operation.Type) }</span>
 									<span class={
-										"rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+										"rounded-full border px-2 py-0.5 text-xs font-semibold",
 										templ.KV("border-amber-500/25 bg-amber-500/10 text-amber-800 dark:text-amber-200", operation.CanRetry || operation.CanReconcile),
 										templ.KV("border-border bg-card text-muted-foreground", !operation.CanRetry && !operation.CanReconcile),
 									}>{ mailOperationStateLabel(operation) }</span>
@@ -4915,7 +4915,7 @@ templ SettingsOperationsContent(status models.MailOperationsStatus) {
 								if operation.LastError != "" {
 									<div class="mt-2 rounded-md border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs leading-relaxed text-red-800 dark:text-red-200">{ operation.LastError }</div>
 								}
-								<div class="mt-2 text-[11px] text-muted-foreground">
+								<div class="mt-2 text-xs text-muted-foreground">
 									{ fmt.Sprintf("Attempt %d", operation.Attempts) } · next retry { mailOperationTimeLabel(operation.NextRetryAt) }
 								</div>
 							</div>
