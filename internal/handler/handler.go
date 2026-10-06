@@ -1507,10 +1507,10 @@ func (h *Handler) handleEmailBody(w http.ResponseWriter, r *http.Request) {
 }
 
 // remoteImagesAllowed reports whether a message body should load its remote
-// images: always when the user's load_remote_images setting is on (the
+// images: always when the user's load_remote_images setting is on (off by
 // default), otherwise only for messages or senders they allowed.
 func (h *Handler) remoteImagesAllowed(ctx context.Context, userID string, msgID int64) bool {
-	if h.db.GetUISettings(ctx, userID)["load_remote_images"] != "false" {
+	if h.db.GetUISettings(ctx, userID)["load_remote_images"] == "true" {
 		return true
 	}
 	if msgID <= 0 {

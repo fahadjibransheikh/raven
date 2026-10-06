@@ -23,13 +23,11 @@ func (db *DB) migrateV98ToV99(ctx context.Context) error {
 
 	type row struct{ userID, value string }
 	var rows []row
-	// Upgrade-path fixtures can reach here without app_settings (or with the
-	// pre-user_id shape); there is nothing to migrate then.
-	var hasUserSettings int
-	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM pragma_table_info('app_settings') WHERE name = 'user_id'`).Scan(&hasUserSettings); err != nil {
-		return fmt.Errorf("inspect app_settings: %w", err)
+	hasUserSettings, err := hasUserScopedSettings(ctx, tx)
+	if err != nil {
+		return err
 	}
-	if hasUserSettings == 0 {
+	if !hasUserSettings {
 		return db.markSchemaV99(ctx, tx)
 	}
 	cursor, err := tx.QueryContext(ctx, `SELECT user_id, value FROM app_settings WHERE key = 'ui_settings'`)
@@ -87,4 +85,14 @@ func isOldDefaultMailListWidth(v string) bool {
 	}
 	n, err := strconv.ParseFloat(strings.TrimSpace(num), 64)
 	return err == nil && n == 50
+}
+
+// hasUserScopedSettings is false for upgrade-path databases that predate
+// app_settings.user_id; there is nothing for a settings migration to rewrite.
+func hasUserScopedSettings(ctx context.Context, tx *sql.Tx) (bool, error) {
+	var n int
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM pragma_table_info('app_settings') WHERE name = 'user_id'`).Scan(&n); err != nil {
+		return false, fmt.Errorf("inspect app_settings: %w", err)
+	}
+	return n > 0, nil
 }

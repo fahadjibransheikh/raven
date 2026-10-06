@@ -1449,4 +1449,4 @@ CREATE TABLE IF NOT EXISTS calendar_account_state (
     last_synced_at DATETIME
 );
 
-INSERT OR REPLACE INTO schema_version (version) VALUES (99);
+INSERT OR REPLACE INTO schema_version (version) VALUES (100);

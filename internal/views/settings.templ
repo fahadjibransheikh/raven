@@ -274,7 +274,7 @@ templ SettingsComposeDisplayTab(uiSettings map[string]string, signatureData []mo
 						@switchcomp.Switch(switchcomp.Props{
 							ID:      "load-remote-images",
 							Name:    "load_remote_images",
-							Checked: uiSettingGet(uiSettings, "load_remote_images", "true") != "false",
+							Checked: uiSettingGet(uiSettings, "load_remote_images", "false") == "true",
 							Attributes: templ.Attributes{"data-load-remote-images-setting": ""},
 						})
 					</div>

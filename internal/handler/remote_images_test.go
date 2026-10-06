@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestEmailBodyLoadsRemoteImagesUnlessSettingIsOff(t *testing.T) {
+func TestEmailBodyBlocksRemoteImagesUnlessSettingIsOnOrAllowed(t *testing.T) {
 	h, db := newAccountOwnershipTestHandler(t)
 	fixture := insertVictimReadableMessage(t, h, db)
 	ctx := t.Context()
@@ -36,8 +36,17 @@ func TestEmailBodyLoadsRemoteImagesUnlessSettingIsOff(t *testing.T) {
 		return rec.Body.String()
 	}
 
+	// New users have no stored choice: remote content is blocked and the banner
+	// script reports it so "Show content" / "Always allow" are offered.
+	if body := fetchBody(); !strings.Contains(body, `data-remote-src="https://img.example/logo.png"`) || strings.Contains(body, `<img src="https://img.example/logo.png"`) || !strings.Contains(body, "remoteContentBlocked") {
+		t.Fatalf("default settings body = %q, want remote image blocked with banner script", body)
+	}
+
+	if err := db.SetUISettings(ctx, "owner", map[string]string{"load_remote_images": "true"}); err != nil {
+		t.Fatalf("SetUISettings: %v", err)
+	}
 	if body := fetchBody(); !strings.Contains(body, `<img src="https://img.example/logo.png"`) {
-		t.Fatalf("default settings body = %q, want remote image loaded", body)
+		t.Fatalf("setting on body = %q, want remote image loaded", body)
 	}
 
 	if err := db.SetUISettings(ctx, "owner", map[string]string{"load_remote_images": "false"}); err != nil {
@@ -76,6 +85,9 @@ func TestEmailBodyRestoresRemoteBackgroundsOnlyWhenAllowed(t *testing.T) {
 		return rec.Body.String(), strings.Join(rec.Header().Values("Content-Security-Policy"), " | ")
 	}
 
+	if err := db.SetUISettings(ctx, "owner", map[string]string{"load_remote_images": "true"}); err != nil {
+		t.Fatalf("SetUISettings: %v", err)
+	}
 	body, csp := fetch()
 	if !strings.Contains(body, `url("https://img.example/hero.png")`) || !strings.Contains(body, `background="https://img.example/bg.png"`) {
 		t.Errorf("allowed: backgrounds not restored: %s", body)
@@ -96,5 +108,41 @@ func TestEmailBodyRestoresRemoteBackgroundsOnlyWhenAllowed(t *testing.T) {
 	}
 	if !strings.Contains(body, "remoteContentBlocked") {
 		t.Errorf("blocked: banner script missing")
+	}
+}
+
+func TestAllowRemoteContentFromSenderWorksWithBlockedDefault(t *testing.T) {
+	h, db := newAccountOwnershipTestHandler(t)
+	fixture := insertVictimReadableMessage(t, h, db)
+	ctx := t.Context()
+	var bodyPath string
+	if err := db.Read().QueryRowContext(ctx, `SELECT body_html_path FROM messages WHERE id = ?`, fixture.messageID).Scan(&bodyPath); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(bodyPath, []byte(`<img src="" data-remote-src="https://img.example/logo.png">`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	fetch := func(query string) string {
+		req := httptest.NewRequest(http.MethodGet, "/email/101/body"+query, nil)
+		req.SetPathValue("id", strconv.FormatInt(fixture.messageID, 10))
+		rec := httptest.NewRecorder()
+		h.handleEmailBody(rec, ownerRequest(req))
+		return rec.Body.String()
+	}
+	loaded := `<img src="https://img.example/logo.png"`
+
+	if body := fetch(""); strings.Contains(body, loaded) {
+		t.Fatalf("default: remote image loaded, want blocked")
+	}
+	// "Show content" reloads the frame with remote=true.
+	if body := fetch("?remote=true"); !strings.Contains(body, loaded) {
+		t.Fatalf("remote=true: want loaded")
+	}
+	// "Always allow from sender" persists, so later opens load without the query.
+	if err := db.AllowRemoteContentForSenderFromMessageForUser(ctx, fixture.messageID, "owner"); err != nil {
+		t.Fatal(err)
+	}
+	if body := fetch(""); !strings.Contains(body, loaded) {
+		t.Fatalf("after allowing sender: want loaded")
 	}
 }

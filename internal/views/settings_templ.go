@@ -1659,7 +1659,7 @@ func SettingsComposeDisplayTab(uiSettings map[string]string, signatureData []mod
 		templ_7745c5c3_Err = switchcomp.Switch(switchcomp.Props{
 			ID:         "load-remote-images",
 			Name:       "load_remote_images",
-			Checked:    uiSettingGet(uiSettings, "load_remote_images", "true") != "false",
+			Checked:    uiSettingGet(uiSettings, "load_remote_images", "false") == "true",
 			Attributes: templ.Attributes{"data-load-remote-images-setting": ""},
 		}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {

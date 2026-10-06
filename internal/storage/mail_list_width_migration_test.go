@@ -49,7 +49,7 @@ func TestMigrateV98ToV99ResetsOnlyTheOldDefaultMailListWidth(t *testing.T) {
 			if err := db.SetSetting(ctx, "old", "ui_settings", `{"mail_list_width":"50%"}`); err != nil {
 				t.Fatal(err)
 			}
-			if err := db.migrate(); err != nil { // version is 99 now: no-op
+			if err := db.migrate(); err != nil { // version is current now: no-op
 				t.Fatal(err)
 			}
 			var raw string
@@ -93,8 +93,8 @@ func TestMigrateV98ToV99ResetsOnlyTheOldDefaultMailListWidth(t *testing.T) {
 		}
 		var version int
 		_ = db.Read().QueryRowContext(ctx, `SELECT MAX(version) FROM schema_version`).Scan(&version)
-		if version != 99 {
-			t.Errorf("version = %d, want 99", version)
+		if version != 100 {
+			t.Errorf("version = %d, want 100", version)
 		}
 	}
 }
