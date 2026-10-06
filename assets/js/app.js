@@ -38,6 +38,7 @@ document.addEventListener("DOMContentLoaded", function () {
   setupEmailSelectionTracking()
   setupMailListViewToggle()
   setupSidebarAppNavToggle()
+  _guardComposeNavigation()
   setupContactsList()
   setupMailFilters()
   setupMailTableColumnResize()
@@ -4863,7 +4864,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
       if (document.querySelector("[data-compose-pane]")) {
         collapseComposeFullWidth()
-        setMailViewEmpty()
+        setMailViewEmpty(true)
         _updateComposeBtn(false)
       }
 
@@ -6174,9 +6175,11 @@ function setupMailOperationActions() {
   })
 }
 
-function setMailViewEmpty() {
+// force: the caller is closing the compose pane itself (sent, discarded, moved to the dialog).
+function setMailViewEmpty(force) {
   var mailView = document.getElementById("mail-view")
   if (!mailView) return
+  if (force !== true && mailView.querySelector("[data-compose-pane]") && _dirtyComposeForm()) return
   mailView.innerHTML =
     '<div class="flex flex-col items-center justify-center h-full text-center" data-mail-view-empty>' +
       '<div class="space-y-4 animate-fade-in">' +
@@ -8940,7 +8943,7 @@ function finishComposeSendSuccess(state) {
   _composeSendState = null
   setTimeout(function () {
     if (state.fromPane) {
-      setMailViewEmpty()
+      setMailViewEmpty(true)
       _updateComposeBtn(false)
     } else {
       resetComposeForm(false)
@@ -10060,18 +10063,62 @@ function _showComposeOptionalFields(form, vals) {
   renderComposeAttachments(form, vals.attachments || [])
 }
 
+// The compose form holding unsaved content, or null. Inline pane wins over the dialog.
+function _dirtyComposeForm() {
+  var form = document.querySelector("[data-compose-pane] #compose-pane-form") || document.getElementById("compose-form")
+  if (!form || form.dataset.composeDirty !== "true" || !_composeHasDraftContent(form)) return null
+  return form
+}
+
 // Resolves true when the active compose may be overwritten. Uses the in-app
 // close choice instead of window.confirm, which the desktop app's WKWebView
 // answers with a silent false.
 function _activeComposeCanBeReplaced() {
-  var form = document.querySelector("[data-compose-pane] #compose-pane-form") || document.getElementById("compose-form")
-  if (!form || form.dataset.composeDirty !== "true" || !_composeHasDraftContent(form)) return Promise.resolve(true)
+  var form = _dirtyComposeForm()
+  if (!form) return Promise.resolve(true)
   return chooseComposeCloseAction(form, null, null).then(function (action) {
-    if (action === "keep") return saveComposeDraft(form.id === "compose-pane-form", false)
+    if (action === "keep") return saveComposeDraft(form.id === "compose-pane-form", false).then(function (saved) {
+      if (saved) form.dataset.composeDirty = "false"
+      return saved
+    })
     if (action !== "discard") return false
     cleanupComposeStagedUploads(form)
     _deleteComposeDraft(form)
+    // Settled either way, so the navigation that follows is not prompted a second time.
+    form.dataset.composeDirty = "false"
     return true
+  })
+}
+
+// Every way of leaving a dirty inline compose routes through here: sidebar
+// folder / app-switch clicks (capture listener below) and any htmx request that
+// targets #mail-view or #main-content (htmx:confirm). setMailViewEmpty refuses
+// to wipe a dirty pane on its own, so search / auto-close paths cannot lose it.
+function _guardComposeNavigation() {
+  document.addEventListener("click", function (e) {
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
+    var el = e.target.closest && e.target.closest('aside a[hx-get^="/folder/"], [data-sidebar-contacts-link], [data-sidebar-app-button]')
+    if (!el || !document.querySelector("[data-compose-pane]") || !_dirtyComposeForm()) return
+    e.preventDefault()
+    e.stopImmediatePropagation()
+    _activeComposeCanBeReplaced().then(function (ok) {
+      if (!ok) return
+      _updateComposeBtn(false)
+      el.click()
+    })
+  }, true)
+  document.body.addEventListener("htmx:confirm", function (e) {
+    var target = e.detail && e.detail.target
+    if (!target || (target.id !== "mail-view" && target.id !== "main-content")) return
+    var elt = e.detail.elt
+    if (elt && elt.closest && elt.closest("[data-compose-pane]")) return
+    if (!document.querySelector("[data-compose-pane]") || !_dirtyComposeForm()) return
+    e.preventDefault()
+    _activeComposeCanBeReplaced().then(function (ok) {
+      if (!ok) return
+      _updateComposeBtn(false)
+      e.detail.issueRequest(true)
+    })
   })
 }
 
@@ -10650,7 +10697,7 @@ function scheduleCompose(fromPane, trigger) {
     showSendStatus("scheduled", "Will send " + formatGoferDateTime(labelDate))
     setTimeout(function () {
       if (fromPane) {
-        setMailViewEmpty()
+        setMailViewEmpty(true)
         _updateComposeBtn(false)
       } else {
         resetComposeForm(false)
@@ -12099,7 +12146,7 @@ function collapseToDialog() {
   var vals = _readComposeFormValues(paneForm)
 
   var mailView = document.getElementById("mail-view")
-  if (mailView) setMailViewEmpty()
+  if (mailView) setMailViewEmpty(true)
 
   var dialogForm = document.getElementById("compose-form")
   _writeComposeFormValues(dialogForm, vals, "compose-")
@@ -12131,7 +12178,7 @@ function discardComposePane(anchor) {
         if (!saved) return
         collapseComposeFullWidth()
         var mailView = document.getElementById("mail-view")
-        if (mailView) setMailViewEmpty()
+        if (mailView) setMailViewEmpty(true)
         _updateComposeBtn(false)
       })
       return
@@ -12140,7 +12187,7 @@ function discardComposePane(anchor) {
     _deleteComposeDraft(paneForm)
     collapseComposeFullWidth()
     var mailView = document.getElementById("mail-view")
-    if (mailView) setMailViewEmpty()
+    if (mailView) setMailViewEmpty(true)
     _updateComposeBtn(false)
   })
 }
