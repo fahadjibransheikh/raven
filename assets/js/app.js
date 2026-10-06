@@ -11130,6 +11130,8 @@ function openNewCompose() {
   if (window.tui && window.tui.dialog) {
     window.tui.dialog.open("compose-dialog")
   }
+  // Without this the dialog's first focusable element (the close button) gets focus.
+  focusComposePrefill(document.getElementById("compose-form"), "new")
   applyDefaultComposeSignatureWhenReady(document.getElementById("compose-form"), true)
 }
 
@@ -12141,8 +12143,7 @@ function writeComposePane(html, vals, fullWidth, instantFullWidth) {
     if (bccBtn) bccBtn.classList.add("hidden")
   }
 
-  var bodyField = paneForm && paneForm.querySelector('[data-compose-editor]')
-  if (bodyField) bodyField.focus()
+  focusComposePrefill(paneForm, "new")
 
   if (fullWidth) {
     if (instantFullWidth) {
