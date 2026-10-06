@@ -3450,7 +3450,7 @@ func TestMigrateV97ToV98DeletesOnlyUnreferencedThreads(t *testing.T) {
 	_ = db.Read().QueryRowContext(ctx, `SELECT COUNT(*) FROM threads WHERE id = ?`, liveThread).Scan(&live)
 	_ = db.Read().QueryRowContext(ctx, `SELECT COUNT(*) FROM threads`).Scan(&total)
 	_ = db.Read().QueryRowContext(ctx, `SELECT MAX(version) FROM schema_version`).Scan(&version)
-	if live != 1 || total != 1 || version != 98 {
-		t.Fatalf("live=%d total=%d version=%d, want 1, 1, 98", live, total, version)
+	if live != 1 || total != 1 || version != 99 {
+		t.Fatalf("live=%d total=%d version=%d, want 1, 1, 99", live, total, version)
 	}
 }
