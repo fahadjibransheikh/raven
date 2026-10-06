@@ -3,6 +3,7 @@ package handler
 import (
 	"bytes"
 	"context"
+	cryptorand "crypto/rand"
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
@@ -1368,8 +1369,48 @@ func remoteImagesDetectScript(emailID string) []byte {
 	return []byte(fmt.Sprintf(`<script>(function(){var id=%q;if(document.querySelector('[data-remote-src]')){parent.postMessage({type:'remoteContentBlocked',emailId:id},'*')}})();</script>`, emailID))
 }
 
+// emailExternalLinksScript hands link clicks to the parent page, which opens
+// absolute http(s)/mailto links in a new window. The iframe has no popup
+// permission: a popup that escaped the sandbox would run on the app origin.
+// Relative and cid: hrefs are dropped so a message cannot point the user at
+// app routes.
 func emailExternalLinksScript() []byte {
-	return []byte(`<script>(function(){function secureLink(link){if(!link)return;var href=(link.getAttribute('href')||'').trim();if(!href||href.charAt(0)==='#'||/^(?:javascript|data):/i.test(href))return;link.setAttribute('target','_blank');if(link.relList){link.relList.add('noopener','noreferrer')}else{link.setAttribute('rel','noopener noreferrer')}}document.querySelectorAll('a[href]').forEach(secureLink);document.addEventListener('click',function(event){var target=event.target;var link=target&&target.closest?target.closest('a[href]'):null;secureLink(link)},true)})();</script>`)
+	return []byte(`<script>document.addEventListener('click',function(e){var t=e.target,a=t&&t.closest?t.closest('a[href]'):null;if(!a)return;var h=(a.getAttribute('href')||'').trim();if(h.charAt(0)==='#')return;e.preventDefault();if(/^(?:https?:|mailto:)/i.test(h))parent.postMessage({type:'emailLinkClick',href:a.href},'*')},true);</script>`)
+}
+
+// newCSPNonce returns a per-response script nonce.
+func newCSPNonce() string {
+	b := make([]byte, 16)
+	if _, err := cryptorand.Read(b); err != nil {
+		panic(err) // crypto/rand failing is unrecoverable
+	}
+	return base64.RawURLEncoding.EncodeToString(b)
+}
+
+// withScriptNonce adds the nonce to the <script> tags of trusted, server
+// generated script. It must only be given our own markup, never mail content.
+func withScriptNonce(script, nonce string) string {
+	return strings.ReplaceAll(script, "<script>", `<script nonce="`+nonce+`">`)
+}
+
+// emailBodyDocument sets the response CSP and returns the iframe document.
+// The CSP is what contains a sanitizer miss: only our nonced scripts run, and
+// sandbox applies even if the URL is opened top-level (no app origin).
+func emailBodyDocument(w http.ResponseWriter, emailID string, body []byte, theme, bg, fg, link string, original, loadRemote, reportBlocked bool) []byte {
+	nonce := newCSPNonce()
+	img := "img-src 'self' data:"
+	remote := ""
+	if loadRemote {
+		img += " https: http:"
+		remote = "; font-src https: http:"
+	}
+	// Add, not Set: keep the global frame-ancestors policy.
+	w.Header().Add("Content-Security-Policy", "sandbox allow-scripts; default-src 'none'; script-src 'nonce-"+nonce+"'; style-src 'unsafe-inline'; "+img+remote+"; form-action 'none'; base-uri 'none'")
+	doc := buildBodyDocument(body, emailResizeScript(emailID), nonce, theme, bg, fg, link, original)
+	if reportBlocked {
+		doc = append(doc, withScriptNonce(string(remoteImagesDetectScript(emailID)), nonce)...)
+	}
+	return doc
 }
 
 func (h *Handler) handleEmailBody(w http.ResponseWriter, r *http.Request) {
@@ -1438,11 +1479,7 @@ func (h *Handler) handleEmailBody(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
-	doc := buildBodyDocument(body, emailResizeScript(emailID), theme, bg, fg, link, original)
-	if !loadRemote {
-		doc = append(doc, remoteImagesDetectScript(emailID)...)
-	}
-	w.Write(doc)
+	w.Write(emailBodyDocument(w, emailID, body, theme, bg, fg, link, original, loadRemote, !loadRemote))
 }
 
 // remoteImagesAllowed reports whether a message body should load its remote
@@ -1591,11 +1628,11 @@ var oc=p(cs.outlineColor);if(oc&&bw(cs.outlineWidth)>0&&(!nbg||cr(oc,nbg)<2.2||d
 })();</script>`, bgColor, fgColor, linkColor))
 }
 
-func buildBodyDocument(body []byte, resizeScript []byte, theme string, bgColor string, fgColor string, linkColor string, original bool) []byte {
+func buildBodyDocument(body []byte, resizeScript []byte, nonce, theme string, bgColor string, fgColor string, linkColor string, original bool) []byte {
 	s := string(body)
 	lower := strings.ToLower(s)
 	isDark := theme == "dark"
-	injection := string(emailExternalLinksScript()) + string(resizeScript)
+	injection := withScriptNonce(string(emailExternalLinksScript())+string(resizeScript), nonce)
 
 	if original {
 		if strings.Contains(lower, "<html") {
@@ -1643,24 +1680,24 @@ func buildBodyDocument(body []byte, resizeScript []byte, theme string, bgColor s
 		lowerAfter := strings.ToLower(s)
 		if idx := strings.LastIndex(lowerAfter, "</body>"); idx != -1 {
 			if isDark {
-				injection = string(buildDarkModeScript(bgColor, fgColor)) + injection
+				injection = withScriptNonce(string(buildDarkModeScript(bgColor, fgColor)), nonce) + injection
 			} else {
-				injection = string(buildLightModeScript(bgColor, fgColor, linkColor)) + injection
+				injection = withScriptNonce(string(buildLightModeScript(bgColor, fgColor, linkColor)), nonce) + injection
 			}
 			return []byte(s[:idx] + injection + s[idx:])
 		}
 		if isDark {
-			injection = string(buildDarkModeScript(bgColor, fgColor)) + injection
+			injection = withScriptNonce(string(buildDarkModeScript(bgColor, fgColor)), nonce) + injection
 		} else {
-			injection = string(buildLightModeScript(bgColor, fgColor, linkColor)) + injection
+			injection = withScriptNonce(string(buildLightModeScript(bgColor, fgColor, linkColor)), nonce) + injection
 		}
 		return []byte(s + injection)
 	}
 
 	if isDark {
-		injection = string(buildDarkModeScript(bgColor, fgColor)) + injection
+		injection = withScriptNonce(string(buildDarkModeScript(bgColor, fgColor)), nonce) + injection
 	} else {
-		injection = string(buildLightModeScript(bgColor, fgColor, linkColor)) + injection
+		injection = withScriptNonce(string(buildLightModeScript(bgColor, fgColor, linkColor)), nonce) + injection
 	}
 	doc := "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><style>" +
 		"html{margin:0;overflow:hidden;color-scheme:" + scheme + ";background:" + bgColor + ";color:" + fgColor + "}" +
@@ -4024,7 +4061,7 @@ func serveUntrusted(w http.ResponseWriter, r *http.Request, filename, declaredTy
 		contentType = declared
 	}
 	h := w.Header()
-	h.Set("Content-Security-Policy", "sandbox; default-src 'none'")
+	h.Add("Content-Security-Policy", "sandbox; default-src 'none'") // Add: keep the global frame-ancestors policy
 	h.Set("X-Content-Type-Options", "nosniff")
 	h.Set("Content-Type", contentType)
 	if cd := mime.FormatMediaType(disposition, map[string]string{"filename": filename}); cd != "" {

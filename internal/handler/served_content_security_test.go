@@ -33,8 +33,12 @@ func insertServedAttachment(t *testing.T, db *storage.DB, messageID int64, filen
 
 func requireIsolated(t *testing.T, rec *httptest.ResponseRecorder, wantDisposition string) {
 	t.Helper()
-	if csp := rec.Header().Get("Content-Security-Policy"); csp != "sandbox; default-src 'none'" {
-		t.Errorf("Content-Security-Policy = %q, want sandbox; default-src 'none'", csp)
+	found := false
+	for _, csp := range rec.Header().Values("Content-Security-Policy") {
+		found = found || csp == "sandbox; default-src 'none'"
+	}
+	if !found {
+		t.Errorf("Content-Security-Policy = %q, want sandbox; default-src 'none'", rec.Header().Values("Content-Security-Policy"))
 	}
 	if v := rec.Header().Get("X-Content-Type-Options"); v != "nosniff" {
 		t.Errorf("X-Content-Type-Options = %q, want nosniff", v)
