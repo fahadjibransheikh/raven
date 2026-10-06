@@ -151,7 +151,7 @@
   })
 
   window.RavenPalette = { open: open }
-})()
+})();
 
 // Confirm prompts: window.confirm returns false without showing anything in the
 // desktop app's WKWebView, so every confirmation goes through an in-app popover.
