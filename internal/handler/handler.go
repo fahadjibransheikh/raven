@@ -19,6 +19,7 @@ import (
 	smtpclient "github.com/cristianadrielbraun/gofer/internal/mail/smtp"
 	"github.com/cristianadrielbraun/gofer/internal/mailauth"
 	"github.com/cristianadrielbraun/gofer/internal/models"
+	"github.com/cristianadrielbraun/gofer/internal/netguard"
 	"github.com/cristianadrielbraun/gofer/internal/providers"
 	"github.com/cristianadrielbraun/gofer/internal/storage"
 	"github.com/cristianadrielbraun/gofer/internal/store"
@@ -3730,7 +3731,7 @@ func (h *Handler) handleSavePushSubscription(w http.ResponseWriter, r *http.Requ
 	req.Endpoint = strings.TrimSpace(req.Endpoint)
 	req.Keys.P256DH = strings.TrimSpace(req.Keys.P256DH)
 	req.Keys.Auth = strings.TrimSpace(req.Keys.Auth)
-	if req.Endpoint == "" || req.Keys.P256DH == "" || req.Keys.Auth == "" {
+	if !netguard.ValidEndpoint(req.Endpoint) || req.Keys.P256DH == "" || req.Keys.Auth == "" {
 		http.Error(w, "invalid subscription", http.StatusBadRequest)
 		return
 	}
@@ -4233,16 +4234,7 @@ func (h *Handler) handleAllowRemoteContent(w http.ResponseWriter, r *http.Reques
 }
 
 func downloadRemoteResource(url string) ([]byte, error) {
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
-	}
-	return io.ReadAll(io.LimitReader(resp.Body, 5*1024*1024))
+	return netguard.Fetch(url, 5*1024*1024)
 }
 
 func validRemoteAssetFilename(filename string) bool {

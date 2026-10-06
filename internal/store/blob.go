@@ -1,12 +1,15 @@
 package store
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"io"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -305,24 +308,26 @@ func (s *BlobStore) ReadAvatar(relPath string) ([]byte, error) {
 	return os.ReadFile(filepath.Join(s.basePath, clean))
 }
 
-func assetExtension(url string, data []byte) string {
-	lower := strings.ToLower(url)
-	for _, ext := range []string{".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico", ".bmp"} {
-		if strings.Contains(lower, ext) {
-			return ext
-		}
+// assetExtension picks the stored extension from the bytes, never from the
+// URL: a sender controls the URL (".svg" anywhere in it) but not what the
+// bytes are. SVG is not sniffable, so it also needs an .svg URL path.
+func assetExtension(rawURL string, data []byte) string {
+	switch strings.ToLower(strings.Split(http.DetectContentType(data), ";")[0]) {
+	case "image/png":
+		return ".png"
+	case "image/jpeg":
+		return ".jpg"
+	case "image/gif":
+		return ".gif"
+	case "image/webp":
+		return ".webp"
+	case "image/bmp":
+		return ".bmp"
+	case "image/x-icon":
+		return ".ico"
 	}
-	if len(data) > 4 {
-		switch {
-		case data[0] == 0x89 && data[1] == 0x50:
-			return ".png"
-		case data[0] == 0xFF && data[1] == 0xD8:
-			return ".jpg"
-		case data[0] == 0x47 && data[1] == 0x49:
-			return ".gif"
-		case data[0] == 0x52 && data[1] == 0x49 && data[2] == 0x46 && data[3] == 0x46:
-			return ".webp"
-		}
+	if u, err := url.Parse(rawURL); err == nil && strings.HasSuffix(strings.ToLower(u.Path), ".svg") && bytes.Contains(bytes.ToLower(data), []byte("<svg")) {
+		return ".svg"
 	}
 	return ""
 }
