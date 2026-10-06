@@ -1082,7 +1082,27 @@
     overlay.appendChild(form)
     S.root.appendChild(overlay)
     ed.overlay = overlay
+    ed.snapshot = editorSnapshot(ed)
     E.title.focus()
+  }
+
+  // Esc on an edited event asks before throwing the edits away; an untouched editor closes at once.
+  function editorSnapshot(ed) {
+    var E = ed.els
+    return JSON.stringify([E.title.value, E.calendar.value, E.allDay.checked, E.sd.value, E.st.value, E.ed.value, E.et.value,
+      E.tz.value, E.repeat.value, E.location.value, ed.guests, E.guestInput.value, E.meet.checked, E.description.value, E.reminder.value])
+  }
+
+  function escapeEditor(ed) {
+    if (ed.saving || editorSnapshot(ed) === ed.snapshot || typeof window.goferConfirm !== "function") {
+      closeEditor()
+      return
+    }
+    ed.confirming = true
+    window.goferConfirm("Discard changes?", "Your unsaved event changes will be lost.", "Discard").then(function (ok) {
+      ed.confirming = false
+      if (ok && S.editor === ed) closeEditor()
+    })
   }
 
   function closeEditor() {
@@ -1388,9 +1408,11 @@
     if (!$("[data-calendar-app]")) return
     var k = e.key
     if (S.scope || S.editor) {
+      // While the discard prompt is open Esc belongs to the prompt (it closes itself as "cancel").
+      if (k === "Escape" && !S.scope && S.editor.confirming) return
       if (k === "Escape") {
         if (S.scope) S.scope.cancel()
-        else closeEditor()
+        else escapeEditor(S.editor)
         e.preventDefault(); e.stopImmediatePropagation()
       } else if (!typing(e.target) && !e.ctrlKey && !e.metaKey && !e.altKey && k.length === 1) {
         e.stopImmediatePropagation()

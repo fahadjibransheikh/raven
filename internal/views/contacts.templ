@@ -1643,7 +1643,7 @@ templ ContactEditor(contact *models.Contact, profile *models.ContactProfile, syn
 			</div>
 		}
 		if contact != nil {
-			<form id={ "delete-contact-" + contact.ID } action={ fmt.Sprintf("/api/contacts/%s/delete", contact.ID) } method="post"></form>
+			<form id={ "delete-contact-" + contact.ID } action={ fmt.Sprintf("/api/contacts/%s/delete", contact.ID) } method="post" data-confirm="Delete this contact? If it came from a synced address book (Google, Outlook or CardDAV) it is deleted there too. This cannot be undone." data-confirm-label="Delete contact"></form>
 		}
 	</div>
 }

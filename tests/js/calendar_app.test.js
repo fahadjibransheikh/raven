@@ -602,3 +602,28 @@ test("?date= opens the calendar at that day (Open in Calendar link on invitation
   const bad = await load({ search: "?date=garbage" })
   assert.ok(bad.d.querySelector("[data-cal-body]"))
 })
+
+test("Esc on an edited event asks before discarding; an untouched editor closes at once", async () => {
+  const { w, d, cal } = await load({})
+  const asked = []
+  let answer = false
+  w.goferConfirm = (title) => { asked.push(title); return Promise.resolve(answer) }
+  await cal.goTo("2026-10-07", "week")
+  key(w, d.body, "c")
+  key(w, field(d, "title"), "Escape")
+  assert.equal(d.querySelector("[data-cal-editor]"), null, "untouched editor closes without asking")
+  assert.deepEqual(asked, [])
+
+  key(w, d.body, "c")
+  field(d, "title").value = "Lunch"
+  key(w, field(d, "title"), "Escape")
+  await flush()
+  assert.deepEqual(asked, ["Discard changes?"])
+  assert.ok(d.querySelector("[data-cal-editor]"), "declining keeps the editor open with its edits")
+  assert.equal(field(d, "title").value, "Lunch")
+
+  answer = true
+  key(w, field(d, "title"), "Escape")
+  await flush()
+  assert.equal(d.querySelector("[data-cal-editor]"), null, "confirming discards")
+})
