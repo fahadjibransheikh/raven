@@ -1447,6 +1447,14 @@ document.addEventListener("DOMContentLoaded", function () {
       updateCachedRenderedRow(row)
     }
 
+    // "s" toggles: unstar only when every targeted row is already starred.
+    function mailRowsAllStarred(ids) {
+      return ids.length > 0 && ids.every(function (id) {
+        var row = mailRowById(id)
+        return !!row && row.dataset.starred === "true"
+      })
+    }
+
     function selectedMailTargets(ids) {
       return ids.map(function (emailId) {
         var row = document.querySelector('#mail-list-scroll .mail-list-item[data-email-id="' + cssEscape(emailId) + '"]')
@@ -1696,7 +1704,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         clearSelection()
         var path = action === "archive" ? "/api/messages/archive" : (action === "delete" ? "/api/messages/delete" : (action === "spam" ? "/api/messages/spam" : (action === "not-spam" ? "/api/messages/not-spam" : (action === "move" ? "/api/messages/move" : "/api/messages/star"))))
-        var extra = action === "star" ? { state: "starred" } : null
+        var extra = action === "star" ? { state: mailRowsAllStarred(ids) ? "unstarred" : "starred" } : null
         if (action === "move") extra = { folder_id: opts.destination.id }
         if (action === "delete") extra = { folder_id: currentMailListFolderID() }
         if (action === "spam" || action === "not-spam") extra = { folder_id: currentMailListFolderID() }
@@ -1704,6 +1712,7 @@ document.addEventListener("DOMContentLoaded", function () {
         sendBulkMessageAction(path, targets, extra).then(function (response) {
           if (response && response.ok === false) throw new Error("HTTP " + response.status)
           if (undoLabel) showUndoToastFromResponse(response, undoLabel)
+          if (action === "star") ids.forEach(function (id) { setStarButtonState(id, extra.state === "starred") })
         }).catch(function () {
           if (removesFromFolder) restoreOptimisticRemove(ids)
           showGoferToast({
@@ -11096,7 +11105,7 @@ function openComposeInMain(fullWidth, instantFullWidth) {
 
 function toggleRead(emailId) {
   fetch("/api/messages/" + emailId + "/read", { method: "POST" })
-    .then(function (r) { return r.json() })
+    .then(mailActionJSON)
     .then(function (data) {
       var btn = document.querySelector('[data-read-email="' + emailId + '"]')
       if (btn) {
@@ -11112,12 +11121,12 @@ function toggleRead(emailId) {
       invalidateMailListItem(emailId)
       refreshSidebarUnread()
     })
-    .catch(function () {})
+    .catch(function () { showMailActionError("Could not change read state") })
 }
 
 function toggleThreadRead(emailId) {
   fetch("/api/messages/" + emailId + "/thread/read", { method: "POST" })
-    .then(function (r) { return r.json() })
+    .then(mailActionJSON)
     .then(function (data) {
       var btn = document.querySelector('[data-read-email="' + emailId + '"]')
       if (btn) {
@@ -11133,27 +11142,23 @@ function toggleThreadRead(emailId) {
       invalidateMailListItem(emailId)
       refreshSidebarUnread()
     })
-    .catch(function () {})
+    .catch(function () { showMailActionError("Could not change read state") })
+}
+
+function setStarButtonState(emailId, starred) {
+  var svg = document.querySelector('[data-star-email="' + emailId + '"] svg')
+  if (!svg) return
+  svg.setAttribute("class", starred ? "size-4 text-amber-500 fill-amber-500 drop-shadow-[0_1px_1px_rgba(180,120,0,0.3)]" : "size-4 text-ink/30")
 }
 
 function toggleStar(emailId) {
   fetch("/api/messages/" + emailId + "/star", { method: "POST" })
-    .then(function (r) { return r.json() })
+    .then(mailActionJSON)
     .then(function (data) {
-      var starBtn = document.querySelector('[data-star-email="' + emailId + '"]')
-      if (starBtn) {
-        var svg = starBtn.querySelector('svg')
-        if (svg) {
-          if (data.is_starred) {
-            svg.setAttribute('class', 'size-4 text-amber-500 fill-amber-500 drop-shadow-[0_1px_1px_rgba(180,120,0,0.3)]')
-          } else {
-            svg.setAttribute('class', 'size-4 text-ink/30')
-          }
-        }
-      }
+      setStarButtonState(emailId, data.is_starred)
       invalidateMailListItem(emailId)
     })
-    .catch(function () {})
+    .catch(function () { showMailActionError("Could not change the star") })
 }
 
 function mailDeleteFolderQuery() {
@@ -11220,7 +11225,7 @@ function deleteMessageNow(emailId) {
       finishOptimisticMailRemoval(vml)
       showUndoToastFromResponse(response, mailUndoLabel("delete", 1))
     })
-    .catch(function () { restoreOptimisticMailRemoval(emailId, vml) })
+    .catch(function () { restoreOptimisticMailRemoval(emailId, vml); showMailActionError("Could not delete the message", "The change was undone. Try again.") })
 }
 
 // Opens the row after (or, at the end of the list, before) the open email when
@@ -11266,7 +11271,7 @@ function archiveThread(emailId) {
       finishOptimisticMailRemoval(vml)
       showUndoToastFromResponse(response, mailUndoLabel("archive", 1))
     })
-    .catch(function () { restoreOptimisticMailRemoval(emailId, vml) })
+    .catch(function () { restoreOptimisticMailRemoval(emailId, vml); showMailActionError("Could not archive the message", "The change was undone. Try again.") })
 }
 
 function deleteThread(emailId) {
@@ -11281,7 +11286,7 @@ function deleteThreadNow(emailId) {
       finishOptimisticMailRemoval(vml)
       showUndoToastFromResponse(response, mailUndoLabel("delete", 1))
     })
-    .catch(function () { restoreOptimisticMailRemoval(emailId, vml) })
+    .catch(function () { restoreOptimisticMailRemoval(emailId, vml); showMailActionError("Could not delete the conversation", "The change was undone. Try again.") })
 }
 
 function markSpam(emailId) {
@@ -11371,7 +11376,7 @@ function markSpamState(emailId, notSpam, thread) {
       finishOptimisticMailRemoval(vml)
       if (!notSpam) showUndoToastFromResponse(response, mailUndoLabel("spam", 1))
     })
-    .catch(function () { restoreOptimisticMailRemoval(emailId, vml) })
+    .catch(function () { restoreOptimisticMailRemoval(emailId, vml); showMailActionError(notSpam ? "Could not move out of spam" : "Could not report spam", "The change was undone. Try again.") })
 }
 
 function promptLabelMessage(emailId, thread) {
@@ -11384,8 +11389,11 @@ function promptLabelMessage(emailId, thread) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ label: labelName, thread: !!thread, folder_id: mailActionCurrentFolderID() })
   })
-    .then(function () { refreshAfterLabelMutation(emailId) })
-    .catch(function () {})
+    .then(function (response) {
+      if (!response.ok) throw new Error("HTTP " + response.status)
+      refreshAfterLabelMutation(emailId)
+    })
+    .catch(function () { showMailActionError("Could not add the label") })
 }
 
 function removeLabelMessage(emailId, labelName, thread) {
@@ -11396,8 +11404,11 @@ function removeLabelMessage(emailId, labelName, thread) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ label: labelName, thread: !!thread, folder_id: mailActionCurrentFolderID() })
   })
-    .then(function () { refreshAfterLabelMutation(emailId) })
-    .catch(function () {})
+    .then(function (response) {
+      if (!response.ok) throw new Error("HTTP " + response.status)
+      refreshAfterLabelMutation(emailId)
+    })
+    .catch(function () { showMailActionError("Could not remove the label") })
 }
 
 function refreshAfterLabelMutation(emailId) {
@@ -11419,7 +11430,19 @@ function moveMessage(emailId, folderId) {
       if (virtualMailList) virtualMailList.onNewEmail()
       refreshSidebarUnread()
     })
-    .catch(function () {})
+    .catch(function () { showMailActionError("Could not move the message") })
+}
+
+function mailActionJSON(response) {
+  if (!response.ok) throw new Error("HTTP " + response.status)
+  return response.json()
+}
+
+function showMailActionError(title, description) {
+  showGoferToast({
+    id: "mail-action-error", title: title, description: description || "Nothing was changed. Try again.",
+    variant: "error", icon: "error", position: "bottom-right", duration: 6000, dismissible: true,
+  })
 }
 
 function mailUndoLabel(action, count, destinationName) {

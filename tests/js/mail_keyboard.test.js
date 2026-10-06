@@ -66,3 +66,25 @@ test("# in Trash asks before permanently deleting, and only deletes on confirm",
   await tick()
   assert.ok(accepted.calls.find(function (c) { return c.url === "/api/messages/delete" }))
 })
+
+test("s stars an unstarred row and unstars an already starred one", async () => {
+  const t = await setup({})
+  t.w.document.querySelector('[data-email-id="m1"]').dataset.starred = "false"
+  t.w.document.querySelector('[data-email-id="m2"]').dataset.starred = "true"
+  t.w.document.querySelector('[data-email-id="m1"] > a').click()
+  press(t.w, "s")
+  await tick()
+  t.w.document.querySelector('[data-email-id="m2"] > a').click()
+  press(t.w, "s")
+  await tick()
+  const stars = t.calls.filter(function (c) { return c.url === "/api/messages/star" })
+  assert.deepEqual(Array.from(stars, function (c) { return c.body.state }), ["starred", "unstarred"])
+})
+
+test("a failed read toggle shows an error toast instead of failing silently", async () => {
+  const t = await setup({})
+  t.w.fetch = function () { return Promise.resolve({ ok: false, status: 500, json: function () { return Promise.reject(new Error("no json")) } }) }
+  t.w.eval("toggleRead('m1')")
+  await tick()
+  assert.ok(t.w.document.getElementById("mail-action-error"))
+})
