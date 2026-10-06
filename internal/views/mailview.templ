@@ -660,7 +660,7 @@ templ MailViewHeader(email *models.Email) {
 							Add label
 						</span>
 					}
-					@dropdown.Item() {
+					@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"onclick": fmt.Sprintf("performMailAction('move', ['%s'], { keepSelection: true })", email.ID)}}) {
 						<span class="flex items-center gap-2">
 							@icon.FolderInput(icon.Props{Class: "size-4"})
 							Move to...

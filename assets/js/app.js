@@ -1201,6 +1201,7 @@ document.addEventListener("DOMContentLoaded", function () {
     window.clearMailSelection = clearMailSelection
     window.clearActiveMailSelection = clearActiveMailSelection
     window.applyOptimisticMailRemove = applyOptimisticRemove
+    window.performMailAction = performMailAction
 
     document.addEventListener("click", function (e) {
       var rowLink = e.target.closest && e.target.closest(".mail-list-item[data-email-id] > a")
@@ -1582,6 +1583,44 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     }
 
+    // Folder picker for "Move to...": lists the folders of the one account the messages belong to.
+    function pickMoveDestination(ids) {
+      return new Promise(function (resolve) {
+        var accounts = {}
+        ids.forEach(function (id) {
+          var row = mailRowById(id)
+          if (row && row.dataset.accountId) accounts[row.dataset.accountId] = true
+        })
+        var accountIDs = Object.keys(accounts)
+        if (!accountIDs.length) {
+          // Row not rendered (e.g. opened from a link): fall back to the open message's account.
+          var open = document.querySelector("#mail-view [data-account-id]")
+          if (open && open.dataset.accountId) accountIDs = [open.dataset.accountId]
+        }
+        if (accountIDs.length !== 1) {
+          showGoferToast({ id: "mail-action-error", title: "Pick messages from one account", description: "Messages can only be moved between folders of the same account.", variant: "error", icon: "error", position: "bottom-right", duration: 6000, dismissible: true })
+          resolve(null)
+          return
+        }
+        var group = document.querySelector('[data-sidebar-account="' + cssEscape(accountIDs[0]) + '"]')
+        var currentFolder = mailActionCurrentFolderID()
+        var items = []
+        var links = group ? group.querySelectorAll('a[hx-get^="/folder/"]') : []
+        for (var i = 0; i < links.length; i++) {
+          var folderID = (links[i].getAttribute("hx-get") || "").replace("/folder/", "")
+          var name = links[i].querySelector("span.truncate")
+          if (!folderID || !name || folderID === currentFolder) continue
+          items.push({ label: name.textContent.trim(), run: (function (id, label) { return function () { resolve({ id: id, name: label }) } })(folderID, name.textContent.trim()) })
+        }
+        if (!items.length || !window.RavenPalette || !window.RavenPalette.pick) {
+          showGoferToast({ id: "mail-action-error", title: "No folders to move to", variant: "error", icon: "error", position: "bottom-right", duration: 6000, dismissible: true })
+          resolve(null)
+          return
+        }
+        window.RavenPalette.pick("Move to folder\u2026", items)
+      })
+    }
+
     function performMailSelectionAction(action) {
       if (mailSelectionBusy || selectedMailIds.size === 0) return
       performMailAction(action, Array.from(selectedMailIds))
@@ -1590,6 +1629,12 @@ document.addEventListener("DOMContentLoaded", function () {
     // Shared by the selection toolbar and the per-row hover buttons. opts.keepSelection leaves the
     // current multi-selection alone (row buttons act on one row only).
     function performMailAction(action, ids, opts) {
+      if (action === "move" && !(opts && opts.destination)) {
+        pickMoveDestination(ids).then(function (destination) {
+          if (destination) performMailAction("move", ids, Object.assign({}, opts, { destination: destination }))
+        })
+        return
+      }
       var keepSelection = !!(opts && opts.keepSelection)
       var clearSelection = keepSelection ? function () {} : clearMailSelection
       if (action === "label") {
@@ -1629,10 +1674,10 @@ document.addEventListener("DOMContentLoaded", function () {
         return
       }
 
-      if (action === "archive" || action === "delete" || action === "star" || action === "spam" || action === "not-spam") {
+      if (action === "archive" || action === "delete" || action === "star" || action === "spam" || action === "not-spam" || action === "move") {
         var targets = selectedMailTargets(ids)
         var current = virtualMailList && virtualMailList.selectedEmailId
-        var removesFromFolder = action === "archive" || action === "delete" || action === "spam" || action === "not-spam"
+        var removesFromFolder = action === "archive" || action === "delete" || action === "spam" || action === "not-spam" || action === "move"
         var openedNext = removesFromFolder && openNextMailAfterRemoval(ids)
         if (removesFromFolder && !openedNext && current && ids.indexOf(current) !== -1) setMailViewEmpty()
         if (removesFromFolder) applyOptimisticRemove(ids)
@@ -1641,8 +1686,9 @@ document.addEventListener("DOMContentLoaded", function () {
           syncMailSelectionControls()
         }
         clearSelection()
-        var path = action === "archive" ? "/api/messages/archive" : (action === "delete" ? "/api/messages/delete" : (action === "spam" ? "/api/messages/spam" : (action === "not-spam" ? "/api/messages/not-spam" : "/api/messages/star")))
+        var path = action === "archive" ? "/api/messages/archive" : (action === "delete" ? "/api/messages/delete" : (action === "spam" ? "/api/messages/spam" : (action === "not-spam" ? "/api/messages/not-spam" : (action === "move" ? "/api/messages/move" : "/api/messages/star"))))
         var extra = action === "star" ? { state: "starred" } : null
+        if (action === "move") extra = { folder_id: opts.destination.id }
         if (action === "delete") extra = { folder_id: currentMailListFolderID() }
         if (action === "spam" || action === "not-spam") extra = { folder_id: currentMailListFolderID() }
         sendBulkMessageAction(path, targets, extra).then(function (response) {
@@ -1651,7 +1697,7 @@ document.addEventListener("DOMContentLoaded", function () {
           if (removesFromFolder) restoreOptimisticRemove(ids)
           showGoferToast({
             id: "mail-action-error",
-            title: "Could not " + (action === "not-spam" ? "move out of spam" : action) + " the message",
+            title: "Could not " + (action === "not-spam" ? "move out of spam" : action) + (ids.length > 1 ? " the messages" : " the message"),
             description: "The change was undone. Try again.",
             variant: "error", icon: "error", position: "bottom-right", duration: 6000, dismissible: true,
           })
@@ -1768,6 +1814,12 @@ document.addEventListener("DOMContentLoaded", function () {
           e.preventDefault()
           ensureKeyboardMailSelection()
           performMailSelectionAction("star")
+          return
+        }
+        if (key === "v") {
+          e.preventDefault()
+          if (selectedMailIds.size === 0 && selectedMailIdForKeyboard()) ensureKeyboardMailSelection()
+          performMailSelectionAction("move")
           return
         }
         if (key === "u") {
@@ -1971,6 +2023,7 @@ document.addEventListener("DOMContentLoaded", function () {
             shortcutHelpRow(['e'], 'Archive selected') +
             shortcutHelpRow(['Del', '#'], 'Delete selected') +
             shortcutHelpRow(['s'], 'Star selected') +
+            shortcutHelpRow(['v'], 'Move to folder') +
             shortcutHelpRow(['u'], 'Toggle read') +
             shortcutHelpRow(['Esc'], 'Clear selection') +
           '</div>' +

@@ -132,9 +132,13 @@
     item.run()
   }
 
-  function open() {
+  // custom = { label, items } swaps the command list for a one-off picker
+  // (used by "Move to..."); omit it for the normal command palette.
+  function open(custom) {
     if (!dialog) build()
-    items = collectItems()
+    items = custom && custom.items ? custom.items : collectItems()
+    input.placeholder = custom && custom.label ? custom.label : "Type a command or folder\u2026"
+    dialog.setAttribute("aria-label", custom && custom.label ? custom.label : "Command palette")
     input.value = ""
     render()
     dialog.showModal()
@@ -150,7 +154,7 @@
     else open()
   })
 
-  window.RavenPalette = { open: open }
+  window.RavenPalette = { open: open, pick: function (label, pickItems) { open({ label: label, items: pickItems }) } }
 })()
 
 // Confirm prompts: window.confirm returns false without showing anything in the
