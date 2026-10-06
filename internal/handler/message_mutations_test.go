@@ -2,9 +2,12 @@ package handler
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -587,5 +590,39 @@ func TestPermanentDeleteFromTrashOffersNoUndo(t *testing.T) {
 	h.handleDeleteMessages(rec, req)
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"moved":[]`) {
 		t.Fatalf("permanent delete status=%d body=%s, want an empty moved list", rec.Code, rec.Body.String())
+	}
+}
+
+func TestComposeSourceReturnsReplyToAndQuotesCommaNames(t *testing.T) {
+	h, db := newAccountOwnershipTestHandler(t)
+	insertVictimReadableMessage(t, h, db)
+	rawPath := filepath.Join(t.TempDir(), "raw.eml")
+	raw := "From: Sender <sender@example.com>\r\nTo: \"Smith, Jane\" <jane@example.com>\r\nReply-To: Support Desk <help@example.com>\r\nSubject: Hello\r\n\r\nbody"
+	if err := os.WriteFile(rawPath, []byte(raw), 0o600); err != nil {
+		t.Fatalf("write raw: %v", err)
+	}
+	if _, err := db.Write().Exec(`UPDATE messages SET raw_path = ? WHERE id = 101`, rawPath); err != nil {
+		t.Fatalf("set raw path: %v", err)
+	}
+	if _, err := db.Write().Exec(`INSERT INTO message_recipients (message_id, kind, name, email) VALUES (101, 'to', 'Smith, Jane', 'jane@example.com')`); err != nil {
+		t.Fatalf("insert recipient: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/compose/source?account_id=victim-account&message_id=%3Cvictim-secret%40example.com%3E", nil)
+	req = req.WithContext(auth.ContextWithUser(req.Context(), &auth.User{ID: "owner", Username: "owner"}))
+	rec := httptest.NewRecorder()
+	h.handleComposeSource(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d body = %s", rec.Code, rec.Body.String())
+	}
+	var source map[string]any
+	if err := json.NewDecoder(rec.Body).Decode(&source); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if source["reply_to"] != "Support Desk <help@example.com>" {
+		t.Fatalf("reply_to = %#v", source["reply_to"])
+	}
+	if source["to"] != `"Smith, Jane" <jane@example.com>` {
+		t.Fatalf("to = %#v, want the comma name quoted", source["to"])
 	}
 }

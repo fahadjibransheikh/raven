@@ -8010,11 +8010,33 @@ function _isComposeRecipientValid(value) {
   return /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(_composeRecipientEmail(value))
 }
 
+// Splits on , ; and newlines, but not inside "quoted names" or <angle brackets>, so
+// "Smith, Jane" <j@x.com> stays one recipient.
 function _splitComposeRecipients(value) {
-  return String(value || "")
-    .split(/[;,\n]+/) 
-    .map(function (part) { return part.trim() })
-    .filter(Boolean)
+  var parts = []
+  var current = ""
+  var quoted = false
+  var angled = false
+  var text = String(value || "")
+  for (var i = 0; i < text.length; i++) {
+    var ch = text.charAt(i)
+    if (quoted && ch === "\\") {
+      current += ch + text.charAt(i + 1)
+      i++
+      continue
+    }
+    if (ch === '"' && !angled) quoted = !quoted
+    else if (!quoted && ch === "<") angled = true
+    else if (!quoted && ch === ">") angled = false
+    if (!quoted && !angled && (ch === "," || ch === ";" || ch === "\n")) {
+      parts.push(current)
+      current = ""
+      continue
+    }
+    current += ch
+  }
+  parts.push(current)
+  return parts.map(function (part) { return part.trim() }).filter(Boolean)
 }
 
 var _composeRecipientSuggestTimer = null
@@ -10602,6 +10624,7 @@ function composeAddress(name, email) {
   email = String(email || "").trim()
   name = String(name || "").trim()
   if (!email) return ""
+  if (/[,;<>"@()\[\]:\\]/.test(name)) name = '"' + name.replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"'
   return name ? name + " <" + email + ">" : email
 }
 
@@ -10735,6 +10758,9 @@ function composeValuesFromSource(source, mode) {
   var fromLine = composeAddress(source.from_name, source.from_email)
   var exclude = {}
   composeAccountSelfEmails(source.account_id).forEach(function (email) { exclude[email] = true })
+  // Reply goes to Reply-To when the sender set one; to your own message, back to its recipients.
+  var senderIsSelf = !!exclude[String(source.from_email || "").trim().toLowerCase()]
+  var replyTarget = senderIsSelf ? (source.to || "") : (source.reply_to || fromLine)
   var vals = {
     account_id: source.account_id || "",
     from_email: source.suggested_from_email || "",
@@ -10755,7 +10781,7 @@ function composeValuesFromSource(source, mode) {
     _composeDirty: "true"
   }
   if (mode === "reply" || mode === "reply-all") {
-    vals.to = mode === "reply-all" ? composeDedupeAddresses([fromLine, source.to || ""], exclude) : composeDedupeAddresses([fromLine], exclude)
+    vals.to = mode === "reply-all" ? composeDedupeAddresses([replyTarget, source.to || ""], exclude) : composeDedupeAddresses([replyTarget], exclude)
     vals.cc = mode === "reply-all" ? composeDedupeAddresses([source.cc || ""], exclude) : ""
     vals.subject = /^Re:/i.test(source.subject || "") ? source.subject : "Re: " + (source.subject || "")
     vals.body = composeReplyPlain(source)

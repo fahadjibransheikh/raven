@@ -1351,10 +1351,7 @@ func (h *Handler) handleContactSearch(w http.ResponseWriter, r *http.Request) {
 	}
 	items := make([]result, 0, len(contacts))
 	for _, c := range contacts {
-		value := c.Email
-		if c.Name != "" && c.Name != c.Email {
-			value = fmt.Sprintf("%s <%s>", c.Name, c.Email)
-		}
+		value := message.FormatAddress(c.Name, c.Email)
 		items = append(items, result{ID: c.ID, Name: c.Name, Email: c.Email, Value: value})
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -4991,8 +4988,16 @@ func (h *Handler) handleComposeSource(w http.ResponseWriter, r *http.Request) {
 		htmlBody = email.HTMLBody
 	}
 	identities, _ := h.db.ListAccountIdentities(r.Context(), userID, email.AccountID)
+	// Reply-To is not stored per message; read it from the saved raw message when there is one.
+	replyTo := ""
+	if storageInfo, err := h.db.GetMessageStorageInfoForUser(r.Context(), localID, userID); err == nil && storageInfo != nil && storageInfo.RawPath != "" {
+		if raw, err := os.ReadFile(storageInfo.RawPath); err == nil {
+			replyTo = message.ReplyToFromRaw(raw)
+		}
+	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{
+		"reply_to":             replyTo,
 		"account_id":           email.AccountID,
 		"suggested_from_email": pickReplyIdentity(identities, email.FolderRole, email.From, email.To, email.CC),
 		"message_id":           email.InternetMessageID,
@@ -5098,11 +5103,7 @@ func contactsToAddressList(contacts []models.Contact) string {
 		if c.Email == "" {
 			continue
 		}
-		if c.Name != "" && c.Name != c.Email {
-			parts = append(parts, fmt.Sprintf("%s <%s>", c.Name, c.Email))
-		} else {
-			parts = append(parts, c.Email)
-		}
+		parts = append(parts, message.FormatAddress(c.Name, c.Email))
 	}
 	return strings.Join(parts, ", ")
 }
