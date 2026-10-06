@@ -1632,6 +1632,12 @@ document.addEventListener("DOMContentLoaded", function () {
     // Shared by the selection toolbar and the per-row hover buttons. opts.keepSelection leaves the
     // current multi-selection alone (row buttons act on one row only).
     function performMailAction(action, ids, opts) {
+      if (action === "delete" && !(opts && opts.confirmed)) {
+        confirmPermanentDelete(ids.length).then(function (ok) {
+          if (ok) performMailAction(action, ids, Object.assign({}, opts, { confirmed: true }))
+        })
+        return
+      }
       if (action === "move" && !(opts && opts.destination)) {
         pickMoveDestination(ids).then(function (destination) {
           if (destination) performMailAction("move", ids, Object.assign({}, opts, { destination: destination }))
@@ -1805,26 +1811,22 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         if (key === "e") {
           e.preventDefault()
-          ensureKeyboardMailSelection()
-          performMailSelectionAction("archive")
+          if (requireKeyboardMailSelection()) performMailSelectionAction("archive")
           return
         }
         if (key === "delete" || key === "#") {
           e.preventDefault()
-          ensureKeyboardMailSelection()
-          performMailSelectionAction("delete")
+          if (requireKeyboardMailSelection()) performMailSelectionAction("delete")
           return
         }
         if (key === "s") {
           e.preventDefault()
-          ensureKeyboardMailSelection()
-          performMailSelectionAction("star")
+          if (requireKeyboardMailSelection()) performMailSelectionAction("star")
           return
         }
         if (key === "v") {
           e.preventDefault()
-          if (selectedMailIds.size === 0 && selectedMailIdForKeyboard()) ensureKeyboardMailSelection()
-          performMailSelectionAction("move")
+          if (requireKeyboardMailSelection()) performMailSelectionAction("move")
           return
         }
         if (key === "u") {
@@ -1911,6 +1913,13 @@ document.addEventListener("DOMContentLoaded", function () {
       return selectKeyboardMailRow(row)
     }
 
+    // Destructive keys act only on what the user selected or opened, never on the top row by default.
+    function requireKeyboardMailSelection() {
+      if (selectedMailIds.size > 0) return true
+      var row = mailRowById(selectedMailIdForKeyboard())
+      return row ? selectKeyboardMailRow(row) : false
+    }
+
     function clearKeyboardMailSelection() {
       var hadSelection = selectedMailIds.size > 0
       clearMailSelection()
@@ -1992,7 +2001,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function toggleKeyboardSelectedRead() {
-      ensureKeyboardMailSelection()
+      if (!requireKeyboardMailSelection()) return
       var id = selectedMailIdForKeyboard()
       if (!id) return
       var row = mailRowById(id)
@@ -11189,7 +11198,21 @@ function restoreOptimisticMailRemoval(emailId, vml) {
   if (window.htmx) htmx.ajax("GET", mailViewRequestURL(emailId), { target: "#mail-view", swap: "innerHTML" })
 }
 
+// Deleting from Trash is permanent (no Undo), so it asks first. Resolves true elsewhere.
+function confirmPermanentDelete(count) {
+  if (!mailFolderIsTrash(mailActionCurrentFolderID())) return Promise.resolve(true)
+  return goferConfirm(
+    "Delete permanently?",
+    (count > 1 ? "These " + count + " messages" : "This message") + " will be deleted permanently. This cannot be undone.",
+    "Delete permanently"
+  )
+}
+
 function deleteMessage(emailId) {
+  confirmPermanentDelete(1).then(function (ok) { if (ok) deleteMessageNow(emailId) })
+}
+
+function deleteMessageNow(emailId) {
   var vml = beginOptimisticMailRemoval(emailId)
   fetch("/api/messages/" + encodeURIComponent(emailId) + mailDeleteFolderQuery(), { method: "DELETE" })
     .then(function (response) {
@@ -11247,6 +11270,10 @@ function archiveThread(emailId) {
 }
 
 function deleteThread(emailId) {
+  confirmPermanentDelete(1).then(function (ok) { if (ok) deleteThreadNow(emailId) })
+}
+
+function deleteThreadNow(emailId) {
   var vml = beginOptimisticMailRemoval(emailId)
   fetch("/api/messages/" + encodeURIComponent(emailId) + "/thread" + mailDeleteFolderQuery(), { method: "DELETE" })
     .then(function (response) {

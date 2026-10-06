@@ -173,6 +173,8 @@ async function pressKey(key, respond) {
     return respond ? respond() : new Promise(function () {})
   }
   w.document.querySelector("[data-test-mail-list]").id = "mail-list-scroll"
+  // Shortcuts act only on a selected row; they no longer fall back to the top row.
+  w.document.querySelector("#mail-list-scroll .mail-list-item > a").click()
   w.document.dispatchEvent(new w.KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }))
   return { w, calls }
 }
