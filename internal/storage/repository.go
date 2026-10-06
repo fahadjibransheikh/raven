@@ -4358,7 +4358,7 @@ func (db *DB) ensureFolderThreadState(ctx context.Context, folderID string) erro
 		return nil
 	}
 	var existing int
-	if err := db.Read().QueryRowContext(ctx, `SELECT COUNT(*) FROM folder_thread_state WHERE folder_id = ?`, folderID).Scan(&existing); err != nil {
+	if err := db.Read().QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM folder_thread_state WHERE folder_id = ?)`, folderID).Scan(&existing); err != nil {
 		return err
 	}
 	if existing > 0 {
