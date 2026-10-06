@@ -279,9 +279,9 @@ func isLocalImageURL(v string) bool {
 
 var (
 	reCSSComment = regexp.MustCompile(`(?s)/\*.*?(?:\*/|$)`)
-	reCSSImport  = regexp.MustCompile(`(?is)@import\b[^;{}]*;?`)
+	reCSSImport  = regexp.MustCompile(`(?is)@(?:import|namespace)\b[^;{}]*;?`)
 	reCSSURL     = regexp.MustCompile(`(?is)url\s*\(\s*(?:"([^"]*)"|'([^']*)'|([^)]*))\s*\)`)
-	reCSSFetchFn = regexp.MustCompile(`(?i)(?:-[a-z]+-)?(?:image-set|cross-fade|element|image|src|expression)\s*\(`)
+	reCSSFetchFn = regexp.MustCompile(`(?i)(?:-[a-z]+-)?(?:image-set|cross-fade|element|image-rect|image|src|expression|paint)\s*\(`)
 	reCSSActive  = regexp.MustCompile(`(?i)(?:-moz-binding|behavior)\s*:`)
 	// One declaration or selector per match (strings are consumed whole, so a
 	// ; or } inside one does not split it), and the property it starts with.

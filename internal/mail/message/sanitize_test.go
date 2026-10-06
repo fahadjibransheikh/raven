@@ -502,3 +502,21 @@ func TestRewriteToLocalAssetsCoversBackgrounds(t *testing.T) {
 		t.Errorf("rewritten body not stable under re-sanitizing: %s", again)
 	}
 }
+
+// None of these fetches from the network through a url() the sanitizer sees, but
+// they have no place in mail either.
+func TestSanitizeCSSDropsPaintImageRectAndNamespace(t *testing.T) {
+	for _, in := range []string{
+		`<div style="background:paint(x)">x</div>`,
+		`<div style="background:-moz-image-rect(url(https://t.example/x),0,0,0,0)">x</div>`,
+		`<style>@namespace url(https://t.example/);.a{color:red}</style>`,
+		`<style>@namespace svg url(http://www.w3.org/2000/svg);</style>`,
+	} {
+		out := strings.ToLower(string(SanitizeHTML([]byte(in))))
+		for _, bad := range []string{"paint(", "image-rect", "@namespace", "t.example", "w3.org"} {
+			if strings.Contains(out, bad) {
+				t.Errorf("input %q: %s survived: %s", in, bad, out)
+			}
+		}
+	}
+}
