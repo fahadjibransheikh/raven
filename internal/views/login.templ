@@ -33,7 +33,7 @@ templ LoginPage(showGoogle, showMicrosoft bool, oidcName string, errorMessage st
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<title>Raven — Sign In</title>
 			@AppIcon()
-			<link rel="stylesheet" href="/assets/css/output.css"/>
+			<link rel="stylesheet" href={ AssetURL("/assets/css/output.css") }/>
 		</head>
 		<body class="bg-background text-foreground antialiased">
 			<div class="min-h-screen flex items-center justify-center p-4">
@@ -165,7 +165,7 @@ templ LoginPage(showGoogle, showMicrosoft bool, oidcName string, errorMessage st
 }
 				</div>
 			</div>
-			<script src="/assets/js/passkey-authentication.js"></script>
+			<script src={ AssetURL("/assets/js/passkey-authentication.js") }></script>
 		</body>
 	</html>
 }
@@ -185,7 +185,7 @@ templ LoginMFAContinuationPage(errorMessage string, factors LoginMFAFactors) {
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<title>Raven — Additional verification</title>
 			@AppIcon()
-			<link rel="stylesheet" href="/assets/css/output.css"/>
+			<link rel="stylesheet" href={ AssetURL("/assets/css/output.css") }/>
 		</head>
 		<body class="bg-background text-foreground antialiased">
 			<main class="min-h-screen flex items-center justify-center p-4">
@@ -255,7 +255,7 @@ templ LoginMFAContinuationPage(errorMessage string, factors LoginMFAFactors) {
 					</div>
 				</div>
 			</main>
-			<script src="/assets/js/passkey-authentication.js"></script>
+			<script src={ AssetURL("/assets/js/passkey-authentication.js") }></script>
 		</body>
 	</html>
 }
@@ -268,7 +268,7 @@ templ RecoveryCodeLoginPage(errorMessage string) {
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<title>Raven — Use a Recovery Code</title>
 			@AppIcon()
-			<link rel="stylesheet" href="/assets/css/output.css"/>
+			<link rel="stylesheet" href={ AssetURL("/assets/css/output.css") }/>
 		</head>
 		<body class="bg-background text-foreground antialiased">
 			<main class="min-h-screen flex items-center justify-center p-4">
@@ -324,7 +324,7 @@ templ RecoveryRepairMFAPage(data RecoveryRepairMFAData) {
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<title>Raven — Repair Your Authenticator</title>
 			@AppIcon()
-			<link rel="stylesheet" href="/assets/css/output.css"/>
+			<link rel="stylesheet" href={ AssetURL("/assets/css/output.css") }/>
 		</head>
 		<body class="bg-background text-foreground antialiased">
 			<main class="min-h-screen flex items-center justify-center p-4 py-10">
@@ -379,7 +379,7 @@ templ MFAEnrollmentPage(data MFAEnrollmentData) {
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<title>Raven — Set Up MFA</title>
 			@AppIcon()
-			<link rel="stylesheet" href="/assets/css/output.css"/>
+			<link rel="stylesheet" href={ AssetURL("/assets/css/output.css") }/>
 		</head>
 		<body class="bg-background text-foreground antialiased">
 			<main class="min-h-screen flex items-center justify-center p-4 py-10">
@@ -434,7 +434,7 @@ templ MFAEnrollmentCodesPage(data MFAEnrollmentCodesData) {
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<title>Raven — Save Recovery Codes</title>
 			@AppIcon()
-			<link rel="stylesheet" href="/assets/css/output.css"/>
+			<link rel="stylesheet" href={ AssetURL("/assets/css/output.css") }/>
 		</head>
 		<body class="bg-background text-foreground antialiased">
 			<main class="min-h-screen flex items-center justify-center p-4 py-10">
@@ -505,7 +505,7 @@ templ RecoveryRepairCodesPage(data RecoveryRepairCodesData) {
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<title>Raven — Save New Recovery Codes</title>
 			@AppIcon()
-			<link rel="stylesheet" href="/assets/css/output.css"/>
+			<link rel="stylesheet" href={ AssetURL("/assets/css/output.css") }/>
 		</head>
 		<body class="bg-background text-foreground antialiased">
 			<main class="min-h-screen flex items-center justify-center p-4 py-10">

@@ -57,7 +57,7 @@ func TestManagementAdminLayoutOwnsItsNavigationShell(t *testing.T) {
 		`href="/admin/account/security"`,
 		`aria-current="page"`,
 		`data-management-shell`,
-		`src="/assets/js/passkey-authentication.js"`,
+		`src="/assets/js/passkey-authentication.js?`,
 		`id="main-content" class="relative flex min-h-0 min-w-0 flex-1"`,
 		`body class="h-screen overflow-hidden`,
 		`class="flex h-full min-h-0 overflow-hidden bg-background"`,
@@ -151,7 +151,7 @@ func TestManagementSecurityLayoutSuppressesExternalSignInSettings(t *testing.T) 
 	}
 	for _, want := range []string{
 		`body class="h-screen overflow-hidden`,
-		`src="/assets/js/htmx.min.js"`,
+		`src="/assets/js/htmx.min.js?`,
 		`hx-get="/settings/security/activity?page=1"`,
 		`id="security-activity-dialog-body"`,
 		`class="flex h-full min-h-0 overflow-hidden bg-background"`,

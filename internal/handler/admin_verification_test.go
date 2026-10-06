@@ -77,7 +77,7 @@ func TestAdminUsersDialogVerifiesTOTPWithoutLeavingAdmin(t *testing.T) {
 	for _, want := range []string{
 		`data-admin-security-verification`, `data-admin-security-totp`,
 		`action="/settings/security/step-up"`, `name="return_to" value="/admin/users"`,
-		`src="/assets/js/passkey-authentication.js"`,
+		`src="/assets/js/passkey-authentication.js?`,
 	} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("stale administrator users page omitted %q: %q", want, html)

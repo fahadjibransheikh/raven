@@ -61,8 +61,8 @@ func TestPasswordSecurityPageRendersLocalAccessibleChangeForm(t *testing.T) {
 	html := recorder.Body.String()
 	for _, want := range []string{
 		`href="/settings/security"`,
-		`src="/assets/js/htmx.min.js"`,
-		`src="/assets/js/settings.js"`,
+		`src="/assets/js/htmx.min.js?`,
+		`src="/assets/js/settings.js?`,
 		`data-local-login-identifiers`,
 		`data-local-login-username>Person</dd>`,
 		"separate from mailbox addresses and external sign-in identities",

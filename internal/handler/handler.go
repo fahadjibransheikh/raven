@@ -25,6 +25,7 @@ import (
 	"github.com/cristianadrielbraun/gofer/internal/store"
 	"github.com/cristianadrielbraun/gofer/internal/translation"
 	"github.com/cristianadrielbraun/gofer/internal/views"
+	"github.com/cristianadrielbraun/gofer/utils"
 	"github.com/google/uuid"
 	"golang.org/x/oauth2"
 	"html"
@@ -588,15 +589,27 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 func setupAssetsRoutes(mux *http.ServeMux) {
 	isDevelopment := os.Getenv("GO_ENV") != "production"
 	assetServer := http.FileServer(assetFileSystem())
+	if !isDevelopment {
+		// Content hash of every embedded asset: a changed file yields new ?v= URLs.
+		utils.ScriptVersion = assetContentVersion()
+	}
 
 	assetHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasSuffix(r.URL.Path, ".webmanifest") {
 			w.Header().Set("Content-Type", "application/manifest+json; charset=utf-8")
 		}
-		if isDevelopment {
+		switch {
+		case isDevelopment:
 			w.Header().Set("Cache-Control", "no-store")
-		} else {
-			w.Header().Set("Cache-Control", "public, max-age=31536000")
+		case r.URL.Query().Get("v") == utils.ScriptVersion:
+			// Versioned URL: the content can never change under it.
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		default:
+			// Unversioned URL (logo, manifest, stale pages): always revalidate via ETag.
+			w.Header().Set("Cache-Control", "public, no-cache")
+			if etag := assetETag(r.URL.Path); etag != "" {
+				w.Header().Set("ETag", etag)
+			}
 		}
 		assetServer.ServeHTTP(w, r)
 	})

@@ -11,3 +11,7 @@ func assetFileSystem() http.FileSystem {
 func serveServiceWorker(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "./assets/js/sw.js")
 }
+
+// Disk builds are development builds: no-store, so no versioning or validators.
+func assetContentVersion() string { return "dev" }
+func assetETag(string) string     { return "" }

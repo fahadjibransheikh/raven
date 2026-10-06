@@ -23,7 +23,7 @@ func escaped(value string) string { return templ.EscapeString(value) }
 
 func ManagementLoginPage(errorMessage, identifier string) templ.Component {
 	return templ.ComponentFunc(func(_ context.Context, w io.Writer) error {
-		if err := writeHTML(w, `<!DOCTYPE html><html lang="en" class="dark" data-theme="raven"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Raven Admin — Sign In</title><link rel="icon" type="image/svg+xml" href="/assets/logo.svg"><link rel="stylesheet" href="/assets/css/output.css"></head><body class="bg-background text-foreground antialiased"><main class="min-h-screen flex items-center justify-center p-4"><div class="w-full max-w-sm"><div class="text-center mb-8"><img src="/assets/logo.svg" alt="Raven" class="h-12 w-auto mx-auto"><p class="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-primary">Management</p><h1 class="mt-2 text-2xl font-semibold">Sign in to Raven Admin</h1><p class="mt-2 text-sm text-muted-foreground">Management accounts are separate from webmail accounts.</p></div>`); err != nil {
+		if err := writeHTML(w, `<!DOCTYPE html><html lang="en" class="dark" data-theme="raven"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Raven Admin — Sign In</title><link rel="icon" type="image/svg+xml" href="/assets/logo.svg"><link rel="stylesheet" href="`, escaped(AssetURL("/assets/css/output.css")), `"></head><body class="bg-background text-foreground antialiased"><main class="min-h-screen flex items-center justify-center p-4"><div class="w-full max-w-sm"><div class="text-center mb-8"><img src="/assets/logo.svg" alt="Raven" class="h-12 w-auto mx-auto"><p class="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-primary">Management</p><h1 class="mt-2 text-2xl font-semibold">Sign in to Raven Admin</h1><p class="mt-2 text-sm text-muted-foreground">Management accounts are separate from webmail accounts.</p></div>`); err != nil {
 			return err
 		}
 		if errorMessage != "" {
@@ -37,7 +37,7 @@ func ManagementLoginPage(errorMessage, identifier string) templ.Component {
 
 func ManagementMFAContinuationPage(errorMessage string) templ.Component {
 	return templ.ComponentFunc(func(_ context.Context, w io.Writer) error {
-		if err := writeHTML(w, `<!DOCTYPE html><html lang="en" class="dark" data-theme="raven"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Raven Admin — Verify</title><link rel="icon" type="image/svg+xml" href="/assets/logo.svg"><link rel="stylesheet" href="/assets/css/output.css"></head><body class="bg-background text-foreground antialiased"><main class="min-h-screen flex items-center justify-center p-4"><div class="w-full max-w-sm"><div class="text-center"><img src="/assets/logo.svg" alt="Raven" class="h-12 w-auto mx-auto"><p class="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-primary">Management</p><h1 class="mt-2 text-2xl font-semibold">Verify your authenticator</h1><p class="mt-3 text-sm text-muted-foreground">Enter the six-digit code from your authenticator app to finish signing in.</p></div>`); err != nil {
+		if err := writeHTML(w, `<!DOCTYPE html><html lang="en" class="dark" data-theme="raven"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Raven Admin — Verify</title><link rel="icon" type="image/svg+xml" href="/assets/logo.svg"><link rel="stylesheet" href="`, escaped(AssetURL("/assets/css/output.css")), `"></head><body class="bg-background text-foreground antialiased"><main class="min-h-screen flex items-center justify-center p-4"><div class="w-full max-w-sm"><div class="text-center"><img src="/assets/logo.svg" alt="Raven" class="h-12 w-auto mx-auto"><p class="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-primary">Management</p><h1 class="mt-2 text-2xl font-semibold">Verify your authenticator</h1><p class="mt-3 text-sm text-muted-foreground">Enter the six-digit code from your authenticator app to finish signing in.</p></div>`); err != nil {
 			return err
 		}
 		if errorMessage != "" {
@@ -184,7 +184,7 @@ func ManagementAdminActivityLayout(uiSettings map[string]string, data AdminSecur
 
 func managementAdminLayout(uiSettings map[string]string, activeSection string, scope models.AdminWebmailScope, content templ.Component) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		if err := writeHTML(w, `<!DOCTYPE html><html lang="en" class="`, escaped(themeClass(uiSettings)), `" data-theme="`, escaped(themeStyle(uiSettings)), `"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Admin — Raven</title><link rel="icon" type="image/svg+xml" href="/assets/logo.svg"><link rel="stylesheet" href="/assets/css/output.css">`); err != nil {
+		if err := writeHTML(w, `<!DOCTYPE html><html lang="en" class="`, escaped(themeClass(uiSettings)), `" data-theme="`, escaped(themeStyle(uiSettings)), `"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Admin — Raven</title><link rel="icon" type="image/svg+xml" href="/assets/logo.svg"><link rel="stylesheet" href="`, escaped(AssetURL("/assets/css/output.css")), `">`); err != nil {
 			return err
 		}
 		if err := SettingsComponentScripts().Render(ctx, w); err != nil {
@@ -211,13 +211,13 @@ func managementAdminLayout(uiSettings map[string]string, activeSection string, s
 		if err := content.Render(ctx, w); err != nil {
 			return err
 		}
-		return writeHTML(w, `</div></div></div><script src="/assets/js/ui-settings.js"></script><script src="/assets/js/passkey-authentication.js"></script><script src="/assets/js/admin.js"></script></body></html>`)
+		return writeHTML(w, `</div></div></div><script src="`, escaped(AssetURL("/assets/js/ui-settings.js")), `"></script><script src="`, escaped(AssetURL("/assets/js/passkey-authentication.js")), `"></script><script src="`, escaped(AssetURL("/assets/js/admin.js")), `"></script></body></html>`)
 	})
 }
 
 func ManagementSecurityLayout(uiSettings map[string]string, content templ.Component) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		if err := writeHTML(w, `<!DOCTYPE html><html lang="en" class="`, escaped(themeClass(uiSettings)), `" data-theme="`, escaped(themeStyle(uiSettings)), `"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Account security — Raven Admin</title><link rel="icon" type="image/svg+xml" href="/assets/logo.svg"><link rel="stylesheet" href="/assets/css/output.css">`); err != nil {
+		if err := writeHTML(w, `<!DOCTYPE html><html lang="en" class="`, escaped(themeClass(uiSettings)), `" data-theme="`, escaped(themeStyle(uiSettings)), `"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Account security — Raven Admin</title><link rel="icon" type="image/svg+xml" href="/assets/logo.svg"><link rel="stylesheet" href="`, escaped(AssetURL("/assets/css/output.css")), `">`); err != nil {
 			return err
 		}
 		if err := SettingsComponentScripts().Render(ctx, w); err != nil {
@@ -241,13 +241,13 @@ func ManagementSecurityLayout(uiSettings map[string]string, content templ.Compon
 		if err := content.Render(ctx, w); err != nil {
 			return err
 		}
-		return writeHTML(w, `</div></main></div></div><script src="/assets/js/htmx.min.js"></script><script src="/assets/js/ui-settings.js"></script><script src="/assets/js/passkey-registration.js"></script><script src="/assets/js/passkey-authentication.js"></script><script src="/assets/js/settings.js"></script></body></html>`)
+		return writeHTML(w, `</div></main></div></div><script src="`, escaped(AssetURL("/assets/js/htmx.min.js")), `"></script><script src="`, escaped(AssetURL("/assets/js/ui-settings.js")), `"></script><script src="`, escaped(AssetURL("/assets/js/passkey-registration.js")), `"></script><script src="`, escaped(AssetURL("/assets/js/passkey-authentication.js")), `"></script><script src="`, escaped(AssetURL("/assets/js/settings.js")), `"></script></body></html>`)
 	})
 }
 
 func SeparatedSetupOwnerPage(data SetupOwnerData) templ.Component {
 	return templ.ComponentFunc(func(_ context.Context, w io.Writer) error {
-		if err := writeHTML(w, `<!DOCTYPE html><html lang="en" class="dark" data-theme="raven"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Raven — Create Management Owner</title><link rel="icon" type="image/svg+xml" href="/assets/logo.svg"><link rel="stylesheet" href="/assets/css/output.css"></head><body class="bg-background text-foreground antialiased"><main class="min-h-screen flex items-center justify-center p-4 py-10"><div class="w-full max-w-2xl"><div class="text-center mb-8"><img src="/assets/logo.svg" alt="Raven" class="h-12 w-auto mx-auto"><p class="mt-5 text-xs font-medium uppercase tracking-widest text-success">Setup access verified</p><h1 class="mt-2 text-2xl font-semibold">Create the management owner</h1><p class="mt-2 text-sm text-muted-foreground">This identity is used only for Raven administration. Existing webmail users, mailboxes, and their data remain attached to their current owners.</p></div>`); err != nil {
+		if err := writeHTML(w, `<!DOCTYPE html><html lang="en" class="dark" data-theme="raven"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Raven — Create Management Owner</title><link rel="icon" type="image/svg+xml" href="/assets/logo.svg"><link rel="stylesheet" href="`, escaped(AssetURL("/assets/css/output.css")), `"></head><body class="bg-background text-foreground antialiased"><main class="min-h-screen flex items-center justify-center p-4 py-10"><div class="w-full max-w-2xl"><div class="text-center mb-8"><img src="/assets/logo.svg" alt="Raven" class="h-12 w-auto mx-auto"><p class="mt-5 text-xs font-medium uppercase tracking-widest text-success">Setup access verified</p><h1 class="mt-2 text-2xl font-semibold">Create the management owner</h1><p class="mt-2 text-sm text-muted-foreground">This identity is used only for Raven administration. Existing webmail users, mailboxes, and their data remain attached to their current owners.</p></div>`); err != nil {
 			return err
 		}
 		if data.DraftSaved {

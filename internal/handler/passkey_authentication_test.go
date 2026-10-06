@@ -43,7 +43,7 @@ func TestPasskeyLoginPageAndPublicHandlersSupportDiscoverableFallback(t *testing
 	for _, want := range []string{
 		`data-passkey-authentication`, `data-start-path="/login/passkey/start"`,
 		`data-finish-path="/login/passkey/finish"`, `data-identifier-source="#login-identifier"`,
-		`src="/assets/js/passkey-authentication.js"`, "Sign in with a passkey", "use your password",
+		`src="/assets/js/passkey-authentication.js?`, "Sign in with a passkey", "use your password",
 	} {
 		if !strings.Contains(strings.ToLower(page.Body.String()), strings.ToLower(want)) {
 			t.Fatalf("passkey login page missing %q: %q", want, page.Body.String())

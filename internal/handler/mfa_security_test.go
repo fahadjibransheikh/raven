@@ -83,7 +83,7 @@ func TestSecuritySettingsRendersManagedFactorsAndProtectsActionsWithCSRF(t *test
 	for _, want := range []string{
 		"TOTP authenticator app", "Enrolled", "Recovery codes", "10 remaining",
 		"Passkeys", "Add passkey", `data-passkey-registration`,
-		`src="/assets/js/passkey-registration.js"`,
+		`src="/assets/js/passkey-registration.js?`,
 		`action="/settings/security/totp/start"`,
 		`action="/settings/security/recovery/start"`,
 		"Your administrator policy requires at least one MFA method to remain enabled.",
