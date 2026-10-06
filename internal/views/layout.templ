@@ -32,9 +32,6 @@ templ Layout(accounts []models.Account, activeFolder string, emails []models.Ema
 			<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 			<title>Raven</title>
 			@AppIcon()
-			<link rel="preconnect" href="https://fonts.googleapis.com"/>
-			<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous"/>
-			<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;0,9..144,800;1,9..144,400&family=Nunito+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet"/>
 			@SavedPanelSizeStyle()
 			<link rel="stylesheet" href="/assets/css/output.css"/>
 			@dialog.Script()
@@ -50,12 +47,12 @@ templ Layout(accounts []models.Account, activeFolder string, emails []models.Ema
 			@toast.Script()
 			@AppSidebarResponsiveStyle()
 		</head>
-		<body class="bg-background text-foreground antialiased surface-desk" data-ui-settings={ uiSettingsJSON(uiSettings) } data-initial-email-id={ initialEmailID }>
+		<body class="bg-background text-foreground antialiased" data-ui-settings={ uiSettingsJSON(uiSettings) } data-initial-email-id={ initialEmailID }>
 			<div id="app-shell" class="flex h-screen overflow-hidden">
-				@Sidebar(accounts, activeFolder, uiSettingGet(uiSettings, "sidebar_width", "256px"), uiSettings, scheduledCount, filters)
+				@Sidebar(accounts, activeFolder, uiSettingGet(uiSettings, "sidebar_width", "240px"), uiSettings, scheduledCount, filters)
 				@ResizeHandle("sidebar")
 				<div id="main-content" class={ mailPaneLayoutClass(uiSettingGet(uiSettings, "mail_pane_layout", "side")) } data-mail-pane-layout={ mailPaneLayout(uiSettingGet(uiSettings, "mail_pane_layout", "side")) }>
-					@MailList(accounts, emails, activeFolder, selectedEmail, totalCount, scrollCount, 0, uiSettingGet(uiSettings, "mail_list_width", "50%"), uiSettingGet(uiSettings, "sender_display", "name"), uiSettingGet(uiSettings, "mail_list_view", "cards"), uiSettingGet(uiSettings, "mail_list_navigation", "infinite"), filters)
+					@MailList(accounts, emails, activeFolder, selectedEmail, totalCount, scrollCount, 0, uiSettingGet(uiSettings, "mail_list_width", "30%"), uiSettingGet(uiSettings, "sender_display", "name"), uiSettingGet(uiSettings, "mail_list_view", "cards"), uiSettingGet(uiSettings, "mail_list_navigation", "infinite"), filters)
 					@ResizeHandle("maillist")
 					if initialEmailID != "" && selectedEmail == nil {
 						@MailViewLoading()
@@ -152,17 +149,14 @@ templ SettingsLayout(accounts []models.Account, syncSettings models.SyncSettings
 			<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 			<title>Settings — Raven</title>
 			@AppIcon()
-			<link rel="preconnect" href="https://fonts.googleapis.com"/>
-			<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous"/>
-			<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;0,9..144,800;1,9..144,400&family=Nunito+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet"/>
 			@SavedPanelSizeStyle()
 			<link rel="stylesheet" href="/assets/css/output.css"/>
 			@SettingsComponentScripts()
 			@AppSidebarResponsiveStyle()
 		</head>
-		<body class="bg-background text-foreground antialiased surface-desk" data-ui-settings={ uiSettingsJSON(uiSettings) }>
+		<body class="bg-background text-foreground antialiased" data-ui-settings={ uiSettingsJSON(uiSettings) }>
 			<div id="app-shell" class="flex h-screen overflow-hidden">
-				@SettingsSidebar(activeTab, uiSettingGet(uiSettings, "sidebar_width", "256px"))
+				@SettingsSidebar(activeTab, uiSettingGet(uiSettings, "sidebar_width", "240px"))
 				@ResizeHandle("sidebar")
 				<div id="main-content" class="flex flex-1 min-w-0">
 					@SettingsPage(accounts, syncSettings, activeTab, uiSettings, signatureData)
@@ -237,10 +231,10 @@ templ SettingsRuntime(accounts []models.Account) {
 
 templ MailShell(accounts []models.Account, activeFolder string, emails []models.Email, selectedEmail *models.Email, totalCount int, scrollCount int, uiSettings map[string]string, selectedThread []models.ThreadItem, initialEmailID string, scheduledCount int, filters models.EmailFilters) {
 	<div id="app-shell" class="flex h-screen overflow-hidden">
-		@Sidebar(accounts, activeFolder, uiSettingGet(uiSettings, "sidebar_width", "256px"), uiSettings, scheduledCount, filters)
+		@Sidebar(accounts, activeFolder, uiSettingGet(uiSettings, "sidebar_width", "240px"), uiSettings, scheduledCount, filters)
 		@ResizeHandle("sidebar")
 		<div id="main-content" class={ mailPaneLayoutClass(uiSettingGet(uiSettings, "mail_pane_layout", "side")) } data-mail-pane-layout={ mailPaneLayout(uiSettingGet(uiSettings, "mail_pane_layout", "side")) }>
-			@MailList(accounts, emails, activeFolder, selectedEmail, totalCount, scrollCount, 0, uiSettingGet(uiSettings, "mail_list_width", "50%"), uiSettingGet(uiSettings, "sender_display", "name"), uiSettingGet(uiSettings, "mail_list_view", "cards"), uiSettingGet(uiSettings, "mail_list_navigation", "infinite"), filters)
+			@MailList(accounts, emails, activeFolder, selectedEmail, totalCount, scrollCount, 0, uiSettingGet(uiSettings, "mail_list_width", "30%"), uiSettingGet(uiSettings, "sender_display", "name"), uiSettingGet(uiSettings, "mail_list_view", "cards"), uiSettingGet(uiSettings, "mail_list_navigation", "infinite"), filters)
 			@ResizeHandle("maillist")
 			if initialEmailID != "" && selectedEmail == nil {
 				@MailViewLoading()
@@ -253,7 +247,7 @@ templ MailShell(accounts []models.Account, activeFolder string, emails []models.
 }
 
 templ MailAppPartial(accounts []models.Account, activeFolder string, emails []models.Email, selectedEmail *models.Email, totalCount int, scrollCount int, uiSettings map[string]string, selectedThread []models.ThreadItem, initialEmailID string, windowStart int, scheduledCount int, filters models.EmailFilters) {
-	@MailList(accounts, emails, activeFolder, selectedEmail, totalCount, scrollCount, windowStart, uiSettingGet(uiSettings, "mail_list_width", "50%"), uiSettingGet(uiSettings, "sender_display", "name"), uiSettingGet(uiSettings, "mail_list_view", "cards"), uiSettingGet(uiSettings, "mail_list_navigation", "infinite"), filters)
+	@MailList(accounts, emails, activeFolder, selectedEmail, totalCount, scrollCount, windowStart, uiSettingGet(uiSettings, "mail_list_width", "30%"), uiSettingGet(uiSettings, "sender_display", "name"), uiSettingGet(uiSettings, "mail_list_view", "cards"), uiSettingGet(uiSettings, "mail_list_navigation", "infinite"), filters)
 	@MailSidebarBody(accounts, activeFolder, uiSettings, scheduledCount, filters)
 	<div id="sidebar-sync-controls">
 		@SidebarSyncControls(accounts, "mail")
@@ -268,7 +262,7 @@ templ MailAppPartial(accounts []models.Account, activeFolder string, emails []mo
 }
 
 templ ContactsAppPartial(accounts []models.Account, contacts []models.Contact, selected *models.Contact, selectedProfile *models.ContactProfile, showNew bool, syncQueued bool, filters models.ContactFilters, totalCount int, uiSettings map[string]string) {
-	@ContactsListPane(contacts, selected, filters, totalCount, uiSettingGet(uiSettings, "mail_list_width", "50%"), accounts)
+	@ContactsListPane(contacts, selected, filters, totalCount, uiSettingGet(uiSettings, "mail_list_width", "30%"), accounts)
 	@ContactsSidebarBody(accounts, "contacts", uiSettings, filters)
 	<div id="sidebar-sync-controls">
 		@SidebarSyncControls(accounts, "contacts")
@@ -287,9 +281,6 @@ templ ContactsLayout(accounts []models.Account, contacts []models.Contact, selec
 			<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 			<title>Contacts — Raven</title>
 			@AppIcon()
-			<link rel="preconnect" href="https://fonts.googleapis.com"/>
-			<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous"/>
-			<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;0,9..144,800;1,9..144,400&family=Nunito+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet"/>
 			@SavedPanelSizeStyle()
 			<link rel="stylesheet" href="/assets/css/output.css"/>
 			@dialog.Script()
@@ -305,7 +296,7 @@ templ ContactsLayout(accounts []models.Account, contacts []models.Contact, selec
 			@toast.Script()
 			@AppSidebarResponsiveStyle()
 		</head>
-			<body class="bg-background text-foreground antialiased surface-desk" data-ui-settings={ uiSettingsJSON(uiSettings) }>
+			<body class="bg-background text-foreground antialiased" data-ui-settings={ uiSettingsJSON(uiSettings) }>
 				@ContactsShell(accounts, contacts, selected, selectedProfile, showNew, syncQueued, filters, totalCount, uiSettings)
 				<div id="app-pane-dialogs">
 					@ContactsImportDialog(accounts)
@@ -359,9 +350,9 @@ templ AppSidebarResponsiveStyle() {
 
 templ ContactsShell(accounts []models.Account, contacts []models.Contact, selected *models.Contact, selectedProfile *models.ContactProfile, showNew bool, syncQueued bool, filters models.ContactFilters, totalCount int, uiSettings map[string]string) {
 	<div id="app-shell" class="flex h-screen overflow-hidden">
-		@ContactsSidebar(accounts, "contacts", uiSettingGet(uiSettings, "sidebar_width", "256px"), uiSettings, filters)
+		@ContactsSidebar(accounts, "contacts", uiSettingGet(uiSettings, "sidebar_width", "240px"), uiSettings, filters)
 		@ResizeHandle("sidebar")
-		@ContactsPage(contacts, selected, selectedProfile, showNew, syncQueued, filters, totalCount, uiSettingGet(uiSettings, "mail_list_width", "50%"), accounts)
+		@ContactsPage(contacts, selected, selectedProfile, showNew, syncQueued, filters, totalCount, uiSettingGet(uiSettings, "mail_list_width", "30%"), accounts)
 	</div>
 }
 
@@ -373,9 +364,6 @@ templ AdminLayout(uiSettings map[string]string, userData AdminUsersData, avatarS
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<title>Admin — Raven</title>
 			@AppIcon()
-			<link rel="preconnect" href="https://fonts.googleapis.com"/>
-			<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous"/>
-			<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;0,9..144,800;1,9..144,400&family=Nunito+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet"/>
 			@SavedPanelSizeStyle()
 			<link rel="stylesheet" href="/assets/css/output.css"/>
 			@dialog.Script()
@@ -390,7 +378,7 @@ templ AdminLayout(uiSettings map[string]string, userData AdminUsersData, avatarS
 			@copybutton.Script()
 			@toast.Script()
 		</head>
-		<body class="bg-background text-foreground antialiased surface-desk" data-ui-settings={ uiSettingsJSON(uiSettings) }>
+		<body class="bg-background text-foreground antialiased" data-ui-settings={ uiSettingsJSON(uiSettings) }>
 			<div class="flex h-screen overflow-hidden bg-background">
 				@AdminSidebar(activeSection)
 				<div id="main-content" class="relative flex min-h-0 min-w-0 flex-1">
@@ -469,8 +457,8 @@ templ SavedPanelSizeStyle() {
 }
 
 templ FolderPartial(accounts []models.Account, emails []models.Email, activeFolder string, selectedEmail *models.Email, totalCount int, scrollCount int, selectedThread []models.ThreadItem, uiSettings map[string]string, filters models.EmailFilters) {
-	@MailList(accounts, emails, activeFolder, selectedEmail, totalCount, scrollCount, 0, uiSettingGet(uiSettings, "mail_list_width", "50%"), uiSettingGet(uiSettings, "sender_display", "name"), uiSettingGet(uiSettings, "mail_list_view", "cards"), uiSettingGet(uiSettings, "mail_list_navigation", "infinite"), filters)
-	<div id="mail-view" class="hidden lg:flex flex-1 flex-col min-w-0 bg-background surface-desk" hx-swap-oob="true">
+	@MailList(accounts, emails, activeFolder, selectedEmail, totalCount, scrollCount, 0, uiSettingGet(uiSettings, "mail_list_width", "30%"), uiSettingGet(uiSettings, "sender_display", "name"), uiSettingGet(uiSettings, "mail_list_view", "cards"), uiSettingGet(uiSettings, "mail_list_navigation", "infinite"), filters)
+	<div id="mail-view" class="hidden lg:flex flex-1 flex-col min-w-0 bg-background" hx-swap-oob="true">
 		if selectedEmail != nil {
 			@MailViewContent(selectedEmail, selectedThread)
 		} else {
@@ -482,7 +470,7 @@ templ FolderPartial(accounts []models.Account, emails []models.Email, activeFold
 
 templ MailContentPartial(accounts []models.Account, emails []models.Email, activeFolder string, selectedEmail *models.Email, totalCount int, scrollCount int, selectedThread []models.ThreadItem, uiSettings map[string]string, initialEmailID string, windowStart int, filters models.EmailFilters) {
 	<div id="main-content" class={ mailPaneLayoutClass(uiSettingGet(uiSettings, "mail_pane_layout", "side")) } data-mail-pane-layout={ mailPaneLayout(uiSettingGet(uiSettings, "mail_pane_layout", "side")) }>
-		@MailList(accounts, emails, activeFolder, selectedEmail, totalCount, scrollCount, windowStart, uiSettingGet(uiSettings, "mail_list_width", "50%"), uiSettingGet(uiSettings, "sender_display", "name"), uiSettingGet(uiSettings, "mail_list_view", "cards"), uiSettingGet(uiSettings, "mail_list_navigation", "infinite"), filters)
+		@MailList(accounts, emails, activeFolder, selectedEmail, totalCount, scrollCount, windowStart, uiSettingGet(uiSettings, "mail_list_width", "30%"), uiSettingGet(uiSettings, "sender_display", "name"), uiSettingGet(uiSettings, "mail_list_view", "cards"), uiSettingGet(uiSettings, "mail_list_navigation", "infinite"), filters)
 		@ResizeHandle("maillist")
 		if initialEmailID != "" {
 			@MailViewLoading()

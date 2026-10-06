@@ -1,3 +1,10 @@
+// Row heights in px. Keep in sync with .mail-list-item / .mail-list-thread-main /
+// the skeleton rules in assets/css/input.css (comfortable cards, compact table).
+var MAIL_ROW_HEIGHT = { cards: 64, table: 36 }
+function mailRowHeight(viewMode) {
+  return viewMode === "table" ? MAIL_ROW_HEIGHT.table : MAIL_ROW_HEIGHT.cards
+}
+
 class VirtualMailList {
   constructor(container, options) {
     this.container = container
@@ -5,7 +12,7 @@ class VirtualMailList {
     this.folderID = options.folderID || "inbox"
     this.viewMode = options.viewMode || container.dataset.viewMode || "cards"
     this.navigationMode = (options.navigationMode || container.dataset.navigationMode) === "pagination" ? "pagination" : "infinite"
-    this.itemHeight = this.viewMode === "table" ? 44 : 100
+    this.itemHeight = mailRowHeight(this.viewMode)
     this.subItemHeight = this.viewMode === "table" ? 32 : 48
     this.expandedThreadGap = 26
     this.overscan = 10
@@ -342,7 +349,7 @@ class VirtualMailList {
       var title = syncing ? 'Syncing folder' : empty.title
       this.itemsContainer.innerHTML =
         '<div class="flex flex-col items-center justify-center py-20 px-4 text-center">' +
-          '<div class="empty-icon-box size-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-4 raised">' +
+          '<div class="size-12 rounded-xl flex items-center justify-center mb-3 raised">' +
             '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-7 text-muted-foreground/40" data-lucide="icon">' +
               '<polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/>' +
               '<path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>' +
@@ -873,7 +880,7 @@ class VirtualMailList {
     row.className = "mail-list-skeleton" + (this.viewMode === "table" ? " mail-list-table-skeleton" : " mail-list-card")
     if (this.viewMode === "table") {
       row.innerHTML =
-        '<div class="mail-list-table-grid grid items-center gap-3 w-full px-3 py-1.5">' +
+        '<div class="mail-list-table-grid grid items-center gap-2 w-full px-3 py-1.5">' +
         '<div class="flex items-center justify-center shrink-0" data-mail-table-cell="accountMarker">' +
         '<div class="h-2.5 w-2.5 rounded bg-muted animate-pulse"></div>' +
         "</div>" +
@@ -903,7 +910,7 @@ class VirtualMailList {
     row.setAttribute("data-mail-card-layout-scope", "")
     row.innerHTML =
       '<div class="mail-list-card-zone mail-list-card-zone-rail-top" data-mail-card-zone="railTop">' +
-      '<div data-mail-card-field="avatar" class="size-6 rounded-full bg-muted animate-pulse shadow-[0_1px_3px_rgba(0,0,0,0.12)]"></div>' +
+      '<div data-mail-card-field="avatar" class="size-6 rounded-full bg-muted animate-pulse"></div>' +
       "</div>" +
       '<div class="mail-list-card-zone mail-list-card-zone-rail-middle" data-mail-card-zone="railMiddle">' +
       '<div data-mail-card-field="accountMarker" class="account-color-marker size-2.5 shrink-0 bg-muted animate-pulse"></div>' +
@@ -1623,7 +1630,7 @@ class VirtualMailList {
     if (this.viewMode !== "table") return
 
     var header = document.createElement("div")
-    header.className = "mail-list-table-header mail-list-table-grid grid items-center gap-3 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-card/95 border-b border-border/70 sticky top-0 z-20 backdrop-blur-sm"
+    header.className = "mail-list-table-header mail-list-table-grid grid items-center gap-2 px-3 py-1.5 text-xs font-medium text-muted-foreground bg-card/95 border-b border-border/70 sticky top-0 z-20 backdrop-blur-sm"
     header.style.opacity = "0"
     header.style.transform = "translateY(-4px)"
     header.style.transition = "opacity 140ms ease-out, transform 140ms ease-out"
@@ -1810,7 +1817,7 @@ class VirtualMailList {
 
   setViewMode(viewMode, keepRows) {
     this.viewMode = viewMode === "table" ? "table" : "cards"
-    this.itemHeight = this.viewMode === "table" ? 44 : 100
+    this.itemHeight = mailRowHeight(this.viewMode)
     this.subItemHeight = this.viewMode === "table" ? 32 : 48
     this.container.dataset.viewMode = this.viewMode
     var mailList = document.getElementById("mail-list")
@@ -1869,7 +1876,7 @@ class VirtualMailList {
     var transition = this.captureListTransition()
     var selected = this.selectedEmailId
     var oldItemHeight = this.itemHeight
-    var targetItemHeight = viewMode === "table" ? 44 : 100
+    var targetItemHeight = mailRowHeight(viewMode)
     var anchorIndex = this.positionAtOffset(this.container.scrollTop)
     var anchorOffset = Math.max(0, this.container.scrollTop - this.offsetAtPosition(anchorIndex))
     var anchorRatio = oldItemHeight > 0 ? Math.min(1, anchorOffset / oldItemHeight) : 0
@@ -2307,11 +2314,11 @@ class VirtualMailList {
                 '<svg class="size-4 animate-spin" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>' +
               '</span>' +
               '<div class="min-w-0">' +
-                '<div class="text-[10px] font-bold uppercase tracking-[0.12em] text-primary">Mail sync in progress</div>' +
+                '<div class="text-xs font-bold uppercase tracking-[0.12em] text-primary">Mail sync in progress</div>' +
                 '<div id="mail-sync-text" class="mt-0.5 truncate text-xs font-medium text-foreground">Syncing folder</div>' +
               '</div>' +
             '</div>' +
-            '<span id="mail-sync-count" class="shrink-0 rounded-md border border-primary/20 bg-primary/10 px-2 py-1 text-[11px] font-semibold tabular-nums text-primary"></span>' +
+            '<span id="mail-sync-count" class="shrink-0 rounded-md border border-primary/20 bg-primary/10 px-2 py-1 text-xs font-semibold tabular-nums text-primary"></span>' +
           '</div>' +
           '<div class="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-primary/10 ring-1 ring-inset ring-primary/10">' +
             '<div id="mail-sync-progress" class="h-full rounded-full bg-primary transition-all duration-300 ease-out" style="width: 8%"></div>' +
@@ -2536,7 +2543,7 @@ class VirtualContactsList {
   constructor(container, options) {
     this.container = container
     this.viewMode = options.viewMode || container.dataset.viewMode || "cards"
-    this.itemHeight = this.viewMode === "table" ? 44 : 100
+    this.itemHeight = mailRowHeight(this.viewMode)
     this.overscan = 10
     this.chunkSize = 100
     this.loadingSkeletonMinDuration = 180
@@ -2621,7 +2628,7 @@ class VirtualContactsList {
 
   setViewMode(viewMode, keepRows) {
     this.viewMode = viewMode === "table" ? "table" : "cards"
-    this.itemHeight = this.viewMode === "table" ? 44 : 100
+    this.itemHeight = mailRowHeight(this.viewMode)
     this.container.dataset.viewMode = this.viewMode
     var shell = document.querySelector("[data-contact-list-shell]") || document.getElementById("mail-list")
     if (shell) shell.dataset.viewMode = this.viewMode
@@ -2657,7 +2664,7 @@ class VirtualContactsList {
     if (existing) existing.remove()
     if (this.viewMode !== "table") return
     var header = document.createElement("div")
-    header.className = "mail-list-table-header mail-list-table-grid grid items-center gap-3 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-card/95 border-b border-border/70 sticky top-0 z-20 backdrop-blur-sm"
+    header.className = "mail-list-table-header mail-list-table-grid grid items-center gap-2 px-3 py-1.5 text-xs font-medium text-muted-foreground bg-card/95 border-b border-border/70 sticky top-0 z-20 backdrop-blur-sm"
     header.style.cssText = this.tableGridStyle()
     header.style.opacity = "0"
     header.style.transform = "translateY(-4px)"
@@ -2712,7 +2719,7 @@ class VirtualContactsList {
 
   emptyHTML() {
     return '<div class="flex flex-col items-center justify-center py-20 px-4 text-center">' +
-      '<div class="empty-icon-box size-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-4 raised">' +
+      '<div class="size-12 rounded-xl flex items-center justify-center mb-3 raised">' +
       '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-7 text-muted-foreground/40"><path d="M15 18a3 3 0 1 0-6 0"></path><circle cx="12" cy="10" r="2"></circle><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M8 2v4"></path><path d="M16 2v4"></path></svg>' +
       '</div><h3 class="font-semibold text-sm mb-1">No contacts yet</h3>' +
       '<p class="text-xs text-muted-foreground">Observed contacts will appear as mail is synced, or you can add one manually.</p></div>'
@@ -2792,7 +2799,7 @@ class VirtualContactsList {
 
   createSkeleton() {
     if (this.viewMode === "table") {
-      return '<div class="mail-list-skeleton mail-list-table-skeleton"><div class="mail-list-table-grid grid items-center gap-3 w-full px-3 py-1.5" style="' + this.tableGridStyle() + '"><div class="h-3 w-32 rounded bg-muted animate-pulse"></div><div class="h-3 w-24 rounded bg-muted animate-pulse"></div><div class="ml-auto h-3 w-8 rounded bg-muted animate-pulse"></div></div></div>'
+      return '<div class="mail-list-skeleton mail-list-table-skeleton"><div class="mail-list-table-grid grid items-center gap-2 w-full px-3 py-1.5" style="' + this.tableGridStyle() + '"><div class="h-3 w-32 rounded bg-muted animate-pulse"></div><div class="h-3 w-24 rounded bg-muted animate-pulse"></div><div class="ml-auto h-3 w-8 rounded bg-muted animate-pulse"></div></div></div>'
     }
     return '<div class="mail-list-skeleton"><div class="flex items-start gap-3 px-3.5 py-2.5"><div class="size-6 rounded-full bg-muted animate-pulse"></div><div class="flex-1 min-w-0 space-y-2"><div class="h-3 w-28 rounded bg-muted animate-pulse"></div><div class="h-3 w-40 rounded bg-muted animate-pulse"></div><div class="h-2.5 w-24 rounded bg-muted animate-pulse"></div></div></div></div>'
   }
@@ -3113,7 +3120,7 @@ class VirtualContactsList {
     }
     if (!this.selectedContactId) {
       var detail = document.getElementById("contacts-detail")
-      if (detail) detail.innerHTML = '<div class="flex flex-col items-center justify-center h-full text-center"><div class="space-y-4 animate-fade-in"><div class="size-20 rounded-2xl bg-card flex items-center justify-center mx-auto raised"><svg class="size-9 text-muted-foreground/30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18a3 3 0 1 0-6 0"></path><circle cx="12" cy="10" r="2"></circle><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M8 2v4"></path><path d="M16 2v4"></path></svg></div><div><h3 class="font-semibold mb-1">Select a contact</h3><p class="text-sm text-muted-foreground">Choose a contact from the list to view or edit it</p></div></div></div>'
+      if (detail) detail.innerHTML = '<div class="flex flex-col items-center justify-center h-full text-center"><div class="space-y-4 animate-fade-in"><div class="size-20 rounded-xl bg-card flex items-center justify-center mx-auto raised"><svg class="size-9 text-muted-foreground/30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18a3 3 0 1 0-6 0"></path><circle cx="12" cy="10" r="2"></circle><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M8 2v4"></path><path d="M16 2v4"></path></svg></div><div><h3 class="font-semibold mb-1">Select a contact</h3><p class="text-sm text-muted-foreground">Choose a contact from the list to view or edit it</p></div></div></div>'
     }
   }
 
@@ -3417,8 +3424,8 @@ window.addEventListener("popstate", function (e) {
       sidebarLinks[i].classList.add("text-sidebar-foreground")
       var badge = sidebarLinks[i].querySelector("[data-folder-unread]")
       if (badge) {
-        badge.classList.remove("bg-sidebar-primary/20", "text-sidebar-primary")
-        badge.classList.add("bg-sidebar-accent", "text-sidebar-foreground/80")
+        badge.classList.remove("text-sidebar-accent-foreground")
+        badge.classList.add("text-subtle-foreground")
       }
     }
     var folderRows = sidebar.querySelectorAll("[data-sidebar-folder-row]")
@@ -3427,8 +3434,8 @@ window.addEventListener("popstate", function (e) {
       folderRows[r].classList.add("text-sidebar-foreground", "hover:bg-sidebar-accent/60", "hover:text-sidebar-accent-foreground")
       var rowBadge = folderRows[r].querySelector("[data-folder-unread]")
       if (rowBadge) {
-        rowBadge.classList.remove("bg-sidebar-primary/20", "text-sidebar-primary")
-        rowBadge.classList.add("bg-sidebar-accent", "text-sidebar-foreground/80")
+        rowBadge.classList.remove("text-sidebar-accent-foreground")
+        rowBadge.classList.add("text-subtle-foreground")
       }
     }
     var activeLink = null
@@ -3456,8 +3463,8 @@ window.addEventListener("popstate", function (e) {
       }
       var activeBadge = activeLink.querySelector("[data-folder-unread]")
       if (activeBadge) {
-        activeBadge.classList.remove("bg-sidebar-accent", "text-sidebar-foreground/80")
-        activeBadge.classList.add("bg-sidebar-primary/20", "text-sidebar-primary")
+        activeBadge.classList.remove("text-subtle-foreground")
+        activeBadge.classList.add("text-sidebar-accent-foreground")
       }
       if (activeLink.hasAttribute("data-sidebar-tag-filter")) {
         var activeGroup = activeLink.closest("[data-sidebar-tag-group]")

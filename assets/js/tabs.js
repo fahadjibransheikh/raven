@@ -36,7 +36,7 @@
     indicator.style.borderRadius = "calc(var(--radius) - 3px)";
     indicator.style.background = "var(--background)";
     indicator.style.border = "1px solid var(--border)";
-    indicator.style.boxShadow = "var(--shadow-card)";
+    indicator.style.boxShadow = "none";
     indicator.style.transition = "transform 220ms ease, width 220ms ease";
     indicator.style.willChange = "transform, width";
     indicator.style.pointerEvents = "none";

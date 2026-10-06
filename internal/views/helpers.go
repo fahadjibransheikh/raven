@@ -339,7 +339,7 @@ func parseAccountSyncErrorAt(raw string) (time.Time, bool) {
 func mailListWidthCSS(width string) string {
 	v := strings.TrimSpace(width)
 	if v == "" {
-		return "clamp(300px,50%,calc(100% - 300px))"
+		return "clamp(320px,30%,480px)"
 	}
 
 	if strings.HasSuffix(v, "%") {
@@ -361,7 +361,7 @@ func mailListWidthCSS(width string) string {
 		return strconv.FormatFloat(n, 'f', -1, 64) + "px"
 	}
 
-	return "clamp(300px,50%,calc(100% - 300px))"
+	return "clamp(320px,30%,480px)"
 }
 
 func uiSettingCSVHas(settings map[string]string, key, fallback, value string) bool {
@@ -611,8 +611,15 @@ func themeClass(settings map[string]string) string {
 	return ""
 }
 
+// themeStyle returns the accent preset: "raven", "classic" (copper) or
+// "minimal" (mono). Classic and minimal were once full structural themes;
+// stored values still load and now select an accent. Anything else is raven.
 func themeStyle(settings map[string]string) string {
-	return uiSettingGet(settings, "theme_style", "raven")
+	switch style := uiSettingGet(settings, "theme_style", "raven"); style {
+	case "classic", "minimal":
+		return style
+	}
+	return "raven"
 }
 
 func senderDisplay(contact models.Contact, mode string) string {
@@ -665,12 +672,12 @@ func contactAvatarListFallback(isRead bool) string {
 	if isRead {
 		return "bg-muted text-muted-foreground"
 	}
-	return "bg-gradient-to-b from-amber-700/80 to-amber-900/80 text-amber-100"
+	return ""
 }
 
 func contactAvatarThreadFallback(isCurrent bool) string {
 	if isCurrent {
-		return "bg-gradient-to-b from-amber-700/70 to-amber-900/70 text-amber-100"
+		return ""
 	}
 	return "bg-ink/[0.06] text-ink/40"
 }

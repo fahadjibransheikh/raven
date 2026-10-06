@@ -843,7 +843,7 @@ func (h *Handler) handleContacts(w http.ResponseWriter, r *http.Request) {
 	if r.Header.Get("HX-Request") == "true" {
 		width := uiSettings["mail_list_width"]
 		if width == "" {
-			width = "50%"
+			width = "30%"
 		}
 		w.Header().Set("Content-Type", "text/html")
 		if r.Header.Get("HX-Target") == "mail-list" {
@@ -1644,14 +1644,14 @@ func buildBodyDocument(body []byte, resizeScript []byte, nonce, theme string, bg
 		return []byte("<!DOCTYPE html><html><head><meta charset=\"utf-8\"></head><body>" + s + injection + "</body></html>")
 	}
 
-	fallbackBg := "#f8f2e6"
-	fallbackFg := "#2c2418"
+	fallbackBg := "#ffffff"
+	fallbackFg := "#1d1b16"
 	fallbackLink := "#1a0dab"
 	scheme := "light"
 	if isDark {
-		fallbackBg = "#2a2520"
-		fallbackFg = "#d8ccb4"
-		fallbackLink = "#d49040"
+		fallbackBg = "#161618"
+		fallbackFg = "#ececee"
+		fallbackLink = "#ff7ab4"
 		scheme = "dark"
 	}
 	bgColor = safeEmailCSSColor(bgColor, fallbackBg)
@@ -1662,6 +1662,7 @@ func buildBodyDocument(body []byte, resizeScript []byte, nonce, theme string, bg
 		"html{overflow:hidden;background:" + bgColor + " !important;color:" + fgColor + "}" +
 		"body{overflow:hidden;background:" + bgColor + " !important;color:" + fgColor + "}" +
 		"body[bgcolor]{background-color:" + bgColor + " !important}" +
+		":where(body){font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:15px;line-height:1.6}" +
 		"a{color:" + linkColor + "}" +
 		"</style>"
 
@@ -1701,7 +1702,7 @@ func buildBodyDocument(body []byte, resizeScript []byte, nonce, theme string, bg
 	}
 	doc := "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><style>" +
 		"html{margin:0;overflow:hidden;color-scheme:" + scheme + ";background:" + bgColor + ";color:" + fgColor + "}" +
-		"body{margin:0;padding:8px;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:14px;line-height:1.5;background:" + bgColor + ";color:" + fgColor + ";word-wrap:break-word}" +
+		"body{margin:0;padding:8px;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:15px;line-height:1.6;background:" + bgColor + ";color:" + fgColor + ";word-wrap:break-word}" +
 		"img{max-width:100%;height:auto}" +
 		"a{color:" + linkColor + "}" +
 		"</style></head><body>" +

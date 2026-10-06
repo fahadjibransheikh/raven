@@ -505,7 +505,7 @@ func contactSyncLabel(contact *models.Contact) string {
 }
 
 func contactSyncEnabledBadgeClass(enabled bool) string {
-	base := "rounded-md border px-2 py-1 text-[10px] font-semibold uppercase tracking-wider transition-colors "
+	base := "rounded-md border px-2 py-1 text-xs font-semibold transition-colors "
 	if enabled {
 		return base + "border-emerald-500/20 bg-emerald-500/[0.08] text-emerald-700 dark:text-emerald-300"
 	}
@@ -1149,12 +1149,12 @@ templ ContactsListPane(contacts []models.Contact, selected *models.Contact, filt
 			<div class="flex items-center justify-between">
 				<div class="flex items-center gap-2">
 					@PhoneNavToggle("")
-					<h2 class="text-lg font-bold tracking-tight" style="font-family: var(--font-serif)">Contacts</h2>
+					<h2 class="text-lg font-semibold tracking-tight">Contacts</h2>
 					<span id="contacts-count" class="inline-flex h-5 min-w-10 items-center justify-center rounded-md bg-muted px-2 text-xs font-medium text-muted-foreground shadow-[0_1px_2px_rgba(0,0,0,0.06)]">{ fmt.Sprintf("%d", totalCount) }</span>
 				</div>
 			</div>
 			<div class="flex items-center gap-2">
-				<form action="/contacts" method="get" class="relative groove rounded-lg flex-1 min-w-0" data-contact-search-form>
+				<form action="/contacts" method="get" class="relative rounded-lg flex-1 min-w-0" data-contact-search-form>
 					<input type="hidden" name="source" value={ filters.Source }/>
 					<input type="hidden" name="save_target" value={ filters.SaveTarget }/>
 					<input type="hidden" name="activity" value={ filters.Activity }/>
@@ -1179,7 +1179,7 @@ templ ContactsListPane(contacts []models.Contact, selected *models.Contact, filt
 					<button type="button" data-active={ fmt.Sprintf("%t", contactFiltersActive(filters)) } class="relative inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground data-[active=true]:bg-accent data-[active=true]:text-foreground" aria-label="Filter contacts">
 						@icon.ListFilter(icon.Props{Class: "size-3.5"})
 						if contactFilterCount(filters) > 0 {
-							<span class="absolute -right-1 -top-1 min-w-4 h-4 rounded-full bg-primary px-1 text-[10px] leading-4 text-primary-foreground font-semibold">{ fmt.Sprintf("%d", contactFilterCount(filters)) }</span>
+							<span class="absolute -right-1 -top-1 min-w-4 h-4 rounded-full bg-primary px-1 text-xs leading-4 text-primary-foreground font-semibold">{ fmt.Sprintf("%d", contactFilterCount(filters)) }</span>
 						}
 					</button>
 				}
@@ -1191,9 +1191,9 @@ templ ContactsListPane(contacts []models.Contact, selected *models.Contact, filt
 						<input type="hidden" name="sort_order" value={ filters.SortOrder }/>
 						<div class="flex items-center justify-between gap-2">
 							<div class="text-xs font-semibold text-muted-foreground">Quick filters</div>
-							<a href={ contactsURL(models.ContactFilters{Query: filters.Query, View: filters.View, SortBy: filters.SortBy, SortOrder: filters.SortOrder}, "") } class="text-[11px] font-medium text-muted-foreground hover:text-foreground" data-contact-filter-clear>Clear</a>
+							<a href={ contactsURL(models.ContactFilters{Query: filters.Query, View: filters.View, SortBy: filters.SortBy, SortOrder: filters.SortOrder}, "") } class="text-xs font-medium text-muted-foreground hover:text-foreground" data-contact-filter-clear>Clear</a>
 						</div>
-						<div class="space-y-1 text-[11px] font-medium text-muted-foreground">
+						<div class="space-y-1 text-xs font-medium text-muted-foreground">
 							<span>Origin</span>
 							@selectbox.SelectBox() {
 								@selectbox.Trigger(selectbox.TriggerProps{Name: "source", Class: "h-8 bg-background text-xs", DisableClear: true}) {
@@ -1222,7 +1222,7 @@ templ ContactsListPane(contacts []models.Contact, selected *models.Contact, filt
 								}
 							}
 						</div>
-						<div class="space-y-1 text-[11px] font-medium text-muted-foreground">
+						<div class="space-y-1 text-xs font-medium text-muted-foreground">
 							<span>Sync locations</span>
 							@selectbox.SelectBox() {
 								@selectbox.Trigger(selectbox.TriggerProps{Name: "save_target", Class: "h-8 bg-background text-xs", DisableClear: true}) {
@@ -1250,7 +1250,7 @@ templ ContactsListPane(contacts []models.Contact, selected *models.Contact, filt
 								}
 							}
 						</div>
-						<div class="space-y-1 text-[11px] font-medium text-muted-foreground">
+						<div class="space-y-1 text-xs font-medium text-muted-foreground">
 							<span>Activity</span>
 							@selectbox.SelectBox() {
 								@selectbox.Trigger(selectbox.TriggerProps{Name: "activity", Class: "h-8 bg-background text-xs", DisableClear: true}) {
@@ -1274,7 +1274,7 @@ templ ContactsListPane(contacts []models.Contact, selected *models.Contact, filt
 				}
 			}
 			if contactFiltersActive(filters) {
-				<div class="flex min-w-0 flex-1 items-center gap-1 overflow-hidden px-1 text-[11px] text-muted-foreground">
+				<div class="flex min-w-0 flex-1 items-center gap-1 overflow-hidden px-1 text-xs text-muted-foreground">
 					if filters.Source != "" {
 						<span class="shrink-0 rounded-full border border-border bg-background px-2 py-0.5">{ contactOriginFilterLabel(filters.Source, accounts) }</span>
 					}
@@ -1302,7 +1302,7 @@ templ ContactsListPane(contacts []models.Contact, selected *models.Contact, filt
 				}
 				@dropdown.Content(dropdown.ContentProps{Placement: dropdown.PlacementBottomEnd, Class: "w-64 normal-case tracking-normal p-3"}) {
 					<form class="space-y-3" data-contact-sort-form>
-						<div class="space-y-1 text-[11px] font-medium text-muted-foreground">
+						<div class="space-y-1 text-xs font-medium text-muted-foreground">
 							<span>Order by</span>
 							@selectbox.SelectBox() {
 								@selectbox.Trigger(selectbox.TriggerProps{Name: "sort_by", Class: "h-8 bg-background text-xs", DisableClear: true}) { @selectbox.Value(selectbox.ValueProps{Placeholder: "Recently updated"}) }
@@ -1313,7 +1313,7 @@ templ ContactsListPane(contacts []models.Contact, selected *models.Contact, filt
 								}
 							}
 						</div>
-						<div class="space-y-1 text-[11px] font-medium text-muted-foreground">
+						<div class="space-y-1 text-xs font-medium text-muted-foreground">
 							<span>Order</span>
 							@selectbox.SelectBox() {
 								@selectbox.Trigger(selectbox.TriggerProps{Name: "sort_order", Class: "h-8 bg-background text-xs", DisableClear: true}) { @selectbox.Value(selectbox.ValueProps{Placeholder: "Descending"}) }
@@ -1376,7 +1376,7 @@ templ ContactsListPane(contacts []models.Contact, selected *models.Contact, filt
 		>
 			if len(contacts) == 0 {
 				<div class="flex flex-col items-center justify-center py-20 px-4 text-center">
-					<div class="empty-icon-box size-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-4 raised">
+					<div class="size-12 rounded-xl flex items-center justify-center mb-3 border">
 						@icon.BookUser(icon.Props{Class: "size-5"})
 					</div>
 					<h3 class="font-semibold text-sm mb-1">No contacts yet</h3>
@@ -1397,7 +1397,7 @@ templ ContactsListPane(contacts []models.Contact, selected *models.Contact, filt
 }
 
 templ ContactsViewPane(selected *models.Contact, selectedProfile *models.ContactProfile, showNew bool, syncQueued bool, accounts []models.Account) {
-	<section id="mail-view" class="hidden flex-1 min-w-0 bg-background surface-desk xl:flex xl:flex-col">
+	<section id="mail-view" class="hidden flex-1 min-w-0 bg-background xl:flex xl:flex-col">
 		@ContactsDetail(selected, selectedProfile, showNew, syncQueued, accounts)
 	</section>
 }
@@ -1434,7 +1434,7 @@ templ ContactListCard(contact models.Contact, filters models.ContactFilters, sel
 		>
 			<div class="mail-list-card-zone mail-list-card-zone-rail-top" data-mail-card-zone="railTop">
 				<div data-mail-card-field="avatar">
-					@ContactAvatar(contact, "size-6 rounded-full text-[10px] font-semibold shadow-[0_1px_3px_rgba(0,0,0,0.15)]", "bg-gradient-to-b from-amber-700/70 to-amber-900/70 text-amber-100")
+					@ContactAvatar(contact, "size-6 rounded-full text-xs font-semibold", "")
 				</div>
 			</div>
 			<div class="mail-list-card-zone mail-list-card-zone-header" data-mail-card-zone="header">
@@ -1457,7 +1457,7 @@ templ ContactSourceChips(contact models.Contact, accounts []models.Account) {
 	<div class="flex min-w-0 flex-nowrap items-center gap-1 overflow-hidden" data-mail-card-field="preview">
 		if len(contact.SourceBooks) > 0 {
 			for _, book := range contact.SourceBooks {
-				<span class="min-w-0 max-w-full shrink truncate rounded-full border border-border bg-background px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+				<span class="min-w-0 max-w-full shrink truncate rounded-full border border-border bg-background px-2 py-0.5 text-xs font-medium text-muted-foreground">
 					{ book.AccountName } / { contactAddressBookDisplayName(book) }
 				</span>
 			}
@@ -1468,7 +1468,7 @@ templ ContactSourceChips(contact models.Contact, accounts []models.Account) {
 }
 
 templ ContactListTableHeader() {
-	<div class="mail-list-table-header mail-list-table-grid grid items-center gap-3 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-card/95 border-b border-border/70 sticky top-0 z-20 backdrop-blur-sm" style={ contactListTableGridStyle() }>
+	<div class="mail-list-table-header mail-list-table-grid grid items-center gap-3 px-3 py-1.5 text-xs font-semibold text-muted-foreground bg-card/95 border-b border-border/70 sticky top-0 z-20 backdrop-blur-sm" style={ contactListTableGridStyle() }>
 		<div class="mail-list-table-heading">Name</div>
 		<div class="mail-list-table-heading">Origin</div>
 		<div class="mail-list-table-heading min-w-12 text-right">Msgs</div>
@@ -1496,7 +1496,7 @@ templ ContactListTableRow(contact models.Contact, filters models.ContactFilters,
 		>
 			<div class="flex min-w-0 items-center gap-3">
 				<div class="w-7 flex shrink-0 items-center justify-center">
-					@ContactAvatar(contact, "size-6 rounded-full text-[10px] font-semibold", "bg-gradient-to-b from-amber-700/70 to-amber-900/70 text-amber-100")
+					@ContactAvatar(contact, "size-6 rounded-full text-xs font-semibold", "")
 				</div>
 				<div class="min-w-0">
 					<div class="truncate font-semibold text-foreground" data-contact-name>{ contact.Name }</div>
@@ -1546,12 +1546,12 @@ templ ContactsImportDialog(accounts []models.Account) {
 			}
 			<form action="/api/contacts/import" method="post" enctype="multipart/form-data" class="space-y-4">
 				<div class="space-y-1.5">
-					<label class="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">vCard file</label>
+					<label class="block text-xs font-semibold text-muted-foreground">vCard file</label>
 					<input type="file" name="vcard" accept=".vcf,text/vcard,text/x-vcard" required class="block w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-primary-foreground hover:file:bg-primary/90"/>
 					<p class="text-xs text-muted-foreground">Supports vCard 4.0 and common vCard files containing multiple contacts.</p>
 				</div>
 				<div class="space-y-1.5">
-					<label class="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Sync imported contacts with</label>
+					<label class="block text-xs font-semibold text-muted-foreground">Sync imported contacts with</label>
 					@selectbox.SelectBox(selectbox.Props{Multiple: true}) {
 						@selectbox.Trigger(selectbox.TriggerProps{Name: "save_targets", Class: "h-10 bg-background", Multiple: true, ShowPills: true, DisableClear: true, SelectedCountText: "{n} accounts selected"}) {
 							@selectbox.Value(selectbox.ValueProps{Placeholder: "Raven local", Multiple: true, Class: "text-left"})
@@ -1600,7 +1600,7 @@ templ ContactsDetail(contact *models.Contact, profile *models.ContactProfile, sh
 		}
 	>
 		if contact != nil || showNew {
-			<div class="surface-paper rounded-md flex flex-col h-full overflow-hidden">
+			<div class="bg-paper text-ink rounded-md flex flex-col h-full overflow-hidden">
 				@ContactEditor(contact, profile, syncQueued, accounts)
 			</div>
 		} else {
@@ -1612,7 +1612,7 @@ templ ContactsDetail(contact *models.Contact, profile *models.ContactProfile, sh
 templ ContactsEmptyDetail() {
 	<div class="flex flex-col items-center justify-center h-full text-center">
 		<div class="space-y-4 animate-fade-in">
-			<div class="size-20 rounded-2xl bg-card flex items-center justify-center mx-auto raised">
+			<div class="size-20 rounded-xl bg-card flex items-center justify-center mx-auto border">
 				@icon.BookUser(icon.Props{Class: "size-9 text-muted-foreground/30"})
 			</div>
 			<div>
@@ -1661,7 +1661,7 @@ templ ContactReadOnlyContactInfo(contact models.Contact) {
 	<section class="rounded-lg border border-ink/10 bg-ink/[0.02]">
 		<div class="flex items-center gap-2 border-b border-ink/10 px-4 py-3">
 			@icon.IdCard(icon.Props{Class: "size-3.5 text-ink/40"})
-			<h2 class="text-xs font-semibold uppercase tracking-wider text-ink/45">Contact</h2>
+			<h2 class="text-xs font-semibold text-ink/45">Contact</h2>
 		</div>
 		<div class="grid gap-x-6 px-4 lg:grid-cols-2">
 			@ContactReadOnlyTextField("Name", contact.Name)
@@ -1683,7 +1683,7 @@ templ ContactReadOnlySyncInfo(contact models.Contact, profile *models.ContactPro
 		<div class="flex flex-wrap items-center justify-between gap-3 border-b border-ink/10 px-4 py-3">
 			<div class="flex flex-wrap items-center gap-2">
 				@icon.Route(icon.Props{Class: "size-3.5 text-ink/40"})
-				<h2 class="text-xs font-semibold uppercase tracking-wider text-ink/55">Raven Sync</h2>
+				<h2 class="text-xs font-semibold text-ink/55">Raven Sync</h2>
 				<span class={ contactSyncEnabledBadgeClass(contactProfileSyncEnabled(profile)) } data-contact-sync-enabled-status>{ contactProfileSyncLabel(profile) }</span>
 			</div>
 			@button.Button(button.Props{
@@ -1711,7 +1711,7 @@ templ ContactReadOnlyActivityInfo(contact models.Contact) {
 	<section class="rounded-lg border border-ink/10 bg-ink/[0.02]">
 		<div class="flex items-center gap-2 border-b border-ink/10 px-4 py-3">
 			@icon.Activity(icon.Props{Class: "size-3.5 text-ink/40"})
-			<h2 class="text-xs font-semibold uppercase tracking-wider text-ink/45">Activity</h2>
+			<h2 class="text-xs font-semibold text-ink/45">Activity</h2>
 		</div>
 		<div class="grid gap-x-6 px-4 sm:grid-cols-2 xl:grid-cols-4">
 			@ContactReadOnlyTextField("Messages", fmt.Sprintf("%d", contact.MessageCount))
@@ -1724,26 +1724,26 @@ templ ContactReadOnlyActivityInfo(contact models.Contact) {
 
 templ ContactReadOnlyTextField(label string, value string) {
 	<div class="min-w-0 border-b border-ink/10 py-3 last:border-b-0 lg:[&:nth-last-child(-n+2)]:border-b-0 xl:last:border-b-0">
-		<div class="text-[10px] font-semibold uppercase tracking-wider text-ink/35">{ label }</div>
+		<div class="text-xs font-semibold text-ink/35">{ label }</div>
 		<div class={ "mt-1 min-h-5 truncate text-sm font-medium " + contactReadOnlyValueClass(value) }>{ contactReadOnlyValue(value) }</div>
 	</div>
 }
 
 templ ContactReadOnlyLongField(label string, value string) {
 	<div class="min-w-0 border-b border-ink/10 py-3 last:border-b-0 lg:[&:nth-last-child(-n+2)]:border-b-0 xl:last:border-b-0">
-		<div class="text-[10px] font-semibold uppercase tracking-wider text-ink/35">{ label }</div>
+		<div class="text-xs font-semibold text-ink/35">{ label }</div>
 		<div class={ "mt-1 min-h-5 whitespace-pre-wrap text-sm leading-relaxed " + contactReadOnlyValueClass(value) }>{ contactReadOnlyValue(value) }</div>
 	</div>
 }
 
 templ ContactReadOnlyLinkedField(label string, value string, valueLabel string, hrefPrefix string) {
 	<div class="min-w-0 border-b border-ink/10 py-3 last:border-b-0 lg:[&:nth-last-child(-n+2)]:border-b-0 xl:last:border-b-0">
-		<div class="text-[10px] font-semibold uppercase tracking-wider text-ink/35">{ label }</div>
+		<div class="text-xs font-semibold text-ink/35">{ label }</div>
 		if strings.TrimSpace(value) != "" {
 			<div class="mt-1 flex min-h-5 min-w-0 flex-wrap items-center gap-2">
 				<a href={ hrefPrefix + value } class="min-w-0 truncate text-sm font-medium text-ink hover:text-ink/70">{ value }</a>
 				if contactReadOnlyLabelDisplay(valueLabel) != "" {
-					<span class="rounded border border-ink/10 bg-ink/[0.04] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-ink/40">{ contactReadOnlyLabelDisplay(valueLabel) }</span>
+					<span class="rounded border border-ink/10 bg-ink/[0.04] px-1.5 py-0.5 text-xs font-semibold text-ink/40">{ contactReadOnlyLabelDisplay(valueLabel) }</span>
 				}
 			</div>
 		} else {
@@ -1754,7 +1754,7 @@ templ ContactReadOnlyLinkedField(label string, value string, valueLabel string, 
 
 templ ContactReadOnlyListField(label string, values []string, labels []string, fallbackLabel string, hrefPrefix string) {
 	<div class="min-w-0 border-b border-ink/10 py-3 last:border-b-0 lg:[&:nth-last-child(-n+2)]:border-b-0 xl:last:border-b-0">
-		<div class="text-[10px] font-semibold uppercase tracking-wider text-ink/35">{ label }</div>
+		<div class="text-xs font-semibold text-ink/35">{ label }</div>
 		if contactReadOnlyHasValues(values) {
 			<div class="mt-1 space-y-1.5">
 				for i, value := range values {
@@ -1762,7 +1762,7 @@ templ ContactReadOnlyListField(label string, values []string, labels []string, f
 						<div class="flex min-w-0 flex-wrap items-center gap-2">
 							<a href={ hrefPrefix + value } class="min-w-0 truncate text-sm font-medium text-ink hover:text-ink/70">{ value }</a>
 							if contactReadOnlyLabelDisplay(contactReadOnlyLabelAt(labels, i, fallbackLabel)) != "" {
-								<span class="rounded border border-ink/10 bg-ink/[0.04] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-ink/40">{ contactReadOnlyLabelDisplay(contactReadOnlyLabelAt(labels, i, fallbackLabel)) }</span>
+								<span class="rounded border border-ink/10 bg-ink/[0.04] px-1.5 py-0.5 text-xs font-semibold text-ink/40">{ contactReadOnlyLabelDisplay(contactReadOnlyLabelAt(labels, i, fallbackLabel)) }</span>
 							}
 						</div>
 					}
@@ -1776,11 +1776,11 @@ templ ContactReadOnlyListField(label string, values []string, labels []string, f
 
 templ ContactReadOnlyPillListField(label string, values []string) {
 	<div class="min-w-0 border-b border-ink/10 py-3 last:border-b-0 lg:col-span-2">
-		<div class="text-[10px] font-semibold uppercase tracking-wider text-ink/35">{ label }</div>
+		<div class="text-xs font-semibold text-ink/35">{ label }</div>
 		if len(values) > 0 {
 			<div class="mt-1 flex min-h-5 flex-wrap items-center gap-1.5">
 				for _, value := range values {
-					<span class="rounded border border-ink/10 bg-ink/[0.04] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-ink/45">{ value }</span>
+					<span class="rounded border border-ink/10 bg-ink/[0.04] px-1.5 py-0.5 text-xs font-semibold text-ink/45">{ value }</span>
 				}
 			</div>
 		} else {
@@ -1791,7 +1791,7 @@ templ ContactReadOnlyPillListField(label string, values []string) {
 
 templ ContactReadOnlySyncStatusField(value string) {
 	<div class="min-w-0 border-b border-ink/10 py-3 last:border-b-0 lg:[&:nth-last-child(-n+2)]:border-b-0 xl:last:border-b-0">
-		<div class="text-[10px] font-semibold uppercase tracking-wider text-ink/35">Sync status</div>
+		<div class="text-xs font-semibold text-ink/35">Sync status</div>
 		<div class={ "mt-1 min-h-5 truncate text-sm font-medium " + contactReadOnlyValueClass(value) } data-contact-sync-operation-status>{ contactReadOnlyValue(value) }</div>
 	</div>
 }
@@ -1822,19 +1822,19 @@ templ ContactEditorCoreFields(contact *models.Contact) {
 					</span>
 				</button>
 				<div class="min-w-0">
-					<h2 class="text-xs font-semibold uppercase tracking-wider text-ink/45">Contact</h2>
-					<p class="mt-0.5 text-[11px] text-ink/35">Click the picture to change it</p>
+					<h2 class="text-xs font-semibold text-ink/45">Contact</h2>
+					<p class="mt-0.5 text-xs text-ink/35">Click the picture to change it</p>
 				</div>
 			</div>
 			<div class="flex shrink-0 items-center gap-2">
 				<span class="hidden text-xs font-medium text-emerald-700" data-contact-avatar-status>New picture ready</span>
-				<button type="button" class={ "h-7 items-center rounded-md px-2 text-[11px] font-semibold text-ink/40 transition-colors hover:bg-destructive/10 hover:text-destructive " + contactEditAvatarRemoveClass(hasAvatar) } data-contact-avatar-remove>Remove picture</button>
+				<button type="button" class={ "h-7 items-center rounded-md px-2 text-xs font-semibold text-ink/40 transition-colors hover:bg-destructive/10 hover:text-destructive " + contactEditAvatarRemoveClass(hasAvatar) } data-contact-avatar-remove>Remove picture</button>
 			</div>
 		</div>
 		<div class="grid gap-6 p-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
 			<div class="min-w-0 space-y-4">
 				<div>
-					<label class="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-ink/40">Name</label>
+					<label class="mb-1.5 block text-xs font-semibold text-ink/40">Name</label>
 					<input type="text" name="name" value={ contactFormName(contact) } placeholder="Jane Doe" class="h-10 w-full rounded-lg border border-ink/10 bg-ink/[0.04] px-3 text-sm text-ink placeholder:text-ink/35 focus:outline-none focus:ring-2 focus:ring-ink/10"/>
 				</div>
 				@ContactEmailFields(contact)
@@ -1843,16 +1843,16 @@ templ ContactEditorCoreFields(contact *models.Contact) {
 			<div class="min-w-0 space-y-4">
 				<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
 					<div>
-						<label class="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-ink/40">Title</label>
+						<label class="mb-1.5 block text-xs font-semibold text-ink/40">Title</label>
 						<input type="text" name="title" value={ contactFormTitle(contact) } placeholder="Product lead" class="h-10 w-full rounded-lg border border-ink/10 bg-ink/[0.04] px-3 text-sm text-ink placeholder:text-ink/35 focus:outline-none focus:ring-2 focus:ring-ink/10"/>
 					</div>
 					<div>
-						<label class="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-ink/40">Organization</label>
+						<label class="mb-1.5 block text-xs font-semibold text-ink/40">Organization</label>
 						<input type="text" name="organization" value={ contactFormOrganization(contact) } placeholder="Example Inc." class="h-10 w-full rounded-lg border border-ink/10 bg-ink/[0.04] px-3 text-sm text-ink placeholder:text-ink/35 focus:outline-none focus:ring-2 focus:ring-ink/10"/>
 					</div>
 				</div>
 				<div>
-					<label class="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-ink/40">Notes</label>
+					<label class="mb-1.5 block text-xs font-semibold text-ink/40">Notes</label>
 					<textarea name="notes" rows="7" placeholder="Context, preferences, relationship notes" class="min-h-40 w-full resize-y rounded-lg border border-ink/10 bg-ink/[0.04] px-3 py-2 text-sm text-ink placeholder:text-ink/35 focus:outline-none focus:ring-2 focus:ring-ink/10">{ contactFormNotes(contact) }</textarea>
 				</div>
 			</div>
@@ -1863,8 +1863,8 @@ templ ContactEditorCoreFields(contact *models.Contact) {
 templ ContactEmailFields(contact *models.Contact) {
 	<div class="space-y-2">
 		<div class="flex items-center justify-between gap-3">
-			<label class="block text-xs font-semibold uppercase tracking-wider text-ink/40">Email</label>
-			<button type="button" class="inline-flex h-7 items-center gap-1 rounded-md border border-ink/10 bg-ink/[0.025] px-2 text-[11px] font-medium text-ink/55 hover:bg-ink/[0.06] hover:text-ink" data-contact-add-value="additional_emails" aria-label="Add another email">
+			<label class="block text-xs font-semibold text-ink/40">Email</label>
+			<button type="button" class="inline-flex h-7 items-center gap-1 rounded-md border border-ink/10 bg-ink/[0.025] px-2 text-xs font-medium text-ink/55 hover:bg-ink/[0.06] hover:text-ink" data-contact-add-value="additional_emails" aria-label="Add another email">
 				@icon.Plus(icon.Props{Class: "size-3.5"})
 				Add
 			</button>
@@ -1899,8 +1899,8 @@ templ ContactEmailFields(contact *models.Contact) {
 templ ContactPhoneFields(contact *models.Contact) {
 	<div class="space-y-2">
 		<div class="flex items-center justify-between gap-3">
-			<label class="block text-xs font-semibold uppercase tracking-wider text-ink/40">Phone</label>
-			<button type="button" class="inline-flex h-7 items-center gap-1 rounded-md border border-ink/10 bg-ink/[0.025] px-2 text-[11px] font-medium text-ink/55 hover:bg-ink/[0.06] hover:text-ink" data-contact-add-value="additional_phones" aria-label="Add another phone">
+			<label class="block text-xs font-semibold text-ink/40">Phone</label>
+			<button type="button" class="inline-flex h-7 items-center gap-1 rounded-md border border-ink/10 bg-ink/[0.025] px-2 text-xs font-medium text-ink/55 hover:bg-ink/[0.06] hover:text-ink" data-contact-add-value="additional_phones" aria-label="Add another phone">
 				@icon.Plus(icon.Props{Class: "size-3.5"})
 				Add
 			</button>
@@ -1939,13 +1939,13 @@ templ ContactEditorHeader(contact *models.Contact, profile *models.ContactProfil
 				if contact != nil {
 					@ContactHeaderAvatar(*contact)
 				} else {
-					<div class="flex size-14 shrink-0 items-center justify-center rounded-full bg-ink/[0.06] text-ink/40 shadow-[0_8px_22px_rgba(0,0,0,0.12)]">
+					<div class="flex size-14 shrink-0 items-center justify-center rounded-full bg-ink/[0.06] text-ink/40">
 						@icon.UserPlus(icon.Props{Class: "size-6"})
 					</div>
 				}
 				<div class="min-w-0 pt-0.5">
 					<div class="flex flex-wrap items-center gap-2">
-						<h1 class="min-w-0 text-2xl font-bold leading-tight tracking-tight text-ink" style="font-family: var(--font-serif)">
+						<h1 class="min-w-0 text-2xl font-semibold leading-tight tracking-tight text-ink">
 							if contact != nil {
 								{ contact.Name }
 							} else {
@@ -2019,7 +2019,7 @@ templ ContactEditDialog(contact models.Contact, profile *models.ContactProfile, 
 				</div>
 				<div class="flex flex-col-reverse gap-2 border-t border-ink/10 bg-paper/90 px-5 py-3 backdrop-blur sm:flex-row sm:items-center sm:justify-end sm:px-6">
 					<button type="button" class="inline-flex h-9 items-center justify-center rounded-lg border border-ink/10 bg-paper px-4 text-sm font-semibold text-ink/55 transition-colors hover:bg-ink/[0.04] hover:text-ink" data-contact-editor-cancel>Cancel</button>
-					<button type="submit" class="btn-skeuo inline-flex h-9 items-center justify-center gap-1.5 rounded-lg px-4 text-sm font-semibold">
+					<button type="submit" class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors inline-flex h-9 items-center justify-center gap-1.5 rounded-lg px-4 text-sm font-semibold">
 						@icon.Save(icon.Props{Class: "size-4"})
 						Save changes
 					</button>
@@ -2034,7 +2034,7 @@ templ ContactEditSyncPanel(contact *models.Contact, profile *models.ContactProfi
 		<div class="flex flex-wrap items-center justify-between gap-3 border-b border-ink/10 px-4 py-3">
 			<div class="inline-flex items-center gap-2">
 				@icon.Route(icon.Props{Class: "size-3.5 text-ink/40"})
-				<h2 class="text-xs font-semibold uppercase tracking-wider text-ink/55">Raven Sync</h2>
+				<h2 class="text-xs font-semibold text-ink/55">Raven Sync</h2>
 			</div>
 			<div class="flex items-center gap-2">
 				<span class={ contactSyncEnabledBadgeClass(contactProfileSyncEnabled(profile)) } data-contact-sync-state-label>
@@ -2050,7 +2050,7 @@ templ ContactEditSyncPanel(contact *models.Contact, profile *models.ContactProfi
 		</div>
 		<div class="space-y-4 p-4">
 			<div class="rounded-md border border-ink/10 bg-paper/35 px-3 py-2.5">
-				<div class="text-xs font-semibold uppercase tracking-wider text-ink/40">Origin</div>
+				<div class="text-xs font-semibold text-ink/40">Origin</div>
 				if profile != nil {
 					<div class="mt-1 text-sm font-semibold text-ink">{ contactSourceLabel(profile.Origin, profile.Origin == "manual", accounts) }</div>
 				} else {
@@ -2076,8 +2076,8 @@ templ ContactHeaderAvatar(contact models.Contact) {
 				data-contact-avatar-preview-alt={ contactDisplay(contact) + " profile picture" }
 				data-contact-avatar-preview-src={ contactAvatarRenderURL(contactAvatarPreviewURL(contact.AvatarURL)) }
 			>
-				<span class="relative block size-14 overflow-hidden rounded-full text-base font-bold shadow-[0_8px_22px_rgba(0,0,0,0.16)] ring-1 ring-ink/0 transition group-hover:ring-ink/20 group-focus-visible:ring-ink/25" data-contact-avatar data-avatar-hash={ contact.AvatarHash } data-avatar-email={ contact.Email }>
-					<span class={ contactAvatarFallbackClass(contact, "bg-gradient-to-b from-amber-700/70 to-amber-900/70 text-amber-100") } data-avatar-fallback>{ contact.Initials }</span>
+				<span class="relative block size-14 overflow-hidden rounded-full text-base font-bold ring-1 ring-ink/0 transition group-hover:ring-ink/20 group-focus-visible:ring-ink/25" data-contact-avatar data-avatar-hash={ contact.AvatarHash } data-avatar-email={ contact.Email }>
+					<span class={ contactAvatarFallbackClass(contact, "") } data-avatar-fallback>{ contact.Initials }</span>
 					<img
 						src={ contactAvatarRenderURL(contact.AvatarURL) }
 						alt={ contactDisplay(contact) }
@@ -2094,7 +2094,7 @@ templ ContactHeaderAvatar(contact models.Contact) {
 		}
 		@ContactAvatarPreviewDialog(contact, dialogID)
 	} else {
-		@ContactAvatar(contact, "size-14 rounded-full text-base font-bold shrink-0 shadow-[0_8px_22px_rgba(0,0,0,0.16)]", "bg-gradient-to-b from-amber-700/70 to-amber-900/70 text-amber-100")
+		@ContactAvatar(contact, "size-14 rounded-full text-base font-bold shrink-0", "")
 	}
 }
 
@@ -2125,7 +2125,7 @@ templ ContactAvatarPreviewDialog(contact models.Contact, dialogID string) {
 
 templ ContactEditorSaveActions() {
 	<div class="sticky bottom-0 z-10 flex items-center justify-end gap-3 border-t border-ink/10 bg-paper/90 px-5 py-3 backdrop-blur sm:px-7">
-		<button type="submit" class="btn-skeuo inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold">
+		<button type="submit" class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold">
 			@icon.Save(icon.Props{Class: "size-4"})
 			Save contact
 		</button>
@@ -2137,7 +2137,7 @@ templ ContactLegacySourcePanel(contact *models.Contact, accounts []models.Accoun
 		<div class="flex flex-wrap items-center justify-between gap-3 border-b border-ink/10 px-4 py-3">
 			<div class="inline-flex items-center gap-2">
 				@icon.Route(icon.Props{Class: "size-3.5 text-ink/40"})
-				<h2 class="text-xs font-semibold uppercase tracking-wider text-ink/55">Raven Sync</h2>
+				<h2 class="text-xs font-semibold text-ink/55">Raven Sync</h2>
 			</div>
 			<div class="flex items-center gap-2">
 				<span class={ contactSyncEnabledBadgeClass(contact != nil && contact.GoferSyncEnabled) } data-contact-sync-state-label>
@@ -2153,11 +2153,11 @@ templ ContactLegacySourcePanel(contact *models.Contact, accounts []models.Accoun
 		</div>
 		<div class="space-y-4 p-4">
 			<div class="rounded-md border border-ink/10 bg-paper/35 px-3 py-2.5">
-				<div class="text-xs font-semibold uppercase tracking-wider text-ink/40">Source</div>
+				<div class="text-xs font-semibold text-ink/40">Source</div>
 				if contact != nil && len(contact.SourceBooks) > 0 {
 					<div class="mt-2 flex flex-wrap gap-1.5">
 						for _, book := range contact.SourceBooks {
-							<span class="rounded border border-ink/10 bg-ink/[0.04] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-ink/45">{ book.AccountName } / { contactAddressBookDisplayName(book) }</span>
+							<span class="rounded border border-ink/10 bg-ink/[0.04] px-1.5 py-0.5 text-xs font-semibold text-ink/45">{ book.AccountName } / { contactAddressBookDisplayName(book) }</span>
 						}
 					</div>
 				} else {
@@ -2177,13 +2177,13 @@ templ ContactProfileInsight(profile models.ContactProfile, contact *models.Conta
 		<div class="flex flex-wrap items-center justify-between gap-3 border-b border-ink/10 px-4 py-3">
 			<div class="inline-flex items-center gap-2">
 				@icon.Route(icon.Props{Class: "size-3.5 text-ink/40"})
-				<h2 class="text-xs font-semibold uppercase tracking-wider text-ink/55">Raven Sync</h2>
+				<h2 class="text-xs font-semibold text-ink/55">Raven Sync</h2>
 			</div>
 			<span class={ contactSyncEnabledBadgeClass(profile.SyncEnabled) }>{ contactUnifiedStatusLabel(profile) }</span>
 		</div>
 		<div class="space-y-4 p-4">
 			<div class="rounded-md border border-ink/10 bg-paper/35 px-3 py-2.5">
-				<div class="text-xs font-semibold uppercase tracking-wider text-ink/40">Origin</div>
+				<div class="text-xs font-semibold text-ink/40">Origin</div>
 				<div class="mt-1 text-sm font-semibold text-ink">{ contactSourceLabel(profile.Origin, profile.Origin == "manual", accounts) }</div>
 				<p class="mt-2 text-xs leading-relaxed text-ink/45">How this contact was first created. This value does not change when the contact is edited or synchronized.</p>
 			</div>
@@ -2197,7 +2197,7 @@ templ ContactSyncStatusNotice(contact models.Contact) {
 		<div class="flex items-center justify-between gap-3">
 			<span class="font-semibold">{ contactSyncStatusLabel(contact.SyncStatus) }</span>
 			if contact.SyncUpdatedAt != "" {
-				<span class="text-[11px] opacity-70">{ contact.SyncUpdatedAt }</span>
+				<span class="text-xs opacity-70">{ contact.SyncUpdatedAt }</span>
 			}
 		</div>
 		if contact.SyncStatus == "error" && contact.SyncError != "" {
@@ -2208,7 +2208,7 @@ templ ContactSyncStatusNotice(contact models.Contact) {
 
 templ ContactSyncTargetsSelect(contact *models.Contact, accounts []models.Account, syncEnabled bool) {
 	<div class={ contactSyncTargetsClass(syncEnabled) } data-contact-sync-targets aria-disabled={ fmt.Sprintf("%t", !syncEnabled) }>
-		<label class="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-ink/40">Sync locations</label>
+		<label class="mb-1.5 block text-xs font-semibold text-ink/40">Sync locations</label>
 		@selectbox.SelectBox(selectbox.Props{Multiple: true}) {
 			@selectbox.Trigger(selectbox.TriggerProps{Name: "save_targets", Class: "h-10 border-ink/10 bg-ink/[0.04] text-ink", Multiple: true, ShowPills: true, DisableClear: true, SelectedCountText: "{n} locations selected"}) {
 				@selectbox.Value(selectbox.ValueProps{Placeholder: "No targets selected", Multiple: true, Class: "text-left"})
@@ -2242,7 +2242,7 @@ templ ContactSyncSetupDialog(setup models.ContactSyncSetup) {
 		@dialog.Content(dialog.ContentProps{HideCloseButton: true, Class: "max-h-[calc(100dvh-2rem)] overflow-hidden sm:max-w-4xl [&_[data-tui-dialog-panel]]:flex [&_[data-tui-dialog-panel]]:max-h-[calc(100dvh-2rem)] [&_[data-tui-dialog-panel]]:min-h-0 [&_[data-tui-dialog-panel]]:flex-col [&_[data-tui-dialog-panel]]:gap-0 [&_[data-tui-dialog-panel]]:overflow-hidden [&_[data-tui-dialog-panel]]:p-0"}) {
 			@dialog.Header(dialog.HeaderProps{Class: "shrink-0 flex-row items-start justify-between gap-4 border-b border-ink/10 px-5 py-4 text-left sm:px-6"}) {
 				<div>
-					<div class="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink/35">
+					<div class="text-xs font-semibold uppercase tracking-[0.16em] text-ink/35">
 						{ contactSyncSetupStep(setup.Phase) }
 					</div>
 					@dialog.Title(dialog.TitleProps{Class: "mt-1 text-lg text-ink"}) { Set up Raven Sync }
@@ -2289,7 +2289,7 @@ templ ContactSyncSetupDiscover(setup models.ContactSyncSetup) {
 		<div class="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">
 			<form id={ selectionFormID } method="post" action={ fmt.Sprintf("/api/contacts/%s/sync-setup/preview", setup.Contact.ID) } class="space-y-3" data-contact-sync-setup-form>
 			<div class="rounded-lg border border-ink/10 bg-paper/45 px-4 py-3">
-				<div class="text-xs font-semibold uppercase tracking-wider text-ink/40">Local</div>
+				<div class="text-xs font-semibold text-ink/40">Local</div>
 				<div class="mt-1 text-sm font-semibold text-ink">{ contactDisplay(setup.Contact) }</div>
 				<div class="text-xs text-ink/45">{ setup.Contact.Email }</div>
 			</div>
@@ -2300,7 +2300,7 @@ templ ContactSyncSetupDiscover(setup models.ContactSyncSetup) {
 		</div>
 		@dialog.Footer(dialog.FooterProps{Class: "shrink-0 items-center justify-between border-t border-ink/10 bg-card px-5 py-4 sm:justify-between sm:px-6"}) {
 			@button.Button(button.Props{Variant: button.VariantOutline, Class: "text-ink/55", Attributes: templ.Attributes{"data-contact-sync-setup-cancel": ""}}) { Keep sync disabled }
-			@button.Button(button.Props{Type: button.TypeSubmit, Form: selectionFormID, Class: "btn-skeuo"}) {
+			@button.Button(button.Props{Type: button.TypeSubmit, Form: selectionFormID, Class: "bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors"}) {
 				Review values
 				@icon.ArrowRight(icon.Props{Class: "size-4"})
 			}
@@ -2313,15 +2313,15 @@ templ ContactSyncSetupLocation(contactID string, location models.ContactSyncSetu
 						<div class="flex items-center justify-between gap-3 border-b border-ink/10 px-4 py-3">
 							<div>
 								<div class="text-sm font-semibold text-ink">{ location.Label }</div>
-								<div class="text-[10px] font-semibold uppercase tracking-wider text-ink/35">{ location.Provider }</div>
+								<div class="text-xs font-semibold text-ink/35">{ location.Provider }</div>
 							</div>
 							<div class="flex items-center gap-2">
 								if len(location.Candidates) == 0 {
-									<span class="rounded-md bg-ink/[0.04] px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-ink/40">No match found</span>
+									<span class="rounded-md bg-ink/[0.04] px-2 py-1 text-xs font-semibold text-ink/40">No match found</span>
 								} else if len(location.Candidates) == 1 {
-									<span class="rounded-md bg-ink/[0.04] px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-ink/40">1 possible match</span>
+									<span class="rounded-md bg-ink/[0.04] px-2 py-1 text-xs font-semibold text-ink/40">1 possible match</span>
 								} else {
-									<span class="rounded-md bg-ink/[0.04] px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-ink/40">{ fmt.Sprintf("%d possible matches", len(location.Candidates)) }</span>
+									<span class="rounded-md bg-ink/[0.04] px-2 py-1 text-xs font-semibold text-ink/40">{ fmt.Sprintf("%d possible matches", len(location.Candidates)) }</span>
 								}
 								@button.Button(button.Props{Variant: button.VariantGhost, Size: button.SizeSm, Class: "text-xs text-ink/55", Attributes: templ.Attributes{"data-contact-sync-location-search-toggle": ""}}) {
 									@icon.Search(icon.Props{Class: "size-3.5"})
@@ -2346,14 +2346,14 @@ templ ContactSyncSetupLocation(contactID string, location models.ContactSyncSetu
 									<div class="truncate text-sm font-semibold text-ink">{ contactReadOnlyValue(candidate.Name) }</div>
 									<div class="truncate text-xs text-ink/45">{ contactReadOnlyValue(candidate.Email) }</div>
 									if candidate.Phone != "" || candidate.Organization != "" {
-										<div class="mt-1 truncate text-[11px] text-ink/35">{ strings.Trim(strings.Join([]string{candidate.Phone, candidate.Organization}, " · "), " ·") }</div>
+										<div class="mt-1 truncate text-xs text-ink/35">{ strings.Trim(strings.Join([]string{candidate.Phone, candidate.Organization}, " · "), " ·") }</div>
 									}
 								</div>
 								<div class="flex flex-wrap items-center gap-1.5 sm:justify-end">
 									if contactSyncSetupCandidateChecked(location.Candidates, index) {
-										<span class="rounded-md bg-primary/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-primary">Recommended</span>
+										<span class="rounded-md bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">Recommended</span>
 									}
-									<span class="rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-700">{ contactSyncSetupCandidateMatchLabel(candidate) }</span>
+									<span class="rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-700">{ contactSyncSetupCandidateMatchLabel(candidate) }</span>
 								</div>
 							</label>
 						}
@@ -2388,7 +2388,7 @@ templ ContactSyncSetupResolve(setup models.ContactSyncSetup) {
 						{{ groups := contactResolverValueGroups(resolverFields, kind) }}
 						<div class="overflow-hidden rounded-lg border border-ink/10 bg-paper/45">
 							<div class="border-b border-ink/10 px-4 py-3">
-								<div class="text-xs font-semibold uppercase tracking-wider text-ink/55">Choose the primary { strings.ToLower(contactFieldKindLabel(kind)) }</div>
+								<div class="text-xs font-semibold text-ink/55">Choose the primary { strings.ToLower(contactFieldKindLabel(kind)) }</div>
 								<p class="mt-1 text-xs leading-relaxed text-ink/40">{ contactSyncSetupConflictHelp(kind) }</p>
 							</div>
 							<div class="divide-y divide-ink/10">
@@ -2401,7 +2401,7 @@ templ ContactSyncSetupResolve(setup models.ContactSyncSetup) {
 											<label for={ inputID } class="block cursor-pointer break-all text-sm font-semibold leading-relaxed text-ink">{ group.Field.Value }</label>
 											<div class="mt-1.5 flex flex-wrap items-center gap-2">
 												if group.IsCanonicalPrimary {
-													<span class="rounded-md border border-ink/10 bg-ink/[0.04] px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-ink/40">Current primary</span>
+													<span class="rounded-md border border-ink/10 bg-ink/[0.04] px-2 py-1 text-xs font-semibold text-ink/40">Current primary</span>
 												}
 												if len(locationLabels) > 0 {
 													@ContactSyncSetupValueLocations(locationLabels)
@@ -2418,7 +2418,7 @@ templ ContactSyncSetupResolve(setup models.ContactSyncSetup) {
 		</div>
 		@dialog.Footer(dialog.FooterProps{Class: "shrink-0 items-center justify-between border-t border-ink/10 bg-card px-5 py-4 sm:justify-between sm:px-6"}) {
 			@button.Button(button.Props{Variant: button.VariantOutline, Class: "text-ink/55", Attributes: templ.Attributes{"data-contact-sync-setup-cancel": ""}}) { Keep sync disabled }
-			@button.Button(button.Props{Type: button.TypeSubmit, Class: "btn-skeuo"}) {
+			@button.Button(button.Props{Type: button.TypeSubmit, Class: "bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors"}) {
 				@icon.CloudSync(icon.Props{Class: "size-4"})
 				Use selected values and sync
 			}
@@ -2429,13 +2429,13 @@ templ ContactSyncSetupResolve(setup models.ContactSyncSetup) {
 templ ContactSyncSetupValueLocations(labels []string) {
 	@popover.Root(popover.RootProps{Class: "inline-flex"}) {
 		@popover.Trigger() {
-			<button type="button" class="inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-ink/40 transition-colors hover:bg-ink/[0.05] hover:text-ink/65 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/20" aria-label={ contactSyncSetupLocationCountLabel(len(labels)) + "; show locations" }>
+			<button type="button" class="inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-xs font-semibold text-ink/40 transition-colors hover:bg-ink/[0.05] hover:text-ink/65 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/20" aria-label={ contactSyncSetupLocationCountLabel(len(labels)) + "; show locations" }>
 				@icon.MapPin(icon.Props{Class: "size-3 shrink-0"})
 				{ contactSyncSetupLocationCountLabel(len(labels)) }
 			</button>
 		}
-		@popover.Content(popover.ContentProps{Placement: popover.PlacementBottomStart, Offset: 8, ShowArrow: true, Class: "w-72 border-ink/10 bg-card p-3 text-ink shadow-raised"}) {
-			<div class="text-[10px] font-semibold uppercase tracking-wider text-ink/40">Locations using this value</div>
+		@popover.Content(popover.ContentProps{Placement: popover.PlacementBottomStart, Offset: 8, ShowArrow: true, Class: "w-72 border-ink/10 bg-card p-3 text-ink shadow-menu"}) {
+			<div class="text-xs font-semibold text-ink/40">Locations using this value</div>
 			<div class="mt-2 space-y-1.5">
 				for _, label := range labels {
 					<div class="flex min-w-0 items-start gap-2 rounded-md bg-ink/[0.035] px-2.5 py-2">
@@ -2461,12 +2461,12 @@ templ ContactSyncQueuedNotice() {
 templ ContactLabelSelect(name string, value string, options []string, ariaLabel string) {
 	<div class="w-24 shrink-0" aria-label={ ariaLabel }>
 		@selectbox.SelectBox() {
-			@selectbox.Trigger(selectbox.TriggerProps{Name: name, Class: "h-10 border-ink/10 bg-ink/[0.04] px-2 text-xs font-medium uppercase tracking-wide text-ink/55", DisableClear: true}) {
-				@selectbox.Value(selectbox.ValueProps{Placeholder: value, Class: "text-xs font-medium uppercase tracking-wide text-ink/55"})
+			@selectbox.Trigger(selectbox.TriggerProps{Name: name, Class: "h-10 border-ink/10 bg-ink/[0.04] px-2 text-xs font-medium text-ink/55", DisableClear: true}) {
+				@selectbox.Value(selectbox.ValueProps{Placeholder: value, Class: "text-xs font-medium text-ink/55"})
 			}
 			@selectbox.Content(selectbox.ContentProps{NoSearch: true, Class: "min-w-24"}) {
 				for _, option := range options {
-					@selectbox.Item(selectbox.ItemProps{Value: option, Selected: option == value, Class: "text-xs uppercase tracking-wide"}) {
+					@selectbox.Item(selectbox.ItemProps{Value: option, Selected: option == value, Class: "text-xs"}) {
 						{ option }
 					}
 				}
@@ -2477,7 +2477,7 @@ templ ContactLabelSelect(name string, value string, options []string, ariaLabel 
 
 templ ContactProfileInsights(insights []models.ContactInsight) {
 	<div class="space-y-2">
-		<div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-ink/45">
+		<div class="flex items-center gap-2 text-xs font-semibold text-ink/45">
 			@icon.Lightbulb(icon.Props{Class: "size-3.5"})
 			Suggestions
 		</div>
@@ -2492,7 +2492,7 @@ templ ContactProfileInsights(insights []models.ContactInsight) {
 							}
 						</div>
 						if insight.Count > 0 {
-							<span class="shrink-0 rounded border border-current/15 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums opacity-80">{ fmt.Sprintf("%d", insight.Count) }</span>
+							<span class="shrink-0 rounded border border-current/15 px-1.5 py-0.5 text-xs font-semibold tabular-nums opacity-80">{ fmt.Sprintf("%d", insight.Count) }</span>
 						}
 					</div>
 				</div>
@@ -2552,11 +2552,11 @@ templ ContactProfileCardRow(card models.ContactCard, accounts []models.Account) 
 				<div class="mt-1 truncate text-xs text-ink/45">{ contactCardAccountLabel(card, accounts) }</div>
 			</div>
 			if card.Etag != "" {
-				<span class="shrink-0 rounded border border-ink/10 bg-ink/[0.04] px-1.5 py-0.5 text-[10px] font-semibold text-ink/40">etag</span>
+				<span class="shrink-0 rounded border border-ink/10 bg-ink/[0.04] px-1.5 py-0.5 text-xs font-semibold text-ink/40">etag</span>
 			}
 		</div>
 		if card.RemoteID != "" {
-			<div class="mt-2 truncate rounded border border-ink/10 bg-ink/[0.025] px-2 py-1 font-mono text-[10px] text-ink/35">{ card.RemoteID }</div>
+			<div class="mt-2 truncate rounded border border-ink/10 bg-ink/[0.025] px-2 py-1 font-mono text-xs text-ink/35">{ card.RemoteID }</div>
 		}
 	</div>
 }
@@ -2575,7 +2575,7 @@ templ ContactProfileFieldRow(field models.ContactField, accounts []models.Accoun
 					}
 					<div class="truncate text-sm font-semibold text-ink">{ field.Value }</div>
 				</div>
-				<div class="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-ink/35">
+				<div class="mt-1 flex flex-wrap items-center gap-1.5 text-xs font-semibold text-ink/35">
 					<span>{ contactFieldKindLabel(field.Kind) }</span>
 					if contactFieldDisplayLabel(field) != "" {
 						<span>{ contactFieldDisplayLabel(field) }</span>
@@ -2587,7 +2587,7 @@ templ ContactProfileFieldRow(field models.ContactField, accounts []models.Accoun
 				</div>
 			</div>
 			<div class="flex shrink-0 items-center gap-1.5">
-				<span class="text-[10px] tabular-nums text-ink/35">{ fmt.Sprintf("%.0f%%", field.Confidence*100) }</span>
+				<span class="text-xs tabular-nums text-ink/35">{ fmt.Sprintf("%.0f%%", field.Confidence*100) }</span>
 			</div>
 		</div>
 	</div>
@@ -2609,11 +2609,11 @@ func contactActivityMailURL(email string) string {
 templ ContactRecentActivityHeader(contact models.Contact) {
 	<div class="mb-3 flex items-center justify-between gap-3">
 		<div>
-			<h2 class="text-xs font-semibold uppercase tracking-wider text-ink/45">Recent activity</h2>
+			<h2 class="text-xs font-semibold text-ink/45">Recent activity</h2>
 			<p class="mt-1 text-xs text-ink/35">Latest emails involving this contact.</p>
 		</div>
 		<div class="flex shrink-0 items-center gap-2">
-			<span class="rounded bg-ink/[0.05] px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-ink/40">Top 10</span>
+			<span class="rounded bg-ink/[0.05] px-2 py-1 text-xs font-semibold text-ink/40">Top 10</span>
 			if strings.TrimSpace(contact.Email) != "" {
 				{{ activityURL := contactActivityMailURL(contact.Email) }}
 				@button.Button(button.Props{
@@ -2679,7 +2679,7 @@ templ ContactRecentActivity(contact models.Contact, emails []models.Email) {
 						<div class="min-w-0 flex-1">
 							<div class="flex items-start justify-between gap-3">
 								<div class="min-w-0 flex items-center gap-2">
-									<span class="shrink-0 rounded border border-ink/10 bg-ink/[0.04] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-ink/45">{ contactActivityDirection(contact, email) }</span>
+									<span class="shrink-0 rounded border border-ink/10 bg-ink/[0.04] px-1.5 py-0.5 text-xs font-bold text-ink/45">{ contactActivityDirection(contact, email) }</span>
 									<p class="truncate text-sm font-semibold text-ink group-hover:text-ink/80">{ contactActivitySubject(email) }</p>
 								</div>
 								<span class="shrink-0 text-xs tabular-nums text-ink/35">{ email.Date }</span>

@@ -16,7 +16,7 @@ import (
 )
 
 templ Sidebar(accounts []models.Account, activeFolder string, width string, uiSettings map[string]string, scheduledCount int, filters models.EmailFilters) {
-	<aside class="hidden lg:flex flex-col surface-leather text-sidebar-foreground h-full overflow-hidden" style={ "width:" + width } data-app-sidebar data-phone-drawer>
+	<aside class="hidden lg:flex flex-col bg-sidebar text-sidebar-foreground h-full overflow-hidden" style={ "width:" + width } data-app-sidebar data-phone-drawer>
 		@SidebarHeader(accounts, "mail")
 		@MailSidebarBody(accounts, activeFolder, uiSettings, scheduledCount, filters)
 		@SidebarFooter()
@@ -24,7 +24,7 @@ templ Sidebar(accounts []models.Account, activeFolder string, width string, uiSe
 }
 
 templ ContactsSidebar(accounts []models.Account, activeFolder string, width string, uiSettings map[string]string, filters models.ContactFilters) {
-	<aside class="hidden lg:flex flex-col surface-leather text-sidebar-foreground h-full overflow-hidden" style={ "width:" + width } data-app-sidebar data-phone-drawer>
+	<aside class="hidden lg:flex flex-col bg-sidebar text-sidebar-foreground h-full overflow-hidden" style={ "width:" + width } data-app-sidebar data-phone-drawer>
 		@SidebarHeader(accounts, "contacts")
 		@ContactsSidebarBody(accounts, activeFolder, uiSettings, filters)
 		@SidebarFooter()
@@ -34,7 +34,7 @@ templ ContactsSidebar(accounts []models.Account, activeFolder string, width stri
 templ MailSidebarBody(accounts []models.Account, activeFolder string, uiSettings map[string]string, scheduledCount int, filters models.EmailFilters) {
 	<div id="sidebar-app-body" class="flex min-h-0 flex-1 flex-col" data-sidebar-app-body="mail">
 		<div class="px-4 pb-4">
-			<button id="sidebar-compose-btn" type="button" onclick="openNewCompose()" class="btn-skeuo flex items-center justify-center gap-2 w-full h-10 rounded-lg text-sidebar-primary-foreground font-semibold text-sm">
+			<button id="sidebar-compose-btn" type="button" onclick="openNewCompose()" class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors flex items-center justify-center gap-2 w-full h-9 rounded-md font-medium text-sm">
 				@icon.Pen(icon.Props{Class: "size-4"})
 				Compose
 			</button>
@@ -48,13 +48,13 @@ templ ContactsSidebarBody(accounts []models.Account, activeFolder string, uiSett
 	<div id="sidebar-app-body" class="flex min-h-0 flex-1 flex-col" data-sidebar-app-body="contacts">
 		<div class="px-4 pb-4">
 			<div class="inline-flex w-full items-stretch rounded-lg shadow-sm">
-				<a href="/contacts?new=1" hx-get="/contacts?new=1" hx-target="#main-content" hx-swap="outerHTML" hx-push-url="/contacts?new=1" class="btn-skeuo flex h-10 min-w-0 flex-1 items-center justify-center gap-2 rounded-l-lg rounded-r-none text-sidebar-primary-foreground font-semibold text-sm">
+				<a href="/contacts?new=1" hx-get="/contacts?new=1" hx-target="#main-content" hx-swap="outerHTML" hx-push-url="/contacts?new=1" class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors flex h-9 min-w-0 flex-1 items-center justify-center gap-2 rounded-l-md rounded-r-none font-medium text-sm">
 					@icon.UserPlus(icon.Props{Class: "size-4"})
 					New contact
 				</a>
 				@dropdown.Dropdown() {
 					@dropdown.Trigger() {
-						<button type="button" class="btn-skeuo inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-l-none rounded-r-lg border-l border-sidebar-border/70 text-sidebar-primary-foreground" aria-label="Contact actions">
+						<button type="button" class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-l-none rounded-r-md border-l border-sidebar-border/70" aria-label="Contact actions">
 							@icon.EllipsisVertical(icon.Props{Class: "size-4"})
 						</button>
 					}
@@ -99,7 +99,7 @@ templ ContactsSidebarAccountSection(account models.Account, filters models.Conta
 		>
 			<div class="account-color-marker size-2.5 shrink-0" style={ accountColorStyle(account.Color) } data-account-marker={ account.ID }></div>
 			<span class="flex-1 truncate text-left" data-account-label={ account.ID } data-account-label-value={ account.Label } title="Double-click to rename">{ contactSidebarAccountName(account) }</span>
-			@icon.ChevronDown(icon.Props{Class: "sidebar-account-chevron size-3.5 shrink-0 text-sidebar-foreground/60 transition-transform duration-200"})
+			@icon.ChevronDown(icon.Props{Class: "sidebar-account-chevron size-3.5 shrink-0 text-subtle-foreground transition-transform duration-200"})
 		</button>
 		<div class="sidebar-account-folders" data-sidebar-account-folders={ sectionID }>
 			<div class="sidebar-account-folders-inner space-y-px mt-0.5">
@@ -126,7 +126,7 @@ templ ContactsSidebarItem(target string, label string, filters models.ContactFil
 		data-contact-sidebar-link
 		data-contact-sidebar-target={ target }
 		class={
-			"flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-md text-[13px] transition-all duration-150 mb-1",
+			"flex items-center gap-2 w-full h-8 px-2 rounded-md text-sm transition-colors duration-100 mb-0.5",
 			templ.KV("bg-sidebar-accent text-sidebar-primary font-medium", active),
 			templ.KV("text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground", !active),
 		}
@@ -150,12 +150,12 @@ templ ContactsSidebarBookItem(book models.ContactAddressBook, filters models.Con
 		data-contact-sidebar-link
 		data-contact-sidebar-target={ target }
 		class={
-			"flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-md text-[13px] transition-all duration-150 mb-1 pl-7",
+			"flex items-center gap-2 w-full h-8 px-2 rounded-md text-sm transition-colors duration-100 mb-0.5 pl-7",
 			templ.KV("bg-sidebar-accent text-sidebar-primary font-medium", active),
 			templ.KV("text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground", !active),
 		}
 	>
-		<span class="flex size-4 shrink-0 items-center justify-center rounded text-sidebar-foreground/60">
+		<span class="flex size-4 shrink-0 items-center justify-center rounded text-subtle-foreground">
 			@icon.BookUser(icon.Props{Class: "size-3.5"})
 		</span>
 		<span class="flex-1 truncate">{ contactSidebarBookName(book) }</span>
@@ -174,12 +174,12 @@ templ ContactsSidebarAccountItem(account models.Account, filters models.ContactF
 		data-contact-sidebar-link
 		data-contact-sidebar-target={ target }
 		class={
-			"flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-md text-[13px] transition-all duration-150 mb-1 pl-7",
+			"flex items-center gap-2 w-full h-8 px-2 rounded-md text-sm transition-colors duration-100 mb-0.5 pl-7",
 			templ.KV("bg-sidebar-accent text-sidebar-primary font-medium", active),
 			templ.KV("text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground", !active),
 		}
 	>
-		<span class="flex size-4 shrink-0 items-center justify-center rounded text-sidebar-foreground/60">
+		<span class="flex size-4 shrink-0 items-center justify-center rounded text-subtle-foreground">
 			@icon.BookUser(icon.Props{Class: "size-3.5"})
 		</span>
 		<span class="flex-1 truncate">{ contactSidebarAccountItemName(account) }</span>
@@ -247,11 +247,11 @@ func contactSidebarBookName(book models.ContactAddressBook) string {
 }
 
 templ SettingsSidebar(activeTab string, width string) {
-	<aside class="hidden lg:flex flex-col surface-leather text-sidebar-foreground h-full overflow-hidden" style={ "width:" + width } data-phone-drawer>
+	<aside class="hidden lg:flex flex-col bg-sidebar text-sidebar-foreground h-full overflow-hidden" style={ "width:" + width } data-phone-drawer>
 		<div class="px-4 pt-5 pb-4">
 			<div class="flex items-center gap-2.5 mb-5">
 				<img src="/assets/logo.svg" alt="Raven" class="h-8 w-8 shrink-0 p-1"/>
-				<span class="text-lg font-bold tracking-tight text-sidebar-accent-foreground" style="font-family: var(--font-serif)">Settings</span>
+				<span class="text-lg font-semibold tracking-tight text-sidebar-accent-foreground">Settings</span>
 			</div>
 			<a href="/" class="flex items-center justify-center gap-2 w-full h-10 rounded-lg border border-sidebar-border bg-sidebar-accent/35 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors font-semibold text-sm">
 				@icon.ArrowLeft(icon.Props{Class: "size-4"})
@@ -260,9 +260,9 @@ templ SettingsSidebar(activeTab string, width string) {
 		</div>
 		<hr class="divider-etched mx-4"/>
 		<nav class="flex-1 overflow-y-auto px-3 pt-3 pb-3">
-			<div class="px-2.5 pb-2 text-[11px] text-sidebar-foreground/45 uppercase tracking-wider font-semibold">Categories</div>
+			<div class="px-2.5 pb-2 text-xs font-medium text-subtle-foreground">Categories</div>
 			@SettingsSidebarItem(activeTab, "accounts", "Accounts")
-			@SettingsSidebarItem(activeTab, "sync", "Email sync and folders settings")
+			@SettingsSidebarItem(activeTab, "sync", "Email sync")
 			@SettingsSidebarItem(activeTab, "operations", "Mail operations")
 			@SettingsSidebarItem(activeTab, "contacts", "Contacts")
 			@SettingsSidebarItem(activeTab, "appearance", "Appearance")
@@ -289,7 +289,7 @@ templ SettingsSidebarItem(activeTab string, value string, label string) {
 		data-settings-sidebar-value={ value }
 		aria-current?={ activeTab == value }
 		class={
-			"flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-md text-[13px] transition-all duration-150 mb-1",
+			"flex items-center gap-2 w-full h-8 px-2 rounded-md text-sm transition-colors duration-100 mb-0.5",
 			templ.KV("bg-sidebar-accent text-sidebar-primary font-medium", activeTab == value),
 			templ.KV("text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground", activeTab != value),
 		}
@@ -331,7 +331,7 @@ templ SidebarHeader(accounts []models.Account, activeApp string) {
 		<div class="flex items-center justify-between mb-5">
 			<div class="flex items-center gap-2.5">
 				<img src="/assets/logo.svg" alt="Raven" class="h-8 w-8 shrink-0 p-1"/>
-				<span class="text-lg font-bold tracking-tight text-sidebar-accent-foreground" style="font-family: var(--font-serif)">Raven</span>
+				<span class="text-base font-semibold tracking-tight text-sidebar-accent-foreground">Raven</span>
 			</div>
 			<div id="sidebar-sync-controls">
 				if activeApp != "calendar" {
@@ -339,8 +339,8 @@ templ SidebarHeader(accounts []models.Account, activeApp string) {
 				}
 			</div>
 		</div>
-		<div class="sidebar-app-nav relative grid h-8 w-full grid-cols-3 gap-0.5 rounded-lg border border-sidebar-border bg-sidebar-accent/35 p-0.5 mb-3" data-sidebar-app-nav>
-			<div data-sidebar-app-indicator class="absolute top-0.5 bottom-0.5 left-0.5 rounded-md border border-sidebar-border bg-sidebar-accent shadow-sm transition-transform duration-200 ease-out" style={ sidebarAppIndicatorStyle(activeApp) }></div>
+		<div class="sidebar-app-nav relative grid h-8 w-full grid-cols-3 gap-0.5 rounded-md bg-sidebar-accent p-0.5 mb-3" data-sidebar-app-nav>
+			<div data-sidebar-app-indicator class="absolute top-0.5 bottom-0.5 left-0.5 rounded border border-border bg-background transition-transform duration-200 ease-out" style={ sidebarAppIndicatorStyle(activeApp) }></div>
 			<a
 				href="/"
 				hx-get="/"
@@ -353,12 +353,11 @@ templ SidebarHeader(accounts []models.Account, activeApp string) {
 				aria-current?={ activeApp == "mail" }
 				aria-label="Mail"
 				class={
-					"sidebar-app-nav-item relative z-10 inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md px-2 text-xs font-medium transition-colors duration-200",
+					"sidebar-app-nav-item relative z-10 inline-flex h-7 min-w-0 items-center justify-center rounded px-1 text-xs font-medium transition-colors duration-100",
 					templ.KV("text-sidebar-accent-foreground", activeApp == "mail"),
 					templ.KV("text-sidebar-foreground hover:text-sidebar-accent-foreground", activeApp != "mail"),
 				}
 			>
-				@icon.Mail(icon.Props{Class: "size-3.5"})
 				<span class="sidebar-app-nav-label truncate">Mail</span>
 			</a>
 			<a
@@ -373,12 +372,11 @@ templ SidebarHeader(accounts []models.Account, activeApp string) {
 				aria-current?={ activeApp == "contacts" }
 				aria-label="Contacts"
 				class={
-					"sidebar-app-nav-item relative z-10 inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md px-2 text-xs font-medium transition-colors duration-200",
+					"sidebar-app-nav-item relative z-10 inline-flex h-7 min-w-0 items-center justify-center rounded px-1 text-xs font-medium transition-colors duration-100",
 					templ.KV("text-sidebar-accent-foreground", activeApp == "contacts"),
 					templ.KV("text-sidebar-foreground hover:text-sidebar-accent-foreground", activeApp != "contacts"),
 				}
 			>
-				@icon.BookUser(icon.Props{Class: "size-3.5"})
 				<span class="sidebar-app-nav-label truncate">Contacts</span>
 			</a>
 			<a
@@ -393,12 +391,11 @@ templ SidebarHeader(accounts []models.Account, activeApp string) {
 				aria-current?={ activeApp == "calendar" }
 				aria-label="Calendar"
 				class={
-					"sidebar-app-nav-item relative z-10 inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md px-2 text-xs font-medium transition-colors duration-200",
+					"sidebar-app-nav-item relative z-10 inline-flex h-7 min-w-0 items-center justify-center rounded px-1 text-xs font-medium transition-colors duration-100",
 					templ.KV("text-sidebar-accent-foreground", activeApp == "calendar"),
 					templ.KV("text-sidebar-foreground hover:text-sidebar-accent-foreground", activeApp != "calendar"),
 				}
 			>
-				@icon.CalendarDays(icon.Props{Class: "size-3.5"})
 				<span class="sidebar-app-nav-label truncate">Calendar</span>
 			</a>
 		</div>
@@ -441,7 +438,7 @@ templ SidebarSyncControls(accounts []models.Account, activeApp string) {
 						</button>
 					}
 				}
-				@tooltip.Content(tooltip.ContentProps{Position: tooltip.PositionBottom, ShowArrow: true, Class: "sidebar-account-error-tooltip w-fit whitespace-nowrap border-sidebar-border bg-sidebar px-3 py-2 text-left text-xs leading-relaxed text-sidebar-foreground shadow-raised [&_[data-tui-popover-arrow]]:!bg-sidebar"}) {
+				@tooltip.Content(tooltip.ContentProps{Position: tooltip.PositionBottom, ShowArrow: true, Class: "sidebar-account-error-tooltip w-fit whitespace-nowrap border-sidebar-border bg-sidebar px-3 py-2 text-left text-xs leading-relaxed text-sidebar-foreground shadow-menu [&_[data-tui-popover-arrow]]:!bg-sidebar"}) {
 					if activeApp == "contacts" {
 						<span>Sync contacts.</span>
 					} else {
@@ -459,9 +456,9 @@ templ SidebarSyncControls(accounts []models.Account, activeApp string) {
 						@icon.ChevronDown(icon.Props{Class: "size-3.5"})
 					</button>
 				}
-				@popover.Content(popover.ContentProps{Placement: popover.PlacementBottomEnd, Offset: 10, ShowArrow: true, Class: "sidebar-shortcuts-popover w-64 border-sidebar-border bg-sidebar p-2 text-sidebar-foreground shadow-raised [&_[data-tui-popover-arrow]]:!bg-sidebar"}) {
+				@popover.Content(popover.ContentProps{Placement: popover.PlacementBottomEnd, Offset: 10, ShowArrow: true, Class: "sidebar-shortcuts-popover w-64 border-sidebar-border bg-sidebar p-2 text-sidebar-foreground shadow-menu [&_[data-tui-popover-arrow]]:!bg-sidebar"}) {
 					if activeApp == "contacts" {
-						<div class="px-2 py-1.5 text-[11px] font-semibold uppercase text-sidebar-foreground/55">Sync individual contact account</div>
+						<div class="px-2 py-1.5 text-xs font-semibold uppercase text-subtle-foreground">Sync individual contact account</div>
 						<div class="space-y-1">
 							for _, account := range accounts {
 								if contactSidebarAccountVisible(account) {
@@ -479,14 +476,14 @@ templ SidebarSyncControls(accounts []models.Account, activeApp string) {
 										@icon.RefreshCw(icon.Props{Class: "size-3.5 shrink-0"})
 										<span class="min-w-0 flex-1">
 											<span class="block truncate font-medium">{ contactSidebarAccountName(account) }</span>
-											<span class="block truncate text-[11px] text-sidebar-foreground/60">{ account.Email }</span>
+											<span class="block truncate text-xs text-subtle-foreground">{ account.Email }</span>
 										</span>
 									</button>
 								}
 							}
 						</div>
 					} else {
-						<div class="px-2 py-1.5 text-[11px] font-semibold uppercase text-sidebar-foreground/55">Force sync individual account, including IDLE folders</div>
+						<div class="px-2 py-1.5 text-xs font-semibold uppercase text-subtle-foreground">Force sync individual account, including IDLE folders</div>
 						<div class="space-y-1">
 							for _, account := range accounts {
 								if account.EmailSyncEnabled && !account.IsDeleting {
@@ -503,7 +500,7 @@ templ SidebarSyncControls(accounts []models.Account, activeApp string) {
 										@icon.RefreshCw(icon.Props{Class: "size-3.5 shrink-0"})
 										<span class="min-w-0 flex-1">
 											<span class="block truncate font-medium">{ account.DisplayLabel() }</span>
-											<span class="block truncate text-[11px] text-sidebar-foreground/60">{ account.Email }</span>
+											<span class="block truncate text-xs text-subtle-foreground">{ account.Email }</span>
 										</span>
 									</button>
 								}
@@ -555,13 +552,13 @@ templ SidebarMailSyncErrorSummaryTooltip(accounts []models.Account) {
 				@icon.CircleAlert(icon.Props{Class: "size-4"})
 			</button>
 		}
-		@tooltip.Content(tooltip.ContentProps{Position: tooltip.PositionBottom, ShowArrow: true, Class: "sidebar-account-error-tooltip w-80 border-sidebar-border bg-sidebar px-3 py-2 text-left text-xs leading-relaxed text-sidebar-foreground shadow-raised [&_[data-tui-popover-arrow]]:!bg-sidebar"}) {
+		@tooltip.Content(tooltip.ContentProps{Position: tooltip.PositionBottom, ShowArrow: true, Class: "sidebar-account-error-tooltip w-80 border-sidebar-border bg-sidebar px-3 py-2 text-left text-xs leading-relaxed text-sidebar-foreground shadow-menu [&_[data-tui-popover-arrow]]:!bg-sidebar"}) {
 			<div class="space-y-2" data-mail-sync-error-summary>
 				for _, account := range accounts {
 					if account.EmailSyncEnabled && !account.IsDeleting && strings.TrimSpace(account.EmailSyncError) != "" {
 						<div class="rounded-md border border-sidebar-border/70 bg-sidebar-accent/20 px-2 py-1.5">
 							<div class="truncate font-semibold">{ account.DisplayLabel() }</div>
-							<div class="truncate text-[11px] opacity-70">{ account.Email }</div>
+							<div class="truncate text-xs opacity-70">{ account.Email }</div>
 							if strings.TrimSpace(account.EmailSyncErrorAt) != "" {
 								<div class="mt-1 opacity-85">Last failure: { formatAccountSyncErrorAt(account.EmailSyncErrorAt, nil) }</div>
 							}
@@ -620,7 +617,7 @@ templ SidebarUnifiedSection(accounts []models.Account, activeFolder string, uiSe
 				@icon.Folders(icon.Props{Class: "size-4"})
 			</span>
 			<span class="flex-1 truncate text-left">Unified folders</span>
-			@icon.ChevronDown(icon.Props{Class: "sidebar-account-chevron size-3.5 shrink-0 text-sidebar-foreground/60 transition-transform duration-200"})
+			@icon.ChevronDown(icon.Props{Class: "sidebar-account-chevron size-3.5 shrink-0 text-subtle-foreground transition-transform duration-200"})
 		</button>
 		<div class="sidebar-account-folders" data-sidebar-account-folders="__unified__">
 			<div class="sidebar-account-folders-inner space-y-px mt-0.5">
@@ -649,7 +646,7 @@ templ SidebarAccountSection(account models.Account, activeFolder string, uiSetti
 			if strings.TrimSpace(account.EmailSyncError) != "" {
 				@SidebarAccountSyncErrorTooltip(account, uiSettings)
 			}
-			@icon.ChevronDown(icon.Props{Class: "sidebar-account-chevron size-3.5 shrink-0 text-sidebar-foreground/60 transition-transform duration-200"})
+			@icon.ChevronDown(icon.Props{Class: "sidebar-account-chevron size-3.5 shrink-0 text-subtle-foreground transition-transform duration-200"})
 		</button>
 		<div class="sidebar-account-folders" data-sidebar-account-folders={ account.ID }>
 			<div class="sidebar-account-folders-inner space-y-px mt-0.5">
@@ -683,7 +680,7 @@ templ SidebarTagGroup(labels []models.Label, activeFolder string, filters models
 					@icon.Tags(icon.Props{Class: "size-4"})
 				</span>
 				<span class="flex-1 truncate text-left">Tags</span>
-				@icon.ChevronDown(icon.Props{Class: "sidebar-tag-chevron size-3.5 shrink-0 text-sidebar-foreground/60 transition-transform duration-200"})
+				@icon.ChevronDown(icon.Props{Class: "sidebar-tag-chevron size-3.5 shrink-0 text-subtle-foreground transition-transform duration-200"})
 			</button>
 			<div class="sidebar-tag-children" data-sidebar-tag-children={ sidebarTagGroupID(accountID) }>
 				<div class="sidebar-tag-children-inner pl-5 space-y-px">
@@ -755,14 +752,14 @@ templ SidebarFolderItem(folder models.Folder, activeFolder string, accountID str
 					<span
 						data-folder-unread={ folder.ID }
 						class={
-							"min-w-5 h-5 px-1.5 flex items-center justify-center rounded-full text-[11px] font-semibold tabular-nums",
-							templ.KV("bg-sidebar-primary/20 text-sidebar-primary", activeFolder == folder.ID),
-							templ.KV("bg-sidebar-accent text-sidebar-foreground/80", activeFolder != folder.ID),
+							"min-w-5 h-5 flex items-center justify-end text-xs tabular-nums",
+							templ.KV("text-sidebar-accent-foreground", activeFolder == folder.ID),
+							templ.KV("text-subtle-foreground", activeFolder != folder.ID),
 						}>
 						{ fmt.Sprintf("%d", folder.Unread) }
 					</span>
 				}
-				@icon.ChevronDown(icon.Props{Class: "sidebar-folder-chevron size-3.5 shrink-0 text-sidebar-foreground/60 transition-transform duration-200"})
+				@icon.ChevronDown(icon.Props{Class: "sidebar-folder-chevron size-3.5 shrink-0 text-subtle-foreground transition-transform duration-200"})
 			</a>
 			@SidebarFolderMenu(folder)
 			</div>
@@ -788,7 +785,7 @@ templ SidebarFolderLink(folder models.Folder, activeFolder string, accountID str
 		hx-swap="outerHTML settle:0s"
 		data-folder-role={ folder.Role }
 		class={
-			"flex min-w-0 flex-1 items-center gap-2.5 w-full px-2.5 py-1.5 rounded-md text-[13px] transition-all duration-150",
+			"flex min-w-0 flex-1 items-center gap-2 w-full h-8 px-2 rounded-md text-sm transition-colors duration-100",
 			templ.KV("bg-sidebar-accent text-sidebar-primary font-medium", activeFolder == folder.ID),
 			templ.KV("text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground", activeFolder != folder.ID),
 		}
@@ -801,9 +798,9 @@ templ SidebarFolderLink(folder models.Folder, activeFolder string, accountID str
 			<span
 				data-folder-unread={ folder.ID }
 				class={
-					"min-w-5 h-5 px-1.5 flex items-center justify-center rounded-full text-[11px] font-semibold tabular-nums",
-					templ.KV("bg-sidebar-primary/20 text-sidebar-primary", activeFolder == folder.ID),
-					templ.KV("bg-sidebar-accent text-sidebar-foreground/80", activeFolder != folder.ID),
+					"min-w-5 h-5 flex items-center justify-end text-xs tabular-nums",
+					templ.KV("text-sidebar-accent-foreground", activeFolder == folder.ID),
+					templ.KV("text-subtle-foreground", activeFolder != folder.ID),
 				}>
 				{ fmt.Sprintf("%d", folder.Unread) }
 			</span>
@@ -860,7 +857,7 @@ templ SidebarAccountSyncErrorTooltip(account models.Account, uiSettings map[stri
 				@icon.CircleAlert(icon.Props{Class: "size-4"})
 			</span>
 		}
-		@tooltip.Content(tooltip.ContentProps{Position: tooltip.PositionRight, ShowArrow: true, Class: "sidebar-account-error-tooltip w-72 border-sidebar-border bg-sidebar px-3 py-2 text-left text-xs leading-relaxed text-sidebar-foreground shadow-raised [&_[data-tui-popover-arrow]]:!bg-sidebar"}) {
+		@tooltip.Content(tooltip.ContentProps{Position: tooltip.PositionRight, ShowArrow: true, Class: "sidebar-account-error-tooltip w-72 border-sidebar-border bg-sidebar px-3 py-2 text-left text-xs leading-relaxed text-sidebar-foreground shadow-menu [&_[data-tui-popover-arrow]]:!bg-sidebar"}) {
 			<div class="space-y-1">
 				<div class="font-semibold">Mail sync failed</div>
 				if strings.TrimSpace(account.EmailSyncErrorAt) != "" {
@@ -909,7 +906,7 @@ templ SidebarFooter() {
 		<div class="flex items-center gap-1.5">
 			<a
 				href="/settings/accounts"
-				class="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 rounded-md text-sidebar-foreground/60 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/60 transition-colors text-[13px]"
+				class="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 rounded-md text-subtle-foreground hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/60 transition-colors text-[13px]"
 			>
 				<span class="flex size-4 shrink-0 items-center justify-center">
 					@icon.Settings(icon.Props{Class: "size-4"})
@@ -920,16 +917,16 @@ templ SidebarFooter() {
 				@popover.Trigger() {
 					<button
 						type="button"
-						class="inline-flex size-7 items-center justify-center rounded-md text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground data-[tui-popover-open=true]:bg-sidebar-accent data-[tui-popover-open=true]:text-sidebar-accent-foreground"
+						class="inline-flex size-7 items-center justify-center rounded-md text-subtle-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground data-[tui-popover-open=true]:bg-sidebar-accent data-[tui-popover-open=true]:text-sidebar-accent-foreground"
 						aria-label="Show keyboard navigation hints"
 					>
 						@icon.CircleQuestionMark(icon.Props{Class: "size-4"})
 					</button>
 				}
-				@popover.Content(popover.ContentProps{Placement: popover.PlacementTopStart, Offset: 10, ShowArrow: true, Class: "sidebar-shortcuts-popover w-72 border-sidebar-border bg-sidebar p-3 text-sidebar-foreground shadow-raised [&_[data-tui-popover-arrow]]:!bg-sidebar"}) {
+				@popover.Content(popover.ContentProps{Placement: popover.PlacementTopStart, Offset: 10, ShowArrow: true, Class: "sidebar-shortcuts-popover w-72 border-sidebar-border bg-sidebar p-3 text-sidebar-foreground shadow-menu [&_[data-tui-popover-arrow]]:!bg-sidebar"}) {
 					<div class="mb-2">
-						<h3 class="text-sm font-bold tracking-tight text-sidebar-accent-foreground" style="font-family: var(--font-serif)">Keyboard navigation</h3>
-						<p class="mt-0.5 text-[11px] leading-relaxed text-sidebar-foreground/60">Shortcuts for moving through mail.</p>
+						<h3 class="text-sm font-bold tracking-tight text-sidebar-accent-foreground">Keyboard navigation</h3>
+						<p class="mt-0.5 text-xs leading-relaxed text-subtle-foreground">Shortcuts for moving through mail.</p>
 					</div>
 					<div class="space-y-1 text-[12px] leading-relaxed">
 						@SidebarShortcutHint("Next email", "j / Down")
@@ -955,7 +952,7 @@ templ SidebarFooter() {
 
 templ SidebarShortcutHint(label string, keys string) {
 	<div class="flex items-center justify-between gap-3 rounded-md px-1.5 py-1 transition-colors hover:bg-sidebar-accent/25">
-		<span class="min-w-0 truncate text-sidebar-foreground/72">{ label }</span>
+		<span class="min-w-0 truncate text-sidebar-foreground">{ label }</span>
 		<kbd class="shrink-0 rounded-md border border-sidebar-border bg-sidebar px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sidebar-accent-foreground shadow-[0_1px_0_rgba(0,0,0,0.18)]">{ keys }</kbd>
 	</div>
 }
@@ -964,7 +961,7 @@ templ WebmailSidebarLogout() {
 	if user := auth.GetCurrentUser(ctx); user != nil && user.UserType == auth.UserTypeWebmail && auth.GetCurrentSession(ctx) != nil {
 		<form method="post" action="/auth/logout" class="mt-2">
 			<input type="hidden" name="_csrf" value={ auth.CSRFToken(ctx, "POST", "/auth/logout") }/>
-			<button type="submit" class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-[13px] text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground">
+			<button type="submit" class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-[13px] text-subtle-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground">
 				@icon.LogOut(icon.Props{Class: "size-4 shrink-0"})
 				Log out
 			</button>

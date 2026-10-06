@@ -56,9 +56,9 @@ var GoferSettings;
     { id: "starred", fixed: 24 },
     { id: "attachment", fixed: 24 },
     { id: "thread", fixed: 28 },
-    { id: "from", min: 90 },
-    { id: "to", min: 90 },
-    { id: "subject", min: 140 },
+    { id: "from", min: 72 },
+    { id: "to", min: 72 },
+    { id: "subject", min: 96 },
     { id: "date", min: 64 },
   ];
   var MAIL_CARD_FIELDS = [
@@ -467,7 +467,7 @@ var GoferSettings;
       return Math.max(300, px) + "px";
     }
 
-    return "clamp(300px,50%,calc(100% - 300px))";
+    return "clamp(320px,30%,480px)";
   }
 
   window.applyMailTableColumnWidths = function (value, root) {
