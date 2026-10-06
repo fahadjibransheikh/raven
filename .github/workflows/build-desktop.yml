@@ -153,7 +153,10 @@ jobs:
         shell: bash
         run: |
           task generate
+          # Cargo.toml is the single version source; the What's New window needs it in the sidecar.
+          APP_VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' tauri-wrapper/src-tauri/Cargo.toml | head -n1)"
           go build -tags embedded_assets -trimpath \
+            -ldflags "-X github.com/cristianadrielbraun/gofer/internal/whatsnew.BuildVersion=${APP_VERSION}" \
             -o "tauri-wrapper/src-tauri/binaries/gofer-${{ matrix.target_triple }}${{ matrix.ext }}" .
 
       - name: Regenerate app icon set from the source PNG
