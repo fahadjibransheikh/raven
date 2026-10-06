@@ -25,6 +25,7 @@ import (
 	"github.com/cristianadrielbraun/gofer/internal/store"
 	"github.com/cristianadrielbraun/gofer/internal/translation"
 	"github.com/cristianadrielbraun/gofer/internal/views"
+	"github.com/cristianadrielbraun/gofer/internal/whatsnew"
 	"github.com/google/uuid"
 	"golang.org/x/oauth2"
 	"html"
@@ -504,6 +505,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/settings/signatures/manage", h.handleManageSignaturesSettings)
 	mux.HandleFunc("GET /api/settings/ui", h.handleGetUISettings)
 	mux.HandleFunc("PATCH /api/settings/ui", h.handleSaveUISettings)
+	mux.HandleFunc("GET /api/whats-new", h.handleWhatsNew)
 	mux.HandleFunc("GET /api/push/vapid-public-key", h.handlePushVAPIDPublicKey)
 	mux.HandleFunc("POST /api/push/subscription", h.handleSavePushSubscription)
 	mux.HandleFunc("DELETE /api/push/subscription", h.handleDeletePushSubscription)
@@ -3722,6 +3724,48 @@ func (h *Handler) handleSaveUISettings(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]bool{"ok": true})
+}
+
+// handleWhatsNew serves the What's New window. Default mode decides from the
+// user's stored whats_new_seen version: it may record the current version
+// silently (new installs) or return the unseen notes. mode=open always returns
+// the latest notes.
+func (h *Handler) handleWhatsNew(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	userID := h.userID(ctx)
+	rels, err := whatsnew.Releases()
+	if err != nil {
+		log.Printf("whats new: %v", err)
+	}
+	current := whatsnew.Current(rels)
+	action, shown := whatsnew.Show, whatsnew.Latest(current, rels, whatsnew.MaxShown)
+	if r.URL.Query().Get("mode") != "open" {
+		accounts, _ := h.db.GetAccounts(ctx, userID)
+		lastSeen := h.db.GetUISettings(ctx, userID)["whats_new_seen"]
+		action, shown = whatsnew.Decide(lastSeen, current, len(accounts) > 0, rels, whatsnew.MaxShown)
+		if action == whatsnew.Record {
+			settings := h.db.GetUISettings(ctx, userID)
+			settings["whats_new_seen"] = current
+			if err := h.db.SetUISettings(ctx, userID, settings); err != nil {
+				log.Printf("whats new: record version: %v", err)
+			}
+		}
+	}
+	resp := map[string]string{"action": "none", "version": current}
+	if action == whatsnew.Record {
+		resp["action"] = "record" // the page's cached settings must learn the new value too
+	}
+	if action == whatsnew.Show && len(shown) > 0 {
+		var buf bytes.Buffer
+		if err := views.WhatsNewDialog(shown, current).Render(ctx, &buf); err != nil {
+			http.Error(w, "render failed", http.StatusInternalServerError)
+			return
+		}
+		resp["action"], resp["html"] = "show", buf.String()
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	json.NewEncoder(w).Encode(resp)
 }
 
 func (h *Handler) contextWithUserTimezone(ctx context.Context, userID string) context.Context {
