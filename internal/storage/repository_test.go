@@ -3422,3 +3422,35 @@ func TestLateParentStillRethreadsAndDropsEmptyThread(t *testing.T) {
 		t.Fatalf("after child re-sync thread=%q threads=%d, want %q and 1", got, n, parentThread)
 	}
 }
+
+func TestMigrateV97ToV98DeletesOnlyUnreferencedThreads(t *testing.T) {
+	ctx := context.Background()
+	db := seedThreadTestAccount(t, "outlook")
+	if _, err := db.UpsertProviderSyncMessages(ctx, []ProviderSyncMessage{threadTestMsg("live", "Live", "", time.Now())}); err != nil {
+		t.Fatal(err)
+	}
+	liveThread, _ := threadTestState(t, db, "live")
+	for i := 0; i < 5; i++ {
+		if _, err := db.Write().ExecContext(ctx, `INSERT INTO threads (id, account_id, subject) VALUES (?, 'acc', 'orphan')`, fmt.Sprintf("orphan-%d", i)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := db.Write().ExecContext(ctx, `UPDATE schema_version SET version = 97`); err != nil {
+		t.Fatal(err)
+	}
+	// Force the delete to span several batches to exercise the range loop.
+	if _, err := db.Write().ExecContext(ctx, `UPDATE threads SET rowid = rowid + ? WHERE id = 'orphan-4'`, 3*orphanThreadBatchRowids); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := db.migrate(); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	var live, total, version int
+	_ = db.Read().QueryRowContext(ctx, `SELECT COUNT(*) FROM threads WHERE id = ?`, liveThread).Scan(&live)
+	_ = db.Read().QueryRowContext(ctx, `SELECT COUNT(*) FROM threads`).Scan(&total)
+	_ = db.Read().QueryRowContext(ctx, `SELECT MAX(version) FROM schema_version`).Scan(&version)
+	if live != 1 || total != 1 || version != 98 {
+		t.Fatalf("live=%d total=%d version=%d, want 1, 1, 98", live, total, version)
+	}
+}
