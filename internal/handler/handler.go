@@ -23,6 +23,7 @@ import (
 	"github.com/cristianadrielbraun/gofer/internal/store"
 	"github.com/cristianadrielbraun/gofer/internal/translation"
 	"github.com/cristianadrielbraun/gofer/internal/views"
+	"github.com/google/uuid"
 	"golang.org/x/oauth2"
 	"html"
 	"html/template"
@@ -31,6 +32,7 @@ import (
 	"math/rand"
 	"mime"
 	"net/http"
+	netmail "net/mail"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -1350,10 +1352,7 @@ func (h *Handler) handleContactSearch(w http.ResponseWriter, r *http.Request) {
 	}
 	items := make([]result, 0, len(contacts))
 	for _, c := range contacts {
-		value := c.Email
-		if c.Name != "" && c.Name != c.Email {
-			value = fmt.Sprintf("%s <%s>", c.Name, c.Email)
-		}
+		value := message.FormatAddress(c.Name, c.Email)
 		items = append(items, result{ID: c.ID, Name: c.Name, Email: c.Email, Value: value})
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -4694,19 +4693,32 @@ func (h *Handler) saveComposeDraftFromForm(ctx context.Context, r *http.Request)
 		return composeDraftSaveResult{}, &composeRequestError{status: http.StatusInternalServerError, message: "failed to save draft"}
 	}
 
+	// A draft that did not persist must not report success (the UI would show "Saved").
+	persistFailed := func(what string, err error) (composeDraftSaveResult, *composeRequestError) {
+		log.Printf("draft save account=%s message=%d: %s: %v", accountID, msgID, what, err)
+		return composeDraftSaveResult{}, &composeRequestError{status: http.StatusInternalServerError, message: "failed to save draft"}
+	}
 	var textPath, htmlPath string
 	if body != "" {
-		if p, err := h.blobStore.StoreBodyText(ctx, accountID, msgID, []byte(body)); err == nil {
-			textPath = p
+		p, err := h.blobStore.StoreBodyText(ctx, accountID, msgID, []byte(body))
+		if err != nil {
+			return persistFailed("store text body", err)
 		}
+		textPath = p
 	}
 	if htmlBody != "" {
-		if p, err := h.blobStore.StoreBodyHTML(ctx, accountID, msgID, []byte(htmlBody)); err == nil {
-			htmlPath = p
+		p, err := h.blobStore.StoreBodyHTML(ctx, accountID, msgID, []byte(htmlBody))
+		if err != nil {
+			return persistFailed("store html body", err)
 		}
+		htmlPath = p
 	}
-	_ = h.db.UpdateMessageBodyInternal(ctx, msgID, textPath, htmlPath, "", snippet)
-	_ = h.db.ReplaceAttachmentsInternal(ctx, msgID, attachmentRows)
+	if err := h.db.UpdateMessageBodyInternal(ctx, msgID, textPath, htmlPath, "", snippet); err != nil {
+		return persistFailed("update body", err)
+	}
+	if err := h.db.ReplaceAttachmentsInternal(ctx, msgID, attachmentRows); err != nil {
+		return persistFailed("replace attachments", err)
+	}
 	toAddrs, _ := message.ParseAddressList(r.FormValue("to"))
 	ccAddrs, _ := message.ParseAddressList(r.FormValue("cc"))
 	bccAddrs, _ := message.ParseAddressList(r.FormValue("bcc"))
@@ -4990,8 +5002,16 @@ func (h *Handler) handleComposeSource(w http.ResponseWriter, r *http.Request) {
 		htmlBody = email.HTMLBody
 	}
 	identities, _ := h.db.ListAccountIdentities(r.Context(), userID, email.AccountID)
+	// Reply-To is not stored per message; read it from the saved raw message when there is one.
+	replyTo := ""
+	if storageInfo, err := h.db.GetMessageStorageInfoForUser(r.Context(), localID, userID); err == nil && storageInfo != nil && storageInfo.RawPath != "" {
+		if raw, err := os.ReadFile(storageInfo.RawPath); err == nil {
+			replyTo = message.ReplyToFromRaw(raw)
+		}
+	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{
+		"reply_to":             replyTo,
 		"account_id":           email.AccountID,
 		"suggested_from_email": pickReplyIdentity(identities, email.FolderRole, email.From, email.To, email.CC),
 		"message_id":           email.InternetMessageID,
@@ -5097,13 +5117,36 @@ func contactsToAddressList(contacts []models.Contact) string {
 		if c.Email == "" {
 			continue
 		}
-		if c.Name != "" && c.Name != c.Email {
-			parts = append(parts, fmt.Sprintf("%s <%s>", c.Name, c.Email))
-		} else {
-			parts = append(parts, c.Email)
-		}
+		parts = append(parts, message.FormatAddress(c.Name, c.Email))
 	}
 	return strings.Join(parts, ", ")
+}
+
+// parseComposeRecipients parses To/Cc/Bcc for a send. A bad Cc/Bcc is an error naming the field:
+// dropping it would send the message without people the user addressed.
+func parseComposeRecipients(r *http.Request) (to, cc, bcc []*netmail.Address, errMsg string) {
+	parse := func(field, label string) ([]*netmail.Address, string) {
+		addrs, err := message.ParseAddressList(r.FormValue(field))
+		if err != nil {
+			detail := strings.TrimPrefix(strings.TrimPrefix(err.Error(), "parse addresses: "), "mail: ")
+			return nil, label + " contains an invalid address (" + detail + "). Fix or remove it and try again."
+		}
+		return addrs, ""
+	}
+	var msg string
+	if to, msg = parse("to", "To"); msg != "" {
+		return nil, nil, nil, msg
+	}
+	if len(to) == 0 {
+		return nil, nil, nil, "Please enter at least one recipient."
+	}
+	if cc, msg = parse("cc", "Cc"); msg != "" {
+		return nil, nil, nil, msg
+	}
+	if bcc, msg = parse("bcc", "Bcc"); msg != "" {
+		return nil, nil, nil, msg
+	}
+	return to, cc, bcc, ""
 }
 
 func (h *Handler) handleCompose(w http.ResponseWriter, r *http.Request) {
@@ -5113,6 +5156,19 @@ func (h *Handler) handleCompose(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
+	// send_key makes Send idempotent per compose session: the client keeps one key until the
+	// send succeeds or fails for good, so a second click (e.g. while Raven is retrying) returns
+	// the queued send instead of queueing a duplicate.
+	sendKey := strings.TrimSpace(r.FormValue("send_key"))
+	if sendKey != "" {
+		if _, err := uuid.Parse(sendKey); err != nil {
+			writeComposeJSONError(w, http.StatusBadRequest, "invalid send key")
+			return
+		}
+		if h.writeExistingComposeSend(w, r, sendKey) {
+			return
+		}
+	}
 	accountID := r.FormValue("account_id")
 	if accountID == "" {
 		accountID = h.accountStore.GetFirstAccountID(ctx, h.userID(ctx))
@@ -5134,13 +5190,11 @@ func (h *Handler) handleCompose(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	toAddrs, err := message.ParseAddressList(r.FormValue("to"))
-	if err != nil || len(toAddrs) == 0 {
-		writeComposeJSONError(w, http.StatusBadRequest, "Please enter at least one recipient.")
+	toAddrs, ccAddrs, bccAddrs, recipientErr := parseComposeRecipients(r)
+	if recipientErr != "" {
+		writeComposeJSONError(w, http.StatusBadRequest, recipientErr)
 		return
 	}
-	ccAddrs, _ := message.ParseAddressList(r.FormValue("cc"))
-	bccAddrs, _ := message.ParseAddressList(r.FormValue("bcc"))
 	attachments, _, err := h.collectComposeAttachments(r)
 	if err != nil {
 		writeComposeJSONError(w, http.StatusNotFound, err.Error())
@@ -5184,8 +5238,12 @@ func (h *Handler) handleCompose(w http.ResponseWriter, r *http.Request) {
 	if draftID != "" {
 		localDraftMessageID, _ = h.db.GetMessageLocalIDByInternetIDInternal(ctx, accountID, draftID)
 	}
-	queued, err := h.queueOutgoingMessage(ctx, accountID, localDraftMessageID, draftID, msg, time.Now().UTC(), false)
+	queued, err := h.queueOutgoingMessageWithID(ctx, sendKey, accountID, localDraftMessageID, draftID, msg, time.Now().UTC(), false)
 	if err != nil {
+		// A concurrent request with the same key may have won the insert.
+		if sendKey != "" && h.writeExistingComposeSend(w, r, sendKey) {
+			return
+		}
 		writeComposeJSONError(w, http.StatusInternalServerError, "failed to queue message")
 		return
 	}
@@ -5194,6 +5252,21 @@ func (h *Handler) handleCompose(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted)
 	json.NewEncoder(w).Encode(map[string]string{"status": "sending", "send_id": queued.ID})
+}
+
+// writeExistingComposeSend answers 202 with the already-queued send for key, if the caller owns it.
+func (h *Handler) writeExistingComposeSend(w http.ResponseWriter, r *http.Request, key string) bool {
+	existing, err := h.db.GetOutgoingSend(r.Context(), key)
+	if err != nil {
+		return false
+	}
+	if account, err := h.ownedAccount(r.Context(), existing.AccountID); err != nil || account == nil {
+		return false
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusAccepted)
+	json.NewEncoder(w).Encode(map[string]string{"status": "sending", "send_id": existing.ID})
+	return true
 }
 
 func (h *Handler) handleComposeSchedule(w http.ResponseWriter, r *http.Request) {
@@ -5218,8 +5291,8 @@ func (h *Handler) handleComposeSchedule(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if toAddrs, err := message.ParseAddressList(r.FormValue("to")); err != nil || len(toAddrs) == 0 {
-		writeComposeJSONError(w, http.StatusBadRequest, "Please enter at least one recipient.")
+	if _, _, _, recipientErr := parseComposeRecipients(r); recipientErr != "" {
+		writeComposeJSONError(w, http.StatusBadRequest, recipientErr)
 		return
 	}
 
@@ -5755,6 +5828,7 @@ func (h *Handler) handleArchiveMessages(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	updated := 0
+	moved := []undoMove{}
 
 	for _, target := range targets {
 		currentInfo := target.Infos[0].MessageMutationInfo
@@ -5770,13 +5844,14 @@ func (h *Handler) handleArchiveMessages(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		updated++
+		moved = append(moved, undoMoveEntry(target))
 		h.publishThreadMutation(target.Infos)
 		h.publishMutation(currentInfo.AccountID, archiveFolderID)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]int{"updated": updated})
+	json.NewEncoder(w).Encode(map[string]any{"updated": updated, "moved": moved})
 }
 
 func (h *Handler) handleDeleteMessages(w http.ResponseWriter, r *http.Request) {
@@ -5793,6 +5868,7 @@ func (h *Handler) handleDeleteMessages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	updated := 0
+	moved := []undoMove{}
 
 	for _, target := range targets {
 		currentInfo := target.Infos[0].MessageMutationInfo
@@ -5810,6 +5886,7 @@ func (h *Handler) handleDeleteMessages(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
+			moved = append(moved, undoMoveEntry(target))
 			h.publishMutation(currentInfo.AccountID, trashFolderID)
 		}
 		updated++
@@ -5818,7 +5895,7 @@ func (h *Handler) handleDeleteMessages(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]int{"updated": updated})
+	json.NewEncoder(w).Encode(map[string]any{"updated": updated, "moved": moved})
 }
 
 func (h *Handler) handleMoveMessages(w http.ResponseWriter, r *http.Request) {
@@ -5971,7 +6048,7 @@ func (h *Handler) handleArchiveThread(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "archived"})
+	json.NewEncoder(w).Encode(map[string]any{"status": "archived", "moved": []undoMove{undoMoveEntry(targets[0])}})
 }
 
 func (h *Handler) handleDeleteThread(w http.ResponseWriter, r *http.Request) {
@@ -5984,6 +6061,7 @@ func (h *Handler) handleDeleteThread(w http.ResponseWriter, r *http.Request) {
 	}
 	infos := targets[0].Infos
 	currentInfo := infos[0].MessageMutationInfo
+	moved := []undoMove{}
 
 	if currentInfo.FolderRole == "trash" {
 		if err := h.queuePermanentDeletes(ctx, infos); err != nil {
@@ -6000,13 +6078,14 @@ func (h *Handler) handleDeleteThread(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+		moved = append(moved, undoMoveEntry(targets[0]))
 		h.publishMutation(currentInfo.AccountID, trashFolderID)
 	}
 	h.publishThreadMutation(infos)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "deleted"})
+	json.NewEncoder(w).Encode(map[string]any{"status": "deleted", "moved": moved})
 }
 
 func (h *Handler) handleDeleteMessage(w http.ResponseWriter, r *http.Request) {
@@ -6019,6 +6098,7 @@ func (h *Handler) handleDeleteMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	moved := []undoMove{}
 	if info.FolderRole == "trash" {
 		if err := h.db.PermanentlyDeleteMessageAndQueueForUser(ctx, msgID, info.FolderID, h.userID(ctx)); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -6037,6 +6117,7 @@ func (h *Handler) handleDeleteMessage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		h.signalMessageMutationWorker()
+		moved = append(moved, undoMove{ID: idStr, From: info.FolderID})
 		h.publishMutation(info.AccountID, trashFolderID)
 	}
 
@@ -6044,7 +6125,7 @@ func (h *Handler) handleDeleteMessage(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "deleted"})
+	json.NewEncoder(w).Encode(map[string]any{"status": "deleted", "moved": moved})
 }
 
 func (h *Handler) handleMoveMessage(w http.ResponseWriter, r *http.Request) {

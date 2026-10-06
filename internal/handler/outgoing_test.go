@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -554,4 +555,106 @@ func seedPendingSentCopy(t *testing.T) (*Handler, *storage.DB, storage.OutgoingS
 		t.Fatalf("GetMessageLocalIDByInternetIDInternal() = %d, %v", localID, err)
 	}
 	return h, db, queued, localID
+}
+
+func TestHandleComposeSendKeyIsIdempotent(t *testing.T) {
+	h, db := newAccountOwnershipTestHandler(t)
+	post := func(key string) map[string]string {
+		form := url.Values{
+			"account_id": {"victim-account"},
+			"to":         {"recipient@example.com"},
+			"subject":    {"Once only"},
+			"body":       {"Sent after a retrying result must not duplicate."},
+		}
+		if key != "" {
+			form.Set("send_key", key)
+		}
+		req := httptest.NewRequest(http.MethodPost, "/compose", strings.NewReader(form.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req = req.WithContext(auth.ContextWithUser(req.Context(), &auth.User{ID: "owner", Username: "owner"}))
+		rec := httptest.NewRecorder()
+		h.handleCompose(rec, req)
+		if rec.Code != http.StatusAccepted {
+			t.Fatalf("status = %d body = %q, want 202", rec.Code, rec.Body.String())
+		}
+		var response map[string]string
+		if err := json.NewDecoder(rec.Body).Decode(&response); err != nil {
+			t.Fatalf("decode response: %v", err)
+		}
+		return response
+	}
+	count := func() int {
+		var n int
+		if err := db.Read().QueryRow(`SELECT COUNT(*) FROM outgoing_sends`).Scan(&n); err != nil {
+			t.Fatalf("count outgoing sends: %v", err)
+		}
+		return n
+	}
+
+	// Without a key a second click queues a second message (the duplicate this key prevents).
+	post("")
+	post("")
+	if got := count(); got != 2 {
+		t.Fatalf("keyless sends queued %d rows, want 2", got)
+	}
+
+	key := "6f1d1c3e-0d8e-4a53-9a47-0f2f4d1c9b11"
+	first := post(key)
+	second := post(key)
+	if first["send_id"] != key || second["send_id"] != key {
+		t.Fatalf("send ids = %q, %q, want the key", first["send_id"], second["send_id"])
+	}
+	if got := count(); got != 3 {
+		t.Fatalf("keyed sends queued %d total rows, want 3 (one more than before)", got)
+	}
+}
+
+func TestHandleComposeRejectsInvalidCcAndBccInsteadOfDroppingThem(t *testing.T) {
+	h, db := newAccountOwnershipTestHandler(t)
+	cases := []struct{ field, value, want string }{
+		{"cc", "not-an-address", "Cc contains an invalid address"},
+		{"bcc", "also bad@@", "Bcc contains an invalid address"},
+		{"to", "nope", "To contains an invalid address"},
+	}
+	for _, c := range cases {
+		form := url.Values{"account_id": {"victim-account"}, "to": {"ok@example.com"}, "subject": {"s"}, "body": {"b"}}
+		form.Set(c.field, c.value)
+		req := httptest.NewRequest(http.MethodPost, "/compose", strings.NewReader(form.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req = req.WithContext(auth.ContextWithUser(req.Context(), &auth.User{ID: "owner", Username: "owner"}))
+		rec := httptest.NewRecorder()
+		h.handleCompose(rec, req)
+		if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), c.want) {
+			t.Fatalf("%s=%q: status=%d body=%s, want 400 containing %q", c.field, c.value, rec.Code, rec.Body.String(), c.want)
+		}
+	}
+	var queued int
+	_ = db.Read().QueryRow(`SELECT COUNT(*) FROM outgoing_sends`).Scan(&queued)
+	if queued != 0 {
+		t.Fatalf("%d sends queued despite invalid recipients", queued)
+	}
+}
+
+func TestHandleComposeDraftFailsWhenTheBodyCannotBeStored(t *testing.T) {
+	h, db := newAccountOwnershipTestHandler(t)
+	if err := db.UpsertFolders(t.Context(), []storage.UpsertFolderInput{{
+		ID: "victim-drafts", AccountID: "victim-account", RemoteID: "Drafts", Name: "Drafts", Role: "drafts", Selectable: true,
+	}}); err != nil {
+		t.Fatalf("UpsertFolders() error = %v", err)
+	}
+	// A blob store rooted under a regular file cannot create directories, so persisting the body fails.
+	blocker := filepath.Join(t.TempDir(), "blocker")
+	if err := os.WriteFile(blocker, []byte("x"), 0o600); err != nil {
+		t.Fatalf("write blocker: %v", err)
+	}
+	h.blobStore = store.NewBlobStore(filepath.Join(blocker, "blobs"))
+	form := url.Values{"account_id": {"victim-account"}, "to": {"ok@example.com"}, "subject": {"s"}, "body": {"must persist"}}
+	req := httptest.NewRequest(http.MethodPost, "/compose/draft", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req = req.WithContext(auth.ContextWithUser(req.Context(), &auth.User{ID: "owner", Username: "owner"}))
+	rec := httptest.NewRecorder()
+	h.handleComposeDraft(rec, req)
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d body = %s, want 500 so the UI does not show Saved", rec.Code, rec.Body.String())
+	}
 }

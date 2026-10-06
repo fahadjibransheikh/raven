@@ -287,3 +287,38 @@ func hasBareLF(raw []byte) bool {
 	}
 	return false
 }
+
+func TestFormatAddressQuotesNamesWithCommasAndRoundTrips(t *testing.T) {
+	cases := []struct{ name, email, want string }{
+		{"Jane Smith", "j@x.com", "Jane Smith <j@x.com>"},
+		{"Smith, Jane", "j@x.com", `"Smith, Jane" <j@x.com>`},
+		{`Jane "JJ" Smith`, "j@x.com", `"Jane \"JJ\" Smith" <j@x.com>`},
+		{"", "j@x.com", "j@x.com"},
+		{"j@x.com", "j@x.com", "j@x.com"},
+		{"Zoë", "z@x.com", "Zoë <z@x.com>"},
+	}
+	for _, c := range cases {
+		got := FormatAddress(c.name, c.email)
+		if got != c.want {
+			t.Errorf("FormatAddress(%q, %q) = %q, want %q", c.name, c.email, got, c.want)
+		}
+		parsed, err := ParseAddressList(got)
+		if err != nil || len(parsed) != 1 || parsed[0].Address != c.email {
+			t.Errorf("ParseAddressList(%q) = %v, %v, want one address %s", got, parsed, err, c.email)
+		}
+	}
+	list := FormatAddress("Smith, Jane", "j@x.com") + ", " + FormatAddress("Bob", "b@x.com")
+	if parsed, err := ParseAddressList(list); err != nil || len(parsed) != 2 {
+		t.Errorf("ParseAddressList(%q) = %v, %v, want two addresses", list, parsed, err)
+	}
+}
+
+func TestReplyToFromRaw(t *testing.T) {
+	raw := []byte("From: Sender <sender@x.com>\r\nReply-To: \"Support, Team\" <help@x.com>, other@x.com\r\nSubject: hi\r\n\r\nbody")
+	if got, want := ReplyToFromRaw(raw), `"Support, Team" <help@x.com>, other@x.com`; got != want {
+		t.Errorf("ReplyToFromRaw() = %q, want %q", got, want)
+	}
+	if got := ReplyToFromRaw([]byte("From: a@x.com\r\n\r\nbody")); got != "" {
+		t.Errorf("ReplyToFromRaw() without header = %q, want empty", got)
+	}
+}

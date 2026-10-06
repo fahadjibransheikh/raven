@@ -334,3 +334,17 @@ func TestContactAvatarRenderURLProxiesGoogleProviderPhotos(t *testing.T) {
 		}
 	}
 }
+
+func TestContactDeleteAsksForConfirmationAndMentionsTheProvider(t *testing.T) {
+	var out bytes.Buffer
+	contact := models.Contact{ID: "contact-1", Name: "Jane", Email: "jane@example.com"}
+	if err := ContactEditor(&contact, &models.ContactProfile{}, false, nil).Render(context.Background(), &out); err != nil {
+		t.Fatalf("ContactEditor.Render() error = %v", err)
+	}
+	html := out.String()
+	for _, want := range []string{`id="delete-contact-contact-1"`, `data-confirm="Delete this contact?`, "deleted there too", `data-confirm-label="Delete contact"`} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("contact delete form missing %q: %s", want, html)
+		}
+	}
+}

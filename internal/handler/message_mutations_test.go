@@ -2,9 +2,12 @@ package handler
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -517,5 +520,109 @@ func TestEmailPartialResolvesOwnedFolderAlias(t *testing.T) {
 	}
 	if response := ownerRequest("attacker", "legacy-inbox"); response.Code != http.StatusNotFound {
 		t.Fatalf("cross-user alias status = %d body=%s, want 404", response.Code, response.Body.String())
+	}
+}
+
+func TestArchiveReturnsUndoAndMovingBackCancelsThePendingMove(t *testing.T) {
+	h, db := newAccountOwnershipTestHandler(t)
+	h.syncer = mailpkg.NewSyncOrchestrator(db, nil, nil, nil)
+	if err := db.UpsertFolders(t.Context(), []storage.UpsertFolderInput{
+		{ID: "victim-inbox", AccountID: "victim-account", RemoteID: "INBOX", Name: "Inbox", Role: "inbox", Selectable: true},
+		{ID: "victim-archive", AccountID: "victim-account", RemoteID: "Archive", Name: "Archive", Role: "archive", Selectable: true},
+		{ID: "victim-trash", AccountID: "victim-account", RemoteID: "Trash", Name: "Trash", Role: "trash", Selectable: true},
+	}); err != nil {
+		t.Fatalf("UpsertFolders() error = %v", err)
+	}
+	if err := db.UpsertSyncMessages(t.Context(), []storage.SyncMessage{
+		{AccountID: "victim-account", FolderID: "victim-inbox", RemoteUID: 42, MessageID: "<undo@example.com>", Subject: "Undo", FromEmail: "sender@example.com", DateSent: time.Now()},
+	}); err != nil {
+		t.Fatalf("UpsertSyncMessages() error = %v", err)
+	}
+	id, _ := db.GetMessageLocalIDByInternetIDInternal(t.Context(), "victim-account", "<undo@example.com>")
+	idStr := strconv.FormatInt(id, 10)
+	post := func(handler http.HandlerFunc, body string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodPost, "/api/messages", strings.NewReader(body))
+		req = req.WithContext(auth.ContextWithUser(req.Context(), &auth.User{ID: "owner", Username: "owner"}))
+		rec := httptest.NewRecorder()
+		handler(rec, req)
+		return rec
+	}
+
+	rec := post(h.handleArchiveMessages, `{"targets":[{"id":"`+idStr+`"}]}`)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"from":"victim-inbox"`) || !strings.Contains(rec.Body.String(), `"id":"`+idStr+`"`) {
+		t.Fatalf("archive status=%d body=%s, want undo entry from victim-inbox", rec.Code, rec.Body.String())
+	}
+	var pending int
+	_ = db.Read().QueryRow(`SELECT COUNT(*) FROM message_mutations WHERE message_id = ? AND kind = 'move'`, id).Scan(&pending)
+	if pending != 1 {
+		t.Fatalf("pending move mutations after archive = %d, want 1", pending)
+	}
+
+	rec = post(h.handleMoveMessages, `{"targets":[{"id":"`+idStr+`"}],"folder_id":"victim-inbox"}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("undo move status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	var inboxDeleted int
+	_ = db.Read().QueryRow(`SELECT COUNT(*) FROM message_mutations WHERE message_id = ? AND kind = 'move'`, id).Scan(&pending)
+	_ = db.Read().QueryRow(`SELECT is_deleted FROM message_folder_state WHERE message_id = ? AND folder_id = 'victim-inbox'`, id).Scan(&inboxDeleted)
+	if pending != 0 || inboxDeleted != 0 {
+		t.Fatalf("after undo pending_moves=%d inbox_deleted=%d, want the queued move cancelled and the inbox row visible", pending, inboxDeleted)
+	}
+}
+
+func TestPermanentDeleteFromTrashOffersNoUndo(t *testing.T) {
+	h, db := newAccountOwnershipTestHandler(t)
+	h.syncer = mailpkg.NewSyncOrchestrator(db, nil, nil, nil)
+	if err := db.UpsertFolders(t.Context(), []storage.UpsertFolderInput{
+		{ID: "victim-trash", AccountID: "victim-account", RemoteID: "Trash", Name: "Trash", Role: "trash", Selectable: true},
+	}); err != nil {
+		t.Fatalf("UpsertFolders() error = %v", err)
+	}
+	if err := db.UpsertSyncMessages(t.Context(), []storage.SyncMessage{
+		{AccountID: "victim-account", FolderID: "victim-trash", RemoteUID: 42, MessageID: "<perm@example.com>", Subject: "Perm", FromEmail: "sender@example.com", DateSent: time.Now()},
+	}); err != nil {
+		t.Fatalf("UpsertSyncMessages() error = %v", err)
+	}
+	id, _ := db.GetMessageLocalIDByInternetIDInternal(t.Context(), "victim-account", "<perm@example.com>")
+	req := httptest.NewRequest(http.MethodPost, "/api/messages/delete", strings.NewReader(`{"targets":[{"id":"`+strconv.FormatInt(id, 10)+`"}],"folder_id":"victim-trash"}`))
+	req = req.WithContext(auth.ContextWithUser(req.Context(), &auth.User{ID: "owner", Username: "owner"}))
+	rec := httptest.NewRecorder()
+	h.handleDeleteMessages(rec, req)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"moved":[]`) {
+		t.Fatalf("permanent delete status=%d body=%s, want an empty moved list", rec.Code, rec.Body.String())
+	}
+}
+
+func TestComposeSourceReturnsReplyToAndQuotesCommaNames(t *testing.T) {
+	h, db := newAccountOwnershipTestHandler(t)
+	insertVictimReadableMessage(t, h, db)
+	rawPath := filepath.Join(t.TempDir(), "raw.eml")
+	raw := "From: Sender <sender@example.com>\r\nTo: \"Smith, Jane\" <jane@example.com>\r\nReply-To: Support Desk <help@example.com>\r\nSubject: Hello\r\n\r\nbody"
+	if err := os.WriteFile(rawPath, []byte(raw), 0o600); err != nil {
+		t.Fatalf("write raw: %v", err)
+	}
+	if _, err := db.Write().Exec(`UPDATE messages SET raw_path = ? WHERE id = 101`, rawPath); err != nil {
+		t.Fatalf("set raw path: %v", err)
+	}
+	if _, err := db.Write().Exec(`INSERT INTO message_recipients (message_id, kind, name, email) VALUES (101, 'to', 'Smith, Jane', 'jane@example.com')`); err != nil {
+		t.Fatalf("insert recipient: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/compose/source?account_id=victim-account&message_id=%3Cvictim-secret%40example.com%3E", nil)
+	req = req.WithContext(auth.ContextWithUser(req.Context(), &auth.User{ID: "owner", Username: "owner"}))
+	rec := httptest.NewRecorder()
+	h.handleComposeSource(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d body = %s", rec.Code, rec.Body.String())
+	}
+	var source map[string]any
+	if err := json.NewDecoder(rec.Body).Decode(&source); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if source["reply_to"] != "Support Desk <help@example.com>" {
+		t.Fatalf("reply_to = %#v", source["reply_to"])
+	}
+	if source["to"] != `"Smith, Jane" <jane@example.com>` {
+		t.Fatalf("to = %#v, want the comma name quoted", source["to"])
 	}
 }

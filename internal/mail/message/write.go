@@ -363,3 +363,39 @@ func AllRecipients(msg *OutgoingMessage) []string {
 	}
 	return recipients
 }
+
+// FormatAddress renders "Name <email>" for the compose recipient fields. A display name with
+// RFC 5322 specials (a comma in "Smith, Jane") is quoted so the list still splits and parses
+// into one address. Unlike mail.Address.String it leaves non-ASCII names unencoded for display.
+func FormatAddress(name, email string) string {
+	name = strings.TrimSpace(name)
+	email = strings.TrimSpace(email)
+	if email == "" {
+		return ""
+	}
+	if name == "" || name == email {
+		return email
+	}
+	if strings.ContainsAny(name, `,;<>"@()[]:\`) {
+		name = `"` + strings.NewReplacer(`\`, `\\`, `"`, `\"`).Replace(name) + `"`
+	}
+	return name + " <" + email + ">"
+}
+
+// ReplyToFromRaw returns the Reply-To header of a raw RFC 822 message as a recipient list
+// ("" when absent or unparsable). Replies go here instead of From when it is set.
+func ReplyToFromRaw(raw []byte) string {
+	msg, err := mail.ReadMessage(bytes.NewReader(raw))
+	if err != nil {
+		return ""
+	}
+	addrs, err := msg.Header.AddressList("Reply-To")
+	if err != nil || len(addrs) == 0 {
+		return ""
+	}
+	parts := make([]string, 0, len(addrs))
+	for _, addr := range addrs {
+		parts = append(parts, FormatAddress(DecodeHeader(addr.Name), addr.Address))
+	}
+	return strings.Join(parts, ", ")
+}

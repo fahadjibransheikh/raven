@@ -1201,6 +1201,10 @@ document.addEventListener("DOMContentLoaded", function () {
     window.clearMailSelection = clearMailSelection
     window.clearActiveMailSelection = clearActiveMailSelection
     window.applyOptimisticMailRemove = applyOptimisticRemove
+    window.performMailAction = performMailAction
+    // Top-level single-message actions (archiveThread, deleteMessage, ...) call this; without the
+    // export they threw a ReferenceError after the server call succeeded and "restored" the row.
+    window.refreshSidebarUnread = refreshSidebarUnread
 
     document.addEventListener("click", function (e) {
       var rowLink = e.target.closest && e.target.closest(".mail-list-item[data-email-id] > a")
@@ -1443,6 +1447,14 @@ document.addEventListener("DOMContentLoaded", function () {
       updateCachedRenderedRow(row)
     }
 
+    // "s" toggles: unstar only when every targeted row is already starred.
+    function mailRowsAllStarred(ids) {
+      return ids.length > 0 && ids.every(function (id) {
+        var row = mailRowById(id)
+        return !!row && row.dataset.starred === "true"
+      })
+    }
+
     function selectedMailTargets(ids) {
       return ids.map(function (emailId) {
         var row = document.querySelector('#mail-list-scroll .mail-list-item[data-email-id="' + cssEscape(emailId) + '"]')
@@ -1582,6 +1594,44 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     }
 
+    // Folder picker for "Move to...": lists the folders of the one account the messages belong to.
+    function pickMoveDestination(ids) {
+      return new Promise(function (resolve) {
+        var accounts = {}
+        ids.forEach(function (id) {
+          var row = mailRowById(id)
+          if (row && row.dataset.accountId) accounts[row.dataset.accountId] = true
+        })
+        var accountIDs = Object.keys(accounts)
+        if (!accountIDs.length) {
+          // Row not rendered (e.g. opened from a link): fall back to the open message's account.
+          var open = document.querySelector("#mail-view [data-account-id]")
+          if (open && open.dataset.accountId) accountIDs = [open.dataset.accountId]
+        }
+        if (accountIDs.length !== 1) {
+          showGoferToast({ id: "mail-action-error", title: "Pick messages from one account", description: "Messages can only be moved between folders of the same account.", variant: "error", icon: "error", position: "bottom-right", duration: 6000, dismissible: true })
+          resolve(null)
+          return
+        }
+        var group = document.querySelector('[data-sidebar-account="' + cssEscape(accountIDs[0]) + '"]')
+        var currentFolder = mailActionCurrentFolderID()
+        var items = []
+        var links = group ? group.querySelectorAll('a[hx-get^="/folder/"]') : []
+        for (var i = 0; i < links.length; i++) {
+          var folderID = (links[i].getAttribute("hx-get") || "").replace("/folder/", "")
+          var name = links[i].querySelector("span.truncate")
+          if (!folderID || !name || folderID === currentFolder) continue
+          items.push({ label: name.textContent.trim(), run: (function (id, label) { return function () { resolve({ id: id, name: label }) } })(folderID, name.textContent.trim()) })
+        }
+        if (!items.length || !window.RavenPalette || !window.RavenPalette.pick) {
+          showGoferToast({ id: "mail-action-error", title: "No folders to move to", variant: "error", icon: "error", position: "bottom-right", duration: 6000, dismissible: true })
+          resolve(null)
+          return
+        }
+        window.RavenPalette.pick("Move to folder\u2026", items)
+      })
+    }
+
     function performMailSelectionAction(action) {
       if (mailSelectionBusy || selectedMailIds.size === 0) return
       performMailAction(action, Array.from(selectedMailIds))
@@ -1590,37 +1640,51 @@ document.addEventListener("DOMContentLoaded", function () {
     // Shared by the selection toolbar and the per-row hover buttons. opts.keepSelection leaves the
     // current multi-selection alone (row buttons act on one row only).
     function performMailAction(action, ids, opts) {
+      if (action === "delete" && !(opts && opts.confirmed)) {
+        confirmPermanentDelete(ids.length).then(function (ok) {
+          if (ok) performMailAction(action, ids, Object.assign({}, opts, { confirmed: true }))
+        })
+        return
+      }
+      if (action === "move" && !(opts && opts.destination)) {
+        pickMoveDestination(ids).then(function (destination) {
+          if (destination) performMailAction("move", ids, Object.assign({}, opts, { destination: destination }))
+        })
+        return
+      }
       var keepSelection = !!(opts && opts.keepSelection)
       var clearSelection = keepSelection ? function () {} : clearMailSelection
       if (action === "label") {
-        var labelName = promptMailLabelName()
-        if (!labelName) return
-        var labelTargets = selectedMailTargets(ids)
-        clearSelection()
-        sendBulkMessageAction("/api/messages/label", labelTargets, { label: labelName, folder_id: currentMailListFolderID() }).then(function () {
-          if (virtualMailList && typeof virtualMailList.refreshCurrentFolder === "function") {
-            virtualMailList.refreshCurrentFolder({ noAnimation: true }).catch(function () {})
-          }
-          var currentEmail = virtualMailList && virtualMailList.selectedEmailId
-          if (currentEmail && ids.indexOf(currentEmail) !== -1 && window.htmx) {
-            htmx.ajax("GET", mailViewRequestURL(currentEmail), { target: "#mail-view", swap: "innerHTML" })
-          }
+        promptMailLabelName("Add label").then(function (labelName) {
+          if (!labelName) return
+          var labelTargets = selectedMailTargets(ids)
+          clearSelection()
+          sendBulkMessageAction("/api/messages/label", labelTargets, { label: labelName, folder_id: currentMailListFolderID() }).then(function () {
+            if (virtualMailList && typeof virtualMailList.refreshCurrentFolder === "function") {
+              virtualMailList.refreshCurrentFolder({ noAnimation: true }).catch(function () {})
+            }
+            var currentEmail = virtualMailList && virtualMailList.selectedEmailId
+            if (currentEmail && ids.indexOf(currentEmail) !== -1 && window.htmx) {
+              htmx.ajax("GET", mailViewRequestURL(currentEmail), { target: "#mail-view", swap: "innerHTML" })
+            }
+          })
         })
         return
       }
       if (action === "unlabel") {
-        var removeLabelName = promptMailLabelName()
-        if (!removeLabelName) return
-        var unlabelTargets = selectedMailTargets(ids)
-        clearSelection()
-        sendBulkMessageAction("/api/messages/unlabel", unlabelTargets, { label: removeLabelName, folder_id: currentMailListFolderID() }).then(function () {
-          if (virtualMailList && typeof virtualMailList.refreshCurrentFolder === "function") {
-            virtualMailList.refreshCurrentFolder({ noAnimation: true }).catch(function () {})
-          }
-          var currentEmail = virtualMailList && virtualMailList.selectedEmailId
-          if (currentEmail && ids.indexOf(currentEmail) !== -1 && window.htmx) {
-            htmx.ajax("GET", mailViewRequestURL(currentEmail), { target: "#mail-view", swap: "innerHTML" })
-          }
+        promptMailLabelName("Remove label").then(function (removeLabelName) {
+          if (!removeLabelName) return
+          var unlabelTargets = selectedMailTargets(ids)
+          clearSelection()
+          sendBulkMessageAction("/api/messages/unlabel", unlabelTargets, { label: removeLabelName, folder_id: currentMailListFolderID() }).then(function () {
+            if (virtualMailList && typeof virtualMailList.refreshCurrentFolder === "function") {
+              virtualMailList.refreshCurrentFolder({ noAnimation: true }).catch(function () {})
+            }
+            var currentEmail = virtualMailList && virtualMailList.selectedEmailId
+            if (currentEmail && ids.indexOf(currentEmail) !== -1 && window.htmx) {
+              htmx.ajax("GET", mailViewRequestURL(currentEmail), { target: "#mail-view", swap: "innerHTML" })
+            }
+          })
         })
         return
       }
@@ -1629,10 +1693,10 @@ document.addEventListener("DOMContentLoaded", function () {
         return
       }
 
-      if (action === "archive" || action === "delete" || action === "star" || action === "spam" || action === "not-spam") {
+      if (action === "archive" || action === "delete" || action === "star" || action === "spam" || action === "not-spam" || action === "move") {
         var targets = selectedMailTargets(ids)
         var current = virtualMailList && virtualMailList.selectedEmailId
-        var removesFromFolder = action === "archive" || action === "delete" || action === "spam" || action === "not-spam"
+        var removesFromFolder = action === "archive" || action === "delete" || action === "spam" || action === "not-spam" || action === "move"
         var openedNext = removesFromFolder && openNextMailAfterRemoval(ids)
         if (removesFromFolder && !openedNext && current && ids.indexOf(current) !== -1) setMailViewEmpty()
         if (removesFromFolder) applyOptimisticRemove(ids)
@@ -1641,17 +1705,21 @@ document.addEventListener("DOMContentLoaded", function () {
           syncMailSelectionControls()
         }
         clearSelection()
-        var path = action === "archive" ? "/api/messages/archive" : (action === "delete" ? "/api/messages/delete" : (action === "spam" ? "/api/messages/spam" : (action === "not-spam" ? "/api/messages/not-spam" : "/api/messages/star")))
-        var extra = action === "star" ? { state: "starred" } : null
+        var path = action === "archive" ? "/api/messages/archive" : (action === "delete" ? "/api/messages/delete" : (action === "spam" ? "/api/messages/spam" : (action === "not-spam" ? "/api/messages/not-spam" : (action === "move" ? "/api/messages/move" : "/api/messages/star"))))
+        var extra = action === "star" ? { state: mailRowsAllStarred(ids) ? "unstarred" : "starred" } : null
+        if (action === "move") extra = { folder_id: opts.destination.id }
         if (action === "delete") extra = { folder_id: currentMailListFolderID() }
         if (action === "spam" || action === "not-spam") extra = { folder_id: currentMailListFolderID() }
+        var undoLabel = mailUndoLabel(action, ids.length, opts && opts.destination && opts.destination.name)
         sendBulkMessageAction(path, targets, extra).then(function (response) {
           if (response && response.ok === false) throw new Error("HTTP " + response.status)
+          if (undoLabel) showUndoToastFromResponse(response, undoLabel)
+          if (action === "star") ids.forEach(function (id) { setStarButtonState(id, extra.state === "starred") })
         }).catch(function () {
           if (removesFromFolder) restoreOptimisticRemove(ids)
           showGoferToast({
             id: "mail-action-error",
-            title: "Could not " + (action === "not-spam" ? "move out of spam" : action) + " the message",
+            title: "Could not " + (action === "not-spam" ? "move out of spam" : action) + (ids.length > 1 ? " the messages" : " the message"),
             description: "The change was undone. Try again.",
             variant: "error", icon: "error", position: "bottom-right", duration: 6000, dismissible: true,
           })
@@ -1754,20 +1822,22 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         if (key === "e") {
           e.preventDefault()
-          ensureKeyboardMailSelection()
-          performMailSelectionAction("archive")
+          if (requireKeyboardMailSelection()) performMailSelectionAction("archive")
           return
         }
         if (key === "delete" || key === "#") {
           e.preventDefault()
-          ensureKeyboardMailSelection()
-          performMailSelectionAction("delete")
+          if (requireKeyboardMailSelection()) performMailSelectionAction("delete")
           return
         }
         if (key === "s") {
           e.preventDefault()
-          ensureKeyboardMailSelection()
-          performMailSelectionAction("star")
+          if (requireKeyboardMailSelection()) performMailSelectionAction("star")
+          return
+        }
+        if (key === "v") {
+          e.preventDefault()
+          if (requireKeyboardMailSelection()) performMailSelectionAction("move")
           return
         }
         if (key === "u") {
@@ -1854,6 +1924,13 @@ document.addEventListener("DOMContentLoaded", function () {
       return selectKeyboardMailRow(row)
     }
 
+    // Destructive keys act only on what the user selected or opened, never on the top row by default.
+    function requireKeyboardMailSelection() {
+      if (selectedMailIds.size > 0) return true
+      var row = mailRowById(selectedMailIdForKeyboard())
+      return row ? selectKeyboardMailRow(row) : false
+    }
+
     function clearKeyboardMailSelection() {
       var hadSelection = selectedMailIds.size > 0
       clearMailSelection()
@@ -1935,7 +2012,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function toggleKeyboardSelectedRead() {
-      ensureKeyboardMailSelection()
+      if (!requireKeyboardMailSelection()) return
       var id = selectedMailIdForKeyboard()
       if (!id) return
       var row = mailRowById(id)
@@ -1971,6 +2048,7 @@ document.addEventListener("DOMContentLoaded", function () {
             shortcutHelpRow(['e'], 'Archive selected') +
             shortcutHelpRow(['Del', '#'], 'Delete selected') +
             shortcutHelpRow(['s'], 'Star selected') +
+            shortcutHelpRow(['v'], 'Move to folder') +
             shortcutHelpRow(['u'], 'Toggle read') +
             shortcutHelpRow(['Esc'], 'Clear selection') +
           '</div>' +
@@ -2038,12 +2116,6 @@ document.addEventListener("DOMContentLoaded", function () {
         sortBy: "date",
         sortOrder: "desc",
       }
-    }
-
-    function promptMailLabelName() {
-      var value = window.prompt("Label name")
-      if (value == null) return ""
-      return String(value).trim()
     }
 
     function readFilters() {
@@ -3311,9 +3383,29 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function setupAccountResultFeedback() {
+    // ?error= codes the account OAuth callbacks redirect back to /settings/accounts with.
+    var ACCOUNT_OAUTH_ERRORS = {
+      oauth_no_code: { title: "Sign-in was not completed", description: "The provider did not approve the connection. If you cancelled, try again when you are ready." },
+      oauth_exchange_failed: { title: "Could not finish sign-in", description: "The provider rejected the sign-in. Try connecting the account again." },
+      oauth_userinfo_failed: { title: "Could not read your account", description: "Sign-in worked but the provider did not return your profile. Try again." },
+      oauth_email_mismatch: { title: "Different account signed in", description: "You signed in with a different address than the one you entered. Try again with the same account." },
+      oauth_invalid_state: { title: "Sign-in link is invalid", description: "Start connecting the account again from Settings." },
+      oauth_expired_state: { title: "Sign-in took too long", description: "The sign-in link expired. Start connecting the account again." },
+      oauth_session_mismatch: { title: "Sign-in could not be verified", description: "Raven's session changed during sign-in. Sign in to Raven again and retry." },
+      create_failed: { title: "Could not save the account", description: "The provider connected but Raven could not store the account. Try again." },
+    }
     var params = new URLSearchParams(window.location.search)
     var added = params.get("account_added") === "1"
     var reconnected = params.get("account_reconnected") === "1"
+    var oauthError = ACCOUNT_OAUTH_ERRORS[params.get("error")]
+    if (oauthError && typeof showGoferToast === "function") {
+      showGoferToast({
+        id: "account-connection-toast", title: oauthError.title, description: oauthError.description,
+        variant: "error", icon: "error", position: "bottom-right", duration: 10000, dismissible: true,
+      })
+      params.delete("error")
+      window.history.replaceState(window.history.state, "", window.location.pathname + (params.toString() ? "?" + params.toString() : "") + window.location.hash)
+    }
     if (!added && !reconnected) return
 
     if (typeof showGoferToast === "function") {
@@ -7711,6 +7803,7 @@ function resetComposeForm(fromPane, skipCleanup) {
   form.dataset.composeSending = "false"
   delete form.dataset.composeOutgoingStatus
   delete form.dataset.composeUploadFailed
+  delete form.dataset.composeSendKey
   form.dataset.composeDirty = "false"
   updateComposeSendState(form)
   _setComposeDraftButtonState(form, "default")
@@ -7913,11 +8006,33 @@ function _isComposeRecipientValid(value) {
   return /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(_composeRecipientEmail(value))
 }
 
+// Splits on , ; and newlines, but not inside "quoted names" or <angle brackets>, so
+// "Smith, Jane" <j@x.com> stays one recipient.
 function _splitComposeRecipients(value) {
-  return String(value || "")
-    .split(/[;,\n]+/) 
-    .map(function (part) { return part.trim() })
-    .filter(Boolean)
+  var parts = []
+  var current = ""
+  var quoted = false
+  var angled = false
+  var text = String(value || "")
+  for (var i = 0; i < text.length; i++) {
+    var ch = text.charAt(i)
+    if (quoted && ch === "\\") {
+      current += ch + text.charAt(i + 1)
+      i++
+      continue
+    }
+    if (ch === '"' && !angled) quoted = !quoted
+    else if (!quoted && ch === "<") angled = true
+    else if (!quoted && ch === ">") angled = false
+    if (!quoted && !angled && (ch === "," || ch === ";" || ch === "\n")) {
+      parts.push(current)
+      current = ""
+      continue
+    }
+    current += ch
+  }
+  parts.push(current)
+  return parts.map(function (part) { return part.trim() }).filter(Boolean)
 }
 
 var _composeRecipientSuggestTimer = null
@@ -8165,7 +8280,13 @@ function handleComposeRecipientKeydown(event) {
     return
   }
   if (event.key === "Escape") {
-    _hideComposeRecipientSuggestions(field)
+    var openBox = field && field.querySelector("[data-compose-recipient-suggestions]")
+    if (openBox && !openBox.hidden) {
+      // Close only the suggestions; a second Esc then reaches the dialog's close handling.
+      event.preventDefault()
+      event.stopPropagation()
+      _hideComposeRecipientSuggestions(field)
+    }
     return
   }
   if (event.key === "Enter" || event.key === "Tab" || event.key === "," || event.key === ";") {
@@ -8524,13 +8645,18 @@ function composeCreateLink(el) {
   if (!editor) return
   editor.focus()
   _restoreComposeSelection(editor)
-  var url = window.prompt("Paste a URL or email address")
-  if (!url) return
-  if (url.indexOf("@") > 0 && !/^[a-z][a-z0-9+.-]*:/i.test(url)) url = "mailto:" + url
-  if (!/^(https?:|mailto:)/i.test(url)) url = "https://" + url
-  document.execCommand("createLink", false, url)
-  syncComposeEditor(editor)
-  updateComposeToolbar(editor)
+  _saveComposeSelection(editor)
+  goferPrompt("Insert link", "Paste a URL or email address", { placeholder: "https://example.com", confirmLabel: "Insert" }).then(function (url) {
+    url = String(url == null ? "" : url).trim()
+    if (!url) return
+    if (url.indexOf("@") > 0 && !/^[a-z][a-z0-9+.-]*:/i.test(url)) url = "mailto:" + url
+    if (!/^(https?:|mailto:)/i.test(url)) url = "https://" + url
+    editor.focus()
+    _restoreComposeSelection(editor)
+    document.execCommand("createLink", false, url)
+    syncComposeEditor(editor)
+    updateComposeToolbar(editor)
+  })
 }
 
 function updateComposeToolbar(editor) {
@@ -8837,6 +8963,7 @@ function handleComposeSendResult(status, data) {
     _setComposeSending(form, false)
     form.dataset.composeOutgoingStatus = status === "ambiguous" ? "Needs review" : "Failed"
     form.dataset.composeDirty = "true"
+    delete form.dataset.composeSendKey
   }
   _composeSendState = null
 }
@@ -10122,6 +10249,15 @@ window.addEventListener("beforeunload", function (event) {
   }
 })
 
+function newComposeSendKey() {
+  if (window.crypto && typeof window.crypto.randomUUID === "function") return window.crypto.randomUUID()
+  // RFC 4122 v4 shape for contexts without crypto.randomUUID (insecure origins).
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+    var r = Math.random() * 16 | 0
+    return (c === "x" ? r : (r & 3) | 8).toString(16)
+  })
+}
+
 function sendCompose(fromPane) {
   var formId = fromPane ? "compose-pane-form" : "compose-form"
   var form = document.getElementById(formId)
@@ -10145,11 +10281,48 @@ function sendCompose(fromPane) {
     return
   }
 
+  _setComposeSending(form, true)
+  confirmComposeSend(form).then(function (ok) {
+    _setComposeSending(form, false)
+    if (ok) _sendComposeNow(form, fromPane)
+  })
+}
+
+// Asks about an empty subject and a likely forgotten attachment, one question at a time.
+function confirmComposeSend(form) {
+  var checks = []
+  var subject = form.querySelector('input[name="subject"]')
+  if (subject && !subject.value.trim()) {
+    checks.push(["Send without a subject?", "This message has no subject.", "Send anyway"])
+  }
+  if (composeMentionsAttachment(form) && !form.querySelector("[data-compose-attachment]")) {
+    checks.push(["Forgot an attachment?", "Your message mentions an attachment, but nothing is attached.", "Send anyway"])
+  }
+  return checks.reduce(function (chain, check) {
+    return chain.then(function (ok) { return ok ? goferConfirm(check[0], check[1], check[2]) : false })
+  }, Promise.resolve(true))
+}
+
+// Looks only at what the user wrote: quoted replies and the signature are skipped.
+function composeMentionsAttachment(form) {
+  var editor = form.querySelector("[data-compose-editor]")
+  if (!editor) return false
+  var clone = editor.cloneNode(true)
+  var skip = clone.querySelectorAll("blockquote, [data-gofer-signature]")
+  for (var i = 0; i < skip.length; i++) skip[i].remove()
+  return /\battach(?:ed|ment|ments|ing)?\b/i.test(clone.textContent || "")
+}
+
+function _sendComposeNow(form, fromPane) {
   var params = new URLSearchParams()
   var inputs = form.querySelectorAll("input, textarea")
   for (var i = 0; inputs && i < inputs.length; i++) {
     if (inputs[i].name) params.append(inputs[i].name, inputs[i].value)
   }
+  // One key per compose session: the server returns the queued send for a repeated key, so a
+  // second click while Raven is retrying cannot send the message twice. Cleared on failure.
+  if (!form.dataset.composeSendKey) form.dataset.composeSendKey = newComposeSendKey()
+  params.append("send_key", form.dataset.composeSendKey)
 
   showSendStatus("sending", "Sending...")
   _setComposeSending(form, true)
@@ -10178,6 +10351,7 @@ function sendCompose(fromPane) {
     if (_composeSendState && _composeSendState.sendID) stopOutgoingSendPolling(_composeSendState.sendID)
     _setComposeSending(form, false)
     _composeSendState = null
+    delete form.dataset.composeSendKey
     form.dataset.composeDirty = "true"
     showSendStatus("failed", err && err.message ? err.message : "Failed to connect to server")
   })
@@ -10484,6 +10658,7 @@ function composeAddress(name, email) {
   email = String(email || "").trim()
   name = String(name || "").trim()
   if (!email) return ""
+  if (/[,;<>"@()\[\]:\\]/.test(name)) name = '"' + name.replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"'
   return name ? name + " <" + email + ">" : email
 }
 
@@ -10617,6 +10792,9 @@ function composeValuesFromSource(source, mode) {
   var fromLine = composeAddress(source.from_name, source.from_email)
   var exclude = {}
   composeAccountSelfEmails(source.account_id).forEach(function (email) { exclude[email] = true })
+  // Reply goes to Reply-To when the sender set one; to your own message, back to its recipients.
+  var senderIsSelf = !!exclude[String(source.from_email || "").trim().toLowerCase()]
+  var replyTarget = senderIsSelf ? (source.to || "") : (source.reply_to || fromLine)
   var vals = {
     account_id: source.account_id || "",
     from_email: source.suggested_from_email || "",
@@ -10637,7 +10815,7 @@ function composeValuesFromSource(source, mode) {
     _composeDirty: "true"
   }
   if (mode === "reply" || mode === "reply-all") {
-    vals.to = mode === "reply-all" ? composeDedupeAddresses([fromLine, source.to || ""], exclude) : composeDedupeAddresses([fromLine], exclude)
+    vals.to = mode === "reply-all" ? composeDedupeAddresses([replyTarget, source.to || ""], exclude) : composeDedupeAddresses([replyTarget], exclude)
     vals.cc = mode === "reply-all" ? composeDedupeAddresses([source.cc || ""], exclude) : ""
     vals.subject = /^Re:/i.test(source.subject || "") ? source.subject : "Re: " + (source.subject || "")
     vals.body = composeReplyPlain(source)
@@ -10864,6 +11042,13 @@ function handleReply(el, mode) {
 }
 
 function openNewCompose() {
+  // An already open compose (dialog or pane) is focused, never wiped.
+  var openDialog = document.querySelector("#compose-dialog [data-tui-dialog-content]")
+  var openForm = (openDialog && openDialog.open && document.getElementById("compose-form")) || document.getElementById("compose-pane-form")
+  if (openForm) {
+    focusComposePrefill(openForm, "new")
+    return
+  }
   resetComposeForm(false)
   var view = composeViewPreference("new")
   if (view === "pane" || view === "full") {
@@ -11029,7 +11214,7 @@ function openComposeInMain(fullWidth, instantFullWidth) {
 
 function toggleRead(emailId) {
   fetch("/api/messages/" + emailId + "/read", { method: "POST" })
-    .then(function (r) { return r.json() })
+    .then(mailActionJSON)
     .then(function (data) {
       var btn = document.querySelector('[data-read-email="' + emailId + '"]')
       if (btn) {
@@ -11045,12 +11230,12 @@ function toggleRead(emailId) {
       invalidateMailListItem(emailId)
       refreshSidebarUnread()
     })
-    .catch(function () {})
+    .catch(function () { showMailActionError("Could not change read state") })
 }
 
 function toggleThreadRead(emailId) {
   fetch("/api/messages/" + emailId + "/thread/read", { method: "POST" })
-    .then(function (r) { return r.json() })
+    .then(mailActionJSON)
     .then(function (data) {
       var btn = document.querySelector('[data-read-email="' + emailId + '"]')
       if (btn) {
@@ -11066,27 +11251,23 @@ function toggleThreadRead(emailId) {
       invalidateMailListItem(emailId)
       refreshSidebarUnread()
     })
-    .catch(function () {})
+    .catch(function () { showMailActionError("Could not change read state") })
+}
+
+function setStarButtonState(emailId, starred) {
+  var svg = document.querySelector('[data-star-email="' + emailId + '"] svg')
+  if (!svg) return
+  svg.setAttribute("class", starred ? "size-4 text-amber-500 fill-amber-500 drop-shadow-[0_1px_1px_rgba(180,120,0,0.3)]" : "size-4 text-ink/30")
 }
 
 function toggleStar(emailId) {
   fetch("/api/messages/" + emailId + "/star", { method: "POST" })
-    .then(function (r) { return r.json() })
+    .then(mailActionJSON)
     .then(function (data) {
-      var starBtn = document.querySelector('[data-star-email="' + emailId + '"]')
-      if (starBtn) {
-        var svg = starBtn.querySelector('svg')
-        if (svg) {
-          if (data.is_starred) {
-            svg.setAttribute('class', 'size-4 text-amber-500 fill-amber-500 drop-shadow-[0_1px_1px_rgba(180,120,0,0.3)]')
-          } else {
-            svg.setAttribute('class', 'size-4 text-ink/30')
-          }
-        }
-      }
+      setStarButtonState(emailId, data.is_starred)
       invalidateMailListItem(emailId)
     })
-    .catch(function () {})
+    .catch(function () { showMailActionError("Could not change the star") })
 }
 
 function mailDeleteFolderQuery() {
@@ -11131,14 +11312,29 @@ function restoreOptimisticMailRemoval(emailId, vml) {
   if (window.htmx) htmx.ajax("GET", mailViewRequestURL(emailId), { target: "#mail-view", swap: "innerHTML" })
 }
 
+// Deleting from Trash is permanent (no Undo), so it asks first. Resolves true elsewhere.
+function confirmPermanentDelete(count) {
+  if (!mailFolderIsTrash(mailActionCurrentFolderID())) return Promise.resolve(true)
+  return goferConfirm(
+    "Delete permanently?",
+    (count > 1 ? "These " + count + " messages" : "This message") + " will be deleted permanently. This cannot be undone.",
+    "Delete permanently"
+  )
+}
+
 function deleteMessage(emailId) {
+  confirmPermanentDelete(1).then(function (ok) { if (ok) deleteMessageNow(emailId) })
+}
+
+function deleteMessageNow(emailId) {
   var vml = beginOptimisticMailRemoval(emailId)
   fetch("/api/messages/" + encodeURIComponent(emailId) + mailDeleteFolderQuery(), { method: "DELETE" })
     .then(function (response) {
       if (!response.ok) throw new Error("delete failed")
       finishOptimisticMailRemoval(vml)
+      showUndoToastFromResponse(response, mailUndoLabel("delete", 1))
     })
-    .catch(function () { restoreOptimisticMailRemoval(emailId, vml) })
+    .catch(function () { restoreOptimisticMailRemoval(emailId, vml); showMailActionError("Could not delete the message", "The change was undone. Try again.") })
 }
 
 // Opens the row after (or, at the end of the list, before) the open email when
@@ -11182,18 +11378,24 @@ function archiveThread(emailId) {
     .then(function (response) {
       if (!response.ok) throw new Error("archive failed")
       finishOptimisticMailRemoval(vml)
+      showUndoToastFromResponse(response, mailUndoLabel("archive", 1))
     })
-    .catch(function () { restoreOptimisticMailRemoval(emailId, vml) })
+    .catch(function () { restoreOptimisticMailRemoval(emailId, vml); showMailActionError("Could not archive the message", "The change was undone. Try again.") })
 }
 
 function deleteThread(emailId) {
+  confirmPermanentDelete(1).then(function (ok) { if (ok) deleteThreadNow(emailId) })
+}
+
+function deleteThreadNow(emailId) {
   var vml = beginOptimisticMailRemoval(emailId)
   fetch("/api/messages/" + encodeURIComponent(emailId) + "/thread" + mailDeleteFolderQuery(), { method: "DELETE" })
     .then(function (response) {
       if (!response.ok) throw new Error("delete thread failed")
       finishOptimisticMailRemoval(vml)
+      showUndoToastFromResponse(response, mailUndoLabel("delete", 1))
     })
-    .catch(function () { restoreOptimisticMailRemoval(emailId, vml) })
+    .catch(function () { restoreOptimisticMailRemoval(emailId, vml); showMailActionError("Could not delete the conversation", "The change was undone. Try again.") })
 }
 
 function markSpam(emailId) {
@@ -11281,22 +11483,37 @@ function markSpamState(emailId, notSpam, thread) {
     .then(function (response) {
       if (!response.ok) throw new Error("spam update failed")
       finishOptimisticMailRemoval(vml)
+      if (!notSpam) showUndoToastFromResponse(response, mailUndoLabel("spam", 1))
     })
-    .catch(function () { restoreOptimisticMailRemoval(emailId, vml) })
+    .catch(function () { restoreOptimisticMailRemoval(emailId, vml); showMailActionError(notSpam ? "Could not move out of spam" : "Could not report spam", "The change was undone. Try again.") })
+}
+
+// Top level on purpose: performMailAction (selection toolbar) lives in a different closure than
+// the filter code this used to be declared in, so it threw a ReferenceError.
+function promptMailLabelName(title) {
+  return goferPrompt(title, "Label name", { placeholder: "Label name", confirmLabel: title }).then(function (value) {
+    return value == null ? "" : String(value).trim()
+  })
 }
 
 function promptLabelMessage(emailId, thread) {
-  var labelName = window.prompt("Label name")
-  if (labelName == null) return
-  labelName = String(labelName).trim()
-  if (!labelName) return
+  goferPrompt("Add label", "Label name", { placeholder: "Label name", confirmLabel: "Add label" }).then(function (labelName) {
+    labelName = String(labelName == null ? "" : labelName).trim()
+    if (labelName) addLabelToMessage(emailId, labelName, thread)
+  })
+}
+
+function addLabelToMessage(emailId, labelName, thread) {
   fetch("/api/messages/" + encodeURIComponent(emailId) + "/label", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ label: labelName, thread: !!thread, folder_id: mailActionCurrentFolderID() })
   })
-    .then(function () { refreshAfterLabelMutation(emailId) })
-    .catch(function () {})
+    .then(function (response) {
+      if (!response.ok) throw new Error("HTTP " + response.status)
+      refreshAfterLabelMutation(emailId)
+    })
+    .catch(function () { showMailActionError("Could not add the label") })
 }
 
 function removeLabelMessage(emailId, labelName, thread) {
@@ -11307,8 +11524,11 @@ function removeLabelMessage(emailId, labelName, thread) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ label: labelName, thread: !!thread, folder_id: mailActionCurrentFolderID() })
   })
-    .then(function () { refreshAfterLabelMutation(emailId) })
-    .catch(function () {})
+    .then(function (response) {
+      if (!response.ok) throw new Error("HTTP " + response.status)
+      refreshAfterLabelMutation(emailId)
+    })
+    .catch(function () { showMailActionError("Could not remove the label") })
 }
 
 function refreshAfterLabelMutation(emailId) {
@@ -11330,7 +11550,81 @@ function moveMessage(emailId, folderId) {
       if (virtualMailList) virtualMailList.onNewEmail()
       refreshSidebarUnread()
     })
-    .catch(function () {})
+    .catch(function () { showMailActionError("Could not move the message") })
+}
+
+function mailActionJSON(response) {
+  if (!response.ok) throw new Error("HTTP " + response.status)
+  return response.json()
+}
+
+function showMailActionError(title, description) {
+  showGoferToast({
+    id: "mail-action-error", title: title, description: description || "Nothing was changed. Try again.",
+    variant: "error", icon: "error", position: "bottom-right", duration: 6000, dismissible: true,
+  })
+}
+
+function mailUndoLabel(action, count, destinationName) {
+  var many = count > 1
+  if (action === "archive") return many ? count + " messages archived" : "Archived"
+  if (action === "delete") return many ? count + " messages moved to Trash" : "Moved to Trash"
+  if (action === "spam") return many ? count + " messages marked as spam" : "Marked as spam"
+  if (action === "move") return (many ? count + " messages moved" : "Moved") + (destinationName ? " to " + destinationName : "")
+  return ""
+}
+
+// Undo is a move back to each target's source folder. While the original move is still
+// queued the mutation queue cancels it outright (storage.moveMessagesAndQueue deletes the
+// pending row when a message returns to its remote folder); once applied it queues the
+// reverse move. Permanent deletes return no "moved" entries, so they never offer undo.
+function showUndoToastFromResponse(response, label) {
+  if (!response || typeof response.json !== "function") return
+  response.json().then(function (data) {
+    showUndoToast(label, data && data.moved)
+  }).catch(function () {})
+}
+
+function showUndoToast(label, moved) {
+  if (!label || !moved || !moved.length) return
+  var toast = showGoferToast({
+    id: "mail-undo-toast",
+    title: label,
+    variant: "success", icon: "success", position: "bottom-right", duration: 7000, dismissible: true,
+    secondaryActionLabel: "Undo",
+    onSecondaryAction: function () {
+      dismissGoferToast(toast)
+      undoMailMoves(moved)
+    },
+  })
+}
+
+function undoMailMoves(moved) {
+  var byFolder = {}
+  moved.forEach(function (m) {
+    if (!m.from) return
+    ;(byFolder[m.from] = byFolder[m.from] || []).push({ id: m.id, thread: !!m.thread })
+  })
+  var requests = Object.keys(byFolder).map(function (folderID) {
+    return fetch("/api/messages/move", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ targets: byFolder[folderID], folder_id: folderID }),
+    }).then(function (response) {
+      if (!response.ok) throw new Error("undo failed")
+    })
+  })
+  Promise.all(requests).catch(function () {
+    showGoferToast({
+      id: "mail-action-error", title: "Could not undo", description: "The message was not moved back. Find it in its new folder.",
+      variant: "error", icon: "error", position: "bottom-right", duration: 6000, dismissible: true,
+    })
+  }).then(function () {
+    var container = document.getElementById("mail-list-scroll")
+    var vml = container && container._virtualMailList
+    if (vml && typeof vml.refreshCurrentFolder === "function") vml.refreshCurrentFolder({ noAnimation: true }).catch(function () {})
+    refreshSidebarUnread()
+  })
 }
 
 function invalidateMailListItem(emailId) {
@@ -11635,6 +11929,36 @@ function refetchBody(emailId) {
   function _observeComposeDialog() {
     var root = document.getElementById("compose-dialog")
     if (root) _composeObserver.observe(root, { attributes: true, attributeFilter: ["data-tui-dialog-open"] })
+    _bindComposeDialogDismiss(root)
+  }
+
+  // Esc and click-away go through the same save/discard/keep-editing prompt as the X button.
+  // The dialog is rendered with DisableESC/DisableClickAway so dialog.js never closes it itself.
+  function _bindComposeDialogDismiss(root) {
+    var dialog = root && root.querySelector("[data-tui-dialog-content]")
+    if (!dialog || dialog._composeDismissBound) return
+    dialog._composeDismissBound = true
+    function requestClose(event) {
+      event.preventDefault()
+      var openBox = dialog.querySelector("[data-compose-recipient-suggestions]:not([hidden])")
+      if (openBox) {
+        _hideComposeRecipientSuggestions(openBox.closest("[data-compose-recipient-field]"))
+        return
+      }
+      var form = document.getElementById("compose-form")
+      if (form && form.dataset.composeDirty === "true") {
+        discardComposeDialog()
+        return
+      }
+      // Nothing edited (an auto signature alone is not an edit): close without asking.
+      resetComposeForm(false, true)
+      if (window.tui && window.tui.dialog) window.tui.dialog.close("compose-dialog")
+      _updateComposeBtn(false)
+    }
+    dialog.addEventListener("cancel", requestClose)
+    dialog.addEventListener("click", function (event) {
+      if (event.target === dialog) requestClose(event)
+    })
   }
 
   if (document.readyState === "loading") {

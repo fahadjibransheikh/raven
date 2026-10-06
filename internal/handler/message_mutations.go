@@ -57,6 +57,19 @@ func (h *Handler) queueMessageMoves(ctx context.Context, infos []storage.ThreadM
 	return nil
 }
 
+// undoMove tells the client how to reverse a move: send the target back to From
+// via POST /api/messages/move. The mutation queue cancels a not-yet-applied
+// move when it is moved back, so this is a true reversal while still pending.
+type undoMove struct {
+	ID     string `json:"id"`
+	Thread bool   `json:"thread"`
+	From   string `json:"from"`
+}
+
+func undoMoveEntry(target ownedMessageTarget) undoMove {
+	return undoMove{ID: target.Target.ID, Thread: target.Target.Thread, From: target.Infos[0].FolderID}
+}
+
 func (h *Handler) queuePermanentDeletes(ctx context.Context, infos []storage.ThreadMessageMutationInfo) error {
 	userID := h.userID(ctx)
 	byFolder := make(map[string][]int64)

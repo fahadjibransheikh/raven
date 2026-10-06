@@ -297,6 +297,12 @@ templ MailListToolbar(accounts []models.Account, activeFolder string, viewMode s
 						Star selected
 					</span>
 				}
+				@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"data-mail-selection-action": "move"}}) {
+					<span class="flex items-center gap-2">
+						@icon.FolderInput(icon.Props{Class: "size-4"})
+						Move to...
+					</span>
+				}
 				@dropdown.Separator()
 				if mailFolderIDIsSpam(activeFolder, accounts) {
 					@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"data-mail-selection-action": "not-spam"}}) {
@@ -595,6 +601,7 @@ templ MailListEmails(accounts []models.Account, emails []models.Email, folderID 
 		data-window-start={ fmt.Sprintf("%d", windowStart) }
 		data-page-size={ fmt.Sprintf("%d", mailListPaginationPageSize()) }
 		data-account-marker-style={ accountMarkerStyle(accounts) }
+		data-no-accounts?={ len(accounts) == 0 }
 		data-load-folder?={ totalCount < 0 || scrollCount < 0 }
 	>
 		if totalCount < 0 || scrollCount < 0 {
@@ -612,7 +619,7 @@ templ MailListEmails(accounts []models.Account, emails []models.Email, folderID 
 				@MailListItem(accounts, email, windowStart+i, selectedEmail, senderDisplayMode, mailListViewMode(viewMode))
 			}
 			if len(emails) == 0 {
-				@MailListEmpty()
+				@MailListEmpty(accounts, folderID)
 			}
 		}
 	</div>
@@ -865,7 +872,7 @@ templ MailListRowActions(email models.Email) {
 }
 
 templ MailListCardItem(accounts []models.Account, email models.Email, position int, selectedEmail *models.Email, senderDisplayMode string) {
-	<div class="mail-list-item" data-email-id={ email.ID } data-position={ fmt.Sprintf("%d", position) } data-thread-id={ email.ThreadID } data-has-thread={ fmt.Sprintf("%t", email.ThreadCount > 1) }>
+	<div class="mail-list-item" data-email-id={ email.ID } data-account-id={ email.AccountID } data-starred={ fmt.Sprintf("%t", email.IsStarred) } data-position={ fmt.Sprintf("%d", position) } data-thread-id={ email.ThreadID } data-has-thread={ fmt.Sprintf("%t", email.ThreadCount > 1) }>
 		<a
 			href={ templ.URL(fmt.Sprintf("/?email=%s", email.ID)) }
 			hx-get={ mailViewPartialURL(email.ID, email.FolderID, false) }
@@ -982,7 +989,7 @@ templ MailListCardItem(accounts []models.Account, email models.Email, position i
 }
 
 templ MailListTableItem(email models.Email, position int, selectedEmail *models.Email, senderDisplayMode string) {
-	<div class="mail-list-item mail-list-table-row" data-email-id={ email.ID } data-position={ fmt.Sprintf("%d", position) } data-thread-id={ email.ThreadID } data-has-thread={ fmt.Sprintf("%t", email.ThreadCount > 1) }>
+	<div class="mail-list-item mail-list-table-row" data-email-id={ email.ID } data-account-id={ email.AccountID } data-starred={ fmt.Sprintf("%t", email.IsStarred) } data-position={ fmt.Sprintf("%d", position) } data-thread-id={ email.ThreadID } data-has-thread={ fmt.Sprintf("%t", email.ThreadCount > 1) }>
 		<a
 			href={ templ.URL(fmt.Sprintf("/?email=%s", email.ID)) }
 			hx-get={ mailViewPartialURL(email.ID, email.FolderID, false) }
@@ -1062,13 +1069,19 @@ templ MailListTableItem(email models.Email, position int, selectedEmail *models.
 	</div>
 }
 
-templ MailListEmpty() {
+templ MailListEmpty(accounts []models.Account, folderID string) {
 	<div class="flex flex-col items-center justify-center py-20 px-4 text-center">
 		<div class="empty-icon-box size-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-4 raised">
 			@icon.Inbox(icon.Props{Class: "size-7 text-muted-foreground/40"})
 		</div>
-		<h3 class="font-semibold text-sm mb-1">No emails</h3>
-		<p class="text-xs text-muted-foreground">Your inbox is empty</p>
+		if len(accounts) == 0 {
+			<h3 class="font-semibold text-sm mb-1">No accounts yet</h3>
+			<p class="text-xs text-muted-foreground">Add an email account to start reading mail.</p>
+			<a href="/settings/accounts" class="mt-4 inline-flex h-8 items-center rounded-md border border-border px-3 text-xs font-semibold text-foreground hover:bg-accent">Add account</a>
+		} else {
+			<h3 class="font-semibold text-sm mb-1">No emails</h3>
+			<p class="text-xs text-muted-foreground">{ mailListEmptyText(accounts, folderID) }</p>
+		}
 	</div>
 }
 
