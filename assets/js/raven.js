@@ -155,7 +155,7 @@
   })
 
   window.RavenPalette = { open: open, pick: function (label, pickItems) { open({ label: label, items: pickItems }) } }
-})()
+})();
 
 // Confirm prompts: window.confirm returns false without showing anything in the
 // desktop app's WKWebView, so every confirmation goes through an in-app popover.
