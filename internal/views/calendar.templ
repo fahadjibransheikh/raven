@@ -78,7 +78,7 @@ templ CalendarMainPane(accounts []models.Account) {
 					@icon.ChevronRight(icon.Props{Class: "size-4"})
 				</button>
 			</div>
-			<h2 data-cal-title class="cal-title min-w-0 flex-1 truncate text-lg font-bold tracking-tight" aria-live="polite"></h2>
+			<h2 data-cal-title class="cal-title min-w-0 flex-1 truncate text-lg font-semibold tracking-tight" aria-live="polite"></h2>
 			<span data-cal-status class="hidden text-xs text-muted-foreground" role="status"></span>
 			<div class="cal-seg" role="group" aria-label="Calendar view">
 				<button type="button" data-cal-view="day" aria-pressed="false">Day</button>
@@ -114,7 +114,7 @@ templ CalendarPage(accounts []models.Account) {
 
 templ CalendarShell(accounts []models.Account, uiSettings map[string]string) {
 	<div id="app-shell" class="flex h-screen overflow-hidden">
-		@CalendarSidebar(accounts, uiSettingGet(uiSettings, "sidebar_width", "256px"), uiSettings)
+		@CalendarSidebar(accounts, uiSettingGet(uiSettings, "sidebar_width", "240px"), uiSettings)
 		@ResizeHandle("sidebar")
 		@CalendarPage(accounts)
 	</div>

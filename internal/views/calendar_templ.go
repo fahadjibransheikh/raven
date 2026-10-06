@@ -198,7 +198,7 @@ func CalendarMainPane(accounts []models.Account) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</button></div><h2 data-cal-title class=\"cal-title min-w-0 flex-1 truncate text-lg font-bold tracking-tight\" aria-live=\"polite\"></h2><span data-cal-status class=\"hidden text-xs text-muted-foreground\" role=\"status\"></span><div class=\"cal-seg\" role=\"group\" aria-label=\"Calendar view\"><button type=\"button\" data-cal-view=\"day\" aria-pressed=\"false\">Day</button> <button type=\"button\" data-cal-view=\"week\" aria-pressed=\"false\">Week</button> <button type=\"button\" data-cal-view=\"month\" aria-pressed=\"false\">Month</button> <button type=\"button\" data-cal-view=\"agenda\" aria-pressed=\"false\">Agenda</button></div><button type=\"button\" data-cal-new class=\"cal-icon-btn lg:hidden\" aria-label=\"New event\" title=\"New event (c)\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</button></div><h2 data-cal-title class=\"cal-title min-w-0 flex-1 truncate text-lg font-semibold tracking-tight\" aria-live=\"polite\"></h2><span data-cal-status class=\"hidden text-xs text-muted-foreground\" role=\"status\"></span><div class=\"cal-seg\" role=\"group\" aria-label=\"Calendar view\"><button type=\"button\" data-cal-view=\"day\" aria-pressed=\"false\">Day</button> <button type=\"button\" data-cal-view=\"week\" aria-pressed=\"false\">Week</button> <button type=\"button\" data-cal-view=\"month\" aria-pressed=\"false\">Month</button> <button type=\"button\" data-cal-view=\"agenda\" aria-pressed=\"false\">Agenda</button></div><button type=\"button\" data-cal-new class=\"cal-icon-btn lg:hidden\" aria-label=\"New event\" title=\"New event (c)\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -319,7 +319,7 @@ func CalendarShell(accounts []models.Account, uiSettings map[string]string) temp
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = CalendarSidebar(accounts, uiSettingGet(uiSettings, "sidebar_width", "256px"), uiSettings).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = CalendarSidebar(accounts, uiSettingGet(uiSettings, "sidebar_width", "240px"), uiSettings).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

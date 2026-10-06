@@ -45,11 +45,11 @@ templ MailListHeader(accounts []models.Account, activeFolder string, totalCount 
 				<button type="button" class="inline-flex lg:hidden h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Open folders" aria-expanded="false" data-phone-nav-toggle>
 					@icon.Menu(icon.Props{Class: "size-5"})
 				</button>
-				<h2 id="mail-folder-name" data-mail-folder-default-name={ folderDisplayName(activeFolder) } class="text-lg font-bold tracking-tight">{ mailListFolderHeading(activeFolder, filters) }</h2>
+				<h2 id="mail-folder-name" data-mail-folder-default-name={ folderDisplayName(activeFolder) } class="text-lg font-semibold tracking-tight">{ mailListFolderHeading(activeFolder, filters) }</h2>
 				if totalCount >= 0 {
-					<span id="mail-folder-count" class="inline-flex h-5 min-w-10 items-center justify-center rounded-full bg-muted px-2 text-xs font-medium text-muted-foreground shadow-[0_1px_2px_rgba(0,0,0,0.06)]">{ fmt.Sprintf("%d", totalCount) }</span>
+					<span id="mail-folder-count" class="inline-flex h-5 min-w-10 items-center justify-center rounded-full bg-muted px-2 text-xs font-medium text-muted-foreground">{ fmt.Sprintf("%d", totalCount) }</span>
 				} else {
-					<span id="mail-folder-count" class="inline-flex h-5 min-w-10 items-center justify-center rounded-full bg-muted px-2 text-xs font-medium text-muted-foreground shadow-[0_1px_2px_rgba(0,0,0,0.06)] animate-pulse"></span>
+					<span id="mail-folder-count" class="inline-flex h-5 min-w-10 items-center justify-center rounded-full bg-muted px-2 text-xs font-medium text-muted-foreground"></span>
 				}
 			</div>
 			<button type="button" class="inline-flex lg:hidden h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90" aria-label="Compose" onclick="openNewCompose()">
@@ -58,13 +58,13 @@ templ MailListHeader(accounts []models.Account, activeFolder string, totalCount 
 		</div>
 		<div class="mail-list-search-section">
 			<div class="mail-list-search-primary">
-				<div class="mail-list-search-input-wrap relative rounded-lg min-w-0">
+				<div class="mail-list-search-input-wrap relative rounded-md min-w-0">
 					@icon.Search(icon.Props{Class: "absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground"})
 					<input
 						type="text"
 						name="q"
-						placeholder="Search, or use from: subject: body: then Enter"
-						class="h-9 w-full pl-8 pr-3 rounded-lg text-sm bg-background border border-border/50 outline-none focus:ring-2 focus:ring-ring"
+						placeholder="Search mail" title="Search, or use from: subject: body: then Enter. Press Ctrl or Cmd K to jump anywhere."
+						class="h-9 w-full pl-8 pr-3 rounded-md text-sm bg-background border border-input outline-none focus:ring-2 focus:ring-ring"
 						data-mail-search-input
 						autocomplete="off"
 					/>
@@ -79,7 +79,7 @@ templ MailListHeader(accounts []models.Account, activeFolder string, totalCount 
 }
 
 templ MailFilterTriState(name string, leftValue string, leftLabel string, rightValue string, rightLabel string) {
-	<div class="mail-filter-tristate relative inline-grid h-7 w-full grid-cols-3 overflow-hidden border border-border bg-background p-0.5 text-[11px]" data-mail-tristate={ name } data-mail-tristate-value="">
+	<div class="mail-filter-tristate relative inline-grid h-7 w-full grid-cols-3 overflow-hidden border border-border bg-background p-0.5 text-xs" data-mail-tristate={ name } data-mail-tristate-value="">
 		<div class="mail-filter-tristate-indicator" data-mail-tristate-indicator></div>
 		<button type="button" data-mail-tristate-option={ leftValue } class="relative z-10 px-1.5 text-muted-foreground hover:text-foreground">{ leftLabel }</button>
 		<button type="button" data-mail-tristate-option="" class="relative z-10 px-1.5 text-foreground">Any</button>
@@ -99,39 +99,37 @@ func mailSortLabel(filters models.EmailFilters) string {
 }
 
 templ MailListToolbar(accounts []models.Account, activeFolder string, viewMode string, filters models.EmailFilters) {
-	<div class="mail-list-toolbar flex items-center gap-1 px-4 py-1.5">
+	<div class="mail-list-toolbar flex items-center gap-1 px-3">
 		<input type="checkbox" data-mail-select-all aria-label="Select all messages" class="size-4 shrink-0 cursor-pointer accent-primary"/>
-		<div class="relative inline-flex h-7 rounded-lg border border-border bg-background p-0.5 gap-0.5" data-mail-list-view-toggle>
+		<div class="relative inline-flex h-7 shrink-0 rounded-md bg-muted p-0.5 gap-0.5" data-mail-list-view-toggle>
 			<div
 				data-mail-list-view-indicator
-				class="absolute top-0.5 bottom-0.5 left-0.5 w-[calc(50%-2px)] rounded-md border border-border bg-card shadow-sm transition-transform duration-200 ease-out"
+				class="absolute top-0.5 bottom-0.5 left-0.5 w-[calc(50%-2px)] rounded border border-border bg-background transition-transform duration-200 ease-out"
 				style={ mailListViewIndicatorStyle(viewMode) }
 			></div>
 			<button
 				type="button"
 				data-mail-list-view-button="cards"
-				aria-label="Cards view"
+				aria-label="Cards view" title="Comfortable (cards)"
 				class={
-					"relative z-10 inline-flex h-6 items-center gap-1 px-2 rounded-md text-xs font-medium transition-colors duration-200",
+					"relative z-10 inline-flex h-6 w-7 items-center justify-center rounded text-xs font-medium transition-colors duration-100",
 					templ.KV("text-foreground", viewMode == "cards"),
 					templ.KV("text-muted-foreground hover:text-foreground", viewMode != "cards"),
 				}
 			>
 				@icon.LayoutList(icon.Props{Class: "size-3.5"})
-				Cards
 			</button>
 			<button
 				type="button"
 				data-mail-list-view-button="table"
-				aria-label="Table view"
+				aria-label="Table view" title="Compact (table)"
 				class={
-					"relative z-10 inline-flex h-6 items-center gap-1 px-2 rounded-md text-xs font-medium transition-colors duration-200",
+					"relative z-10 inline-flex h-6 w-7 items-center justify-center rounded text-xs font-medium transition-colors duration-100",
 					templ.KV("text-foreground", viewMode == "table"),
 					templ.KV("text-muted-foreground hover:text-foreground", viewMode != "table"),
 				}
 			>
 				@icon.Table2(icon.Props{Class: "size-3.5"})
-				Table
 			</button>
 		</div>
 		<div class="mail-list-toolbar-spacer flex-1"></div>
@@ -140,8 +138,8 @@ templ MailListToolbar(accounts []models.Account, activeFolder string, viewMode s
 			data-mail-unread-toggle
 			aria-pressed={ fmt.Sprintf("%t", filters.Unread) }
 			class={
-				"inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs font-medium hover:bg-accent hover:text-foreground",
-				templ.KV("bg-accent text-primary", filters.Unread),
+				"inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs font-medium hover:bg-row-hover hover:text-foreground",
+				templ.KV("bg-row-selected text-foreground", filters.Unread),
 				templ.KV("text-muted-foreground", !filters.Unread),
 			}
 		>
@@ -149,14 +147,13 @@ templ MailListToolbar(accounts []models.Account, activeFolder string, viewMode s
 		</button>
 		@dropdown.Dropdown() {
 			@dropdown.Trigger() {
-				<button type="button" class="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground" aria-label="Sort messages">
+				<button type="button" class="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground" aria-label="Sort messages" title={ "Sort: " + mailSortLabel(filters) }>
 					@icon.ArrowUpDown(icon.Props{Class: "size-3.5"})
-					<span class="hidden sm:inline">{ mailSortLabel(filters) }</span>
 				</button>
 			}
 			@dropdown.Content(dropdown.ContentProps{Placement: dropdown.PlacementBottomEnd, Class: "w-64 normal-case tracking-normal p-3"}) {
 				<form class="space-y-3" data-mail-sort-form>
-					<div class="space-y-1 text-[11px] font-medium text-muted-foreground">
+					<div class="space-y-1 text-xs font-medium text-muted-foreground">
 						<span>Order by</span>
 						@selectbox.SelectBox() {
 							@selectbox.Trigger(selectbox.TriggerProps{Name: "sort_by", Class: "h-8 bg-background text-xs", DisableClear: true}) {
@@ -175,7 +172,7 @@ templ MailListToolbar(accounts []models.Account, activeFolder string, viewMode s
 							}
 						}
 					</div>
-					<div class="space-y-1 text-[11px] font-medium text-muted-foreground">
+					<div class="space-y-1 text-xs font-medium text-muted-foreground">
 						<span>Order</span>
 						@selectbox.SelectBox() {
 							@selectbox.Trigger(selectbox.TriggerProps{Name: "sort_order", Class: "h-8 bg-background text-xs", DisableClear: true}) {
@@ -197,7 +194,7 @@ templ MailListToolbar(accounts []models.Account, activeFolder string, viewMode s
 		}
 		<button type="button" data-mail-selection-clear class="hidden h-7 items-center rounded-md px-2 text-xs font-semibold text-muted-foreground hover:bg-accent hover:text-foreground">
 			<span data-mail-selection-summary>0 selected</span>
-			<span class="ml-1 text-[10px]">Clear</span>
+			<span class="ml-1 text-xs">Clear</span>
 		</button>
 		@tooltip.Tooltip() {
 			@tooltip.Trigger() {
@@ -321,10 +318,10 @@ templ MailListToolbar(accounts []models.Account, activeFolder string, viewMode s
 templ MailFiltersPopover(accounts []models.Account) {
 	@popover.Root(popover.RootProps{ID: "mail-filters-popover", Class: "inline-flex"}) {
 		@popover.Trigger() {
-			<button type="button" aria-label="Filters" data-mail-filter-button class="mail-list-advanced-filter-button relative inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-xs font-semibold text-foreground hover:bg-accent data-[active=true]:bg-accent data-[active=true]:text-foreground">
+			<button type="button" aria-label="Filters" data-mail-filter-button class="mail-list-advanced-filter-button relative inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border border-input bg-background px-2.5 text-xs font-medium text-foreground hover:bg-row-hover data-[active=true]:bg-row-selected data-[active=true]:text-foreground">
 				<span>Filters</span>
 				@icon.SlidersHorizontal(icon.Props{Class: "size-3.5"})
-				<span data-mail-filter-count class="hidden min-w-4 rounded-full bg-primary px-1 text-center text-[10px] leading-4 text-primary-foreground"></span>
+				<span data-mail-filter-count class="hidden min-w-4 rounded-full bg-primary px-1 text-center text-xs leading-4 text-primary-foreground"></span>
 			</button>
 		}
 		@popover.Content(popover.ContentProps{Placement: popover.PlacementBottomEnd, Offset: 8, Exclusive: true, Class: "z-[70] w-[min(36rem,calc(100vw-1.5rem))] max-w-none overflow-hidden p-0 [&::backdrop]:transition-colors [&::backdrop]:duration-150 data-[tui-popover-open=false]:[&::backdrop]:bg-black/0 data-[tui-popover-open=true]:[&::backdrop]:bg-black/25"}) {
@@ -377,7 +374,7 @@ templ MailFiltersPopover(accounts []models.Account) {
 												</div>
 											}
 										}
-										<p class="text-[11px] font-normal text-muted-foreground/80">Matches messages sent by or addressed to the selected email across all mail.</p>
+										<p class="text-xs font-normal text-muted-foreground/80">Matches messages sent by or addressed to the selected email across all mail.</p>
 									</label>
 									if len(accounts) > 0 {
 										<label class="space-y-1.5 text-xs font-medium text-muted-foreground">
@@ -521,19 +518,19 @@ templ MailFiltersPopover(accounts []models.Account) {
 								</div>
 								<div class="grid gap-3">
 									<div class="space-y-1">
-										<div class="text-[11px] font-medium text-muted-foreground">Read status</div>
+										<div class="text-xs font-medium text-muted-foreground">Read status</div>
 										@MailFilterTriState("status", "unread", "Unread", "read", "Read")
 									</div>
 									<div class="space-y-1">
-										<div class="text-[11px] font-medium text-muted-foreground">Attachments</div>
+										<div class="text-xs font-medium text-muted-foreground">Attachments</div>
 										@MailFilterTriState("attachments", "no", "No", "yes", "Yes")
 									</div>
 									<div class="space-y-1">
-										<div class="text-[11px] font-medium text-muted-foreground">Tags</div>
+										<div class="text-xs font-medium text-muted-foreground">Tags</div>
 										@MailFilterTriState("tags", "no", "No", "yes", "Yes")
 									</div>
 									<div class="space-y-1">
-										<div class="text-[11px] font-medium text-muted-foreground">Threads</div>
+										<div class="text-xs font-medium text-muted-foreground">Threads</div>
 										@MailFilterTriState("threads", "no", "No", "yes", "Yes")
 									</div>
 								</div>
@@ -546,7 +543,7 @@ templ MailFiltersPopover(accounts []models.Account) {
 							<button type="button" data-mail-filters-close class="h-8 rounded-md border border-border px-3 text-xs font-medium hover:bg-accent">Cancel</button>
 							<button type="submit" class="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90">
 								<span>Apply</span>
-								<span data-mail-advanced-filter-count class="hidden min-w-4 rounded-full bg-primary-foreground/15 px-1.5 py-0.5 text-center text-[10px] leading-none">0</span>
+								<span data-mail-advanced-filter-count class="hidden min-w-4 rounded-full bg-primary-foreground/15 px-1.5 py-0.5 text-center text-xs leading-none">0</span>
 							</button>
 						</div>
 					</div>
@@ -621,14 +618,14 @@ templ MailListEmails(accounts []models.Account, emails []models.Email, folderID 
 templ MailListPagination(totalCount int, windowStart int, itemCount int, pageSize int) {
 	<div class="border-t border-border/70 bg-card/95 px-3 py-2" data-mail-pagination data-page-size={ fmt.Sprintf("%d", pageSize) }>
 		<div class="flex items-center justify-between gap-2">
-			<div class="min-w-0 text-[11px] font-medium text-muted-foreground" data-mail-pagination-summary>{ mailListPaginationRangeLabel(windowStart, itemCount, totalCount) }</div>
+			<div class="min-w-0 text-xs font-medium text-muted-foreground" data-mail-pagination-summary>{ mailListPaginationRangeLabel(windowStart, itemCount, totalCount) }</div>
 			<div class="flex items-center gap-1.5">
-				<button type="button" class="inline-flex h-7 items-center gap-1 rounded-md border border-border px-2 text-[11px] font-semibold text-foreground hover:bg-accent disabled:cursor-not-allowed disabled:opacity-45" data-mail-page-prev disabled?={ windowStart <= 0 }>
+				<button type="button" class="inline-flex h-7 items-center gap-1 rounded-md border border-border px-2 text-xs font-semibold text-foreground hover:bg-accent disabled:cursor-not-allowed disabled:opacity-45" data-mail-page-prev disabled?={ windowStart <= 0 }>
 					@icon.ChevronLeft(icon.Props{Class: "size-3"})
 					Prev
 				</button>
-				<span class="min-w-16 text-center text-[11px] font-medium text-muted-foreground" data-mail-pagination-page>{ fmt.Sprintf("%d / %d", mailListPaginationPage(windowStart, pageSize), mailListPaginationTotalPages(totalCount, pageSize)) }</span>
-				<button type="button" class="inline-flex h-7 items-center gap-1 rounded-md border border-border px-2 text-[11px] font-semibold text-foreground hover:bg-accent disabled:cursor-not-allowed disabled:opacity-45" data-mail-page-next disabled?={ windowStart+itemCount >= totalCount || itemCount == 0 }>
+				<span class="min-w-16 text-center text-xs font-medium text-muted-foreground" data-mail-pagination-page>{ fmt.Sprintf("%d / %d", mailListPaginationPage(windowStart, pageSize), mailListPaginationTotalPages(totalCount, pageSize)) }</span>
+				<button type="button" class="inline-flex h-7 items-center gap-1 rounded-md border border-border px-2 text-xs font-semibold text-foreground hover:bg-accent disabled:cursor-not-allowed disabled:opacity-45" data-mail-page-next disabled?={ windowStart+itemCount >= totalCount || itemCount == 0 }>
 					Next
 					@icon.ChevronRight(icon.Props{Class: "size-3"})
 				</button>
@@ -646,7 +643,7 @@ templ MailListItem(accounts []models.Account, email models.Email, position int, 
 }
 
 templ MailListTableHeader(markerStyle string) {
-	<div class="mail-list-table-header mail-list-table-grid grid items-center gap-3 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-card/95 border-b border-border/70 sticky top-0 z-20 backdrop-blur-sm">
+	<div class="mail-list-table-header mail-list-table-grid grid items-center gap-3 px-3 py-1.5 text-xs font-semibold text-muted-foreground bg-card/95 border-b border-border/70 sticky top-0 z-20 backdrop-blur-sm">
 		<div class="mail-list-table-heading flex items-center justify-center" data-mail-table-column="0" data-mail-table-column-id="accountMarker" data-mail-table-cell="accountMarker" title="Account Marker">
 			<span class="account-color-marker size-2.5" style={ markerStyle }></span><span class="mail-list-column-separator"></span>
 		</div>
@@ -728,19 +725,19 @@ templ MailCardLayoutDialog() {
 			<div class="mail-card-layout-dialog-grid grid gap-3">
 				<div class="space-y-2 min-w-0">
 					<div class="flex items-center justify-between gap-2">
-						<div class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Card</div>
+						<div class="text-xs font-semibold text-muted-foreground">Card</div>
 						<div class="flex items-center gap-2">
-							<button type="button" data-mail-card-layout-reset class="inline-flex h-7 items-center gap-1.5 rounded-md border border-border bg-card px-2 text-[11px] font-semibold text-muted-foreground hover:bg-accent hover:text-foreground">
+							<button type="button" data-mail-card-layout-reset class="inline-flex h-7 items-center gap-1.5 rounded-md border border-border bg-card px-2 text-xs font-semibold text-muted-foreground hover:bg-accent hover:text-foreground">
 								@icon.RotateCcw(icon.Props{Class: "size-3"})
 								Reset layout
 							</button>
-							<div class="text-[11px] font-medium text-muted-foreground tabular-nums" data-mail-card-layout-limit></div>
+							<div class="text-xs font-medium text-muted-foreground tabular-nums" data-mail-card-layout-limit></div>
 						</div>
 					</div>
 					<div class="mail-card-layout-preview-shell rounded-lg border border-border bg-background/45 p-3">
-						<div class="mail-card-layout-preview-card mail-list-card rounded-lg border border-border bg-card px-3.5 py-2.5 shadow-sm" data-mail-card-layout-preview data-mail-card-layout-scope>
+						<div class="mail-card-layout-preview-card mail-list-card rounded-md border border-border bg-card px-3 py-1.5" data-mail-card-layout-preview data-mail-card-layout-scope>
 							<div class="mail-list-card-zone mail-list-card-zone-rail-top" data-mail-card-zone="railTop" data-mail-card-layout-zone-items="railTop" data-mail-card-layout-dropzone="railTop">
-								<span data-mail-card-field="avatar" class="inline-flex size-6 items-center justify-center rounded-full bg-primary/15 text-[10px] font-semibold text-primary shadow-[0_1px_3px_rgba(0,0,0,0.15)]">CB</span>
+								<span data-mail-card-field="avatar" class="inline-flex size-8 items-center justify-center rounded-full bg-primary/15 text-xs font-medium text-primary-text">CB</span>
 							</div>
 							<div class="mail-list-card-zone mail-list-card-zone-rail-middle" data-mail-card-zone="railMiddle" data-mail-card-layout-zone-items="railMiddle" data-mail-card-layout-dropzone="railMiddle">
 								<span data-mail-card-field="accountMarker" class="inline-flex items-center justify-center shrink-0">
@@ -748,15 +745,15 @@ templ MailCardLayoutDialog() {
 								</span>
 							</div>
 							<div class="mail-list-card-zone mail-list-card-zone-rail-bottom" data-mail-card-zone="railBottom" data-mail-card-layout-zone-items="railBottom" data-mail-card-layout-dropzone="railBottom">
-								<span data-mail-card-field="thread" class="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground">
+								<span data-mail-card-field="thread" class="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
 									@icon.MessagesSquare(icon.Props{Class: "size-3"})
 									3
 								</span>
 							</div>
 							<div class="mail-list-card-zone mail-list-card-zone-header" data-mail-card-zone="header" data-mail-card-layout-zone-items="header" data-mail-card-layout-dropzone="header">
 								<span data-mail-card-field="from" class="truncate text-sm font-semibold text-foreground">Cristian Braun</span>
-								<span data-mail-card-field="date" class="text-xs font-medium tabular-nums text-primary">10:42</span>
-								<span data-mail-card-field="account" class="mail-list-card-account inline-flex min-w-0 max-w-[42%] items-center gap-1 rounded-full border border-border/70 bg-background/40 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+								<span data-mail-card-field="date" class="text-xs tabular-nums text-subtle-foreground">10:42</span>
+								<span data-mail-card-field="account" class="mail-list-card-account inline-flex min-w-0 max-w-[42%] items-center gap-1 rounded px-1 text-xs font-normal text-subtle-foreground">
 									<span class="account-color-marker size-2 shrink-0 bg-primary"></span>
 									<span class="truncate">Work</span>
 								</span>
@@ -771,19 +768,19 @@ templ MailCardLayoutDialog() {
 							</div>
 							<div class="mail-list-card-zone mail-list-card-zone-body" data-mail-card-zone="body" data-mail-card-layout-zone-items="body" data-mail-card-layout-dropzone="body">
 								<p data-mail-card-field="subject" class="truncate text-[13px] font-medium text-foreground">Layout editor review</p>
-								<p data-mail-card-field="to" class="truncate text-[11px] leading-snug text-muted-foreground">
+								<p data-mail-card-field="to" class="truncate text-xs leading-4 text-muted-foreground">
 									<span class="font-medium text-muted-foreground/80">To</span>
 									Team
 								</p>
 							</div>
 							<div class="mail-list-card-zone mail-list-card-zone-footer" data-mail-card-zone="footer" data-mail-card-layout-zone-items="footer" data-mail-card-layout-dropzone="footer">
-								<p data-mail-card-field="preview" class="min-w-0 flex-1 truncate text-xs leading-relaxed text-muted-foreground">Preview text stays attached to the selected card section.</p>
-								<span data-mail-card-field="labels" class="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary shadow-[0_1px_2px_rgba(0,0,0,0.08)]">Design</span>
+								<p data-mail-card-field="preview" class="min-w-0 flex-1 truncate text-xs leading-4 text-muted-foreground">Preview text stays attached to the selected card section.</p>
+								<span data-mail-card-field="labels" class="shrink-0 rounded bg-primary/10 px-1.5 text-xs leading-4 font-medium text-primary-text">Design</span>
 							</div>
 							<div class="mail-list-card-zone mail-list-card-zone-status" data-mail-card-zone="status" data-mail-card-layout-zone-items="status" data-mail-card-layout-dropzone="status"></div>
 							<div class="mail-list-card-zone mail-list-card-zone-corner" data-mail-card-zone="corner" data-mail-card-layout-zone-items="corner" data-mail-card-layout-dropzone="corner">
 								<span data-mail-card-field="starred">
-									@icon.Star(icon.Props{Class: "size-3.5 shrink-0 fill-amber-500 text-amber-500 drop-shadow-[0_1px_1px_rgba(180,120,0,0.4)]"})
+									@icon.Star(icon.Props{Class: "size-3.5 shrink-0 fill-warning text-warning"})
 								</span>
 							</div>
 							<div class="hidden" data-mail-card-zone="hidden"></div>
@@ -793,7 +790,7 @@ templ MailCardLayoutDialog() {
 				<div class="mail-card-layout-hidden-panel min-w-0 rounded-lg border border-border bg-background/45 p-2" data-mail-card-layout-dropzone="hidden">
 					<div class="mb-1 flex items-center justify-between gap-2">
 						<div class="flex min-w-0 items-center gap-1.5">
-							<div class="truncate text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">AVAILABLE FIELDS</div>
+							<div class="truncate text-xs font-semibold text-muted-foreground">AVAILABLE FIELDS</div>
 							@tooltip.Tooltip() {
 								@tooltip.Trigger(tooltip.TriggerProps{Class: "inline-flex shrink-0"}) {
 									<button type="button" class="mail-card-layout-help-trigger" aria-label="Available fields placement rules">
@@ -872,7 +869,7 @@ templ MailListCardItem(accounts []models.Account, email models.Email, position i
 			hx-target="#mail-view"
 			hx-swap="innerHTML"
 			class={
-				"mail-list-card relative px-3.5 py-2.5 rounded-lg cursor-pointer transition-all duration-200 group",
+				"mail-list-card relative px-3 rounded-md cursor-pointer transition-colors duration-100 group",
 				templ.KV("envelope-active", selectedEmail != nil && selectedEmail.ID == email.ID),
 				templ.KV("envelope", selectedEmail == nil || selectedEmail.ID != email.ID),
 			}
@@ -880,7 +877,7 @@ templ MailListCardItem(accounts []models.Account, email models.Email, position i
 		>
 			<div class="mail-list-card-zone mail-list-card-zone-rail-top" data-mail-card-zone="railTop">
 				<div data-mail-card-field="avatar">
-					@ContactAvatar(email.From, "size-6 rounded-full text-[10px] font-semibold shadow-[0_1px_3px_rgba(0,0,0,0.15)]", contactAvatarListFallback(email.IsRead))
+					@ContactAvatar(email.From, "size-8 rounded-full text-xs font-medium", contactAvatarListFallback(email.IsRead))
 				</div>
 			</div>
 			<div class="mail-list-card-zone mail-list-card-zone-rail-middle" data-mail-card-zone="railMiddle">
@@ -890,7 +887,7 @@ templ MailListCardItem(accounts []models.Account, email models.Email, position i
 			</div>
 			<div class="mail-list-card-zone mail-list-card-zone-rail-bottom" data-mail-card-zone="railBottom">
 				if email.ThreadCount > 1 {
-					<button type="button" data-thread-toggle={ email.ID } data-mail-card-field="thread" class="flex items-center gap-0.5 text-[11px] text-muted-foreground shrink-0 hover:text-foreground/70 transition-colors cursor-pointer">
+					<button type="button" data-thread-toggle={ email.ID } data-mail-card-field="thread" class="flex items-center gap-0.5 text-xs text-muted-foreground shrink-0 hover:text-foreground/70 transition-colors cursor-pointer">
 						@icon.MessagesSquare(icon.Props{Class: "size-3"})
 						{ fmt.Sprintf("%d", email.ThreadCount) }
 						@icon.ChevronRight(icon.Props{Class: "size-3 transition-transform thread-toggle-chevron"})
@@ -902,21 +899,18 @@ templ MailListCardItem(accounts []models.Account, email models.Email, position i
 			<div class="mail-list-card-zone mail-list-card-zone-header" data-mail-card-zone="header">
 				<span
 					class={
-						"text-sm truncate",
-						templ.KV("font-semibold text-foreground", !email.IsRead),
-						templ.KV("text-foreground/70", email.IsRead),
+						"text-sm truncate text-foreground",
+						templ.KV("font-semibold", !email.IsRead),
 					}
 					data-mail-card-field="from"
 				>{ senderDisplay(email.From, senderDisplayMode) }</span>
 				<span
 					class={
-						"text-xs tabular-nums",
-						templ.KV("text-primary font-medium", !email.IsRead),
-						templ.KV("text-muted-foreground", email.IsRead),
+						"text-xs tabular-nums text-subtle-foreground",
 					}
 					data-mail-card-field="date"
 				>{ email.Date }</span>
-				<span data-mail-card-field="account" class="mail-list-card-account inline-flex min-w-0 max-w-[42%] items-center gap-1 rounded-full border border-border/70 bg-background/40 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+				<span data-mail-card-field="account" class="mail-list-card-account inline-flex min-w-0 max-w-[42%] items-center gap-1 rounded px-1 text-xs font-normal text-subtle-foreground">
 					<span class="account-color-marker size-2 shrink-0" style={ accountColorStyle(email.AccountColor) }></span>
 					<span class="truncate">{ mailListAccountDisplay(accounts, email.AccountID) }</span>
 				</span>
@@ -940,24 +934,24 @@ templ MailListCardItem(accounts []models.Account, email models.Email, position i
 			<div class="mail-list-card-zone mail-list-card-zone-body" data-mail-card-zone="body">
 				<p
 					class={
-						"text-[13px] truncate",
+						"text-[13px] leading-[18px] truncate",
 						templ.KV("font-medium text-foreground", !email.IsRead),
-						templ.KV("text-foreground/60", email.IsRead),
+						templ.KV("text-muted-foreground", email.IsRead),
 					}
 					data-mail-card-field="subject"
 				>{ email.Subject }</p>
 				if len(email.To) > 0 {
-					<p data-mail-card-field="to" class="text-[11px] text-muted-foreground truncate leading-snug">
-						<span class="font-medium text-muted-foreground/80">To</span>
+					<p data-mail-card-field="to" class="text-xs text-muted-foreground truncate leading-4">
+						<span class="font-medium text-muted-foreground">To</span>
 						{ contactsDisplay(email.To, senderDisplayMode) }
 					</p>
 				}
 			</div>
 			<div class="mail-list-card-zone mail-list-card-zone-footer" data-mail-card-zone="footer">
-				<p class="min-w-0 flex-1 text-xs text-muted-foreground truncate leading-relaxed" data-mail-card-field="preview">{ email.Preview }</p>
+				<p class="min-w-0 flex-1 text-xs leading-4 text-muted-foreground truncate" data-mail-card-field="preview">{ email.Preview }</p>
 				if len(email.Labels) > 0 {
 					for _, label := range email.Labels {
-						<span class={ "text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0 shadow-[0_1px_2px_rgba(0,0,0,0.08)]", label.Color } data-mail-card-field="labels">
+						<span class={ "text-xs leading-4 px-1.5 rounded font-medium shrink-0", label.Color } data-mail-card-field="labels">
 							{ label.Name }
 						</span>
 					}
@@ -967,7 +961,7 @@ templ MailListCardItem(accounts []models.Account, email models.Email, position i
 			<div class="mail-list-card-zone mail-list-card-zone-corner" data-mail-card-zone="corner">
 				if email.IsStarred {
 					<span data-mail-card-field="starred">
-						@icon.Star(icon.Props{Class: "size-3.5 text-amber-500 fill-amber-500 shrink-0 drop-shadow-[0_1px_1px_rgba(180,120,0,0.4)]"})
+						@icon.Star(icon.Props{Class: "size-3.5 text-warning fill-warning shrink-0"})
 					</span>
 				} else {
 					<button class="opacity-0 group-hover:opacity-100 transition-opacity star-btn shrink-0" data-email-id={ email.ID } data-mail-card-field="starred">
@@ -989,7 +983,7 @@ templ MailListTableItem(email models.Email, position int, selectedEmail *models.
 			hx-target="#mail-view"
 			hx-swap="innerHTML"
 			class={
-				"mail-list-table-grid relative grid items-center gap-3 px-3 py-1.5 rounded-md cursor-pointer transition-all duration-150 group text-xs",
+				"mail-list-table-grid relative grid items-center gap-3 px-3 py-1.5 rounded-md cursor-pointer transition-colors duration-100 group text-xs",
 				templ.KV("envelope-active", selectedEmail != nil && selectedEmail.ID == email.ID),
 				templ.KV("envelope", selectedEmail == nil || selectedEmail.ID != email.ID),
 			}
@@ -999,7 +993,7 @@ templ MailListTableItem(email models.Email, position int, selectedEmail *models.
 			</div>
 			<div class="flex items-center justify-center text-muted-foreground" data-mail-table-cell="starred">
 				if email.IsStarred {
-					@icon.Star(icon.Props{Class: "size-3.5 text-amber-500 fill-amber-500"})
+					@icon.Star(icon.Props{Class: "size-3.5 text-warning fill-warning"})
 				} else {
 					<button class="opacity-0 group-hover:opacity-100 transition-opacity star-btn" data-email-id={ email.ID }>
 						@icon.Star(icon.Props{Class: "size-3.5 text-muted-foreground/30"})
@@ -1013,7 +1007,7 @@ templ MailListTableItem(email models.Email, position int, selectedEmail *models.
 			</div>
 			<div class="flex items-center justify-start min-w-0" data-mail-table-cell="thread">
 				if email.ThreadCount > 1 {
-					<button type="button" data-thread-toggle={ email.ID } class="flex items-center gap-0.5 text-[11px] text-muted-foreground shrink-0 hover:text-foreground/70 transition-colors cursor-pointer">
+					<button type="button" data-thread-toggle={ email.ID } class="flex items-center gap-0.5 text-xs text-muted-foreground shrink-0 hover:text-foreground/70 transition-colors cursor-pointer">
 						@icon.MessagesSquare(icon.Props{Class: "size-3"})
 						{ fmt.Sprintf("%d", email.ThreadCount) }
 						@icon.ChevronRight(icon.Props{Class: "size-3 transition-transform thread-toggle-chevron"})
@@ -1023,18 +1017,15 @@ templ MailListTableItem(email models.Email, position int, selectedEmail *models.
 			<div class="flex items-center min-w-0" data-mail-table-cell="from">
 				<span
 					class={
-						"truncate",
-						templ.KV("font-semibold text-foreground", !email.IsRead),
-						templ.KV("text-foreground/70", email.IsRead),
+						"truncate text-foreground",
+						templ.KV("font-semibold", !email.IsRead),
 					}
 				>{ senderDisplay(email.From, senderDisplayMode) }</span>
 			</div>
 			<div class="flex items-center min-w-0" data-mail-table-cell="to">
 				<span
 					class={
-						"truncate",
-						templ.KV("font-medium text-foreground/80", !email.IsRead),
-						templ.KV("text-foreground/55", email.IsRead),
+						"truncate text-muted-foreground",
 					}
 				>{ contactsDisplay(email.To, senderDisplayMode) }</span>
 			</div>
@@ -1043,19 +1034,19 @@ templ MailListTableItem(email models.Email, position int, selectedEmail *models.
 					class={
 						"truncate",
 						templ.KV("font-medium text-foreground", !email.IsRead),
-						templ.KV("text-foreground/65", email.IsRead),
+						templ.KV("text-muted-foreground", email.IsRead),
 					}
 				>{ email.Subject }</span>
 				if len(email.Labels) > 0 {
 					for _, label := range email.Labels {
-						<span class={ "hidden xl:inline text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0", label.Color }>
+						<span class={ "hidden xl:inline text-xs px-1.5 py-0.5 rounded font-medium shrink-0", label.Color }>
 							{ label.Name }
 						</span>
 					}
 				}
 			</div>
 			<div class="flex items-center justify-end shrink-0 text-muted-foreground tabular-nums" data-mail-table-cell="date">
-				<span class={ templ.Classes("min-w-12 text-right", templ.KV("text-primary font-medium", !email.IsRead)) }>{ email.Date }</span>
+				<span class="min-w-12 text-right text-subtle-foreground">{ email.Date }</span>
 			</div>
 			@MailListRowActions(email)
 		</a>
@@ -1064,10 +1055,10 @@ templ MailListTableItem(email models.Email, position int, selectedEmail *models.
 
 templ MailListEmpty() {
 	<div class="flex flex-col items-center justify-center py-20 px-4 text-center">
-		<div class="empty-icon-box size-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-4 border">
-			@icon.Inbox(icon.Props{Class: "size-7 text-muted-foreground/40"})
+		<div class="size-12 rounded-xl flex items-center justify-center mb-3 border">
+			@icon.Inbox(icon.Props{Class: "size-5 text-subtle-foreground"})
 		</div>
-		<h3 class="font-semibold text-sm mb-1">No emails</h3>
+		<h3 class="font-medium text-sm mb-1">No emails</h3>
 		<p class="text-xs text-muted-foreground">Your inbox is empty</p>
 	</div>
 }
@@ -1112,15 +1103,15 @@ templ MailListThreadSubItems(items []models.ThreadItem, senderDisplayMode string
 								class={
 									"text-xs truncate",
 									templ.KV("font-medium text-foreground", !item.IsRead),
-									templ.KV("text-foreground/60", item.IsRead),
+									templ.KV("text-muted-foreground", item.IsRead),
 								}
 								data-mail-table-cell="from"
 							>{ senderDisplay(item.From, senderDisplayMode) }</span>
 							<span
 								class={
 									"text-xs truncate",
-									templ.KV("font-medium text-foreground/75", !item.IsRead),
-									templ.KV("text-foreground/55", item.IsRead),
+									templ.KV("font-medium text-foreground", !item.IsRead),
+									templ.KV("text-muted-foreground", item.IsRead),
 								}
 								data-mail-table-cell="to"
 							>{ contactsDisplay(item.To, senderDisplayMode) }</span>
@@ -1131,7 +1122,7 @@ templ MailListThreadSubItems(items []models.ThreadItem, senderDisplayMode string
 							</div>
 							<div class="flex items-center justify-center shrink-0" data-mail-table-cell="starred">
 								if item.IsStarred {
-									@icon.Star(icon.Props{Class: "size-3 text-amber-500 fill-amber-500 drop-shadow-[0_1px_1px_rgba(180,120,0,0.4)]"})
+									@icon.Star(icon.Props{Class: "size-3 text-warning fill-warning"})
 								} else {
 									<button class="opacity-0 group-hover:opacity-100 transition-opacity star-btn" data-email-id={ item.ID }>
 										@icon.Star(icon.Props{Class: "size-3 text-muted-foreground/30"})
@@ -1139,10 +1130,10 @@ templ MailListThreadSubItems(items []models.ThreadItem, senderDisplayMode string
 								}
 							</div>
 							<div class="flex items-center gap-1.5 shrink-0" data-mail-table-cell="date">
-								<span class="text-[11px] text-muted-foreground tabular-nums">{ item.Date }</span>
+								<span class="text-xs text-muted-foreground tabular-nums">{ item.Date }</span>
 							</div>
 						</div>
-						<p class="text-[11px] text-muted-foreground truncate leading-relaxed" data-mail-table-cell="subject">{ item.Preview }</p>
+						<p class="text-xs text-muted-foreground truncate leading-relaxed" data-mail-table-cell="subject">{ item.Preview }</p>
 					</div>
 					if !item.IsRead {
 						<div class="w-1.5 h-1.5 rounded-full bg-primary shrink-0"></div>

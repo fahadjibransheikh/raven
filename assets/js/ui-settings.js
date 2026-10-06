@@ -467,7 +467,7 @@ var GoferSettings;
       return Math.max(300, px) + "px";
     }
 
-    return "clamp(300px,50%,calc(100% - 300px))";
+    return "clamp(320px,30%,480px)";
   }
 
   window.applyMailTableColumnWidths = function (value, root) {
