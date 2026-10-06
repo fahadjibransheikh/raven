@@ -1202,6 +1202,9 @@ document.addEventListener("DOMContentLoaded", function () {
     window.clearActiveMailSelection = clearActiveMailSelection
     window.applyOptimisticMailRemove = applyOptimisticRemove
     window.performMailAction = performMailAction
+    // Top-level single-message actions (archiveThread, deleteMessage, ...) call this; without the
+    // export they threw a ReferenceError after the server call succeeded and "restored" the row.
+    window.refreshSidebarUnread = refreshSidebarUnread
 
     document.addEventListener("click", function (e) {
       var rowLink = e.target.closest && e.target.closest(".mail-list-item[data-email-id] > a")
@@ -1691,8 +1694,10 @@ document.addEventListener("DOMContentLoaded", function () {
         if (action === "move") extra = { folder_id: opts.destination.id }
         if (action === "delete") extra = { folder_id: currentMailListFolderID() }
         if (action === "spam" || action === "not-spam") extra = { folder_id: currentMailListFolderID() }
+        var undoLabel = mailUndoLabel(action, ids.length, opts && opts.destination && opts.destination.name)
         sendBulkMessageAction(path, targets, extra).then(function (response) {
           if (response && response.ok === false) throw new Error("HTTP " + response.status)
+          if (undoLabel) showUndoToastFromResponse(response, undoLabel)
         }).catch(function () {
           if (removesFromFolder) restoreOptimisticRemove(ids)
           showGoferToast({
@@ -11190,6 +11195,7 @@ function deleteMessage(emailId) {
     .then(function (response) {
       if (!response.ok) throw new Error("delete failed")
       finishOptimisticMailRemoval(vml)
+      showUndoToastFromResponse(response, mailUndoLabel("delete", 1))
     })
     .catch(function () { restoreOptimisticMailRemoval(emailId, vml) })
 }
@@ -11235,6 +11241,7 @@ function archiveThread(emailId) {
     .then(function (response) {
       if (!response.ok) throw new Error("archive failed")
       finishOptimisticMailRemoval(vml)
+      showUndoToastFromResponse(response, mailUndoLabel("archive", 1))
     })
     .catch(function () { restoreOptimisticMailRemoval(emailId, vml) })
 }
@@ -11245,6 +11252,7 @@ function deleteThread(emailId) {
     .then(function (response) {
       if (!response.ok) throw new Error("delete thread failed")
       finishOptimisticMailRemoval(vml)
+      showUndoToastFromResponse(response, mailUndoLabel("delete", 1))
     })
     .catch(function () { restoreOptimisticMailRemoval(emailId, vml) })
 }
@@ -11334,6 +11342,7 @@ function markSpamState(emailId, notSpam, thread) {
     .then(function (response) {
       if (!response.ok) throw new Error("spam update failed")
       finishOptimisticMailRemoval(vml)
+      if (!notSpam) showUndoToastFromResponse(response, mailUndoLabel("spam", 1))
     })
     .catch(function () { restoreOptimisticMailRemoval(emailId, vml) })
 }
@@ -11384,6 +11393,68 @@ function moveMessage(emailId, folderId) {
       refreshSidebarUnread()
     })
     .catch(function () {})
+}
+
+function mailUndoLabel(action, count, destinationName) {
+  var many = count > 1
+  if (action === "archive") return many ? count + " messages archived" : "Archived"
+  if (action === "delete") return many ? count + " messages moved to Trash" : "Moved to Trash"
+  if (action === "spam") return many ? count + " messages marked as spam" : "Marked as spam"
+  if (action === "move") return (many ? count + " messages moved" : "Moved") + (destinationName ? " to " + destinationName : "")
+  return ""
+}
+
+// Undo is a move back to each target's source folder. While the original move is still
+// queued the mutation queue cancels it outright (storage.moveMessagesAndQueue deletes the
+// pending row when a message returns to its remote folder); once applied it queues the
+// reverse move. Permanent deletes return no "moved" entries, so they never offer undo.
+function showUndoToastFromResponse(response, label) {
+  if (!response || typeof response.json !== "function") return
+  response.json().then(function (data) {
+    showUndoToast(label, data && data.moved)
+  }).catch(function () {})
+}
+
+function showUndoToast(label, moved) {
+  if (!label || !moved || !moved.length) return
+  var toast = showGoferToast({
+    id: "mail-undo-toast",
+    title: label,
+    variant: "success", icon: "success", position: "bottom-right", duration: 7000, dismissible: true,
+    secondaryActionLabel: "Undo",
+    onSecondaryAction: function () {
+      dismissGoferToast(toast)
+      undoMailMoves(moved)
+    },
+  })
+}
+
+function undoMailMoves(moved) {
+  var byFolder = {}
+  moved.forEach(function (m) {
+    if (!m.from) return
+    ;(byFolder[m.from] = byFolder[m.from] || []).push({ id: m.id, thread: !!m.thread })
+  })
+  var requests = Object.keys(byFolder).map(function (folderID) {
+    return fetch("/api/messages/move", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ targets: byFolder[folderID], folder_id: folderID }),
+    }).then(function (response) {
+      if (!response.ok) throw new Error("undo failed")
+    })
+  })
+  Promise.all(requests).catch(function () {
+    showGoferToast({
+      id: "mail-action-error", title: "Could not undo", description: "The message was not moved back. Find it in its new folder.",
+      variant: "error", icon: "error", position: "bottom-right", duration: 6000, dismissible: true,
+    })
+  }).then(function () {
+    var container = document.getElementById("mail-list-scroll")
+    var vml = container && container._virtualMailList
+    if (vml && typeof vml.refreshCurrentFolder === "function") vml.refreshCurrentFolder({ noAnimation: true }).catch(function () {})
+    refreshSidebarUnread()
+  })
 }
 
 function invalidateMailListItem(emailId) {

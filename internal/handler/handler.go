@@ -5755,6 +5755,7 @@ func (h *Handler) handleArchiveMessages(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	updated := 0
+	moved := []undoMove{}
 
 	for _, target := range targets {
 		currentInfo := target.Infos[0].MessageMutationInfo
@@ -5770,13 +5771,14 @@ func (h *Handler) handleArchiveMessages(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		updated++
+		moved = append(moved, undoMoveEntry(target))
 		h.publishThreadMutation(target.Infos)
 		h.publishMutation(currentInfo.AccountID, archiveFolderID)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]int{"updated": updated})
+	json.NewEncoder(w).Encode(map[string]any{"updated": updated, "moved": moved})
 }
 
 func (h *Handler) handleDeleteMessages(w http.ResponseWriter, r *http.Request) {
@@ -5793,6 +5795,7 @@ func (h *Handler) handleDeleteMessages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	updated := 0
+	moved := []undoMove{}
 
 	for _, target := range targets {
 		currentInfo := target.Infos[0].MessageMutationInfo
@@ -5810,6 +5813,7 @@ func (h *Handler) handleDeleteMessages(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
+			moved = append(moved, undoMoveEntry(target))
 			h.publishMutation(currentInfo.AccountID, trashFolderID)
 		}
 		updated++
@@ -5818,7 +5822,7 @@ func (h *Handler) handleDeleteMessages(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]int{"updated": updated})
+	json.NewEncoder(w).Encode(map[string]any{"updated": updated, "moved": moved})
 }
 
 func (h *Handler) handleMoveMessages(w http.ResponseWriter, r *http.Request) {
@@ -5971,7 +5975,7 @@ func (h *Handler) handleArchiveThread(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "archived"})
+	json.NewEncoder(w).Encode(map[string]any{"status": "archived", "moved": []undoMove{undoMoveEntry(targets[0])}})
 }
 
 func (h *Handler) handleDeleteThread(w http.ResponseWriter, r *http.Request) {
@@ -5984,6 +5988,7 @@ func (h *Handler) handleDeleteThread(w http.ResponseWriter, r *http.Request) {
 	}
 	infos := targets[0].Infos
 	currentInfo := infos[0].MessageMutationInfo
+	moved := []undoMove{}
 
 	if currentInfo.FolderRole == "trash" {
 		if err := h.queuePermanentDeletes(ctx, infos); err != nil {
@@ -6000,13 +6005,14 @@ func (h *Handler) handleDeleteThread(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+		moved = append(moved, undoMoveEntry(targets[0]))
 		h.publishMutation(currentInfo.AccountID, trashFolderID)
 	}
 	h.publishThreadMutation(infos)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "deleted"})
+	json.NewEncoder(w).Encode(map[string]any{"status": "deleted", "moved": moved})
 }
 
 func (h *Handler) handleDeleteMessage(w http.ResponseWriter, r *http.Request) {
@@ -6019,6 +6025,7 @@ func (h *Handler) handleDeleteMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	moved := []undoMove{}
 	if info.FolderRole == "trash" {
 		if err := h.db.PermanentlyDeleteMessageAndQueueForUser(ctx, msgID, info.FolderID, h.userID(ctx)); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -6037,6 +6044,7 @@ func (h *Handler) handleDeleteMessage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		h.signalMessageMutationWorker()
+		moved = append(moved, undoMove{ID: idStr, From: info.FolderID})
 		h.publishMutation(info.AccountID, trashFolderID)
 	}
 
@@ -6044,7 +6052,7 @@ func (h *Handler) handleDeleteMessage(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "deleted"})
+	json.NewEncoder(w).Encode(map[string]any{"status": "deleted", "moved": moved})
 }
 
 func (h *Handler) handleMoveMessage(w http.ResponseWriter, r *http.Request) {

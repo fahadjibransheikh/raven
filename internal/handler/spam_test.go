@@ -65,11 +65,11 @@ func TestSpamActionFallsBackToLocalMoveWhenRemoteReportFails(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
 	}
-	var response map[string]int
+	var response map[string]any
 	if err := json.NewDecoder(rec.Body).Decode(&response); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if response["messages"] != 1 || response["remote_failed"] != 1 {
+	if response["messages"] != 1.0 || response["remote_failed"] != 1.0 {
 		t.Fatalf("response = %#v, want one local move with one remote failure", response)
 	}
 

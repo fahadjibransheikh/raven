@@ -49,6 +49,7 @@ func (h *Handler) handleMarkMessagesSpamState(w http.ResponseWriter, r *http.Req
 		return
 	}
 	updatedTargets := 0
+	moved := []undoMove{}
 	updatedMessages := 0
 	failedMessages := 0
 	remoteFailedMessages := 0
@@ -95,6 +96,7 @@ func (h *Handler) handleMarkMessagesSpamState(w http.ResponseWriter, r *http.Req
 
 		if targetUpdated {
 			updatedTargets++
+			moved = append(moved, undoMoveEntry(target))
 			h.publishSpamMutation(infos, destFolderID)
 		}
 	}
@@ -106,11 +108,12 @@ func (h *Handler) handleMarkMessagesSpamState(w http.ResponseWriter, r *http.Req
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]int{
+	json.NewEncoder(w).Encode(map[string]any{
 		"updated":       updatedTargets,
 		"messages":      updatedMessages,
 		"failed":        failedMessages,
 		"remote_failed": remoteFailedMessages,
+		"moved":         moved,
 	})
 }
 

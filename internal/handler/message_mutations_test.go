@@ -519,3 +519,73 @@ func TestEmailPartialResolvesOwnedFolderAlias(t *testing.T) {
 		t.Fatalf("cross-user alias status = %d body=%s, want 404", response.Code, response.Body.String())
 	}
 }
+
+func TestArchiveReturnsUndoAndMovingBackCancelsThePendingMove(t *testing.T) {
+	h, db := newAccountOwnershipTestHandler(t)
+	h.syncer = mailpkg.NewSyncOrchestrator(db, nil, nil, nil)
+	if err := db.UpsertFolders(t.Context(), []storage.UpsertFolderInput{
+		{ID: "victim-inbox", AccountID: "victim-account", RemoteID: "INBOX", Name: "Inbox", Role: "inbox", Selectable: true},
+		{ID: "victim-archive", AccountID: "victim-account", RemoteID: "Archive", Name: "Archive", Role: "archive", Selectable: true},
+		{ID: "victim-trash", AccountID: "victim-account", RemoteID: "Trash", Name: "Trash", Role: "trash", Selectable: true},
+	}); err != nil {
+		t.Fatalf("UpsertFolders() error = %v", err)
+	}
+	if err := db.UpsertSyncMessages(t.Context(), []storage.SyncMessage{
+		{AccountID: "victim-account", FolderID: "victim-inbox", RemoteUID: 42, MessageID: "<undo@example.com>", Subject: "Undo", FromEmail: "sender@example.com", DateSent: time.Now()},
+	}); err != nil {
+		t.Fatalf("UpsertSyncMessages() error = %v", err)
+	}
+	id, _ := db.GetMessageLocalIDByInternetIDInternal(t.Context(), "victim-account", "<undo@example.com>")
+	idStr := strconv.FormatInt(id, 10)
+	post := func(handler http.HandlerFunc, body string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodPost, "/api/messages", strings.NewReader(body))
+		req = req.WithContext(auth.ContextWithUser(req.Context(), &auth.User{ID: "owner", Username: "owner"}))
+		rec := httptest.NewRecorder()
+		handler(rec, req)
+		return rec
+	}
+
+	rec := post(h.handleArchiveMessages, `{"targets":[{"id":"`+idStr+`"}]}`)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"from":"victim-inbox"`) || !strings.Contains(rec.Body.String(), `"id":"`+idStr+`"`) {
+		t.Fatalf("archive status=%d body=%s, want undo entry from victim-inbox", rec.Code, rec.Body.String())
+	}
+	var pending int
+	_ = db.Read().QueryRow(`SELECT COUNT(*) FROM message_mutations WHERE message_id = ? AND kind = 'move'`, id).Scan(&pending)
+	if pending != 1 {
+		t.Fatalf("pending move mutations after archive = %d, want 1", pending)
+	}
+
+	rec = post(h.handleMoveMessages, `{"targets":[{"id":"`+idStr+`"}],"folder_id":"victim-inbox"}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("undo move status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	var inboxDeleted int
+	_ = db.Read().QueryRow(`SELECT COUNT(*) FROM message_mutations WHERE message_id = ? AND kind = 'move'`, id).Scan(&pending)
+	_ = db.Read().QueryRow(`SELECT is_deleted FROM message_folder_state WHERE message_id = ? AND folder_id = 'victim-inbox'`, id).Scan(&inboxDeleted)
+	if pending != 0 || inboxDeleted != 0 {
+		t.Fatalf("after undo pending_moves=%d inbox_deleted=%d, want the queued move cancelled and the inbox row visible", pending, inboxDeleted)
+	}
+}
+
+func TestPermanentDeleteFromTrashOffersNoUndo(t *testing.T) {
+	h, db := newAccountOwnershipTestHandler(t)
+	h.syncer = mailpkg.NewSyncOrchestrator(db, nil, nil, nil)
+	if err := db.UpsertFolders(t.Context(), []storage.UpsertFolderInput{
+		{ID: "victim-trash", AccountID: "victim-account", RemoteID: "Trash", Name: "Trash", Role: "trash", Selectable: true},
+	}); err != nil {
+		t.Fatalf("UpsertFolders() error = %v", err)
+	}
+	if err := db.UpsertSyncMessages(t.Context(), []storage.SyncMessage{
+		{AccountID: "victim-account", FolderID: "victim-trash", RemoteUID: 42, MessageID: "<perm@example.com>", Subject: "Perm", FromEmail: "sender@example.com", DateSent: time.Now()},
+	}); err != nil {
+		t.Fatalf("UpsertSyncMessages() error = %v", err)
+	}
+	id, _ := db.GetMessageLocalIDByInternetIDInternal(t.Context(), "victim-account", "<perm@example.com>")
+	req := httptest.NewRequest(http.MethodPost, "/api/messages/delete", strings.NewReader(`{"targets":[{"id":"`+strconv.FormatInt(id, 10)+`"}],"folder_id":"victim-trash"}`))
+	req = req.WithContext(auth.ContextWithUser(req.Context(), &auth.User{ID: "owner", Username: "owner"}))
+	rec := httptest.NewRecorder()
+	h.handleDeleteMessages(rec, req)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"moved":[]`) {
+		t.Fatalf("permanent delete status=%d body=%s, want an empty moved list", rec.Code, rec.Body.String())
+	}
+}
