@@ -7807,6 +7807,7 @@ function resetComposeForm(fromPane, skipCleanup) {
   form.dataset.composeSending = "false"
   delete form.dataset.composeOutgoingStatus
   delete form.dataset.composeUploadFailed
+  delete form.dataset.composeSendKey
   form.dataset.composeDirty = "false"
   updateComposeSendState(form)
   _setComposeDraftButtonState(form, "default")
@@ -8939,6 +8940,7 @@ function handleComposeSendResult(status, data) {
     _setComposeSending(form, false)
     form.dataset.composeOutgoingStatus = status === "ambiguous" ? "Needs review" : "Failed"
     form.dataset.composeDirty = "true"
+    delete form.dataset.composeSendKey
   }
   _composeSendState = null
 }
@@ -10224,6 +10226,15 @@ window.addEventListener("beforeunload", function (event) {
   }
 })
 
+function newComposeSendKey() {
+  if (window.crypto && typeof window.crypto.randomUUID === "function") return window.crypto.randomUUID()
+  // RFC 4122 v4 shape for contexts without crypto.randomUUID (insecure origins).
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+    var r = Math.random() * 16 | 0
+    return (c === "x" ? r : (r & 3) | 8).toString(16)
+  })
+}
+
 function sendCompose(fromPane) {
   var formId = fromPane ? "compose-pane-form" : "compose-form"
   var form = document.getElementById(formId)
@@ -10252,6 +10263,10 @@ function sendCompose(fromPane) {
   for (var i = 0; inputs && i < inputs.length; i++) {
     if (inputs[i].name) params.append(inputs[i].name, inputs[i].value)
   }
+  // One key per compose session: the server returns the queued send for a repeated key, so a
+  // second click while Raven is retrying cannot send the message twice. Cleared on failure.
+  if (!form.dataset.composeSendKey) form.dataset.composeSendKey = newComposeSendKey()
+  params.append("send_key", form.dataset.composeSendKey)
 
   showSendStatus("sending", "Sending...")
   _setComposeSending(form, true)
@@ -10280,6 +10295,7 @@ function sendCompose(fromPane) {
     if (_composeSendState && _composeSendState.sendID) stopOutgoingSendPolling(_composeSendState.sendID)
     _setComposeSending(form, false)
     _composeSendState = null
+    delete form.dataset.composeSendKey
     form.dataset.composeDirty = "true"
     showSendStatus("failed", err && err.message ? err.message : "Failed to connect to server")
   })

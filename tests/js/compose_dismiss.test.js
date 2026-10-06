@@ -77,3 +77,28 @@ test("c with a compose pane open focuses it instead of wiping the dialog draft",
   assert.equal(t.w.document.querySelector('#compose-form input[name="subject"]').value, "Hello")
   assert.equal(t.closed.length, 0)
 })
+
+test("Send reuses one send_key until the send fails, then mints a new one", async () => {
+  const t = await setup("true")
+  const form = t.w.document.getElementById("compose-form")
+  form.querySelector("[data-compose-recipient-field]").remove()
+  form.insertAdjacentHTML("beforeend", '<input name="to" value="a@b.co">')
+  const keys = []
+  t.w.fetch = function (url, o) {
+    if (url === "/compose") keys.push(new URLSearchParams(o.body).get("send_key"))
+    return Promise.resolve({ ok: url === "/compose", json: function () { return Promise.resolve({ send_id: "s1" }) } })
+  }
+  t.w.sendCompose(false)
+  await tick()
+  form.dataset.composeSending = "false" // what a "retrying" result does: Send is clickable again
+  t.w.sendCompose(false)
+  await tick()
+  assert.equal(keys.length, 2)
+  assert.ok(keys[0] && keys[0] === keys[1], "same key while the send is still in flight")
+  t.w.handleComposeSendResult("failed", { send_id: "s1" })
+  form.dataset.composeSending = "false"
+  t.w.sendCompose(false)
+  await tick()
+  assert.notEqual(keys[2], keys[0])
+  t.w.close() // stop the outgoing-status polling timer so the test process can exit
+})

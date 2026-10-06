@@ -23,6 +23,7 @@ import (
 	"github.com/cristianadrielbraun/gofer/internal/store"
 	"github.com/cristianadrielbraun/gofer/internal/translation"
 	"github.com/cristianadrielbraun/gofer/internal/views"
+	"github.com/google/uuid"
 	"golang.org/x/oauth2"
 	"html"
 	"html/template"
@@ -5113,6 +5114,19 @@ func (h *Handler) handleCompose(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
+	// send_key makes Send idempotent per compose session: the client keeps one key until the
+	// send succeeds or fails for good, so a second click (e.g. while Raven is retrying) returns
+	// the queued send instead of queueing a duplicate.
+	sendKey := strings.TrimSpace(r.FormValue("send_key"))
+	if sendKey != "" {
+		if _, err := uuid.Parse(sendKey); err != nil {
+			writeComposeJSONError(w, http.StatusBadRequest, "invalid send key")
+			return
+		}
+		if h.writeExistingComposeSend(w, r, sendKey) {
+			return
+		}
+	}
 	accountID := r.FormValue("account_id")
 	if accountID == "" {
 		accountID = h.accountStore.GetFirstAccountID(ctx, h.userID(ctx))
@@ -5184,8 +5198,12 @@ func (h *Handler) handleCompose(w http.ResponseWriter, r *http.Request) {
 	if draftID != "" {
 		localDraftMessageID, _ = h.db.GetMessageLocalIDByInternetIDInternal(ctx, accountID, draftID)
 	}
-	queued, err := h.queueOutgoingMessage(ctx, accountID, localDraftMessageID, draftID, msg, time.Now().UTC(), false)
+	queued, err := h.queueOutgoingMessageWithID(ctx, sendKey, accountID, localDraftMessageID, draftID, msg, time.Now().UTC(), false)
 	if err != nil {
+		// A concurrent request with the same key may have won the insert.
+		if sendKey != "" && h.writeExistingComposeSend(w, r, sendKey) {
+			return
+		}
 		writeComposeJSONError(w, http.StatusInternalServerError, "failed to queue message")
 		return
 	}
@@ -5194,6 +5212,21 @@ func (h *Handler) handleCompose(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted)
 	json.NewEncoder(w).Encode(map[string]string{"status": "sending", "send_id": queued.ID})
+}
+
+// writeExistingComposeSend answers 202 with the already-queued send for key, if the caller owns it.
+func (h *Handler) writeExistingComposeSend(w http.ResponseWriter, r *http.Request, key string) bool {
+	existing, err := h.db.GetOutgoingSend(r.Context(), key)
+	if err != nil {
+		return false
+	}
+	if account, err := h.ownedAccount(r.Context(), existing.AccountID); err != nil || account == nil {
+		return false
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusAccepted)
+	json.NewEncoder(w).Encode(map[string]string{"status": "sending", "send_id": existing.ID})
+	return true
 }
 
 func (h *Handler) handleComposeSchedule(w http.ResponseWriter, r *http.Request) {

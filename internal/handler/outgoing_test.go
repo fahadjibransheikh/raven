@@ -555,3 +555,55 @@ func seedPendingSentCopy(t *testing.T) (*Handler, *storage.DB, storage.OutgoingS
 	}
 	return h, db, queued, localID
 }
+
+func TestHandleComposeSendKeyIsIdempotent(t *testing.T) {
+	h, db := newAccountOwnershipTestHandler(t)
+	post := func(key string) map[string]string {
+		form := url.Values{
+			"account_id": {"victim-account"},
+			"to":         {"recipient@example.com"},
+			"subject":    {"Once only"},
+			"body":       {"Sent after a retrying result must not duplicate."},
+		}
+		if key != "" {
+			form.Set("send_key", key)
+		}
+		req := httptest.NewRequest(http.MethodPost, "/compose", strings.NewReader(form.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req = req.WithContext(auth.ContextWithUser(req.Context(), &auth.User{ID: "owner", Username: "owner"}))
+		rec := httptest.NewRecorder()
+		h.handleCompose(rec, req)
+		if rec.Code != http.StatusAccepted {
+			t.Fatalf("status = %d body = %q, want 202", rec.Code, rec.Body.String())
+		}
+		var response map[string]string
+		if err := json.NewDecoder(rec.Body).Decode(&response); err != nil {
+			t.Fatalf("decode response: %v", err)
+		}
+		return response
+	}
+	count := func() int {
+		var n int
+		if err := db.Read().QueryRow(`SELECT COUNT(*) FROM outgoing_sends`).Scan(&n); err != nil {
+			t.Fatalf("count outgoing sends: %v", err)
+		}
+		return n
+	}
+
+	// Without a key a second click queues a second message (the duplicate this key prevents).
+	post("")
+	post("")
+	if got := count(); got != 2 {
+		t.Fatalf("keyless sends queued %d rows, want 2", got)
+	}
+
+	key := "6f1d1c3e-0d8e-4a53-9a47-0f2f4d1c9b11"
+	first := post(key)
+	second := post(key)
+	if first["send_id"] != key || second["send_id"] != key {
+		t.Fatalf("send ids = %q, %q, want the key", first["send_id"], second["send_id"])
+	}
+	if got := count(); got != 3 {
+		t.Fatalf("keyed sends queued %d total rows, want 3 (one more than before)", got)
+	}
+}

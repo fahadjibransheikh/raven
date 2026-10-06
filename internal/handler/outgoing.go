@@ -159,6 +159,11 @@ func buildOutgoingMIME(transport string, msg *message.OutgoingMessage) ([]byte, 
 }
 
 func (h *Handler) queueOutgoingMessage(ctx context.Context, accountID string, localMessageID int64, draftID string, msg *message.OutgoingMessage, sendAfter time.Time, scheduled bool) (storage.OutgoingSend, error) {
+	return h.queueOutgoingMessageWithID(ctx, "", accountID, localMessageID, draftID, msg, sendAfter, scheduled)
+}
+
+// queueOutgoingMessageWithID queues with a caller-chosen send id (empty = generate one).
+func (h *Handler) queueOutgoingMessageWithID(ctx context.Context, sendID, accountID string, localMessageID int64, draftID string, msg *message.OutgoingMessage, sendAfter time.Time, scheduled bool) (storage.OutgoingSend, error) {
 	cfg, err := h.accountStore.GetConfig(ctx, accountID)
 	if err != nil {
 		return storage.OutgoingSend{}, fmt.Errorf("account not found")
@@ -177,6 +182,7 @@ func (h *Handler) queueOutgoingMessage(ctx context.Context, accountID string, lo
 		return storage.OutgoingSend{}, fmt.Errorf("no recipients")
 	}
 	return h.db.QueueOutgoingSend(ctx, storage.QueueOutgoingSendInput{
+		ID:                 sendID,
 		AccountID:          accountID,
 		MessageID:          localMessageID,
 		DraftID:            strings.TrimSpace(draftID),
