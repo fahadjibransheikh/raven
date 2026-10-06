@@ -81,6 +81,17 @@ func (h *Handler) handleMarkMessagesSpamState(w http.ResponseWriter, r *http.Req
 					log.Printf("spam action %s Outlook Graph report failed for account=%s message=%d: %v", disposition, info.AccountID, info.MessageID, remoteErr)
 					continue
 				}
+				// Same as archive/move: apply locally and queue the remote move so the worker retries it.
+				if info.FolderID != destFolderID {
+					if qerr := h.queueMessageMoves(ctx, []storage.ThreadMessageMutationInfo{info}, destFolderID); qerr == nil {
+						log.Printf("spam action %s remote report failed for account=%s message=%d; queued move for retry: %v", disposition, info.AccountID, info.MessageID, remoteErr)
+						targetUpdated = true
+						updatedMessages++
+						continue
+					} else {
+						log.Printf("spam action %s could not queue a retry for account=%s message=%d: %v", disposition, info.AccountID, info.MessageID, qerr)
+					}
+				}
 				log.Printf("spam action %s remote report failed for account=%s message=%d; falling back to local folder move: %v", disposition, info.AccountID, info.MessageID, remoteErr)
 			}
 			if err := h.moveMessageToSpamDestinationLocal(ctx, info, destFolderID, destUID); err != nil {

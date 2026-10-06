@@ -234,6 +234,8 @@
         finish(btn.dataset.composeCloseAction)
       })
       panel.addEventListener("toggle", onToggle)
+      // A hover tooltip (e.g. the toolbar button that opened this) would sit over the heading.
+      if (window.tui && window.tui.popover && window.tui.popover.closeAll) window.tui.popover.closeAll()
       var dialogs = document.querySelectorAll("dialog[open]")
       ;(dialogs.length ? dialogs[dialogs.length - 1] : document.body).appendChild(panel)
       if (panel.showPopover) panel.showPopover()

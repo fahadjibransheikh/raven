@@ -33,7 +33,7 @@ func TestSpamActionFallsBackToLocalMoveWhenRemoteReportFails(t *testing.T) {
 	}
 	if err := db.UpsertFolders(ctx, []storage.UpsertFolderInput{
 		{ID: "acc_inbox", AccountID: "acc", Name: "Inbox", Role: "inbox", Selectable: true},
-		{ID: "acc_spam", AccountID: "acc", Name: "Spam", Role: "junk", Selectable: true},
+		{ID: "acc_spam", AccountID: "acc", Name: "Spam", RemoteID: "Spam", Role: "junk", Selectable: true},
 	}); err != nil {
 		t.Fatalf("UpsertFolders() error = %v", err)
 	}
@@ -74,7 +74,7 @@ func TestSpamActionFallsBackToLocalMoveWhenRemoteReportFails(t *testing.T) {
 	}
 
 	var inboxRows, spamRows, spamNullUIDs int
-	if err := db.Read().QueryRowContext(ctx, `SELECT COUNT(*) FROM message_folder_state WHERE message_id = ? AND folder_id = 'acc_inbox'`, msgID).Scan(&inboxRows); err != nil {
+	if err := db.Read().QueryRowContext(ctx, `SELECT COUNT(*) FROM message_folder_state WHERE message_id = ? AND folder_id = 'acc_inbox' AND is_deleted = 0`, msgID).Scan(&inboxRows); err != nil {
 		t.Fatalf("count inbox rows: %v", err)
 	}
 	if err := db.Read().QueryRowContext(ctx, `SELECT COUNT(*), SUM(CASE WHEN remote_uid IS NULL THEN 1 ELSE 0 END) FROM message_folder_state WHERE message_id = ? AND folder_id = 'acc_spam'`, msgID).Scan(&spamRows, &spamNullUIDs); err != nil {
@@ -82,6 +82,14 @@ func TestSpamActionFallsBackToLocalMoveWhenRemoteReportFails(t *testing.T) {
 	}
 	if inboxRows != 0 || spamRows != 1 || spamNullUIDs != 1 {
 		t.Fatalf("folder rows inbox=%d spam=%d spamNullUIDs=%d, want 0, 1, 1", inboxRows, spamRows, spamNullUIDs)
+	}
+	// The remote move is queued for retry, like archive.
+	var pending int
+	if err := db.Read().QueryRowContext(ctx, `SELECT COUNT(*) FROM message_mutations WHERE message_id = ? AND kind = 'move' AND destination_folder_id = 'acc_spam' AND status = 'pending'`, msgID).Scan(&pending); err != nil {
+		t.Fatalf("count mutations: %v", err)
+	}
+	if pending != 1 {
+		t.Fatalf("pending move mutations = %d, want 1", pending)
 	}
 }
 
@@ -140,7 +148,7 @@ func TestOutlookSpamActionDoesNotFallbackToLocalMoveWhenGraphFails(t *testing.T)
 	}
 
 	var inboxRows, junkRows int
-	if err := db.Read().QueryRowContext(ctx, `SELECT COUNT(*) FROM message_folder_state WHERE message_id = ? AND folder_id = 'acc_inbox'`, msgID).Scan(&inboxRows); err != nil {
+	if err := db.Read().QueryRowContext(ctx, `SELECT COUNT(*) FROM message_folder_state WHERE message_id = ? AND folder_id = 'acc_inbox' AND is_deleted = 0`, msgID).Scan(&inboxRows); err != nil {
 		t.Fatalf("count inbox rows: %v", err)
 	}
 	if err := db.Read().QueryRowContext(ctx, `SELECT COUNT(*) FROM message_folder_state WHERE message_id = ? AND folder_id = 'acc_junk'`, msgID).Scan(&junkRows); err != nil {

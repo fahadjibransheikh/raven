@@ -25,6 +25,9 @@ document.addEventListener("DOMContentLoaded", function () {
   var preserveMailListSelectionFor = null
   var selectedMailIds = new Set()
   var lastSelectedMailId = null
+  // Set while the only "selected" row is the open message, which the user never ticked.
+  // It still feeds the toolbar actions but does not show as a bulk selection.
+  var implicitMailSelectionId = null
   var mailSelectionBusy = false
   var accountDeletionPolls = Object.create(null)
 
@@ -38,6 +41,7 @@ document.addEventListener("DOMContentLoaded", function () {
   setupEmailSelectionTracking()
   setupMailListViewToggle()
   setupSidebarAppNavToggle()
+  _guardComposeNavigation()
   setupContactsList()
   setupMailFilters()
   setupMailTableColumnResize()
@@ -1215,12 +1219,13 @@ document.addEventListener("DOMContentLoaded", function () {
           if (e.shiftKey || e.metaKey || e.ctrlKey) {
             e.preventDefault()
             e.stopPropagation()
-            var linkNext = e.shiftKey && lastSelectedMailId ? true : !selectedMailIds.has(linkRow.dataset.emailId)
+            var linkNext = e.shiftKey && lastSelectedMailId ? true : (implicitSelectedOnly() ? true : !selectedMailIds.has(linkRow.dataset.emailId))
             if (e.shiftKey && lastSelectedMailId) selectMailRange(lastSelectedMailId, linkRow.dataset.emailId, linkNext)
             else setMailSelected(linkRow.dataset.emailId, linkNext)
           } else {
             selectedMailIds.clear()
             setMailSelected(linkRow.dataset.emailId, true)
+            implicitMailSelectionId = linkRow.dataset.emailId
           }
           lastSelectedMailId = linkRow.dataset.emailId
           syncMailSelectionControls()
@@ -1325,8 +1330,13 @@ document.addEventListener("DOMContentLoaded", function () {
       })
     }
 
+    function implicitSelectedOnly() {
+      return !!implicitMailSelectionId && selectedMailIds.size === 1 && selectedMailIds.has(implicitMailSelectionId)
+    }
+
     function setMailSelected(emailId, selected) {
       if (!emailId) return
+      implicitMailSelectionId = null
       if (selected) selectedMailIds.add(emailId)
       else selectedMailIds.delete(emailId)
     }
@@ -1337,6 +1347,7 @@ document.addEventListener("DOMContentLoaded", function () {
       var row = active && active.closest(".mail-list-item[data-email-id]")
       if (!row || !row.dataset.emailId) return
       setMailSelected(row.dataset.emailId, true)
+      implicitMailSelectionId = row.dataset.emailId
       lastSelectedMailId = row.dataset.emailId
     }
 
@@ -1359,16 +1370,18 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function clearMailSelection() {
       selectedMailIds.clear()
+      implicitMailSelectionId = null
       lastSelectedMailId = null
       syncMailSelectionControls()
     }
 
     function syncMailSelectionControls() {
       var rows = renderedMailRows()
+      var implicitOnly = implicitSelectedOnly()
       var visibleSelected = 0
       for (var i = 0; i < rows.length; i++) {
         var selected = selectedMailIds.has(rows[i].dataset.emailId)
-        if (selected) visibleSelected++
+        if (selected && !implicitOnly) visibleSelected++
         rows[i].toggleAttribute("data-mail-selected", selected)
         var anchor = rows[i].querySelector(":scope > a")
         if (anchor) anchor.toggleAttribute("data-mail-selected", selected)
@@ -1382,13 +1395,14 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       var count = selectedMailIds.size
+      var shownCount = implicitOnly ? 0 : count
       var summary = document.querySelector("[data-mail-selection-summary]")
-      if (summary) summary.textContent = count === 1 ? "1 selected" : count + " selected"
+      if (summary) summary.textContent = shownCount === 1 ? "1 selected" : shownCount + " selected"
 
       var clear = document.querySelector("[data-mail-selection-clear]")
       if (clear) {
-        clear.classList.toggle("hidden", count === 0)
-        clear.classList.toggle("inline-flex", count > 0)
+        clear.classList.toggle("hidden", shownCount === 0)
+        clear.classList.toggle("inline-flex", shownCount > 0)
       }
 
       var actions = document.querySelectorAll("[data-mail-selection-action]")
@@ -1594,6 +1608,12 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     }
 
+    function mailRowSourceFolderID(id) {
+      var anchor = document.querySelector('#mail-list-scroll .mail-list-item[data-email-id="' + cssEscape(id) + '"] a[hx-get]')
+      if (!anchor) return ""
+      try { return new URL(anchor.getAttribute("hx-get"), window.location.href).searchParams.get("folder_id") || "" } catch (_) { return "" }
+    }
+
     // Folder picker for "Move to...": lists the folders of the one account the messages belong to.
     function pickMoveDestination(ids) {
       return new Promise(function (resolve) {
@@ -1617,10 +1637,16 @@ document.addEventListener("DOMContentLoaded", function () {
         var currentFolder = mailActionCurrentFolderID()
         var items = []
         var links = group ? group.querySelectorAll('a[hx-get^="/folder/"]') : []
+        // The unified Inbox has its own id ("inbox"), so compare against each message's real
+        // folder (the row's folder_id) and fall back to the folder role.
+        var sources = ids.map(mailRowSourceFolderID)
         for (var i = 0; i < links.length; i++) {
           var folderID = (links[i].getAttribute("hx-get") || "").replace("/folder/", "")
           var name = links[i].querySelector("span.truncate")
           if (!folderID || !name || folderID === currentFolder) continue
+          var role = (links[i].dataset.folderRole || "").toLowerCase()
+          if (role && role === String(currentFolder).toLowerCase()) continue
+          if (sources.every(function (src) { return src === folderID })) continue
           items.push({ label: name.textContent.trim(), run: (function (id, label) { return function () { resolve({ id: id, name: label }) } })(folderID, name.textContent.trim()) })
         }
         if (!items.length || !window.RavenPalette || !window.RavenPalette.pick) {
@@ -4863,7 +4889,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
       if (document.querySelector("[data-compose-pane]")) {
         collapseComposeFullWidth()
-        setMailViewEmpty()
+        setMailViewEmpty(true)
         _updateComposeBtn(false)
       }
 
@@ -6174,9 +6200,11 @@ function setupMailOperationActions() {
   })
 }
 
-function setMailViewEmpty() {
+// force: the caller is closing the compose pane itself (sent, discarded, moved to the dialog).
+function setMailViewEmpty(force) {
   var mailView = document.getElementById("mail-view")
   if (!mailView) return
+  if (force !== true && mailView.querySelector("[data-compose-pane]") && _dirtyComposeForm()) return
   mailView.innerHTML =
     '<div class="flex flex-col items-center justify-center h-full text-center" data-mail-view-empty>' +
       '<div class="space-y-4 animate-fade-in">' +
@@ -8654,15 +8682,17 @@ function composeExec(el, command, value) {
 function composeCreateLink(el) {
   var editor = _composeEditorFrom(el)
   if (!editor) return
-  editor.focus()
-  _restoreComposeSelection(editor)
+  // Keep the range locally: editor.focus() fires setActiveComposeEditor, which
+  // overwrites editor._composeRange with a collapsed caret at the start.
   _saveComposeSelection(editor)
+  var range = editor._composeRange ? editor._composeRange.cloneRange() : null
   goferPrompt("Insert link", "Paste a URL or email address", { placeholder: "https://example.com", confirmLabel: "Insert" }).then(function (url) {
     url = String(url == null ? "" : url).trim()
     if (!url) return
     if (url.indexOf("@") > 0 && !/^[a-z][a-z0-9+.-]*:/i.test(url)) url = "mailto:" + url
     if (!/^(https?:|mailto:)/i.test(url)) url = "https://" + url
     editor.focus()
+    if (range) editor._composeRange = range
     _restoreComposeSelection(editor)
     document.execCommand("createLink", false, url)
     syncComposeEditor(editor)
@@ -8940,7 +8970,7 @@ function finishComposeSendSuccess(state) {
   _composeSendState = null
   setTimeout(function () {
     if (state.fromPane) {
-      setMailViewEmpty()
+      setMailViewEmpty(true)
       _updateComposeBtn(false)
     } else {
       resetComposeForm(false)
@@ -10060,18 +10090,62 @@ function _showComposeOptionalFields(form, vals) {
   renderComposeAttachments(form, vals.attachments || [])
 }
 
+// The compose form holding unsaved content, or null. Inline pane wins over the dialog.
+function _dirtyComposeForm() {
+  var form = document.querySelector("[data-compose-pane] #compose-pane-form") || document.getElementById("compose-form")
+  if (!form || form.dataset.composeDirty !== "true" || !_composeHasDraftContent(form)) return null
+  return form
+}
+
 // Resolves true when the active compose may be overwritten. Uses the in-app
 // close choice instead of window.confirm, which the desktop app's WKWebView
 // answers with a silent false.
 function _activeComposeCanBeReplaced() {
-  var form = document.querySelector("[data-compose-pane] #compose-pane-form") || document.getElementById("compose-form")
-  if (!form || form.dataset.composeDirty !== "true" || !_composeHasDraftContent(form)) return Promise.resolve(true)
+  var form = _dirtyComposeForm()
+  if (!form) return Promise.resolve(true)
   return chooseComposeCloseAction(form, null, null).then(function (action) {
-    if (action === "keep") return saveComposeDraft(form.id === "compose-pane-form", false)
+    if (action === "keep") return saveComposeDraft(form.id === "compose-pane-form", false).then(function (saved) {
+      if (saved) form.dataset.composeDirty = "false"
+      return saved
+    })
     if (action !== "discard") return false
     cleanupComposeStagedUploads(form)
     _deleteComposeDraft(form)
+    // Settled either way, so the navigation that follows is not prompted a second time.
+    form.dataset.composeDirty = "false"
     return true
+  })
+}
+
+// Every way of leaving a dirty inline compose routes through here: sidebar
+// folder / app-switch clicks (capture listener below) and any htmx request that
+// targets #mail-view or #main-content (htmx:confirm). setMailViewEmpty refuses
+// to wipe a dirty pane on its own, so search / auto-close paths cannot lose it.
+function _guardComposeNavigation() {
+  document.addEventListener("click", function (e) {
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
+    var el = e.target.closest && e.target.closest('aside a[hx-get^="/folder/"], [data-sidebar-contacts-link], [data-sidebar-app-button]')
+    if (!el || !document.querySelector("[data-compose-pane]") || !_dirtyComposeForm()) return
+    e.preventDefault()
+    e.stopImmediatePropagation()
+    _activeComposeCanBeReplaced().then(function (ok) {
+      if (!ok) return
+      _updateComposeBtn(false)
+      el.click()
+    })
+  }, true)
+  document.body.addEventListener("htmx:confirm", function (e) {
+    var target = e.detail && e.detail.target
+    if (!target || (target.id !== "mail-view" && target.id !== "main-content")) return
+    var elt = e.detail.elt
+    if (elt && elt.closest && elt.closest("[data-compose-pane]")) return
+    if (!document.querySelector("[data-compose-pane]") || !_dirtyComposeForm()) return
+    e.preventDefault()
+    _activeComposeCanBeReplaced().then(function (ok) {
+      if (!ok) return
+      _updateComposeBtn(false)
+      e.detail.issueRequest(true)
+    })
   })
 }
 
@@ -10650,7 +10724,7 @@ function scheduleCompose(fromPane, trigger) {
     showSendStatus("scheduled", "Will send " + formatGoferDateTime(labelDate))
     setTimeout(function () {
       if (fromPane) {
-        setMailViewEmpty()
+        setMailViewEmpty(true)
         _updateComposeBtn(false)
       } else {
         resetComposeForm(false)
@@ -10888,6 +10962,7 @@ function writeComposePrefill(form, vals, prefix, mode) {
 }
 
 function openComposePrefill(vals, mode) {
+  if (_composeBlockedWithoutAccount()) return Promise.resolve(false)
   return _activeComposeCanBeReplaced().then(function (ok) {
     return ok && _openComposePrefill(vals, mode)
   })
@@ -11052,7 +11127,15 @@ function handleReply(el, mode) {
     })
 }
 
+// With no account there is no sender: say so instead of opening a form whose From is "<>".
+function _composeBlockedWithoutAccount() {
+  if (!document.getElementById("compose-form") || document.querySelector("[data-compose-account-item]")) return false
+  showGoferToast({ id: "compose-no-account", title: "Add an account first", description: "Connect an email account in Settings to write mail.", variant: "error", icon: "error", position: "bottom-right", duration: 6000, dismissible: true })
+  return true
+}
+
 function openNewCompose() {
+  if (_composeBlockedWithoutAccount()) return
   // An already open compose (dialog or pane) is focused, never wiped.
   var openDialog = document.querySelector("#compose-dialog [data-tui-dialog-content]")
   var openForm = (openDialog && openDialog.open && document.getElementById("compose-form")) || document.getElementById("compose-pane-form")
@@ -11069,6 +11152,8 @@ function openNewCompose() {
   if (window.tui && window.tui.dialog) {
     window.tui.dialog.open("compose-dialog")
   }
+  // Without this the dialog's first focusable element (the close button) gets focus.
+  focusComposePrefill(document.getElementById("compose-form"), "new")
   applyDefaultComposeSignatureWhenReady(document.getElementById("compose-form"), true)
 }
 
@@ -11666,6 +11751,19 @@ window.addEventListener("message", function (e) {
     if (linkFrame && /^(https?:|mailto:)/i.test(String(e.data.href || ""))) window.open(String(e.data.href), "_blank", "noopener,noreferrer")
     return
   }
+  if (e.data.type === "emailKeydown") {
+    // Focus inside the sandboxed frame hides keystrokes from the page, so the shortcuts
+    // would die after a click into the body. Replay them, from a real message frame only.
+    var keyFrame = Array.prototype.find.call(document.querySelectorAll("[data-email-body-frame]"), function (f) { return f.contentWindow === e.source })
+    var key = String(e.data.key || "")
+    if (keyFrame && key.length > 0 && key.length <= 12) {
+      document.body.dispatchEvent(new KeyboardEvent("keydown", {
+        key: key, shiftKey: !!e.data.shiftKey, ctrlKey: !!e.data.ctrlKey, metaKey: !!e.data.metaKey, altKey: !!e.data.altKey,
+        bubbles: true, cancelable: true
+      }))
+    }
+    return
+  }
   if (e.data.type === "remoteContentBlocked" && e.data.emailId) {
     var banner = document.querySelector('[data-remote-content-banner="' + e.data.emailId + '"]')
     if (banner) banner.classList.remove("hidden")
@@ -12080,8 +12178,7 @@ function writeComposePane(html, vals, fullWidth, instantFullWidth) {
     if (bccBtn) bccBtn.classList.add("hidden")
   }
 
-  var bodyField = paneForm && paneForm.querySelector('[data-compose-editor]')
-  if (bodyField) bodyField.focus()
+  focusComposePrefill(paneForm, "new")
 
   if (fullWidth) {
     if (instantFullWidth) {
@@ -12099,7 +12196,7 @@ function collapseToDialog() {
   var vals = _readComposeFormValues(paneForm)
 
   var mailView = document.getElementById("mail-view")
-  if (mailView) setMailViewEmpty()
+  if (mailView) setMailViewEmpty(true)
 
   var dialogForm = document.getElementById("compose-form")
   _writeComposeFormValues(dialogForm, vals, "compose-")
@@ -12131,7 +12228,7 @@ function discardComposePane(anchor) {
         if (!saved) return
         collapseComposeFullWidth()
         var mailView = document.getElementById("mail-view")
-        if (mailView) setMailViewEmpty()
+        if (mailView) setMailViewEmpty(true)
         _updateComposeBtn(false)
       })
       return
@@ -12140,7 +12237,7 @@ function discardComposePane(anchor) {
     _deleteComposeDraft(paneForm)
     collapseComposeFullWidth()
     var mailView = document.getElementById("mail-view")
-    if (mailView) setMailViewEmpty()
+    if (mailView) setMailViewEmpty(true)
     _updateComposeBtn(false)
   })
 }

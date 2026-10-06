@@ -7,14 +7,14 @@ const { JSDOM } = require("jsdom")
 
 const appJS = fs.readFileSync(path.join(__dirname, "..", "..", "assets", "js", "app.js"), "utf8")
 
-async function setup() {
+async function setup(unified) {
   const sidebar =
     '<aside><div data-sidebar-account="acc1">' +
-    '<a hx-get="/folder/f-inbox"><span class="truncate">Inbox</span></a>' +
+    '<a hx-get="/folder/f-inbox" data-folder-role="inbox"><span class="truncate">Inbox</span></a>' +
     '<a hx-get="/folder/f-archive"><span class="truncate">Archive</span></a></div>' +
     '<div data-sidebar-account="acc2"><a hx-get="/folder/g-inbox"><span class="truncate">Other inbox</span></a></div></aside>'
-  const rows = '<div id="mail-list-scroll" data-folder-id="f-inbox">' +
-    '<div class="mail-list-item" data-email-id="m1" data-account-id="acc1"><a href="#"></a></div>' +
+  const rows = '<div id="mail-list-scroll" data-folder-id="' + (unified ? "inbox" : "f-inbox") + '">' +
+    '<div class="mail-list-item" data-email-id="m1" data-account-id="acc1"><a href="#" hx-get="/email/m1?folder_id=f-inbox"></a></div>' +
     '<div class="mail-list-item" data-email-id="m2" data-account-id="acc1"><a href="#"></a></div>' +
     '<div class="mail-list-item" data-email-id="m3" data-account-id="acc2"><a href="#"></a></div></div>'
   const dom = new JSDOM("<!doctype html><body>" + sidebar + rows + "</body>", { runScripts: "outside-only", pretendToBeVisual: true })
@@ -26,7 +26,7 @@ async function setup() {
     calls.push({ url: url, body: opts && opts.body ? JSON.parse(opts.body) : null })
     return Promise.resolve({ ok: true, json: function () { return Promise.resolve({ moved: [] }) } })
   }
-  w.VirtualMailList = function () { return new Proxy({}, { get: function (_, prop) { return prop === "folderID" ? "f-inbox" : function () { return Promise.resolve() } } }) }
+  w.VirtualMailList = function () { return new Proxy({}, { get: function (_, prop) { return prop === "folderID" ? (unified ? "inbox" : "f-inbox") : function () { return Promise.resolve() } } }) }
   let picked = null
   w.RavenPalette = { pick: function (label, items) { picked = items } }
   w.eval(appJS)
@@ -53,4 +53,10 @@ test("move refuses a selection spanning two accounts", async () => {
   t.w.performMailAction("move", ["m1", "m3"])
   assert.equal(t.picked(), null)
   assert.ok(t.w.document.getElementById("mail-action-error"))
+})
+
+test("unified Inbox move picker leaves out the message's real folder", async () => {
+  const t = await setup(true)
+  t.w.performMailAction("move", ["m1"])
+  assert.deepEqual(Array.from(t.picked(), function (i) { return i.label }), ["Archive"])
 })
