@@ -77,3 +77,33 @@ test("Insert link asks in-app, normalises the URL and creates the link", async (
   await tick()
   assert.deepEqual(links, ["https://example.com"])
 })
+
+test("Insert link wraps the selection captured before the prompt, even though focus resets the caret", async () => {
+  const t = await loadApp('<form id="compose-form"><div data-compose-editor contenteditable="true" tabindex="0">hello world</div></form>')
+  const w = t.w
+  const editor = w.document.querySelector("[data-compose-editor]")
+  const text = editor.firstChild
+  // What Chrome does on focus(): caret to the start, then onfocus saves it.
+  editor.addEventListener("focus", function () {
+    const r = w.document.createRange()
+    r.setStart(text, 0)
+    r.collapse(true)
+    w.getSelection().removeAllRanges()
+    w.getSelection().addRange(r)
+    w.setActiveComposeEditor(editor)
+  })
+  const sel = w.document.createRange()
+  sel.setStart(text, 6)
+  sel.setEnd(text, 11)
+  editor._composeRange = sel
+  w.getSelection().removeAllRanges()
+  const wrapped = []
+  w.document.execCommand = function (cmd, _, value) {
+    if (cmd === "createLink") wrapped.push(w.getSelection().toString() + "|" + value)
+    return true
+  }
+  w.goferPrompt = function () { return Promise.resolve("example.com") }
+  w.composeCreateLink(editor)
+  await tick()
+  assert.deepEqual(wrapped, ["world|https://example.com"])
+})

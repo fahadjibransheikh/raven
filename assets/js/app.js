@@ -8657,15 +8657,17 @@ function composeExec(el, command, value) {
 function composeCreateLink(el) {
   var editor = _composeEditorFrom(el)
   if (!editor) return
-  editor.focus()
-  _restoreComposeSelection(editor)
+  // Keep the range locally: editor.focus() fires setActiveComposeEditor, which
+  // overwrites editor._composeRange with a collapsed caret at the start.
   _saveComposeSelection(editor)
+  var range = editor._composeRange ? editor._composeRange.cloneRange() : null
   goferPrompt("Insert link", "Paste a URL or email address", { placeholder: "https://example.com", confirmLabel: "Insert" }).then(function (url) {
     url = String(url == null ? "" : url).trim()
     if (!url) return
     if (url.indexOf("@") > 0 && !/^[a-z][a-z0-9+.-]*:/i.test(url)) url = "mailto:" + url
     if (!/^(https?:|mailto:)/i.test(url)) url = "https://" + url
     editor.focus()
+    if (range) editor._composeRange = range
     _restoreComposeSelection(editor)
     document.execCommand("createLink", false, url)
     syncComposeEditor(editor)
