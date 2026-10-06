@@ -1122,3 +1122,32 @@ func TestContactSyncClaimsSkipDisabledUsers(t *testing.T) {
 		t.Fatalf("queued contact sync status=%q attempts=%d, want pending/0", status, attempts)
 	}
 }
+
+func TestPruneAvatarAttemptLogsKeepsRecentRows(t *testing.T) {
+	ctx := context.Background()
+	db := newContactsTestDB(t)
+	now := time.Date(2026, 10, 6, 12, 0, 0, 0, time.UTC)
+	for _, row := range []struct {
+		email string
+		age   time.Duration
+	}{{"old@x.com", 31 * 24 * time.Hour}, {"edge@x.com", 29 * 24 * time.Hour}, {"new@x.com", time.Hour}} {
+		if _, err := db.Write().ExecContext(ctx,
+			`INSERT INTO avatar_attempt_logs (email_hash, email, provider, status, message, created_at) VALUES (?, ?, 'gravatar', 'missing', '', ?)`,
+			row.email, row.email, now.Add(-row.age).Format("2006-01-02 15:04:05")); err != nil {
+			t.Fatal(err)
+		}
+	}
+	n, err := db.PruneAvatarAttemptLogs(ctx, now.Add(-30*24*time.Hour))
+	if err != nil || n != 1 {
+		t.Fatalf("pruned %d, %v; want 1", n, err)
+	}
+	var left int
+	_ = db.Read().QueryRowContext(ctx, `SELECT COUNT(*) FROM avatar_attempt_logs WHERE email = 'old@x.com'`).Scan(&left)
+	if left != 0 {
+		t.Fatal("old row survived")
+	}
+	_ = db.Read().QueryRowContext(ctx, `SELECT COUNT(*) FROM avatar_attempt_logs`).Scan(&left)
+	if left != 2 {
+		t.Fatalf("remaining=%d, want 2", left)
+	}
+}
