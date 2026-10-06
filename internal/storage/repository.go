@@ -6041,7 +6041,6 @@ func (db *DB) scanEmailRows(ctx context.Context, rows *sql.Rows) ([]models.Email
 		r.email.AccountColor = accountColor
 		r.email.Subject = subject
 		r.email.From = contactFromSender(fromName, fromEmail)
-		db.hydrateContactAvatar(ctx, &r.email.From)
 		r.email.Preview = mailmessage.PreviewFromText(snippet)
 		if r.email.Preview == "" || r.email.Preview == subject {
 			if preview := previewFromBodyPaths(nullStringValue(textPath), nullStringValue(htmlPath)); preview != "" {
@@ -6064,6 +6063,15 @@ func (db *DB) scanEmailRows(ctx context.Context, rows *sql.Rows) ([]models.Email
 	}
 
 	if len(items) > 0 {
+		// One avatar query for the page instead of one (blob-selecting) query per row.
+		froms := make([]models.Contact, len(items))
+		for i := range items {
+			froms[i] = items[i].email.From
+		}
+		db.hydrateContactAvatars(ctx, froms)
+		for i := range items {
+			items[i].email.From = froms[i]
+		}
 		msgIDs := make([]int64, len(items))
 		for i, r := range items {
 			msgIDs[i] = r.msgID
