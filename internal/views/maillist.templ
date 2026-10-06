@@ -100,6 +100,7 @@ func mailSortLabel(filters models.EmailFilters) string {
 
 templ MailListToolbar(accounts []models.Account, activeFolder string, viewMode string, filters models.EmailFilters) {
 	<div class="mail-list-toolbar flex items-center gap-1 px-4 py-1.5">
+		<input type="checkbox" data-mail-select-all aria-label="Select all messages" class="size-4 shrink-0 cursor-pointer accent-primary"/>
 		<div class="relative inline-flex h-7 rounded-lg border border-border bg-background p-0.5 gap-0.5" data-mail-list-view-toggle>
 			<div
 				data-mail-list-view-indicator

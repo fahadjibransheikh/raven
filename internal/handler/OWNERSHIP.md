@@ -53,6 +53,9 @@ constrain every private lookup or mutation to that user:
 - Folder actions: `POST /api/folders/{id}/read-all` resolves the folder (or a
   unified role) through `ResolveFolderIDForUser` and applies only to folders of
   accounts the caller owns; foreign and missing folders both return 404.
+  `POST /api/folders/{id}/empty` (Spam/Junk/Trash only) resolves targets with
+  `FolderEmptyTargets`, which joins `accounts.user_id`; foreign and missing
+  folders return 404 and other folders 422.
 - Message content and actions: `/api/messages/*`, `/api/attachments/*`,
   `/api/inline-content/*`, `/api/remote-content/*`, and
   `/api/remote-assets/*`.

@@ -1225,10 +1225,25 @@ document.addEventListener("DOMContentLoaded", function () {
         }
       }
 
+      var selectAll = e.target.closest && e.target.closest("[data-mail-select-all]")
+      if (selectAll) {
+        var rows = renderedMailRows()
+        for (var r = 0; r < rows.length; r++) setMailSelected(rows[r].dataset.emailId, selectAll.checked)
+        syncMailSelectionControls()
+        return
+      }
+
       var clearSelection = e.target.closest && e.target.closest("[data-mail-selection-clear]")
       if (clearSelection) {
         e.preventDefault()
         clearMailSelection()
+        return
+      }
+
+      var folderEmpty = e.target.closest && e.target.closest("[data-folder-empty]")
+      if (folderEmpty) {
+        e.preventDefault()
+        emptyFolder(folderEmpty.getAttribute("data-folder-empty"), folderEmpty.getAttribute("data-folder-empty-label"))
         return
       }
 
@@ -1273,6 +1288,15 @@ document.addEventListener("DOMContentLoaded", function () {
         }
       }
     }, true)
+
+    // Right-clicking a folder row opens its "..." menu (Mark all as read / Empty Spam / Empty Trash).
+    document.addEventListener("contextmenu", function (e) {
+      var row = e.target.closest && e.target.closest("[data-sidebar-folder-menu-row]")
+      var trigger = row && row.querySelector("[data-folder-menu-trigger]")
+      if (!trigger) return
+      e.preventDefault()
+      trigger.click()
+    })
 
     document.body.addEventListener("htmx:beforeRequest", function (evt) {
       var path = evt.detail.pathInfo && evt.detail.pathInfo.requestPath
@@ -1344,6 +1368,13 @@ document.addEventListener("DOMContentLoaded", function () {
         rows[i].toggleAttribute("data-mail-selected", selected)
         var anchor = rows[i].querySelector(":scope > a")
         if (anchor) anchor.toggleAttribute("data-mail-selected", selected)
+      }
+
+      var selectAllBox = document.querySelector("[data-mail-select-all]")
+      if (selectAllBox) {
+        selectAllBox.checked = rows.length > 0 && visibleSelected === rows.length
+        selectAllBox.indeterminate = visibleSelected > 0 && !selectAllBox.checked
+        selectAllBox.disabled = rows.length === 0
       }
 
       var count = selectedMailIds.size
@@ -1485,6 +1516,42 @@ document.addEventListener("DOMContentLoaded", function () {
           }
           refreshSidebarUnread()
         })
+    }
+
+    function emptyFolder(folderID, label) {
+      if (!folderID) return
+      goferConfirm("Empty " + label + "?", "Every message in " + label + " will be permanently deleted. This cannot be undone.", "Empty " + label).then(function (ok) {
+        if (!ok) return
+        fetch("/api/folders/" + encodeURIComponent(folderID) + "/empty", { method: "POST", keepalive: true })
+          .then(function (r) {
+            if (!r.ok) throw new Error("The server could not empty " + label + ".")
+            return r.json()
+          })
+          .then(function (result) {
+            var n = (result && result.deleted) || 0
+            showGoferToast({
+              id: "folder-empty-toast",
+              title: label + " emptied",
+              description: n === 1 ? "1 message permanently deleted." : n + " messages permanently deleted.",
+              variant: "success", icon: "success", position: "bottom-right", duration: 4000, dismissible: true,
+            })
+          })
+          .catch(function (err) {
+            showGoferToast({
+              id: "folder-empty-toast",
+              title: "Could not empty " + label,
+              description: (err && err.message) || "Try again.",
+              variant: "error", icon: "error", position: "bottom-right", duration: 6000, dismissible: true,
+            })
+          })
+          .then(function () {
+            clearMailSelection()
+            if (virtualMailList && typeof virtualMailList.refreshCurrentFolder === "function") {
+              virtualMailList.refreshCurrentFolder({ noAnimation: true }).catch(function () {})
+            }
+            refreshSidebarUnread()
+          })
+      })
     }
 
     function sendBulkMessageAction(path, targets, extra) {
@@ -7755,7 +7822,8 @@ function insertComposeSignatureWithPlacement(form, sig, source, placement) {
     _restoreComposeSelection(editor)
     document.execCommand("insertHTML", false, html)
   }
-  if (source === "auto") placeComposeCursorBeforeSignature(editor, existingComposeSignature(editor))
+  // Replies keep the caret at the top (above the quote) and forwards keep focus in To.
+  if (source === "auto" && placement !== "after" && composeModeForForm(form) !== "forward") placeComposeCursorBeforeSignature(editor, existingComposeSignature(editor))
   syncComposeEditor(editor)
   return true
 }
@@ -10653,6 +10721,8 @@ function _openComposePrefill(vals, mode) {
   var form = document.getElementById("compose-form")
   writeComposePrefill(form, vals, "compose-", mode)
   if (window.tui && window.tui.dialog) window.tui.dialog.open("compose-dialog")
+  // The dialog is hidden until opened, so focus has to happen after open.
+  focusComposePrefill(form, mode)
   return true
 }
 
