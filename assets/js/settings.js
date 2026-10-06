@@ -671,7 +671,7 @@ function setupModePickers() {
     indicator.style.borderRadius = "calc(var(--radius) - 2px)"
     indicator.style.background = "var(--card)"
     indicator.style.border = "1px solid var(--border)"
-    indicator.style.boxShadow = "var(--shadow-card)"
+    indicator.style.boxShadow = "none"
     indicator.style.transition = "transform 220ms ease, width 220ms ease, height 220ms ease"
     indicator.style.willChange = "transform, width, height"
     indicator.style.pointerEvents = "none"

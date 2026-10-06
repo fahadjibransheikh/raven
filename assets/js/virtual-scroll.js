@@ -875,7 +875,7 @@ class VirtualMailList {
     row.className = "mail-list-skeleton" + (this.viewMode === "table" ? " mail-list-table-skeleton" : " mail-list-card")
     if (this.viewMode === "table") {
       row.innerHTML =
-        '<div class="mail-list-table-grid grid items-center gap-3 w-full px-3 py-1.5">' +
+        '<div class="mail-list-table-grid grid items-center gap-2 w-full px-3 py-1.5">' +
         '<div class="flex items-center justify-center shrink-0" data-mail-table-cell="accountMarker">' +
         '<div class="h-2.5 w-2.5 rounded bg-muted animate-pulse"></div>' +
         "</div>" +
@@ -1625,7 +1625,7 @@ class VirtualMailList {
     if (this.viewMode !== "table") return
 
     var header = document.createElement("div")
-    header.className = "mail-list-table-header mail-list-table-grid grid items-center gap-3 px-3 py-1.5 text-xs font-medium text-muted-foreground bg-card/95 border-b border-border/70 sticky top-0 z-20 backdrop-blur-sm"
+    header.className = "mail-list-table-header mail-list-table-grid grid items-center gap-2 px-3 py-1.5 text-xs font-medium text-muted-foreground bg-card/95 border-b border-border/70 sticky top-0 z-20 backdrop-blur-sm"
     header.style.opacity = "0"
     header.style.transform = "translateY(-4px)"
     header.style.transition = "opacity 140ms ease-out, transform 140ms ease-out"
@@ -2635,7 +2635,7 @@ class VirtualContactsList {
     if (existing) existing.remove()
     if (this.viewMode !== "table") return
     var header = document.createElement("div")
-    header.className = "mail-list-table-header mail-list-table-grid grid items-center gap-3 px-3 py-1.5 text-xs font-medium text-muted-foreground bg-card/95 border-b border-border/70 sticky top-0 z-20 backdrop-blur-sm"
+    header.className = "mail-list-table-header mail-list-table-grid grid items-center gap-2 px-3 py-1.5 text-xs font-medium text-muted-foreground bg-card/95 border-b border-border/70 sticky top-0 z-20 backdrop-blur-sm"
     header.style.cssText = this.tableGridStyle()
     header.style.opacity = "0"
     header.style.transform = "translateY(-4px)"
@@ -2770,7 +2770,7 @@ class VirtualContactsList {
 
   createSkeleton() {
     if (this.viewMode === "table") {
-      return '<div class="mail-list-skeleton mail-list-table-skeleton"><div class="mail-list-table-grid grid items-center gap-3 w-full px-3 py-1.5" style="' + this.tableGridStyle() + '"><div class="h-3 w-32 rounded bg-muted animate-pulse"></div><div class="h-3 w-24 rounded bg-muted animate-pulse"></div><div class="ml-auto h-3 w-8 rounded bg-muted animate-pulse"></div></div></div>'
+      return '<div class="mail-list-skeleton mail-list-table-skeleton"><div class="mail-list-table-grid grid items-center gap-2 w-full px-3 py-1.5" style="' + this.tableGridStyle() + '"><div class="h-3 w-32 rounded bg-muted animate-pulse"></div><div class="h-3 w-24 rounded bg-muted animate-pulse"></div><div class="ml-auto h-3 w-8 rounded bg-muted animate-pulse"></div></div></div>'
     }
     return '<div class="mail-list-skeleton"><div class="flex items-start gap-3 px-3.5 py-2.5"><div class="size-6 rounded-full bg-muted animate-pulse"></div><div class="flex-1 min-w-0 space-y-2"><div class="h-3 w-28 rounded bg-muted animate-pulse"></div><div class="h-3 w-40 rounded bg-muted animate-pulse"></div><div class="h-2.5 w-24 rounded bg-muted animate-pulse"></div></div></div></div>'
   }

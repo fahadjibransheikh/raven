@@ -7916,7 +7916,7 @@ func defaultUISettings() map[string]string {
 		"notification_mode":                 "auto",
 		"mail_card_fields":                  "avatar,thread,from,attachment,date,unread,subject,preview,labels,starred",
 		"mail_card_layout":                  "railTop:avatar|header:from,date|meta:attachment,unread|railMiddle:|body:subject|status:|railBottom:thread|footer:preview,labels|corner:starred|hidden:account,accountMarker,to",
-		"mail_table_columns":                "accountMarker,starred,attachment,thread,from,to,subject,date",
+		"mail_table_columns":                "starred,attachment,from,subject,date",
 		"mail_table_column_widths":          "0.8,0.8,0.8,1,3,3,5,2",
 		"sidebar_account_collapsed":         "{}",
 		"sidebar_folder_collapsed":          "{}",

@@ -5112,7 +5112,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function mailPendingTableHeaderHTML() {
-    return '<div class="mail-list-table-header mail-list-table-grid grid items-center gap-3 px-3 py-1.5 text-xs font-medium text-muted-foreground bg-card/95 border-b border-border/70 sticky top-0 z-20 backdrop-blur-sm">' +
+    return '<div class="mail-list-table-header mail-list-table-grid grid items-center gap-2 px-3 py-1.5 text-xs font-medium text-muted-foreground bg-card/95 border-b border-border/70 sticky top-0 z-20 backdrop-blur-sm">' +
       '<div class="mail-list-table-heading flex items-center justify-center" data-mail-table-column="0" data-mail-table-column-id="accountMarker" data-mail-table-cell="accountMarker" title="Account Marker"><span class="account-color-marker size-2.5 bg-muted"></span><span class="mail-list-column-separator"></span></div>' +
       '<div class="mail-list-table-heading text-center" data-mail-table-column="1" data-mail-table-column-id="starred" data-mail-table-cell="starred" title="Starred">' + pendingIcon("mx-auto size-3") + '<span class="mail-list-column-separator"></span></div>' +
       '<div class="mail-list-table-heading text-center" data-mail-table-column="2" data-mail-table-column-id="attachment" data-mail-table-cell="attachment" title="Attachment">' + pendingIcon("mx-auto size-3") + '<span class="mail-list-column-separator"></span></div>' +
@@ -5125,7 +5125,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function contactsPendingTableHeaderHTML() {
-    return '<div class="mail-list-table-header mail-list-table-grid grid items-center gap-3 px-3 py-1.5 text-xs font-medium text-muted-foreground bg-card/95 border-b border-border/70 sticky top-0 z-20 backdrop-blur-sm" style="--mail-list-table-columns:minmax(10rem,1.4fr) minmax(8rem,0.9fr) minmax(3.5rem,auto)">' +
+    return '<div class="mail-list-table-header mail-list-table-grid grid items-center gap-2 px-3 py-1.5 text-xs font-medium text-muted-foreground bg-card/95 border-b border-border/70 sticky top-0 z-20 backdrop-blur-sm" style="--mail-list-table-columns:minmax(10rem,1.4fr) minmax(8rem,0.9fr) minmax(3.5rem,auto)">' +
       '<div class="mail-list-table-heading">Name</div><div class="mail-list-table-heading">Origin</div><div class="mail-list-table-heading min-w-12 text-right">Msgs</div>' +
     '</div>'
   }
@@ -5161,7 +5161,7 @@ document.addEventListener("DOMContentLoaded", function () {
     var fromWidths = ["70%", "55%", "82%", "64%"]
     var toWidths = ["60%", "76%", "48%", "68%"]
     var subjectWidths = ["88%", "72%", "95%", "58%"]
-    return '<div class="mail-list-item mail-list-table-row" aria-hidden="true"><a tabindex="-1" class="mail-list-table-grid grid items-center gap-3 px-3 py-1.5 rounded-md cursor-default transition-all duration-150 group text-xs envelope">' +
+    return '<div class="mail-list-item mail-list-table-row" aria-hidden="true"><a tabindex="-1" class="mail-list-table-grid grid items-center gap-2 px-3 py-1.5 rounded-md cursor-default transition-all duration-150 group text-xs envelope">' +
       '<div class="flex items-center justify-center" data-mail-table-cell="accountMarker"><span class="account-color-marker size-2.5 shrink-0 bg-muted"></span></div>' +
       '<div class="flex items-center justify-center text-muted-foreground" data-mail-table-cell="starred">' + (i % 4 === 0 ? pendingIcon("size-3") : "") + '</div>' +
       '<div class="flex items-center justify-center text-muted-foreground" data-mail-table-cell="attachment">' + (i % 5 === 0 ? pendingIcon("size-3") : "") + '</div>' +
@@ -5177,7 +5177,7 @@ document.addEventListener("DOMContentLoaded", function () {
     var nameWidths = ["62%", "48%", "74%", "56%"]
     var emailWidths = ["86%", "68%", "76%", "58%"]
     var originWidths = ["6rem", "8rem", "5rem", "7rem"]
-    return '<div class="mail-list-item mail-list-table-row" aria-hidden="true"><a tabindex="-1" class="contact-list-item mail-list-table-grid grid items-center gap-3 px-3.5 py-1.5 rounded-md cursor-default transition-all duration-150 group text-xs envelope" style="--mail-list-table-columns:minmax(10rem,1.4fr) minmax(8rem,0.9fr) minmax(3.5rem,auto)">' +
+    return '<div class="mail-list-item mail-list-table-row" aria-hidden="true"><a tabindex="-1" class="contact-list-item mail-list-table-grid grid items-center gap-2 px-3.5 py-1.5 rounded-md cursor-default transition-all duration-150 group text-xs envelope" style="--mail-list-table-columns:minmax(10rem,1.4fr) minmax(8rem,0.9fr) minmax(3.5rem,auto)">' +
       '<div class="flex min-w-0 items-center gap-3"><div class="w-7 flex shrink-0 items-center justify-center"><span class="size-6 rounded-full bg-muted animate-pulse"></span></div><div class="min-w-0 flex-1">' + pendingBar(nameWidths[i % nameWidths.length], "block h-3") + '<div class="mt-1.5">' + pendingBar(emailWidths[i % emailWidths.length], "block h-3") + '</div></div></div>' +
       '<div class="truncate text-xs text-muted-foreground">' + pendingBar(originWidths[i % originWidths.length], "block h-3") + '</div>' +
       '<div class="flex justify-end text-right text-xs tabular-nums text-muted-foreground">' + pendingBar(i % 2 === 0 ? "2rem" : "1.25rem", "block h-3") + '</div>' +
