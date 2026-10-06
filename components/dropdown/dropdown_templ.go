@@ -263,7 +263,7 @@ func Content(props ...ContentProps) templ.Component {
 		templ_7745c5c3_Err = popover.Content(popover.ContentProps{
 			Placement: placement,
 			Class: utils.TwMerge(
-				"z-50 rounded-md bg-popover p-1 shadow-md focus:outline-none overflow-auto",
+				"z-50 rounded-xl bg-popover p-1 shadow-menu focus:outline-none overflow-auto",
 				"border border-border",
 				"min-w-[8rem] max-h-[300px]",
 				p.Class,
@@ -545,7 +545,7 @@ func Item(props ...ItemProps) templ.Component {
 		}
 		if p.Href != "" {
 			var templ_7745c5c3_Var18 = []any{utils.TwMerge(
-				"flex text-left items-center justify-between px-2 py-1.5 text-sm rounded-sm",
+				"flex text-left items-center justify-between px-2 py-1.5 text-sm rounded-md",
 				utils.If(!p.Disabled, "focus:bg-accent focus:text-accent-foreground hover:bg-accent hover:text-accent-foreground cursor-default"),
 				utils.If(p.Disabled, "opacity-50 pointer-events-none"),
 				p.Class,
@@ -651,7 +651,7 @@ func Item(props ...ItemProps) templ.Component {
 			}
 		} else {
 			var templ_7745c5c3_Var23 = []any{utils.TwMerge(
-				"w-full text-left flex items-center justify-between px-2 py-1.5 text-sm rounded-sm",
+				"w-full text-left flex items-center justify-between px-2 py-1.5 text-sm rounded-md",
 				utils.If(!p.Disabled, "focus:bg-accent focus:text-accent-foreground hover:bg-accent hover:text-accent-foreground cursor-default"),
 				utils.If(p.Disabled, "opacity-50 pointer-events-none"),
 				p.Class,
@@ -989,7 +989,7 @@ func SubTrigger(props ...SubTriggerProps) templ.Component {
 			}
 			ctx = templ.InitializeContext(ctx)
 			var templ_7745c5c3_Var38 = []any{utils.TwMerge(
-				"w-full text-left flex items-center justify-between px-2 py-1.5 text-sm rounded-sm",
+				"w-full text-left flex items-center justify-between px-2 py-1.5 text-sm rounded-md",
 				"focus:bg-accent focus:text-accent-foreground hover:bg-accent hover:text-accent-foreground cursor-default",
 				p.Class,
 			),
@@ -1092,7 +1092,7 @@ func SubContent(props ...SubContentProps) templ.Component {
 			HoverDelay:    100, // ms
 			HoverOutDelay: 200, // ms
 			Class: utils.TwMerge(
-				"z-[9999] min-w-[8rem] rounded-md border bg-popover p-1 shadow-lg",
+				"z-[9999] min-w-[8rem] rounded-xl border bg-popover p-1 shadow-menu",
 				p.Class,
 			),
 			Attributes: p.Attributes,

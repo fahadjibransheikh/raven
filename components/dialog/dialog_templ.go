@@ -341,9 +341,9 @@ func Content(props ...ContentProps) templ.Component {
 			open = val.(bool)
 		}
 		var templ_7745c5c3_Var12 = []any{utils.TwMerge(
-			"fixed left-[50%] top-[50%] z-50 m-0 w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-hidden border bg-card text-card-foreground p-0 shadow-lg outline-none sm:max-w-lg",
+			"fixed left-[50%] top-[50%] z-50 m-0 w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-hidden border bg-card text-card-foreground p-0 shadow-dialog outline-none sm:max-w-lg",
 			"[&:not([open]):not([data-tui-dialog-closing=true])]:hidden",
-			"rounded-lg",
+			"rounded-xl",
 			"[&::backdrop]:transition-all [&::backdrop]:duration-200",
 			"data-[tui-dialog-open=false]:[&::backdrop]:bg-black/0",
 			"data-[tui-dialog-open=true]:[&::backdrop]:bg-black/50",

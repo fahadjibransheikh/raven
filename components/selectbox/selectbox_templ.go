@@ -394,7 +394,7 @@ func Item(props ...ItemProps) templ.Component {
 			p = props[0]
 		}
 		var templ_7745c5c3_Var15 = []any{utils.TwMerge(
-			"select-item group relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 px-2 text-sm font-light outline-none",
+			"select-item group relative flex w-full cursor-default select-none items-center rounded-md py-1.5 px-2 text-sm rounded-md outline-none",
 			"hover:bg-accent hover:text-accent-foreground",
 			"focus-visible:bg-accent focus-visible:text-accent-foreground",
 			"data-[tui-selectbox-selected=true]:bg-accent data-[tui-selectbox-selected=true]:text-accent-foreground",
@@ -932,7 +932,7 @@ func Content(props ...ContentProps) templ.Component {
 			Offset:     4,
 			DisableESC: !p.NoSearch,
 			Class: utils.TwMerge(
-				"p-1 select-content z-50 overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md",
+				"p-1 select-content z-50 overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-menu",
 				p.Class,
 			),
 			Attributes: utils.MergeAttributes(

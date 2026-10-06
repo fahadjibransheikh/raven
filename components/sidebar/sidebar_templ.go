@@ -945,7 +945,7 @@ func Sidebar(props ...Props) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, utils.MergeAttributes(
-			templ.Attributes{"style": "--sidebar-width:16rem"},
+			templ.Attributes{"style": "--sidebar-width:15rem"},
 			p.Attributes,
 		))
 		if templ_7745c5c3_Err != nil {
@@ -957,7 +957,7 @@ func Sidebar(props ...Props) templ.Component {
 		}
 		var templ_7745c5c3_Var36 = []any{utils.TwMerge(
 			"relative bg-transparent transition-[width] duration-200 ease-linear",
-			"w-[var(--sidebar-width,16rem)]",
+			"w-[var(--sidebar-width,15rem)]",
 			"group-data-[tui-sidebar-state=collapsed]:group-data-[tui-sidebar-collapsible=offcanvas]:w-0",
 			"group-data-[tui-sidebar-side=right]:rotate-180",
 			// Add padding for floating/inset variants when collapsed to icon mode
@@ -988,7 +988,7 @@ func Sidebar(props ...Props) templ.Component {
 		}
 		var templ_7745c5c3_Var38 = []any{utils.TwMerge(
 			"fixed inset-y-0 z-10 hidden h-svh transition-transform duration-200 ease-linear md:flex",
-			"w-[var(--sidebar-width,16rem)]",
+			"w-[var(--sidebar-width,15rem)]",
 			// Side positioning with data attributes
 			"group-data-[tui-sidebar-side=right]:right-0 group-data-[tui-sidebar-side=right]:group-data-[tui-sidebar-state=collapsed]:group-data-[tui-sidebar-collapsible=offcanvas]:translate-x-full",
 			"group-data-[tui-sidebar-side=left]:left-0 group-data-[tui-sidebar-side=left]:group-data-[tui-sidebar-state=collapsed]:group-data-[tui-sidebar-collapsible=offcanvas]:-translate-x-full",

@@ -135,7 +135,7 @@ templ Content(props ...ContentProps) {
 	@popover.Content(popover.ContentProps{
 		Placement: placement,
 		Class: utils.TwMerge(
-			"z-50 rounded-md bg-popover p-1 shadow-md focus:outline-none overflow-auto",
+			"z-50 rounded-xl bg-popover p-1 shadow-menu focus:outline-none overflow-auto",
 			"border border-border",
 			"min-w-[8rem] max-h-[300px]",
 			p.Class,
@@ -208,7 +208,7 @@ templ Item(props ...ItemProps) {
 			}
 			class={
 				utils.TwMerge(
-					"flex text-left items-center justify-between px-2 py-1.5 text-sm rounded-sm",
+					"flex text-left items-center justify-between px-2 py-1.5 text-sm rounded-md",
 					utils.If(!p.Disabled, "focus:bg-accent focus:text-accent-foreground hover:bg-accent hover:text-accent-foreground cursor-default"),
 					utils.If(p.Disabled, "opacity-50 pointer-events-none"),
 					p.Class,
@@ -228,7 +228,7 @@ templ Item(props ...ItemProps) {
 			id={ p.ID }
 			class={
 				utils.TwMerge(
-					"w-full text-left flex items-center justify-between px-2 py-1.5 text-sm rounded-sm",
+					"w-full text-left flex items-center justify-between px-2 py-1.5 text-sm rounded-md",
 					utils.If(!p.Disabled, "focus:bg-accent focus:text-accent-foreground hover:bg-accent hover:text-accent-foreground cursor-default"),
 					utils.If(p.Disabled, "opacity-50 pointer-events-none"),
 					p.Class,
@@ -305,7 +305,7 @@ templ SubTrigger(props ...SubTriggerProps) {
 			data-tui-dropdown-submenu-trigger
 			class={
 				utils.TwMerge(
-					"w-full text-left flex items-center justify-between px-2 py-1.5 text-sm rounded-sm",
+					"w-full text-left flex items-center justify-between px-2 py-1.5 text-sm rounded-md",
 					"focus:bg-accent focus:text-accent-foreground hover:bg-accent hover:text-accent-foreground cursor-default",
 					p.Class,
 				),
@@ -333,7 +333,7 @@ templ SubContent(props ...SubContentProps) {
 		HoverDelay:    100, // ms
 		HoverOutDelay: 200, // ms
 		Class: utils.TwMerge(
-			"z-[9999] min-w-[8rem] rounded-md border bg-popover p-1 shadow-lg",
+			"z-[9999] min-w-[8rem] rounded-xl border bg-popover p-1 shadow-menu",
 			p.Class,
 		),
 		Attributes: p.Attributes,

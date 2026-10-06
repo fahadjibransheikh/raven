@@ -29,6 +29,7 @@
         document.dispatchEvent(new KeyboardEvent("keydown", { key: "?", bubbles: true }))
       } }
     ]
+    out.forEach(function (item) { item.group = "Actions" })
     var seen = {}
     var links = document.querySelectorAll('aside a[hx-get^="/folder/"]')
     for (var i = 0; i < links.length; i++) {
@@ -41,7 +42,7 @@
       var key = link.getAttribute("hx-get")
       if (seen[key]) continue
       seen[key] = true
-      out.push({ label: label, hint: "Folder", run: (function (el) { return function () { el.click() } })(link) })
+      out.push({ group: "Folders", label: label, run: (function (el) { return function () { el.click() } })(link) })
     }
     return out
   }
@@ -57,8 +58,9 @@
     dialog.className = "raven-palette"
     dialog.setAttribute("aria-label", "Command palette")
     dialog.innerHTML =
-      '<input class="raven-palette-input" type="text" placeholder="Type a command or folder…" aria-label="Command" autocomplete="off" spellcheck="false">' +
-      '<ul class="raven-palette-list" role="listbox"></ul>'
+      '<input class="raven-palette-input" type="text" placeholder="Search or jump to…" aria-label="Command" autocomplete="off" spellcheck="false">' +
+      '<ul class="raven-palette-list" role="listbox"></ul>' +
+      '<div class="raven-palette-footer"><span><kbd>↑</kbd><kbd>↓</kbd> Select</span><span><kbd>↵</kbd> Open</span><span><kbd>Esc</kbd> Close</span></div>'
     document.body.appendChild(dialog)
     input = dialog.querySelector("input")
     list = dialog.querySelector("ul")
@@ -92,7 +94,16 @@
       list.appendChild(empty)
       return
     }
+    var lastGroup = ""
     filtered.forEach(function (item, i) {
+      if (item.group && item.group !== lastGroup) {
+        lastGroup = item.group
+        var heading = document.createElement("li")
+        heading.className = "raven-palette-group"
+        heading.setAttribute("role", "presentation")
+        heading.textContent = item.group
+        list.appendChild(heading)
+      }
       var li = document.createElement("li")
       li.dataset.index = i
       li.setAttribute("role", "option")
