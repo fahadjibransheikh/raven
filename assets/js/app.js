@@ -3387,9 +3387,29 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function setupAccountResultFeedback() {
+    // ?error= codes the account OAuth callbacks redirect back to /settings/accounts with.
+    var ACCOUNT_OAUTH_ERRORS = {
+      oauth_no_code: { title: "Sign-in was not completed", description: "The provider did not approve the connection. If you cancelled, try again when you are ready." },
+      oauth_exchange_failed: { title: "Could not finish sign-in", description: "The provider rejected the sign-in. Try connecting the account again." },
+      oauth_userinfo_failed: { title: "Could not read your account", description: "Sign-in worked but the provider did not return your profile. Try again." },
+      oauth_email_mismatch: { title: "Different account signed in", description: "You signed in with a different address than the one you entered. Try again with the same account." },
+      oauth_invalid_state: { title: "Sign-in link is invalid", description: "Start connecting the account again from Settings." },
+      oauth_expired_state: { title: "Sign-in took too long", description: "The sign-in link expired. Start connecting the account again." },
+      oauth_session_mismatch: { title: "Sign-in could not be verified", description: "Raven's session changed during sign-in. Sign in to Raven again and retry." },
+      create_failed: { title: "Could not save the account", description: "The provider connected but Raven could not store the account. Try again." },
+    }
     var params = new URLSearchParams(window.location.search)
     var added = params.get("account_added") === "1"
     var reconnected = params.get("account_reconnected") === "1"
+    var oauthError = ACCOUNT_OAUTH_ERRORS[params.get("error")]
+    if (oauthError && typeof showGoferToast === "function") {
+      showGoferToast({
+        id: "account-connection-toast", title: oauthError.title, description: oauthError.description,
+        variant: "error", icon: "error", position: "bottom-right", duration: 10000, dismissible: true,
+      })
+      params.delete("error")
+      window.history.replaceState(window.history.state, "", window.location.pathname + (params.toString() ? "?" + params.toString() : "") + window.location.hash)
+    }
     if (!added && !reconnected) return
 
     if (typeof showGoferToast === "function") {
