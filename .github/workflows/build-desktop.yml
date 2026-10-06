@@ -153,7 +153,7 @@ jobs:
         shell: bash
         run: |
           task generate
-          go build -tags embedded_assets -trimpath \
+          go build -tags embedded_assets -trimpath -ldflags="-s -w" \
             -o "tauri-wrapper/src-tauri/binaries/gofer-${{ matrix.target_triple }}${{ matrix.ext }}" .
 
       - name: Regenerate app icon set from the source PNG
