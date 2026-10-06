@@ -943,6 +943,10 @@ templ SidebarFooter() {
 						@SidebarShortcutHint("Toggle read", "u")
 						@SidebarShortcutHint("Clear selection", "Esc")
 					</div>
+					<button type="button" data-whats-new-open class="mt-2 flex w-full items-center gap-2 rounded-md border-t border-sidebar-border px-1.5 pt-2.5 pb-1 text-left text-[13px] text-sidebar-foreground transition-colors hover:text-sidebar-accent-foreground">
+						@icon.Sparkles(icon.Props{Class: "size-4 shrink-0"})
+						What's new
+					</button>
 				}
 			}
 		</div>

@@ -25,6 +25,7 @@
       { label: "Contacts", run: function () { go('aside a[href="/contacts"]', "/contacts") } },
       { label: "Settings", run: function () { go('a[href="/settings/accounts"]', "/settings/accounts") } },
       { label: "Toggle light / dark", run: toggleMode },
+      { label: "What's new", run: function () { if (window.RavenWhatsNew) window.RavenWhatsNew.open() } },
       { label: "Keyboard shortcuts", hint: "?", run: function () {
         document.dispatchEvent(new KeyboardEvent("keydown", { key: "?", bubbles: true }))
       } }
