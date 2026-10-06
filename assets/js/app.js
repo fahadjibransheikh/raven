@@ -1595,6 +1595,12 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     }
 
+    function mailRowSourceFolderID(id) {
+      var anchor = document.querySelector('#mail-list-scroll .mail-list-item[data-email-id="' + cssEscape(id) + '"] a[hx-get]')
+      if (!anchor) return ""
+      try { return new URL(anchor.getAttribute("hx-get"), window.location.href).searchParams.get("folder_id") || "" } catch (_) { return "" }
+    }
+
     // Folder picker for "Move to...": lists the folders of the one account the messages belong to.
     function pickMoveDestination(ids) {
       return new Promise(function (resolve) {
@@ -1618,10 +1624,16 @@ document.addEventListener("DOMContentLoaded", function () {
         var currentFolder = mailActionCurrentFolderID()
         var items = []
         var links = group ? group.querySelectorAll('a[hx-get^="/folder/"]') : []
+        // The unified Inbox has its own id ("inbox"), so compare against each message's real
+        // folder (the row's folder_id) and fall back to the folder role.
+        var sources = ids.map(mailRowSourceFolderID)
         for (var i = 0; i < links.length; i++) {
           var folderID = (links[i].getAttribute("hx-get") || "").replace("/folder/", "")
           var name = links[i].querySelector("span.truncate")
           if (!folderID || !name || folderID === currentFolder) continue
+          var role = (links[i].dataset.folderRole || "").toLowerCase()
+          if (role && role === String(currentFolder).toLowerCase()) continue
+          if (sources.every(function (src) { return src === folderID })) continue
           items.push({ label: name.textContent.trim(), run: (function (id, label) { return function () { resolve({ id: id, name: label }) } })(folderID, name.textContent.trim()) })
         }
         if (!items.length || !window.RavenPalette || !window.RavenPalette.pick) {
