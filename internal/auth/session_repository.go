@@ -114,15 +114,22 @@ func (m *Manager) GetSessionByToken(ctx context.Context, token string) (*Session
 	if strings.TrimSpace(token) == "" {
 		return nil, nil
 	}
+	return m.activeSession(ctx, "token_hash", hashToken(token), true)
+}
+
+// activeSession loads a live session by an indexed column (a constant, never
+// user input). touch slides the idle expiry; grant checks must not keep a
+// session alive.
+func (m *Manager) activeSession(ctx context.Context, column, value string, touch bool) (*Session, error) {
 	now := m.clock.Now().UTC()
 	session, err := scanSession(m.db.Read().QueryRowContext(ctx, sessionSelect+`
-		WHERE token_hash = ? AND revoked_at IS NULL
+		WHERE `+column+` = ? AND revoked_at IS NULL
 		  AND idle_expires_at > ? AND absolute_expires_at > ?
 		  AND EXISTS (
 			SELECT 1 FROM users u
 			WHERE u.id = sessions.user_id AND u.status = 'active'
 			  AND u.auth_version = sessions.auth_version
-		  )`, hashToken(token), now, now))
+		  )`, value, now, now))
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -136,8 +143,10 @@ func (m *Manager) GetSessionByToken(ctx context.Context, token string) (*Session
 	if err != nil {
 		return nil, err
 	}
-	if err := m.touchSession(ctx, session, now); err != nil {
-		return nil, err
+	if touch {
+		if err := m.touchSession(ctx, session, now); err != nil {
+			return nil, err
+		}
 	}
 	return session, nil
 }

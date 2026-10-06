@@ -38,6 +38,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -1413,6 +1414,28 @@ func emailBodyDocument(w http.ResponseWriter, emailID string, body []byte, theme
 	return doc
 }
 
+// withImageGrants adds a signed grant to this message's inline-content and
+// remote-assets URLs so the sandboxed, cookieless email iframe can load them.
+// Render time only: stored bodies and compose/reply sources keep bare URLs.
+func (h *Handler) withImageGrants(ctx context.Context, msgID int64, body []byte) []byte {
+	if h.auth == nil {
+		return body
+	}
+	grant := h.auth.SignImageGrant(auth.GetCurrentSession(ctx), msgID)
+	if grant == "" {
+		return body
+	}
+	prefix := strconv.FormatInt(msgID, 10) + "/"
+	return emailImageURLPattern.ReplaceAllFunc(body, func(u []byte) []byte {
+		if !strings.HasPrefix(strings.SplitN(string(u), "/", 4)[3], prefix) {
+			return u
+		}
+		return append(append(u[:len(u):len(u)], "?"+auth.ImageGrantQuery+"="...), grant...)
+	})
+}
+
+var emailImageURLPattern = regexp.MustCompile(`/api/(?:inline-content|remote-assets)/[0-9]+/(?:[A-Za-z0-9._~%@:+=$-]|&amp;)+`)
+
 func (h *Handler) handleEmailBody(w http.ResponseWriter, r *http.Request) {
 	emailID := r.PathValue("id")
 	if emailID == "" {
@@ -1479,6 +1502,7 @@ func (h *Handler) handleEmailBody(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
+	body = h.withImageGrants(ctx, msgID, body)
 	w.Write(emailBodyDocument(w, emailID, body, theme, bg, fg, link, original, loadRemote, !loadRemote))
 }
 
