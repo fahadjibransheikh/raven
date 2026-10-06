@@ -1240,6 +1240,13 @@ document.addEventListener("DOMContentLoaded", function () {
         return
       }
 
+      var folderEmpty = e.target.closest && e.target.closest("[data-folder-empty]")
+      if (folderEmpty) {
+        e.preventDefault()
+        emptyFolder(folderEmpty.getAttribute("data-folder-empty"), folderEmpty.getAttribute("data-folder-empty-label"))
+        return
+      }
+
       var folderMarkRead = e.target.closest && e.target.closest("[data-folder-mark-all-read]")
       if (folderMarkRead) {
         e.preventDefault()
@@ -1281,6 +1288,15 @@ document.addEventListener("DOMContentLoaded", function () {
         }
       }
     }, true)
+
+    // Right-clicking a folder row opens its "..." menu (Mark all as read / Empty Spam / Empty Trash).
+    document.addEventListener("contextmenu", function (e) {
+      var row = e.target.closest && e.target.closest("[data-sidebar-folder-menu-row]")
+      var trigger = row && row.querySelector("[data-folder-menu-trigger]")
+      if (!trigger) return
+      e.preventDefault()
+      trigger.click()
+    })
 
     document.body.addEventListener("htmx:beforeRequest", function (evt) {
       var path = evt.detail.pathInfo && evt.detail.pathInfo.requestPath
@@ -1500,6 +1516,42 @@ document.addEventListener("DOMContentLoaded", function () {
           }
           refreshSidebarUnread()
         })
+    }
+
+    function emptyFolder(folderID, label) {
+      if (!folderID) return
+      goferConfirm("Empty " + label + "?", "Every message in " + label + " will be permanently deleted. This cannot be undone.", "Empty " + label).then(function (ok) {
+        if (!ok) return
+        fetch("/api/folders/" + encodeURIComponent(folderID) + "/empty", { method: "POST", keepalive: true })
+          .then(function (r) {
+            if (!r.ok) throw new Error("The server could not empty " + label + ".")
+            return r.json()
+          })
+          .then(function (result) {
+            var n = (result && result.deleted) || 0
+            showGoferToast({
+              id: "folder-empty-toast",
+              title: label + " emptied",
+              description: n === 1 ? "1 message permanently deleted." : n + " messages permanently deleted.",
+              variant: "success", icon: "success", position: "bottom-right", duration: 4000, dismissible: true,
+            })
+          })
+          .catch(function (err) {
+            showGoferToast({
+              id: "folder-empty-toast",
+              title: "Could not empty " + label,
+              description: (err && err.message) || "Try again.",
+              variant: "error", icon: "error", position: "bottom-right", duration: 6000, dismissible: true,
+            })
+          })
+          .then(function () {
+            clearMailSelection()
+            if (virtualMailList && typeof virtualMailList.refreshCurrentFolder === "function") {
+              virtualMailList.refreshCurrentFolder({ noAnimation: true }).catch(function () {})
+            }
+            refreshSidebarUnread()
+          })
+      })
     }
 
     function sendBulkMessageAction(path, targets, extra) {

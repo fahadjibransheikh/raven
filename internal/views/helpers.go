@@ -1004,6 +1004,18 @@ func sidebarFolderHref(folderID, accountID string) templ.SafeURL {
 	return templ.URL(fmt.Sprintf("/?folder=%s&account=%s", folderID, accountID))
 }
 
+// folderEmptyLabel returns "Spam" or "Trash" for folders that can be emptied
+// from the sidebar menu, and "" for every other folder.
+func folderEmptyLabel(folder models.Folder) string {
+	switch {
+	case folder.ID == "spam" || folder.Role == "spam" || folder.Role == "junk":
+		return "Spam"
+	case folder.ID == "trash" || folder.Role == "trash":
+		return "Trash"
+	}
+	return ""
+}
+
 // folderMarkAllReadAvailable reports whether a sidebar folder can offer
 // "Mark all as read". Starred (a flag, not a folder) and Scheduled (local
 // queue) have no provider-side folder to mark.

@@ -831,6 +831,14 @@ templ SidebarFolderMenu(folder models.Folder) {
 							Mark all as read
 						</span>
 					}
+					if label := folderEmptyLabel(folder); label != "" {
+						@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"data-folder-empty": folder.ID, "data-folder-empty-label": label}}) {
+							<span class="flex items-center gap-2 text-destructive">
+								@icon.Trash2(icon.Props{Class: "size-4"})
+								Empty { label }
+							</span>
+						}
+					}
 				}
 			}
 		</div>
