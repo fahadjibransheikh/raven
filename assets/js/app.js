@@ -10280,6 +10280,39 @@ function sendCompose(fromPane) {
     return
   }
 
+  _setComposeSending(form, true)
+  confirmComposeSend(form).then(function (ok) {
+    _setComposeSending(form, false)
+    if (ok) _sendComposeNow(form, fromPane)
+  })
+}
+
+// Asks about an empty subject and a likely forgotten attachment, one question at a time.
+function confirmComposeSend(form) {
+  var checks = []
+  var subject = form.querySelector('input[name="subject"]')
+  if (subject && !subject.value.trim()) {
+    checks.push(["Send without a subject?", "This message has no subject.", "Send anyway"])
+  }
+  if (composeMentionsAttachment(form) && !form.querySelector("[data-compose-attachment]")) {
+    checks.push(["Forgot an attachment?", "Your message mentions an attachment, but nothing is attached.", "Send anyway"])
+  }
+  return checks.reduce(function (chain, check) {
+    return chain.then(function (ok) { return ok ? goferConfirm(check[0], check[1], check[2]) : false })
+  }, Promise.resolve(true))
+}
+
+// Looks only at what the user wrote: quoted replies and the signature are skipped.
+function composeMentionsAttachment(form) {
+  var editor = form.querySelector("[data-compose-editor]")
+  if (!editor) return false
+  var clone = editor.cloneNode(true)
+  var skip = clone.querySelectorAll("blockquote, [data-gofer-signature]")
+  for (var i = 0; i < skip.length; i++) skip[i].remove()
+  return /\battach(?:ed|ment|ments|ing)?\b/i.test(clone.textContent || "")
+}
+
+function _sendComposeNow(form, fromPane) {
   var params = new URLSearchParams()
   var inputs = form.querySelectorAll("input, textarea")
   for (var i = 0; inputs && i < inputs.length; i++) {

@@ -32,6 +32,7 @@ import (
 	"math/rand"
 	"mime"
 	"net/http"
+	netmail "net/mail"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -4692,19 +4693,32 @@ func (h *Handler) saveComposeDraftFromForm(ctx context.Context, r *http.Request)
 		return composeDraftSaveResult{}, &composeRequestError{status: http.StatusInternalServerError, message: "failed to save draft"}
 	}
 
+	// A draft that did not persist must not report success (the UI would show "Saved").
+	persistFailed := func(what string, err error) (composeDraftSaveResult, *composeRequestError) {
+		log.Printf("draft save account=%s message=%d: %s: %v", accountID, msgID, what, err)
+		return composeDraftSaveResult{}, &composeRequestError{status: http.StatusInternalServerError, message: "failed to save draft"}
+	}
 	var textPath, htmlPath string
 	if body != "" {
-		if p, err := h.blobStore.StoreBodyText(ctx, accountID, msgID, []byte(body)); err == nil {
-			textPath = p
+		p, err := h.blobStore.StoreBodyText(ctx, accountID, msgID, []byte(body))
+		if err != nil {
+			return persistFailed("store text body", err)
 		}
+		textPath = p
 	}
 	if htmlBody != "" {
-		if p, err := h.blobStore.StoreBodyHTML(ctx, accountID, msgID, []byte(htmlBody)); err == nil {
-			htmlPath = p
+		p, err := h.blobStore.StoreBodyHTML(ctx, accountID, msgID, []byte(htmlBody))
+		if err != nil {
+			return persistFailed("store html body", err)
 		}
+		htmlPath = p
 	}
-	_ = h.db.UpdateMessageBodyInternal(ctx, msgID, textPath, htmlPath, "", snippet)
-	_ = h.db.ReplaceAttachmentsInternal(ctx, msgID, attachmentRows)
+	if err := h.db.UpdateMessageBodyInternal(ctx, msgID, textPath, htmlPath, "", snippet); err != nil {
+		return persistFailed("update body", err)
+	}
+	if err := h.db.ReplaceAttachmentsInternal(ctx, msgID, attachmentRows); err != nil {
+		return persistFailed("replace attachments", err)
+	}
 	toAddrs, _ := message.ParseAddressList(r.FormValue("to"))
 	ccAddrs, _ := message.ParseAddressList(r.FormValue("cc"))
 	bccAddrs, _ := message.ParseAddressList(r.FormValue("bcc"))
@@ -5108,6 +5122,33 @@ func contactsToAddressList(contacts []models.Contact) string {
 	return strings.Join(parts, ", ")
 }
 
+// parseComposeRecipients parses To/Cc/Bcc for a send. A bad Cc/Bcc is an error naming the field:
+// dropping it would send the message without people the user addressed.
+func parseComposeRecipients(r *http.Request) (to, cc, bcc []*netmail.Address, errMsg string) {
+	parse := func(field, label string) ([]*netmail.Address, string) {
+		addrs, err := message.ParseAddressList(r.FormValue(field))
+		if err != nil {
+			detail := strings.TrimPrefix(strings.TrimPrefix(err.Error(), "parse addresses: "), "mail: ")
+			return nil, label + " contains an invalid address (" + detail + "). Fix or remove it and try again."
+		}
+		return addrs, ""
+	}
+	var msg string
+	if to, msg = parse("to", "To"); msg != "" {
+		return nil, nil, nil, msg
+	}
+	if len(to) == 0 {
+		return nil, nil, nil, "Please enter at least one recipient."
+	}
+	if cc, msg = parse("cc", "Cc"); msg != "" {
+		return nil, nil, nil, msg
+	}
+	if bcc, msg = parse("bcc", "Bcc"); msg != "" {
+		return nil, nil, nil, msg
+	}
+	return to, cc, bcc, ""
+}
+
 func (h *Handler) handleCompose(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
 		writeComposeJSONError(w, http.StatusBadRequest, "invalid form data")
@@ -5149,13 +5190,11 @@ func (h *Handler) handleCompose(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	toAddrs, err := message.ParseAddressList(r.FormValue("to"))
-	if err != nil || len(toAddrs) == 0 {
-		writeComposeJSONError(w, http.StatusBadRequest, "Please enter at least one recipient.")
+	toAddrs, ccAddrs, bccAddrs, recipientErr := parseComposeRecipients(r)
+	if recipientErr != "" {
+		writeComposeJSONError(w, http.StatusBadRequest, recipientErr)
 		return
 	}
-	ccAddrs, _ := message.ParseAddressList(r.FormValue("cc"))
-	bccAddrs, _ := message.ParseAddressList(r.FormValue("bcc"))
 	attachments, _, err := h.collectComposeAttachments(r)
 	if err != nil {
 		writeComposeJSONError(w, http.StatusNotFound, err.Error())
@@ -5252,8 +5291,8 @@ func (h *Handler) handleComposeSchedule(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if toAddrs, err := message.ParseAddressList(r.FormValue("to")); err != nil || len(toAddrs) == 0 {
-		writeComposeJSONError(w, http.StatusBadRequest, "Please enter at least one recipient.")
+	if _, _, _, recipientErr := parseComposeRecipients(r); recipientErr != "" {
+		writeComposeJSONError(w, http.StatusBadRequest, recipientErr)
 		return
 	}
 
