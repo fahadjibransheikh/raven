@@ -7,7 +7,7 @@ Then an optional hero line, then "### New", "### Improved", "### Fixed" or
 replaces it with the real version number. GitHub release notes use the same text.
 -->
 
-## next | 2026-10-06 | A fresh look, Undo, and a safer email viewer
+## 0.2.0 | 2026-10-06 | A fresh look, Undo, and a safer email viewer
 
 A redesigned Raven, an Undo for your mail actions, and a long list of fixes.
 
@@ -17,6 +17,9 @@ A redesigned Raven, an Undo for your mail actions, and a long list of fixes.
 - Undo after you archive, delete, mark as spam or move a message.
 - A refreshed design inspired by Notion Mail and Outlook: a cleaner sidebar, list and reader, with accent color presets in Settings.
 - What's New, this window. Open it again any time from the ? menu or the Cmd/Ctrl+K command palette.
+
+### Improved
+- Faster and lighter: a smaller download, quicker loading, and no more stale screens after an update.
 
 ### Fixed
 - Outlook accounts could grow the local database to many gigabytes. Raven now cleans it up automatically the first time you launch after updating, which may take a minute.
