@@ -16,8 +16,8 @@ func TestSettingsLayoutLoadsPasskeyControllersForHTMXSecurityNavigation(t *testi
 	}
 	html := output.String()
 	for _, script := range []string{
-		`src="/assets/js/passkey-registration.js"`,
-		`src="/assets/js/passkey-authentication.js"`,
+		`src="/assets/js/passkey-registration.js?`,
+		`src="/assets/js/passkey-authentication.js?`,
 	} {
 		if !strings.Contains(html, script) {
 			t.Fatalf("settings layout missing passkey controller %q", script)
@@ -40,9 +40,9 @@ func TestPasswordSecurityLayoutIsLocalAccessibleAndEscapesMessages(t *testing.T)
 	for _, want := range []string{
 		`role="alert"`,
 		`src="/assets/js/popover.min.js?`,
-		`src="/assets/js/htmx.min.js"`,
-		`src="/assets/js/app.js"`,
-		`src="/assets/js/settings.js"`,
+		`src="/assets/js/htmx.min.js?`,
+		`src="/assets/js/app.js?`,
+		`src="/assets/js/settings.js?`,
 		`id="choose-account-type-dialog"`,
 		`id="edit-account-container"`,
 		`action="/settings/security/password"`,

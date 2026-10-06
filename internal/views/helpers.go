@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cristianadrielbraun/gofer/utils"
+
 	"github.com/cristianadrielbraun/gofer/internal/models"
 
 	"github.com/a-h/templ"
@@ -1057,3 +1059,7 @@ func folderEmptyLabel(folder models.Folder) string {
 func folderMarkAllReadAvailable(folder models.Folder) bool {
 	return folder.ID != "" && folder.ID != "starred" && folder.ID != "scheduled"
 }
+
+// AssetURL appends the content-hash version so a changed asset gets a new URL
+// (the server marks versioned URLs immutable).
+func AssetURL(path string) string { return utils.ScriptURL(path) }

@@ -19,7 +19,7 @@ templ InvitationEnrollmentPage(data InvitationEnrollmentData) {
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<title>Raven — Accept Invitation</title>
 			@AppIcon()
-			<link rel="stylesheet" href="/assets/css/output.css"/>
+			<link rel="stylesheet" href={ AssetURL("/assets/css/output.css") }/>
 		</head>
 		<body class="bg-background text-foreground antialiased">
 			<main class="min-h-screen flex items-center justify-center p-4">
@@ -124,7 +124,7 @@ templ CredentialRedemptionPage(data CredentialRedemptionData) {
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<title>Raven — Reset Password</title>
 			@AppIcon()
-			<link rel="stylesheet" href="/assets/css/output.css"/>
+			<link rel="stylesheet" href={ AssetURL("/assets/css/output.css") }/>
 		</head>
 		<body class="bg-background text-foreground antialiased">
 			<main class="min-h-screen flex items-center justify-center p-4">
@@ -218,7 +218,7 @@ templ passwordTokenCompletePage(title string, message string) {
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<title>Raven — { title }</title>
 			@AppIcon()
-			<link rel="stylesheet" href="/assets/css/output.css"/>
+			<link rel="stylesheet" href={ AssetURL("/assets/css/output.css") }/>
 		</head>
 		<body class="bg-background text-foreground antialiased">
 			<main class="min-h-screen flex items-center justify-center p-4">

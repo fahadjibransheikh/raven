@@ -19,7 +19,7 @@ func TestLoginPageUsesAccessibleLocalPasswordForm(t *testing.T) {
 		`aria-describedby="login-error"`, `type="submit"`,
 		`data-passkey-authentication`, `data-start-path="/login/passkey/start"`,
 		`data-finish-path="/login/passkey/finish"`, `data-identifier-source="#login-identifier"`,
-		`src="/assets/js/passkey-authentication.js"`, "Sign in with a passkey",
+		`src="/assets/js/passkey-authentication.js?`, "Sign in with a passkey",
 		`href="/account/recover"`, "Forgot password?",
 		"Have an invitation?", `href="/account/enroll"`, "Set up your account",
 	} {
