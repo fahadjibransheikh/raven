@@ -295,3 +295,33 @@ func TestSanitizeCSSDecodesEscapesInsteadOfMangling(t *testing.T) {
 		}
 	}
 }
+
+// "<" is stripped before the patterns run; stripping it afterwards re-joined
+// u<rl( into url( after url() had been checked.
+func TestSanitizeCSSStripsAngleBracketBeforeMatching(t *testing.T) {
+	decls := []string{
+		`background:u<rl(https://evil.example/x.png)`,
+		`background:ur<l(https://evil.example/x.png)`,
+		`@font-face{src:u<rl(https://evil.example/f.woff)}`,
+		`@im<port 'https://evil.example/x.css';`,
+		`background:image-s<et('https://evil.example/x.png' 1x)`,
+	}
+	var inputs []string
+	for _, d := range decls {
+		inputs = append(inputs, `<style>*{`+d+`}</style>`, `<div style="`+strings.ReplaceAll(d, `"`, "&quot;")+`">x</div>`)
+	}
+	inputs = append(inputs,
+		`<style>*{background:u<rl(https://evil.example/x.png)}`,
+		`<style>@im<port 'https://evil.example/x.css'; *{color:red}</style>`,
+		`<style>@font-face src:u<rl(https://evil.example/f.woff)</style>`,
+	)
+	for _, in := range inputs {
+		out := string(SanitizeHTML([]byte(in)))
+		if strings.Contains(out, "evil.example") || strings.Contains(out, "<") && strings.Contains(out, "u<rl") {
+			t.Errorf("input %q: remote reference survived: %s", in, out)
+		}
+		if again := string(SanitizeHTML([]byte(out))); strings.Contains(again, "evil.example") {
+			t.Errorf("input %q: output re-joins into a remote reference: %s", in, again)
+		}
+	}
+}

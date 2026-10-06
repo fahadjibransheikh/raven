@@ -271,12 +271,13 @@ var (
 
 // sanitizeCSS neutralises what CSS can fetch or execute: @import, url() to
 // anything but a local image, image-set()/src()/expression() and friends.
-// CSS escapes are decoded first (u\72l( must not hide a url()) and every
-// pattern runs on the text that is actually emitted, so nothing can be
-// re-joined afterwards. "<" is removed so a <style> body can never close its own
-// element.
+// CSS escapes are decoded first (u\72l( must not hide a url()). "<" is removed
+// before any pattern runs (and again after decoding, since \3c decodes to it):
+// stripping it last would re-join u<rl( into url( after url() was checked. It
+// also means a <style> body can never close its own element.
 func sanitizeCSS(s string) string {
-	s = cssUnescape(s)
+	s = strings.ReplaceAll(s, "<", "")
+	s = strings.ReplaceAll(cssUnescape(s), "<", "")
 	s = reCSSComment.ReplaceAllString(s, "")
 	s = reCSSImport.ReplaceAllString(s, "")
 	s = reCSSURL.ReplaceAllStringFunc(s, func(m string) string {
@@ -288,8 +289,7 @@ func sanitizeCSS(s string) string {
 		return `url("")`
 	})
 	s = reCSSFetchFn.ReplaceAllString(s, "x-blocked()")
-	s = reCSSActive.ReplaceAllString(s, "x-blocked:")
-	return strings.ReplaceAll(s, "<", "")
+	return reCSSActive.ReplaceAllString(s, "x-blocked:")
 }
 
 func RestoreRemoteImages(html []byte) []byte {
