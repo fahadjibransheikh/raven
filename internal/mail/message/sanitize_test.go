@@ -1,6 +1,8 @@
 package message
 
 import (
+	_ "embed"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -287,12 +289,68 @@ func TestRewriteCIDReferencesOnlyTouchesFetchedReferences(t *testing.T) {
 	}
 }
 
-func TestSanitizeCSSDecodesEscapesInsteadOfMangling(t *testing.T) {
-	out := string(SanitizeHTML([]byte(`<style>q:before{content:"\201C"}.sm\:w{color:red}</style>`)))
-	for _, want := range []string{"“", ".sm:w{color:red}"} {
-		if !strings.Contains(out, want) {
-			t.Errorf("missing %q in %s", want, out)
+func TestSanitizeCSSKeepsSafeEscapesAsWritten(t *testing.T) {
+	for _, in := range []string{
+		`<style>.md\:w-1\/2{width:50%}.hover\:bg-blue-500:hover{color:red}.\31 0px{margin:0}</style>`,
+		`<style>q:before{content:"\201C"}.sm\:w{color:red}</style>`,
+	} {
+		out := string(SanitizeHTML([]byte(in)))
+		body := strings.TrimSuffix(strings.TrimPrefix(in, `<style>`), `</style>`)
+		if !strings.Contains(out, body) {
+			t.Errorf("escapes rewritten: in %q out %q", in, out)
 		}
+	}
+}
+
+func TestSanitizeCSSStillCatchesEscapedFetches(t *testing.T) {
+	for _, in := range []string{
+		`<style>.a\:b{background:u\72l(https://evil.example/x.png)}</style>`,
+		`<style>.a{background:\75 rl(//evil.example/x.png)}</style>`,
+		`<style>@\69mport "https://evil.example/x.css";</style>`,
+		`<div style="background:u\72l(//evil.example/x.png)">x</div>`,
+		`<div style="b\61ckground:image-s\65t(url(//evil.example/x.png) 1x)">x</div>`,
+		`<div style="width:\65xpression(alert(1))">x</div>`,
+	} {
+		out := string(SanitizeHTML([]byte(in)))
+		if strings.Contains(out, "evil.example") || strings.Contains(strings.ToLower(out), "expression") {
+			t.Errorf("input %q: escaped fetch survived: %s", in, out)
+		}
+	}
+	// A dangerous declaration must not mangle the escapes elsewhere in the sheet.
+	out := string(SanitizeHTML([]byte(`<style>.md\:w-1\/2{width:50%}.a{background:url(https://evil.example/x)}</style>`)))
+	if !strings.Contains(out, `.md\:w-1\/2{width:50%}`) {
+		t.Errorf("safe selector rewritten next to a blocked url: %s", out)
+	}
+}
+
+//go:embed testdata/nonidempotent_inputs.txt
+var nonIdempotentInputs string
+
+// Every input the adversarial run found whose second pass differed from its
+// first (68 distinct ones). Sanitizing stored output again (translation does)
+// must change nothing, with one exception: markup the x/net parser nests
+// differently each time it is re-parsed, e.g. the misnested <a><table><a>.
+// That is the parser's round-trip behaviour, not something the sanitizer
+// rewrites, and it is stable after the second pass.
+func TestSanitizeHTMLIsIdempotentOnAdversarialCorpus(t *testing.T) {
+	n := 0
+	for _, line := range strings.Split(strings.TrimSpace(nonIdempotentInputs), "\n") {
+		in, err := strconv.Unquote(line)
+		if err != nil {
+			t.Fatalf("bad corpus line %q: %v", line, err)
+		}
+		n++
+		once := SanitizeHTML([]byte(in))
+		twice := SanitizeHTML(once)
+		if strings.Contains(in, "<a><table><a>") {
+			continue
+		}
+		if string(once) != string(twice) {
+			t.Errorf("not idempotent for %q:\n once: %s\ntwice: %s", in, once, twice)
+		}
+	}
+	if n != 68 {
+		t.Errorf("corpus has %d inputs, want 68", n)
 	}
 }
 

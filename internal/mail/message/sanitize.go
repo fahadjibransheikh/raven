@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
+	"sort"
 	"strings"
+	"unicode/utf8"
 
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
@@ -271,25 +273,79 @@ var (
 
 // sanitizeCSS neutralises what CSS can fetch or execute: @import, url() to
 // anything but a local image, image-set()/src()/expression() and friends.
-// CSS escapes are decoded first (u\72l( must not hide a url()). "<" is removed
-// before any pattern runs (and again after decoding, since \3c decodes to it):
-// stripping it last would re-join u<rl( into url( after url() was checked. It
-// also means a <style> body can never close its own element.
+// The patterns are matched on a copy with CSS escapes decoded (u\72l( must not
+// hide a url()), but only the dangerous spans are rewritten, in the original
+// text: harmless escapes such as the .md\:w-1\/2 selectors Tailwind emits stay
+// as written. "<" is removed before any pattern runs: stripping it afterwards
+// would re-join u<rl( into url( after url() was checked, and it means a <style>
+// body can never close its own element. Passes repeat until nothing changes, so
+// a rewrite that exposes a new match (comment removal joining tokens) is caught.
 func sanitizeCSS(s string) string {
 	s = strings.ReplaceAll(s, "<", "")
-	s = strings.ReplaceAll(cssUnescape(s), "<", "")
-	s = reCSSComment.ReplaceAllString(s, "")
-	s = reCSSImport.ReplaceAllString(s, "")
-	s = reCSSURL.ReplaceAllStringFunc(s, func(m string) string {
-		sub := reCSSURL.FindStringSubmatch(m)
-		v := strings.TrimSpace(sub[1] + sub[2] + sub[3])
-		if isLocalImageURL(v) && !strings.ContainsAny(v, "\"'() \t\r\n") {
-			return fmt.Sprintf(`url("%s")`, v)
+	for i := 0; i < 8; i++ {
+		next := sanitizeCSSPass(s)
+		if next == s {
+			return s
 		}
-		return `url("")`
-	})
-	s = reCSSFetchFn.ReplaceAllString(s, "x-blocked()")
-	return reCSSActive.ReplaceAllString(s, "x-blocked:")
+		s = next
+	}
+	return "" // never settled: drop it rather than emit something unchecked
+}
+
+type cssSpan struct {
+	from, to int // byte offsets in the original text
+	repl     string
+}
+
+func sanitizeCSSPass(s string) string {
+	d, pos := cssUnescape(s)
+	var spans []cssSpan
+	add := func(loc []int, repl string) {
+		spans = append(spans, cssSpan{pos[loc[0]], pos[loc[1]], repl})
+	}
+	for _, m := range reCSSComment.FindAllStringIndex(d, -1) {
+		add(m, "")
+	}
+	if len(spans) == 0 { // comments first: they can hide or join tokens
+		for _, m := range reCSSImport.FindAllStringIndex(d, -1) {
+			add(m, "")
+		}
+		for _, m := range reCSSURL.FindAllStringSubmatchIndex(d, -1) {
+			v := ""
+			for k := 1; k <= 3; k++ {
+				if m[2*k] >= 0 {
+					v = strings.TrimSpace(d[m[2*k]:m[2*k+1]])
+				}
+			}
+			repl := `url("")`
+			if isLocalImageURL(v) && !strings.ContainsAny(v, "\"'()\\ \t\r\n") {
+				repl = fmt.Sprintf(`url("%s")`, v)
+			}
+			add(m[:2], repl)
+		}
+		for _, m := range reCSSFetchFn.FindAllStringIndex(d, -1) {
+			add(m, "x-blocked()")
+		}
+		for _, m := range reCSSActive.FindAllStringIndex(d, -1) {
+			add(m, "x-blocked:")
+		}
+	}
+	if len(spans) == 0 {
+		return s
+	}
+	sort.SliceStable(spans, func(i, j int) bool { return spans[i].from < spans[j].from })
+	var b strings.Builder
+	last := 0
+	for _, sp := range spans {
+		if sp.from < last { // overlaps a rewrite already made; the next pass revisits it
+			continue
+		}
+		b.WriteString(s[last:sp.from])
+		b.WriteString(sp.repl)
+		last = sp.to
+	}
+	b.WriteString(s[last:])
+	return b.String()
 }
 
 func RestoreRemoteImages(html []byte) []byte {
@@ -340,39 +396,49 @@ func RewriteToLocalAssets(html []byte, urlToLocal map[string]string) []byte {
 
 // cssUnescape decodes CSS backslash escapes: \ + 1-6 hex digits (and one
 // trailing space), \ + newline (a line continuation, dropped), or \ + any
-// other character (that character).
-func cssUnescape(s string) string {
-	if !strings.Contains(s, `\`) {
-		return s
-	}
+// other character (that character). pos maps every byte of the result (and
+// len(result)) to the byte offset in s where the character it came from starts.
+func cssUnescape(s string) (string, []int) {
 	var b strings.Builder
-	r := []rune(s)
-	for i := 0; i < len(r); i++ {
-		if r[i] != '\\' || i+1 == len(r) {
-			b.WriteRune(r[i])
+	pos := make([]int, 0, len(s)+1)
+	emit := func(r rune, at int) {
+		before := b.Len()
+		b.WriteRune(r)
+		for n := before; n < b.Len(); n++ {
+			pos = append(pos, at)
+		}
+	}
+	for i := 0; i < len(s); {
+		start := i
+		r, w := utf8.DecodeRuneInString(s[i:])
+		i += w
+		if r != '\\' || i == len(s) {
+			emit(r, start)
 			continue
 		}
-		i++
-		if isHex(r[i]) {
+		if isHex(rune(s[i])) {
 			n, digits := rune(0), 0
-			for i < len(r) && digits < 6 && isHex(r[i]) {
-				n = n*16 + rune(hexVal(r[i]))
+			for i < len(s) && digits < 6 && isHex(rune(s[i])) {
+				n = n*16 + rune(hexVal(rune(s[i])))
 				i++
 				digits++
 			}
-			if i < len(r) && (r[i] == ' ' || r[i] == '\t' || r[i] == '\n' || r[i] == '\r' || r[i] == '\f') {
+			if i < len(s) && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n' || s[i] == '\r' || s[i] == '\f') {
 				i++
 			}
-			i--
 			if n == 0 || n > 0x10FFFF || (n >= 0xD800 && n <= 0xDFFF) {
 				n = 0xFFFD
 			}
-			b.WriteRune(n)
-		} else if r[i] != '\n' && r[i] != '\r' && r[i] != '\f' {
-			b.WriteRune(r[i])
+			emit(n, start)
+			continue
+		}
+		r2, w2 := utf8.DecodeRuneInString(s[i:])
+		i += w2
+		if r2 != '\n' && r2 != '\r' && r2 != '\f' {
+			emit(r2, start)
 		}
 	}
-	return b.String()
+	return b.String(), append(pos, len(s))
 }
 
 func isHex(r rune) bool {
