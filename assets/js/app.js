@@ -8261,7 +8261,13 @@ function handleComposeRecipientKeydown(event) {
     return
   }
   if (event.key === "Escape") {
-    _hideComposeRecipientSuggestions(field)
+    var openBox = field && field.querySelector("[data-compose-recipient-suggestions]")
+    if (openBox && !openBox.hidden) {
+      // Close only the suggestions; a second Esc then reaches the dialog's close handling.
+      event.preventDefault()
+      event.stopPropagation()
+      _hideComposeRecipientSuggestions(field)
+    }
     return
   }
   if (event.key === "Enter" || event.key === "Tab" || event.key === "," || event.key === ";") {
@@ -10960,6 +10966,13 @@ function handleReply(el, mode) {
 }
 
 function openNewCompose() {
+  // An already open compose (dialog or pane) is focused, never wiped.
+  var openDialog = document.querySelector("#compose-dialog [data-tui-dialog-content]")
+  var openForm = (openDialog && openDialog.open && document.getElementById("compose-form")) || document.getElementById("compose-pane-form")
+  if (openForm) {
+    focusComposePrefill(openForm, "new")
+    return
+  }
   resetComposeForm(false)
   var view = composeViewPreference("new")
   if (view === "pane" || view === "full") {
@@ -11829,6 +11842,36 @@ function refetchBody(emailId) {
   function _observeComposeDialog() {
     var root = document.getElementById("compose-dialog")
     if (root) _composeObserver.observe(root, { attributes: true, attributeFilter: ["data-tui-dialog-open"] })
+    _bindComposeDialogDismiss(root)
+  }
+
+  // Esc and click-away go through the same save/discard/keep-editing prompt as the X button.
+  // The dialog is rendered with DisableESC/DisableClickAway so dialog.js never closes it itself.
+  function _bindComposeDialogDismiss(root) {
+    var dialog = root && root.querySelector("[data-tui-dialog-content]")
+    if (!dialog || dialog._composeDismissBound) return
+    dialog._composeDismissBound = true
+    function requestClose(event) {
+      event.preventDefault()
+      var openBox = dialog.querySelector("[data-compose-recipient-suggestions]:not([hidden])")
+      if (openBox) {
+        _hideComposeRecipientSuggestions(openBox.closest("[data-compose-recipient-field]"))
+        return
+      }
+      var form = document.getElementById("compose-form")
+      if (form && form.dataset.composeDirty === "true") {
+        discardComposeDialog()
+        return
+      }
+      // Nothing edited (an auto signature alone is not an edit): close without asking.
+      resetComposeForm(false, true)
+      if (window.tui && window.tui.dialog) window.tui.dialog.close("compose-dialog")
+      _updateComposeBtn(false)
+    }
+    dialog.addEventListener("cancel", requestClose)
+    dialog.addEventListener("click", function (event) {
+      if (event.target === dialog) requestClose(event)
+    })
   }
 
   if (document.readyState === "loading") {

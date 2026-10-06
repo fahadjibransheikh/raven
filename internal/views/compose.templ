@@ -17,6 +17,8 @@ import (
 templ ComposeDialog(accounts []models.Account) {
 	@dialog.Dialog(dialog.Props{
 		ID: "compose-dialog",
+		DisableClickAway: true,
+		DisableESC: true,
 		Class: "[&_[data-tui-dialog-panel]]:!flex [&_[data-tui-dialog-panel]]:flex-col [&_[data-tui-dialog-panel]]:h-full [&_[data-tui-dialog-panel]]:min-h-0 [&_[data-tui-dialog-panel]]:gap-3",
 	}) {
 		@dialog.Trigger() {
