@@ -4600,7 +4600,18 @@ document.addEventListener("DOMContentLoaded", function () {
     pendingSyncEvents = remaining.slice(-50)
   }
 
+  // ~20 call sites fire this per mutation/sync event; coalesce bursts into one
+  // trailing request (the unread query is O(all messages) server-side).
+  var sidebarUnreadTimer = null
   function refreshSidebarUnread() {
+    if (sidebarUnreadTimer) return
+    sidebarUnreadTimer = setTimeout(function () {
+      sidebarUnreadTimer = null
+      fetchSidebarUnread()
+    }, 250)
+  }
+
+  function fetchSidebarUnread() {
     fetch("/api/folders/unread").then(function (r) { return r.json() }).then(function (counts) {
       var badges = document.querySelectorAll("[data-folder-unread]")
       for (var i = 0; i < badges.length; i++) {
