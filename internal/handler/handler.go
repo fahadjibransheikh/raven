@@ -3829,9 +3829,7 @@ func (h *Handler) handleAttachmentDownload(w http.ResponseWriter, r *http.Reques
 	}
 	defer f.Close()
 
-	w.Header().Set("Content-Type", info.ContentType)
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, info.Filename))
-	http.ServeContent(w, r, info.Filename, time.Time{}, f)
+	serveUntrusted(w, r, info.Filename, info.ContentType, f, "", false)
 }
 
 func (h *Handler) handleAttachmentPreview(w http.ResponseWriter, r *http.Request) {
@@ -3991,19 +3989,53 @@ func attachmentPreviewURL(id int64, contentType, filename string) string {
 	return "/api/attachments/" + strconv.FormatInt(id, 10) + "/preview"
 }
 
-func isPreviewableImage(contentType, filename string) bool {
-	contentType = strings.ToLower(strings.TrimSpace(strings.Split(contentType, ";")[0]))
-	switch contentType {
-	case "image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp", "image/svg+xml", "image/bmp", "image/x-icon", "image/vnd.microsoft.icon":
-		return true
-	}
-	lower := strings.ToLower(filename)
-	for _, ext := range []string{".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp", ".ico"} {
-		if strings.HasSuffix(lower, ext) {
-			return true
+// isPreviewableImage reports whether the declared type is a raster image that
+// serveUntrusted will render inline. The filename is deliberately ignored: a
+// sender controls it as freely as the content type.
+func isPreviewableImage(contentType, _ string) bool {
+	return inlineImageTypes[strings.ToLower(strings.TrimSpace(strings.Split(contentType, ";")[0]))]
+}
+
+var inlineImageTypes = map[string]bool{"image/png": true, "image/jpeg": true, "image/gif": true, "image/webp": true}
+
+// serveUntrusted serves email-derived bytes (attachments, inline parts, remote
+// assets). The sender controls the bytes, the declared type and the filename,
+// so: the response is sandboxed (opaque origin, no scripts), nosniff stops type
+// guessing, and only content that really is a safe raster image, judged by its
+// bytes, is shown inline. Everything else is a download. SVG/BMP/ICO keep their
+// image type (so <img> in an email still renders) but are never shown inline.
+func serveUntrusted(w http.ResponseWriter, r *http.Request, filename, declaredType string, f *os.File, cacheControl string, allowInline bool) {
+	buf := make([]byte, 512)
+	n, _ := f.Read(buf)
+	_, _ = f.Seek(0, io.SeekStart)
+	sniffed := strings.ToLower(strings.Split(http.DetectContentType(buf[:n]), ";")[0])
+	declared := strings.ToLower(strings.TrimSpace(strings.Split(declaredType, ";")[0]))
+
+	contentType, disposition := "application/octet-stream", "attachment"
+	switch {
+	case inlineImageTypes[sniffed]:
+		contentType = sniffed
+		if allowInline {
+			disposition = "inline"
 		}
+	case sniffed == "image/bmp" || sniffed == "image/x-icon":
+		contentType = sniffed
+	case declared == "image/svg+xml":
+		contentType = declared
 	}
-	return false
+	h := w.Header()
+	h.Set("Content-Security-Policy", "sandbox; default-src 'none'")
+	h.Set("X-Content-Type-Options", "nosniff")
+	h.Set("Content-Type", contentType)
+	if cd := mime.FormatMediaType(disposition, map[string]string{"filename": filename}); cd != "" {
+		h.Set("Content-Disposition", cd)
+	} else {
+		h.Set("Content-Disposition", disposition)
+	}
+	if cacheControl != "" {
+		h.Set("Cache-Control", cacheControl)
+	}
+	http.ServeContent(w, r, filename, time.Time{}, f)
 }
 
 func serveAttachmentPreview(w http.ResponseWriter, r *http.Request, filename, contentType, storagePath string) {
@@ -4013,10 +4045,7 @@ func serveAttachmentPreview(w http.ResponseWriter, r *http.Request, filename, co
 		return
 	}
 	defer f.Close()
-	w.Header().Set("Content-Type", contentType)
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`inline; filename="%s"`, filename))
-	w.Header().Set("Cache-Control", "private, max-age=300")
-	http.ServeContent(w, r, filename, time.Time{}, f)
+	serveUntrusted(w, r, filename, contentType, f, "private, max-age=300", true)
 }
 
 func (h *Handler) handleInlineContent(w http.ResponseWriter, r *http.Request) {
@@ -4052,9 +4081,7 @@ func (h *Handler) handleInlineContent(w http.ResponseWriter, r *http.Request) {
 	}
 	defer f.Close()
 
-	w.Header().Set("Content-Type", info.ContentType)
-	w.Header().Set("Cache-Control", "private, max-age=31536000")
-	http.ServeContent(w, r, info.Filename, time.Time{}, f)
+	serveUntrusted(w, r, info.Filename, info.ContentType, f, "private, max-age=31536000", true)
 }
 
 func (h *Handler) handleAllowRemoteContent(w http.ResponseWriter, r *http.Request) {
@@ -4235,8 +4262,7 @@ func (h *Handler) handleRemoteAsset(w http.ResponseWriter, r *http.Request) {
 	}
 	defer f.Close()
 
-	w.Header().Set("Cache-Control", "private, max-age=31536000")
-	http.ServeContent(w, r, filename, time.Time{}, f)
+	serveUntrusted(w, r, filename, mime.TypeByExtension(filepath.Ext(filename)), f, "private, max-age=31536000", true)
 }
 
 func (h *Handler) handleSSE(w http.ResponseWriter, r *http.Request) {
