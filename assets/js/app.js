@@ -1655,34 +1655,36 @@ document.addEventListener("DOMContentLoaded", function () {
       var keepSelection = !!(opts && opts.keepSelection)
       var clearSelection = keepSelection ? function () {} : clearMailSelection
       if (action === "label") {
-        var labelName = promptMailLabelName()
-        if (!labelName) return
-        var labelTargets = selectedMailTargets(ids)
-        clearSelection()
-        sendBulkMessageAction("/api/messages/label", labelTargets, { label: labelName, folder_id: currentMailListFolderID() }).then(function () {
-          if (virtualMailList && typeof virtualMailList.refreshCurrentFolder === "function") {
-            virtualMailList.refreshCurrentFolder({ noAnimation: true }).catch(function () {})
-          }
-          var currentEmail = virtualMailList && virtualMailList.selectedEmailId
-          if (currentEmail && ids.indexOf(currentEmail) !== -1 && window.htmx) {
-            htmx.ajax("GET", mailViewRequestURL(currentEmail), { target: "#mail-view", swap: "innerHTML" })
-          }
+        promptMailLabelName("Add label").then(function (labelName) {
+          if (!labelName) return
+          var labelTargets = selectedMailTargets(ids)
+          clearSelection()
+          sendBulkMessageAction("/api/messages/label", labelTargets, { label: labelName, folder_id: currentMailListFolderID() }).then(function () {
+            if (virtualMailList && typeof virtualMailList.refreshCurrentFolder === "function") {
+              virtualMailList.refreshCurrentFolder({ noAnimation: true }).catch(function () {})
+            }
+            var currentEmail = virtualMailList && virtualMailList.selectedEmailId
+            if (currentEmail && ids.indexOf(currentEmail) !== -1 && window.htmx) {
+              htmx.ajax("GET", mailViewRequestURL(currentEmail), { target: "#mail-view", swap: "innerHTML" })
+            }
+          })
         })
         return
       }
       if (action === "unlabel") {
-        var removeLabelName = promptMailLabelName()
-        if (!removeLabelName) return
-        var unlabelTargets = selectedMailTargets(ids)
-        clearSelection()
-        sendBulkMessageAction("/api/messages/unlabel", unlabelTargets, { label: removeLabelName, folder_id: currentMailListFolderID() }).then(function () {
-          if (virtualMailList && typeof virtualMailList.refreshCurrentFolder === "function") {
-            virtualMailList.refreshCurrentFolder({ noAnimation: true }).catch(function () {})
-          }
-          var currentEmail = virtualMailList && virtualMailList.selectedEmailId
-          if (currentEmail && ids.indexOf(currentEmail) !== -1 && window.htmx) {
-            htmx.ajax("GET", mailViewRequestURL(currentEmail), { target: "#mail-view", swap: "innerHTML" })
-          }
+        promptMailLabelName("Remove label").then(function (removeLabelName) {
+          if (!removeLabelName) return
+          var unlabelTargets = selectedMailTargets(ids)
+          clearSelection()
+          sendBulkMessageAction("/api/messages/unlabel", unlabelTargets, { label: removeLabelName, folder_id: currentMailListFolderID() }).then(function () {
+            if (virtualMailList && typeof virtualMailList.refreshCurrentFolder === "function") {
+              virtualMailList.refreshCurrentFolder({ noAnimation: true }).catch(function () {})
+            }
+            var currentEmail = virtualMailList && virtualMailList.selectedEmailId
+            if (currentEmail && ids.indexOf(currentEmail) !== -1 && window.htmx) {
+              htmx.ajax("GET", mailViewRequestURL(currentEmail), { target: "#mail-view", swap: "innerHTML" })
+            }
+          })
         })
         return
       }
@@ -2114,12 +2116,6 @@ document.addEventListener("DOMContentLoaded", function () {
         sortBy: "date",
         sortOrder: "desc",
       }
-    }
-
-    function promptMailLabelName() {
-      var value = window.prompt("Label name")
-      if (value == null) return ""
-      return String(value).trim()
     }
 
     function readFilters() {
@@ -8649,13 +8645,18 @@ function composeCreateLink(el) {
   if (!editor) return
   editor.focus()
   _restoreComposeSelection(editor)
-  var url = window.prompt("Paste a URL or email address")
-  if (!url) return
-  if (url.indexOf("@") > 0 && !/^[a-z][a-z0-9+.-]*:/i.test(url)) url = "mailto:" + url
-  if (!/^(https?:|mailto:)/i.test(url)) url = "https://" + url
-  document.execCommand("createLink", false, url)
-  syncComposeEditor(editor)
-  updateComposeToolbar(editor)
+  _saveComposeSelection(editor)
+  goferPrompt("Insert link", "Paste a URL or email address", { placeholder: "https://example.com", confirmLabel: "Insert" }).then(function (url) {
+    url = String(url == null ? "" : url).trim()
+    if (!url) return
+    if (url.indexOf("@") > 0 && !/^[a-z][a-z0-9+.-]*:/i.test(url)) url = "mailto:" + url
+    if (!/^(https?:|mailto:)/i.test(url)) url = "https://" + url
+    editor.focus()
+    _restoreComposeSelection(editor)
+    document.execCommand("createLink", false, url)
+    syncComposeEditor(editor)
+    updateComposeToolbar(editor)
+  })
 }
 
 function updateComposeToolbar(editor) {
@@ -11487,11 +11488,22 @@ function markSpamState(emailId, notSpam, thread) {
     .catch(function () { restoreOptimisticMailRemoval(emailId, vml); showMailActionError(notSpam ? "Could not move out of spam" : "Could not report spam", "The change was undone. Try again.") })
 }
 
+// Top level on purpose: performMailAction (selection toolbar) lives in a different closure than
+// the filter code this used to be declared in, so it threw a ReferenceError.
+function promptMailLabelName(title) {
+  return goferPrompt(title, "Label name", { placeholder: "Label name", confirmLabel: title }).then(function (value) {
+    return value == null ? "" : String(value).trim()
+  })
+}
+
 function promptLabelMessage(emailId, thread) {
-  var labelName = window.prompt("Label name")
-  if (labelName == null) return
-  labelName = String(labelName).trim()
-  if (!labelName) return
+  goferPrompt("Add label", "Label name", { placeholder: "Label name", confirmLabel: "Add label" }).then(function (labelName) {
+    labelName = String(labelName == null ? "" : labelName).trim()
+    if (labelName) addLabelToMessage(emailId, labelName, thread)
+  })
+}
+
+function addLabelToMessage(emailId, labelName, thread) {
   fetch("/api/messages/" + encodeURIComponent(emailId) + "/label", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

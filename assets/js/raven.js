@@ -164,7 +164,9 @@
 
   // Resolves the chosen action, or "cancel" when dismissed. Mounted inside the
   // open modal dialog, if any, so it isn't inert.
-  window.goferChoice = function (title, text, actions) {
+  // options.input = { value, placeholder } adds a text field; its final text is written back to
+  // options.input.value (used by goferPrompt).
+  window.goferChoice = function (title, text, actions, options) {
     return new Promise(function (resolve) {
       var panel = document.createElement("div")
       panel.className = "compose-close-choice compose-close-choice-floating"
@@ -175,10 +177,26 @@
       body.textContent = text
       panel.appendChild(heading)
       panel.appendChild(body)
+      var textField = null
+      if (options && options.input) {
+        textField = document.createElement("input")
+        textField.type = "text"
+        textField.value = options.input.value || ""
+        textField.placeholder = options.input.placeholder || ""
+        textField.setAttribute("aria-label", title)
+        textField.className = "mt-3 h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"
+        textField.addEventListener("keydown", function (event) {
+          if (event.key !== "Enter") return
+          event.preventDefault()
+          finish("ok")
+        })
+        panel.appendChild(textField)
+      }
       var settled = false
       function finish(action) {
         if (settled) return
         settled = true
+        if (textField) options.input.value = textField.value
         panel.removeEventListener("toggle", onToggle)
         if (panel.matches && panel.matches(":popover-open")) panel.hidePopover()
         panel.remove()
@@ -207,7 +225,22 @@
       var dialogs = document.querySelectorAll("dialog[open]")
       ;(dialogs.length ? dialogs[dialogs.length - 1] : document.body).appendChild(panel)
       if (panel.showPopover) panel.showPopover()
+      if (textField) {
+        textField.focus()
+        textField.select()
+      }
     })
+  }
+
+  // In-app replacement for window.prompt (which returns null silently in the desktop WKWebView).
+  // Resolves the entered text, or null when cancelled.
+  window.goferPrompt = function (title, text, opts) {
+    opts = opts || {}
+    var input = { value: opts.value || "", placeholder: opts.placeholder || "" }
+    return window.goferChoice(title, text, [
+      { label: "Cancel", action: "cancel" },
+      { label: opts.confirmLabel || "OK", action: "ok", primary: true }
+    ], { input: input }).then(function (action) { return action === "ok" ? input.value : null })
   }
 
   window.goferConfirm = function (title, text, confirmLabel) {
