@@ -926,7 +926,7 @@ func TestSyncOutlookGraphFolderFullReconcilesMissingSenderMetadata(t *testing.T)
 	}))
 	defer server.Close()
 
-	if _, err := db.Write().ExecContext(ctx, `UPDATE folders SET total_count = 1, sync_cursor = ?, last_full_sync_at = CURRENT_TIMESTAMP WHERE id = 'acc_inbox'`, server.URL+"/delta/current"); err != nil {
+	if _, err := db.Write().ExecContext(ctx, `UPDATE folders SET total_count = 1, sync_cursor = ?, last_full_sync_at = datetime('now', '-2 days') WHERE id = 'acc_inbox'`, server.URL+"/delta/current"); err != nil {
 		t.Fatalf("set folder state: %v", err)
 	}
 
