@@ -27,7 +27,7 @@ test("dialog reply focuses the editor only after the dialog is open", async () =
 })
 
 test("new compose focuses To, then Subject when To is filled, then the body", async () => {
-  const dom = new JSDOM('<!doctype html><body><form id="compose-form"><div data-recipient-name="to"><span data-compose-recipient-input></span></div>' +
+  const dom = new JSDOM('<!doctype html><body><form id="compose-form"><div data-compose-account-item></div><div data-recipient-name="to"><span data-compose-recipient-input></span></div>' +
     '<input name="to"><input name="subject"><div data-compose-editor contenteditable="true"></div></form></body>', { runScripts: "outside-only", pretendToBeVisual: true })
   const w = dom.window
   w.EventSource = function () { this.addEventListener = function () {}; this.close = function () {} }
@@ -51,4 +51,27 @@ test("new compose focuses To, then Subject when To is filled, then the body", as
   d.querySelector('input[name="subject"]').value = "Hi"
   w.focusComposePrefill(d.getElementById("compose-form"), "new")
   assert.equal(focused[focused.length - 1], "body")
+})
+
+test("compose with no account shows a toast instead of opening", async () => {
+  const dom = new JSDOM('<!doctype html><body><form id="compose-form"><div data-compose-editor contenteditable="true"></div></form></body>', { runScripts: "outside-only", pretendToBeVisual: true })
+  const w = dom.window
+  w.EventSource = function () { this.addEventListener = function () {}; this.close = function () {} }
+  w.matchMedia = function () { return { matches: true, addEventListener: function () {}, addListener: function () {} } }
+  w.fetch = function () { return Promise.resolve({ ok: true, json: function () { return Promise.resolve({}) } }) }
+  w.eval(appJS)
+  if (w.document.readyState === "loading") {
+    await new Promise(function (resolve) { w.document.addEventListener("DOMContentLoaded", resolve) })
+  }
+  let opened = false
+  const toasts = []
+  w.tui = { dialog: { open: function () { opened = true } } }
+  w.showGoferToast = function (o) { toasts.push(o.title) }
+  w.openNewCompose()
+  assert.equal(opened, false)
+  assert.deepEqual(toasts, ["Add an account first"])
+  // With an account present it opens as before.
+  w.document.getElementById("compose-form").insertAdjacentHTML("beforeend", '<div data-compose-account-item></div>')
+  w.openNewCompose()
+  assert.equal(opened, true)
 })

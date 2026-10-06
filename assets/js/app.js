@@ -10949,6 +10949,7 @@ function writeComposePrefill(form, vals, prefix, mode) {
 }
 
 function openComposePrefill(vals, mode) {
+  if (_composeBlockedWithoutAccount()) return Promise.resolve(false)
   return _activeComposeCanBeReplaced().then(function (ok) {
     return ok && _openComposePrefill(vals, mode)
   })
@@ -11113,7 +11114,15 @@ function handleReply(el, mode) {
     })
 }
 
+// With no account there is no sender: say so instead of opening a form whose From is "<>".
+function _composeBlockedWithoutAccount() {
+  if (!document.getElementById("compose-form") || document.querySelector("[data-compose-account-item]")) return false
+  showGoferToast({ id: "compose-no-account", title: "Add an account first", description: "Connect an email account in Settings to write mail.", variant: "error", icon: "error", position: "bottom-right", duration: 6000, dismissible: true })
+  return true
+}
+
 function openNewCompose() {
+  if (_composeBlockedWithoutAccount()) return
   // An already open compose (dialog or pane) is focused, never wiped.
   var openDialog = document.querySelector("#compose-dialog [data-tui-dialog-content]")
   var openForm = (openDialog && openDialog.open && document.getElementById("compose-form")) || document.getElementById("compose-pane-form")
