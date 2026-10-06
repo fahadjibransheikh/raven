@@ -183,6 +183,7 @@ func runServer() {
 	handler = authManager.Middleware(handler)
 	handler = httpConfig.Middleware(handler)
 	handler = httpConfig.ClientNetworkMiddleware(authConfig.Enabled, handler)
+	handler = httpguard.Gzip(handler)
 
 	fmt.Printf("Raven running on %s\n", httpConfig.BaseURL)
 	fmt.Printf("listening on %s\n", httpConfig.ListenAddr)
