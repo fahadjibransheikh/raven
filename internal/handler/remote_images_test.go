@@ -55,3 +55,46 @@ func TestEmailBodyLoadsRemoteImagesUnlessSettingIsOff(t *testing.T) {
 		t.Fatalf("approved message body = %q, want remote image loaded", body)
 	}
 }
+
+func TestEmailBodyRestoresRemoteBackgroundsOnlyWhenAllowed(t *testing.T) {
+	h, db := newAccountOwnershipTestHandler(t)
+	fixture := insertVictimReadableMessage(t, h, db)
+	ctx := t.Context()
+	var bodyPath string
+	if err := db.Read().QueryRowContext(ctx, `SELECT body_html_path FROM messages WHERE id = ?`, fixture.messageID).Scan(&bodyPath); err != nil {
+		t.Fatalf("body path: %v", err)
+	}
+	blocked := `<style>.hero{background:url("raven-remote:https://img.example/hero.png")}</style><table><tr><td data-remote-bg="https://img.example/bg.png">x</td></tr></table>`
+	if err := os.WriteFile(bodyPath, []byte(blocked), 0o600); err != nil {
+		t.Fatalf("write body: %v", err)
+	}
+	fetch := func() (string, string) {
+		req := httptest.NewRequest(http.MethodGet, "/email/101/body", nil)
+		req.SetPathValue("id", strconv.FormatInt(fixture.messageID, 10))
+		rec := httptest.NewRecorder()
+		h.handleEmailBody(rec, ownerRequest(req))
+		return rec.Body.String(), strings.Join(rec.Header().Values("Content-Security-Policy"), " | ")
+	}
+
+	body, csp := fetch()
+	if !strings.Contains(body, `url("https://img.example/hero.png")`) || !strings.Contains(body, `background="https://img.example/bg.png"`) {
+		t.Errorf("allowed: backgrounds not restored: %s", body)
+	}
+	if !strings.Contains(csp, "img-src 'self' data: https: http:") || strings.Contains(csp, "font-src") {
+		t.Errorf("allowed: CSP = %s, want remote images but no font-src", csp)
+	}
+
+	if err := db.SetUISettings(ctx, "owner", map[string]string{"load_remote_images": "false"}); err != nil {
+		t.Fatalf("SetUISettings: %v", err)
+	}
+	body, csp = fetch()
+	if strings.Contains(body, `url("https://img.example`) || strings.Contains(body, `background="https://img.example`) || !strings.Contains(body, `raven-remote:https://img.example/hero.png`) {
+		t.Errorf("blocked: backgrounds restored or marker lost: %s", body)
+	}
+	if !strings.Contains(csp, "img-src 'self' data:;") || !strings.Contains(body, "data-remote-bg") {
+		t.Errorf("blocked: CSP = %s", csp)
+	}
+	if !strings.Contains(body, "remoteContentBlocked") {
+		t.Errorf("blocked: banner script missing")
+	}
+}

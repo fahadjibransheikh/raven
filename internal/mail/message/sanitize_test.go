@@ -2,6 +2,7 @@ package message
 
 import (
 	_ "embed"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -134,24 +135,29 @@ func TestSanitizeHTMLDropsUnsafeLinkTargets(t *testing.T) {
 	}
 }
 
+// reBlockedCSSURL is the blocked form of a remote CSS background, as written in
+// a <style> element or (parsed) in a style attribute.
+var reBlockedCSSURL = regexp.MustCompile(`url\("raven-remote:[^"]*"\)`)
+
 // remoteRefs returns every place a remote URL (host t.example) is still
-// referenced other than the two sanctioned ones: <a href> (a click, not a
-// fetch) and <img data-remote-src> (the blocked-image marker).
+// referenced other than the sanctioned ones: <a href> (a click, not a fetch),
+// <img data-remote-src> and background data-remote-bg (the blocked-image
+// markers) and url("raven-remote:...") (the blocked-CSS-background marker).
 func remoteRefs(t *testing.T, out []byte) []string {
 	t.Helper()
 	var found []string
 	walk(parseOut(t, out), func(n *html.Node) {
-		if n.Type == html.TextNode && n.Parent != nil && n.Parent.Data == "style" && strings.Contains(n.Data, "t.example") {
+		if n.Type == html.TextNode && n.Parent != nil && n.Parent.Data == "style" && strings.Contains(reBlockedCSSURL.ReplaceAllString(n.Data, ""), "t.example") {
 			found = append(found, "<style> text: "+n.Data)
 		}
 		if n.Type != html.ElementNode {
 			return
 		}
 		for _, a := range n.Attr {
-			if !strings.Contains(a.Val, "t.example") {
+			if !strings.Contains(reBlockedCSSURL.ReplaceAllString(a.Val, ""), "t.example") {
 				continue
 			}
-			if (n.Data == "a" && a.Key == "href") || (n.Data == "img" && a.Key == "data-remote-src") {
+			if (n.Data == "a" && a.Key == "href") || (n.Data == "img" && a.Key == "data-remote-src") || a.Key == "data-remote-bg" {
 				continue
 			}
 			found = append(found, "<"+n.Data+" "+a.Key+"="+a.Val+">")
@@ -302,6 +308,12 @@ func TestSanitizeCSSKeepsSafeEscapesAsWritten(t *testing.T) {
 	}
 }
 
+// unmarked removes the blocked-background markers (url("raven-remote:...")),
+// which are inert until the user allows remote content, from rendered output.
+func unmarked(out string) string {
+	return regexp.MustCompile(`url\((?:"|&#34;)raven-remote:.*?(?:"|&#34;)\)`).ReplaceAllString(out, "")
+}
+
 func TestSanitizeCSSStillCatchesEscapedFetches(t *testing.T) {
 	for _, in := range []string{
 		`<style>.a\:b{background:u\72l(https://evil.example/x.png)}</style>`,
@@ -312,7 +324,7 @@ func TestSanitizeCSSStillCatchesEscapedFetches(t *testing.T) {
 		`<div style="width:\65xpression(alert(1))">x</div>`,
 	} {
 		out := string(SanitizeHTML([]byte(in)))
-		if strings.Contains(out, "evil.example") || strings.Contains(strings.ToLower(out), "expression") {
+		if strings.Contains(unmarked(out), "evil.example") || strings.Contains(strings.ToLower(out), "expression") {
 			t.Errorf("input %q: escaped fetch survived: %s", in, out)
 		}
 	}
@@ -375,11 +387,118 @@ func TestSanitizeCSSStripsAngleBracketBeforeMatching(t *testing.T) {
 	)
 	for _, in := range inputs {
 		out := string(SanitizeHTML([]byte(in)))
-		if strings.Contains(out, "evil.example") || strings.Contains(out, "<") && strings.Contains(out, "u<rl") {
+		// Once "<" is gone u<rl( is a plain background url(), which is only ever
+		// emitted as the blocked marker; fonts and @import must vanish entirely.
+		if strings.Contains(unmarked(out), "evil.example") || strings.Contains(out, "u<rl") {
 			t.Errorf("input %q: remote reference survived: %s", in, out)
 		}
-		if again := string(SanitizeHTML([]byte(out))); strings.Contains(again, "evil.example") {
+		if strings.Contains(in, "@im") || strings.Contains(in, "@font-face") {
+			if strings.Contains(out, "evil.example") || strings.Contains(out, "raven-remote") {
+				t.Errorf("input %q: import/font reference survived: %s", in, out)
+			}
+		}
+		if again := string(SanitizeHTML([]byte(out))); strings.Contains(unmarked(again), "evil.example") {
 			t.Errorf("input %q: output re-joins into a remote reference: %s", in, again)
 		}
+	}
+}
+
+// Remote backgrounds are blocked like remote <img>s: kept as a marker that
+// RestoreRemoteImages turns back into the real URL once the user allows remote
+// content, and that RewriteToLocalAssets points at the downloaded copy.
+func TestRemoteBackgroundsAreMarkedAndRestored(t *testing.T) {
+	cases := []struct{ name, in, marker, restored string }{
+		{"style attr", `<div style="color:red;background-image:url('https://t.example/h.png?a=1&b=2')">x</div>`,
+			`url(&#34;raven-remote:https://t.example/h.png?a=1&amp;b=2&#34;)`, `url(&#34;https://t.example/h.png?a=1&amp;b=2&#34;)`},
+		{"style attr shorthand, protocol-relative", `<div style="background:#fff url(//t.example/h.png) no-repeat">x</div>`,
+			`url(&#34;raven-remote:https://t.example/h.png&#34;)`, `url(&#34;https://t.example/h.png&#34;)`},
+		{"style element", `<style>.hero{background-image:url(https://t.example/h.png)}@media (max-width:480px){.hero{background:url("http://t.example/s.png")}}</style>`,
+			`url("raven-remote:https://t.example/h.png")`, `url("https://t.example/h.png")`},
+		{"escaped url", `<style>.hero{background:u\72l(https://t.example/h.png)}</style>`,
+			`url("raven-remote:https://t.example/h.png")`, `url("https://t.example/h.png")`},
+		{"background attribute", `<table><tr><td background="https://t.example/h.png">x</td></tr></table>`,
+			`data-remote-bg="https://t.example/h.png"`, `background="https://t.example/h.png"`},
+	}
+	for _, c := range cases {
+		blocked := string(SanitizeHTML([]byte(c.in)))
+		if !strings.Contains(blocked, c.marker) {
+			t.Errorf("%s: want blocked marker %s in %s", c.name, c.marker, blocked)
+		}
+		if again := string(SanitizeHTML([]byte(blocked))); again != blocked {
+			t.Errorf("%s: marker does not survive re-sanitizing:\n once: %s\ntwice: %s", c.name, blocked, again)
+		}
+		if !IsRemoteImagesBlocked(blocked) {
+			t.Errorf("%s: blocked body not reported as blocked", c.name)
+		}
+		if urls := ExtractRemoteURLs(blocked); len(urls) == 0 || strings.Contains(urls[0], "&amp;") || !strings.HasPrefix(urls[0], "https://t.example/") {
+			t.Errorf("%s: ExtractRemoteURLs = %v", c.name, urls)
+		}
+		restored := string(RestoreRemoteImages([]byte(blocked)))
+		if !strings.Contains(restored, c.restored) || strings.Contains(restored, "raven-remote") || strings.Contains(restored, "data-remote-bg") {
+			t.Errorf("%s: want %s restored in %s", c.name, c.restored, restored)
+		}
+	}
+}
+
+func TestRemoteBackgroundsNeverAllowFontsImportsOrOtherFetches(t *testing.T) {
+	for _, in := range []string{
+		`<style>@font-face{font-family:x;src:url(https://t.example/f.woff2) format("woff2")}</style>`,
+		`<style>@font-face{font-family:x;src:url("a;background:"),url(https://t.example/f.woff2)}</style>`,
+		`<style>@font-face{font-family:x;src:local(x)}.a{src:url(https://t.example/f2.woff)}</style>`,
+		`<style>@import url(https://t.example/x.css);@import "https://t.example/y.css";</style>`,
+		`<style>@import 'https://t.example/x.css'; .hero{color:red}</style>`,
+		`<div style="list-style:url(https://t.example/p);content:url(https://t.example/p);cursor:url(https://t.example/p),auto;border-image:url(https://t.example/p) 1;mask:url(https://t.example/p)">x</div>`,
+		`<div style="background:image-set(url(https://t.example/p) 1x);background-image:-webkit-image-set(url(https://t.example/p) 1x)">x</div>`,
+		`<div style="background:cross-fade(url(https://t.example/p), url(https://t.example/q), 50%)">x</div>`,
+		`<div style="background:image-set(url(https://t.example/p) 1x, url(https://t.example/q) 2x)">x</div>`,
+		`<div style="background:image-set('https://t.example/p)' 1x, url(https://t.example/q) 2x)">x</div>`,
+		`<div style="background:url(ftp://t.example/p);background:url(file:///etc/passwd);background:url(javascript:alert(1))">x</div>`,
+		`<div style="background:url(raven-remote:file:///etc/passwd);background:url(raven-remote:javascript:alert(1))">x</div>`,
+		`<div style="background:url('https://t.example/p&#34;);x:url(&quot;')">x</div>`,
+		`<td background="ftp://t.example/p" data-remote-bg="file:///etc/passwd">x</td>`,
+		`<div background="https://t.example/p" data-remote-bg="https://t.example/p">x</div>`,
+	} {
+		out := SanitizeHTML([]byte(in))
+		restored := string(RestoreRemoteImages(out))
+		if strings.Contains(restored, "t.example") || strings.Contains(restored, "file:") || strings.Contains(restored, "javascript:") || strings.Contains(restored, "ftp:") {
+			t.Errorf("input %q: fetchable reference after restore: %s", in, restored)
+		}
+	}
+	// A background next to a blocked font still comes back.
+	out := SanitizeHTML([]byte(`<style>@font-face{font-family:x;src:url(https://t.example/f.woff2)}.hero{background:url(https://t.example/h.png)}</style>`))
+	restored := string(RestoreRemoteImages(out))
+	if !strings.Contains(restored, `url("https://t.example/h.png")`) || strings.Contains(restored, "f.woff2") {
+		t.Errorf("hero background lost or font kept: %s", restored)
+	}
+}
+
+func TestRewriteToLocalAssetsCoversBackgrounds(t *testing.T) {
+	in := `<style>.h{background:url(https://t.example/a.png)}.g{background:url(https://t.example/gone.png)}</style>` +
+		`<div style="background-image:url(https://t.example/b.png?x=1&y=2)">x</div>` +
+		`<table><tr><td background="https://t.example/c.png?x=1&y=2">x</td><td background="https://t.example/gone2.png">y</td></tr></table>` +
+		`<img src="https://t.example/d.png?x=1&y=2">`
+	body := SanitizeHTML([]byte(in))
+	urls := ExtractRemoteURLs(string(body))
+	if len(urls) != 6 {
+		t.Fatalf("ExtractRemoteURLs = %v, want 6", urls)
+	}
+	local := map[string]string{
+		"https://t.example/a.png":         "/api/remote-assets/1/a.png",
+		"https://t.example/b.png?x=1&y=2": "/api/remote-assets/1/b.png",
+		"https://t.example/c.png?x=1&y=2": "/api/remote-assets/1/c.png",
+		"https://t.example/d.png?x=1&y=2": "/api/remote-assets/1/d.png",
+	}
+	out := string(RewriteToLocalAssets(body, local))
+	for _, want := range []string{`url("/api/remote-assets/1/a.png")`, `url(&#34;/api/remote-assets/1/b.png&#34;)`, `background="/api/remote-assets/1/c.png"`, `src="/api/remote-assets/1/d.png"`} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %s in %s", want, out)
+		}
+	}
+	if strings.Contains(out, "data-remote") || strings.Contains(out, "raven-remote") || strings.Contains(out, `url("https`) {
+		t.Errorf("unresolved remote reference left in %s", out)
+	}
+	// What is left is local, so sanitizing again keeps it and nothing is blocked.
+	if again := string(SanitizeHTML([]byte(out))); IsRemoteImagesBlocked(again) || !strings.Contains(again, `/api/remote-assets/1/c.png`) {
+		t.Errorf("rewritten body not stable under re-sanitizing: %s", again)
 	}
 }

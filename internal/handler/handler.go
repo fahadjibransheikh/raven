@@ -1367,7 +1367,7 @@ func emailResizeScript(emailID string) []byte {
 }
 
 func remoteImagesDetectScript(emailID string) []byte {
-	return []byte(fmt.Sprintf(`<script>(function(){var id=%q;if(document.querySelector('[data-remote-src]')){parent.postMessage({type:'remoteContentBlocked',emailId:id},'*')}})();</script>`, emailID))
+	return []byte(fmt.Sprintf(`<script>(function(){var id=%q;if(document.querySelector('[data-remote-src],[data-remote-bg]')||document.documentElement.innerHTML.indexOf('raven-'+'remote:')>-1){parent.postMessage({type:'remoteContentBlocked',emailId:id},'*')}})();</script>`, emailID))
 }
 
 // emailExternalLinksScript hands link clicks to the parent page, which opens
@@ -1400,13 +1400,13 @@ func withScriptNonce(script, nonce string) string {
 func emailBodyDocument(w http.ResponseWriter, emailID string, body []byte, theme, bg, fg, link string, original, loadRemote, reportBlocked bool) []byte {
 	nonce := newCSPNonce()
 	img := "img-src 'self' data:"
-	remote := ""
 	if loadRemote {
+		// Images and CSS backgrounds only. The sanitizer drops @font-face and
+		// @import, and default-src 'none' keeps remote fonts blocked even if one slipped through.
 		img += " https: http:"
-		remote = "; font-src https: http:"
 	}
 	// Add, not Set: keep the global frame-ancestors policy.
-	w.Header().Add("Content-Security-Policy", "sandbox allow-scripts; default-src 'none'; script-src 'nonce-"+nonce+"'; style-src 'unsafe-inline'; "+img+remote+"; form-action 'none'; base-uri 'none'")
+	w.Header().Add("Content-Security-Policy", "sandbox allow-scripts; default-src 'none'; script-src 'nonce-"+nonce+"'; style-src 'unsafe-inline'; "+img+"; form-action 'none'; base-uri 'none'")
 	doc := buildBodyDocument(body, emailResizeScript(emailID), nonce, theme, bg, fg, link, original)
 	if reportBlocked {
 		doc = append(doc, withScriptNonce(string(remoteImagesDetectScript(emailID)), nonce)...)

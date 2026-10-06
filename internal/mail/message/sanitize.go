@@ -3,6 +3,7 @@ package message
 import (
 	"bytes"
 	"fmt"
+	stdhtml "html"
 	"net/url"
 	"regexp"
 	"sort"
@@ -15,9 +16,11 @@ import (
 
 // SanitizeHTML turns untrusted mail HTML into markup that is safe to show in
 // the message iframe. It parses the HTML, keeps only an allowlist of layout
-// elements and attributes, and neutralises every remote reference: <img> URLs
-// become a data-remote-src marker (see RestoreRemoteImages), everything else
-// (srcset, background, CSS url()/@import, ...) is dropped. Mail without an
+// elements and attributes, and neutralises every remote reference: <img> URLs,
+// background= attributes and CSS background url()s become markers
+// (data-remote-src, data-remote-bg, url("raven-remote:...")) that
+// RestoreRemoteImages undoes once the user allows remote content; everything
+// else (srcset, other CSS url()s, @import, @font-face, ...) is dropped. Mail without an
 // <html> tag stays a fragment because buildBodyDocument keys off that.
 func SanitizeHTML(input []byte) []byte {
 	return sanitizeHTML(input)
@@ -147,7 +150,7 @@ func cleanElement(parent, el *html.Node) {
 
 func cleanAttrs(el *html.Node) {
 	var attrs []html.Attribute
-	var src, marker string
+	var src, marker, bgMarker string
 	for _, a := range el.Attr {
 		if a.Namespace != "" {
 			continue
@@ -167,9 +170,17 @@ func cleanAttrs(el *html.Node) {
 			src = cleanURLValue(a.Val)
 		case a.Key == "data-remote-src" && el.Data == "img":
 			marker = cleanURLValue(a.Val)
-		case a.Key == "background":
-			if v := cleanURLValue(a.Val); backgroundElements[el.Data] && isLocalImageURL(v) {
+		case a.Key == "background" || a.Key == "data-remote-bg":
+			if !backgroundElements[el.Data] {
+				break
+			}
+			// A remote background is blocked the way a remote <img> is: the URL moves
+			// to a marker that RestoreRemoteImages turns back into background=. The
+			// marker is accepted as input so re-sanitizing stored output is stable.
+			if v := cleanURLValue(a.Val); a.Key == "background" && isLocalImageURL(v) {
 				attrs = append(attrs, html.Attribute{Key: "background", Val: v})
+			} else if remote, ok := remoteHTTPURL(v); ok && bgMarker == "" {
+				bgMarker = remote
 			}
 		case allowedAttrs[a.Key] || strings.HasPrefix(a.Key, "aria-"):
 			attrs = append(attrs, a)
@@ -177,6 +188,9 @@ func cleanAttrs(el *html.Node) {
 	}
 	if el.Data == "img" {
 		attrs = append(imageSourceAttrs(src, marker), attrs...)
+	}
+	if bgMarker != "" {
+		attrs = append(attrs, html.Attribute{Key: "data-remote-bg", Val: bgMarker})
 	}
 	el.Attr = attrs
 }
@@ -267,9 +281,66 @@ var (
 	reCSSComment = regexp.MustCompile(`(?s)/\*.*?(?:\*/|$)`)
 	reCSSImport  = regexp.MustCompile(`(?is)@import\b[^;{}]*;?`)
 	reCSSURL     = regexp.MustCompile(`(?is)url\s*\(\s*(?:"([^"]*)"|'([^']*)'|([^)]*))\s*\)`)
-	reCSSFetchFn = regexp.MustCompile(`(?i)(?:-[a-z]+-)?(?:image-set|cross-fade|element|image|src|expression)\s*\([^)]*\)?`)
+	reCSSFetchFn = regexp.MustCompile(`(?i)(?:-[a-z]+-)?(?:image-set|cross-fade|element|image|src|expression)\s*\(`)
 	reCSSActive  = regexp.MustCompile(`(?i)(?:-moz-binding|behavior)\s*:`)
+	// One declaration or selector per match (strings are consumed whole, so a
+	// ; or } inside one does not split it), and the property it starts with.
+	reCSSSegment = regexp.MustCompile(`(?s)((?:"[^"]*"|'[^']*'|[^;{}"'])*)(?:[;{}]|$)`)
+	reCSSBgProp  = regexp.MustCompile(`(?is)^\s*background(?:-image)?\s*:`)
+	reCSSMarker  = regexp.MustCompile(`url\((?:"|&#34;)raven-remote:(.*?)(?:"|&#34;)\)`)
 )
+
+// remoteCSSMarker prefixes a remote CSS url() that is blocked for now:
+// url("raven-remote:https://..."). It is not a fetchable scheme, so the browser
+// ignores it until RestoreRemoteImages strips the prefix.
+const remoteCSSMarker = "raven-remote:"
+
+// remoteCSSURL accepts an http(s) URL that can be written back inside url("...").
+func remoteCSSURL(v string) (string, bool) {
+	if len(v) >= len(remoteCSSMarker) && strings.EqualFold(v[:len(remoteCSSMarker)], remoteCSSMarker) {
+		v = v[len(remoteCSSMarker):]
+	}
+	if strings.ContainsAny(v, "\"'()\\") || strings.Contains(v, "&#") || strings.IndexFunc(v, func(r rune) bool { return r <= ' ' }) >= 0 {
+		return "", false
+	}
+	return remoteHTTPURL(v)
+}
+
+// cssCallEnd returns the offset just past the ) closing a call whose ( ends at
+// open (or len(d)), so everything nested in image-set(url(a) 1x, url(b) 2x) goes
+// with it; strings are skipped so a ) inside one does not close it early.
+func cssCallEnd(d string, open int) int {
+	depth := 1
+	for i := open; i < len(d); i++ {
+		switch c := d[i]; c {
+		case '(':
+			depth++
+		case ')':
+			if depth--; depth == 0 {
+				return i + 1
+			}
+		case '"', '\'':
+			if end := strings.IndexByte(d[i+1:], c); end >= 0 {
+				i += end + 1
+			}
+		}
+	}
+	return len(d)
+}
+
+// cssBackgroundSpans returns the byte ranges of d that are background or
+// background-image declarations: the only place a remote url() is kept. Not
+// list-style, content, cursor, border-image, mask, and above all not the src of
+// an @font-face.
+func cssBackgroundSpans(d string) [][2]int {
+	var spans [][2]int
+	for _, m := range reCSSSegment.FindAllStringSubmatchIndex(d, -1) {
+		if reCSSBgProp.MatchString(d[m[2]:m[3]]) {
+			spans = append(spans, [2]int{m[2], m[3]})
+		}
+	}
+	return spans
+}
 
 // sanitizeCSS neutralises what CSS can fetch or execute: @import, url() to
 // anything but a local image, image-set()/src()/expression() and friends.
@@ -310,6 +381,7 @@ func sanitizeCSSPass(s string) string {
 		for _, m := range reCSSImport.FindAllStringIndex(d, -1) {
 			add(m, "")
 		}
+		bg := cssBackgroundSpans(d)
 		for _, m := range reCSSURL.FindAllStringSubmatchIndex(d, -1) {
 			v := ""
 			for k := 1; k <= 3; k++ {
@@ -320,11 +392,18 @@ func sanitizeCSSPass(s string) string {
 			repl := `url("")`
 			if isLocalImageURL(v) && !strings.ContainsAny(v, "\"'()\\ \t\r\n") {
 				repl = fmt.Sprintf(`url("%s")`, v)
+			} else if remote, ok := remoteCSSURL(v); ok {
+				for _, r := range bg {
+					if m[0] >= r[0] && m[0] < r[1] {
+						repl = fmt.Sprintf(`url("%s%s")`, remoteCSSMarker, remote)
+						break
+					}
+				}
 			}
 			add(m[:2], repl)
 		}
 		for _, m := range reCSSFetchFn.FindAllStringIndex(d, -1) {
-			add(m, "x-blocked()")
+			add([]int{m[0], cssCallEnd(d, m[1])}, "x-blocked()")
 		}
 		for _, m := range reCSSActive.FindAllStringIndex(d, -1) {
 			add(m, "x-blocked:")
@@ -357,40 +436,71 @@ func RestoreRemoteImages(html []byte) []byte {
 	reImgSingle := regexp.MustCompile(`(?i)(<img\b[^>]*?\s)src\s*=\s*''\s+data-remote-src='([^']*)'`)
 	s = reImgSingle.ReplaceAllString(s, `${1}src='$2'`)
 
+	s = rewriteCSSMarkers(s, func(u string) string { return u })
+	s = strings.ReplaceAll(s, `data-remote-bg="`, `background="`)
 	s = strings.ReplaceAll(s, `url("")`, ``)
 
 	return []byte(s)
 }
 
 func IsRemoteImagesBlocked(html string) bool {
-	return strings.Contains(html, "data-remote-src")
+	return strings.Contains(html, "data-remote-src") || strings.Contains(html, "data-remote-bg") || strings.Contains(html, remoteCSSMarker)
 }
 
-var reExtractRemoteSrcs = regexp.MustCompile(`(?i)data-remote-src=["']([^"']+)["']`)
+var reExtractRemoteSrcs = regexp.MustCompile(`(?i)(?:data-remote-(?:src|bg)=["']|url\((?:"|&#34;)raven-remote:)((?:[^"'&]|&(?:amp;|[^#"']))*)`)
 
+// ExtractRemoteURLs lists the blocked remote URLs of a stored body: image
+// sources, background attributes and CSS url()s. They are HTML-escaped there
+// (&amp;), so they are unescaped to the URL that is fetched.
 func ExtractRemoteURLs(html string) []string {
 	matches := reExtractRemoteSrcs.FindAllStringSubmatch(html, -1)
 	seen := make(map[string]bool)
 	var urls []string
 	for _, m := range matches {
-		if len(m) > 1 && !seen[m[1]] {
-			seen[m[1]] = true
-			urls = append(urls, m[1])
+		if u := stdhtml.UnescapeString(m[1]); u != "" && !seen[u] {
+			seen[u] = true
+			urls = append(urls, u)
 		}
 	}
 	return urls
 }
 
+// rewriteCSSMarkers calls f with the URL of each blocked CSS url() and writes
+// its result back in the quoting the marker had: &#34; inside an attribute, a
+// plain " in a <style> element.
+func rewriteCSSMarkers(s string, f func(u string) string) string {
+	return reCSSMarker.ReplaceAllStringFunc(s, func(m string) string {
+		q := `"`
+		if strings.HasPrefix(m, `url(&#34;`) {
+			q = `&#34;`
+		}
+		return "url(" + q + f(reCSSMarker.FindStringSubmatch(m)[1]) + q + ")"
+	})
+}
+
+// RewriteToLocalAssets points the blocked remote references of a body (images,
+// background attributes, CSS url()s) at the downloaded copies, and defuses the
+// rest so they are not offered again.
 func RewriteToLocalAssets(html []byte, urlToLocal map[string]string) []byte {
 	s := string(html)
 	for remoteURL, localPath := range urlToLocal {
-		s = strings.ReplaceAll(s, `src="" data-remote-src="`+remoteURL+`"`, `src="`+localPath+`"`)
-		s = strings.ReplaceAll(s, `src='' data-remote-src='`+remoteURL+`'`, `src='`+localPath+`'`)
-		s = strings.ReplaceAll(s, `data-remote-src="`+remoteURL+`"`, `src="`+localPath+`"`)
-		s = strings.ReplaceAll(s, `data-remote-src='`+remoteURL+`'`, `src='`+localPath+`'`)
+		for _, u := range []string{remoteURL, stdhtml.EscapeString(remoteURL)} { // as written in an attribute
+			s = strings.ReplaceAll(s, `src="" data-remote-src="`+u+`"`, `src="`+localPath+`"`)
+			s = strings.ReplaceAll(s, `src='' data-remote-src='`+u+`'`, `src='`+localPath+`'`)
+			s = strings.ReplaceAll(s, `data-remote-src="`+u+`"`, `src="`+localPath+`"`)
+			s = strings.ReplaceAll(s, `data-remote-src='`+u+`'`, `src='`+localPath+`'`)
+			s = strings.ReplaceAll(s, `data-remote-bg="`+u+`"`, `background="`+localPath+`"`)
+		}
 	}
 	s = strings.ReplaceAll(s, `data-remote-src="`, `data-removed-src="`)
 	s = strings.ReplaceAll(s, `data-remote-src='`, `data-removed-src='`)
+	s = strings.ReplaceAll(s, `data-remote-bg="`, `data-removed-bg="`)
+	s = rewriteCSSMarkers(s, func(u string) string {
+		if local, ok := urlToLocal[stdhtml.UnescapeString(u)]; ok {
+			return local
+		}
+		return ""
+	})
 	return []byte(s)
 }
 
