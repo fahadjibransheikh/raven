@@ -51,6 +51,14 @@ func (m *Manager) Middleware(next http.Handler) http.Handler {
 			return
 		}
 
+		// The sandboxed email iframe cannot send the session cookie; a signed,
+		// per-message, read-only grant stands in for it on the image routes only.
+		// Ownership checks in the handlers still run as this user.
+		if user := m.userForImageGrant(r); user != nil {
+			next.ServeHTTP(w, r.WithContext(ContextWithUser(r.Context(), user)))
+			return
+		}
+
 		token := GetSessionToken(r)
 		if token == "" {
 			m.rejectUnauthenticated(w, r)

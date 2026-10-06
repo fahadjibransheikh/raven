@@ -29,8 +29,8 @@ func TestMigrateV96ToV97CreatesCalendarTablesAndIsIdempotent(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	var version int
-	if err := db.Read().QueryRow(`SELECT MAX(version) FROM schema_version`).Scan(&version); err != nil || version != 98 {
-		t.Fatalf("version = %d, %v; want 98", version, err)
+	if err := db.Read().QueryRow(`SELECT MAX(version) FROM schema_version`).Scan(&version); err != nil || version != 100 {
+		t.Fatalf("version = %d, %v; want 100", version, err)
 	}
 	for _, table := range []string{"calendars", "calendar_events", "calendar_account_state"} {
 		var n int
