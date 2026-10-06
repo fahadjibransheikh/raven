@@ -7755,7 +7755,8 @@ function insertComposeSignatureWithPlacement(form, sig, source, placement) {
     _restoreComposeSelection(editor)
     document.execCommand("insertHTML", false, html)
   }
-  if (source === "auto") placeComposeCursorBeforeSignature(editor, existingComposeSignature(editor))
+  // Replies keep the caret at the top (above the quote) and forwards keep focus in To.
+  if (source === "auto" && placement !== "after" && composeModeForForm(form) !== "forward") placeComposeCursorBeforeSignature(editor, existingComposeSignature(editor))
   syncComposeEditor(editor)
   return true
 }
@@ -10653,6 +10654,8 @@ function _openComposePrefill(vals, mode) {
   var form = document.getElementById("compose-form")
   writeComposePrefill(form, vals, "compose-", mode)
   if (window.tui && window.tui.dialog) window.tui.dialog.open("compose-dialog")
+  // The dialog is hidden until opened, so focus has to happen after open.
+  focusComposePrefill(form, mode)
   return true
 }
 
