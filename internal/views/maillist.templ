@@ -45,7 +45,7 @@ templ MailListHeader(accounts []models.Account, activeFolder string, totalCount 
 				<button type="button" class="inline-flex lg:hidden h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Open folders" aria-expanded="false" data-phone-nav-toggle>
 					@icon.Menu(icon.Props{Class: "size-5"})
 				</button>
-				<h2 id="mail-folder-name" data-mail-folder-default-name={ folderDisplayName(activeFolder) } class="text-lg font-bold tracking-tight" style="font-family: var(--font-serif)">{ mailListFolderHeading(activeFolder, filters) }</h2>
+				<h2 id="mail-folder-name" data-mail-folder-default-name={ folderDisplayName(activeFolder) } class="text-lg font-bold tracking-tight">{ mailListFolderHeading(activeFolder, filters) }</h2>
 				if totalCount >= 0 {
 					<span id="mail-folder-count" class="inline-flex h-5 min-w-10 items-center justify-center rounded-full bg-muted px-2 text-xs font-medium text-muted-foreground shadow-[0_1px_2px_rgba(0,0,0,0.06)]">{ fmt.Sprintf("%d", totalCount) }</span>
 				} else {
@@ -58,7 +58,7 @@ templ MailListHeader(accounts []models.Account, activeFolder string, totalCount 
 		</div>
 		<div class="mail-list-search-section">
 			<div class="mail-list-search-primary">
-				<div class="mail-list-search-input-wrap relative groove rounded-lg min-w-0">
+				<div class="mail-list-search-input-wrap relative rounded-lg min-w-0">
 					@icon.Search(icon.Props{Class: "absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground"})
 					<input
 						type="text"
@@ -766,7 +766,7 @@ templ MailCardLayoutDialog() {
 									@icon.Paperclip(icon.Props{Class: "size-3 text-muted-foreground"})
 								</span>
 								<span data-mail-card-field="unread" class="inline-flex size-4 shrink-0 items-center justify-center">
-									<span class="size-2 rounded-full bg-primary shadow-[0_0_6px_rgba(199,123,48,0.4)]"></span>
+									<span class="size-2 rounded-full bg-primary"></span>
 								</span>
 							</div>
 							<div class="mail-list-card-zone mail-list-card-zone-body" data-mail-card-zone="body" data-mail-card-layout-zone-items="body" data-mail-card-layout-dropzone="body">
@@ -931,7 +931,7 @@ templ MailListCardItem(accounts []models.Account, email models.Email, position i
 				}
 				if !email.IsRead {
 					<span data-mail-card-field="unread" class="inline-flex size-4 shrink-0 items-center justify-center">
-						<span class="size-2 rounded-full bg-primary shadow-[0_0_6px_rgba(199,123,48,0.4)]"></span>
+						<span class="size-2 rounded-full bg-primary"></span>
 					</span>
 				} else {
 					<span data-mail-card-field="unread" class="mail-list-card-empty-icon-slot" aria-hidden="true"></span>
@@ -1064,7 +1064,7 @@ templ MailListTableItem(email models.Email, position int, selectedEmail *models.
 
 templ MailListEmpty() {
 	<div class="flex flex-col items-center justify-center py-20 px-4 text-center">
-		<div class="empty-icon-box size-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-4 raised">
+		<div class="empty-icon-box size-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-4 border">
 			@icon.Inbox(icon.Props{Class: "size-7 text-muted-foreground/40"})
 		</div>
 		<h3 class="font-semibold text-sm mb-1">No emails</h3>

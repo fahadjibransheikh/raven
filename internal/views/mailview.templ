@@ -85,7 +85,7 @@ func shouldShowAttachment(att models.Attachment) bool {
 }
 
 templ MailView(email *models.Email, thread []models.ThreadItem) {
-	<div id="mail-view" class="hidden lg:flex flex-1 flex-col min-w-0 bg-background surface-desk">
+	<div id="mail-view" class="hidden lg:flex flex-1 flex-col min-w-0 bg-background">
 		if email != nil {
 			@MailViewContent(email, thread)
 		} else {
@@ -95,9 +95,9 @@ templ MailView(email *models.Email, thread []models.ThreadItem) {
 }
 
 templ MailViewLoading() {
-	<div id="mail-view" class="hidden lg:flex flex-1 flex-col min-w-0 bg-background surface-desk">
+	<div id="mail-view" class="hidden lg:flex flex-1 flex-col min-w-0 bg-background">
 		<div class="flex flex-col h-full p-2">
-			<div class="surface-paper rounded-md flex flex-col h-full overflow-hidden">
+			<div class="bg-paper text-ink rounded-md flex flex-col h-full overflow-hidden">
 				<div class="flex items-center justify-between px-6 py-2.5">
 					<div class="flex items-center gap-1">
 						<div class="size-8 rounded-md bg-ink/[0.03] border border-ink/6"></div>
@@ -135,14 +135,14 @@ templ MailViewLoading() {
 
 templ MailViewContent(email *models.Email, thread []models.ThreadItem) {
 	<div class="mail-view-frame flex flex-col h-full p-2">
-		<div class="surface-paper rounded-md flex flex-col h-full overflow-hidden">
+		<div class="bg-paper text-ink rounded-md flex flex-col h-full overflow-hidden">
 			@MailViewHeader(email)
 			<div class="h-px bg-gradient-to-r from-transparent via-amber-900/10 to-transparent"></div>
 			<div class="flex-1 overflow-y-auto">
 				<div class="mail-view-content mx-auto px-8 py-6">
 					if thread != nil && len(thread) > 1 {
 						<div class="mail-view-subject-row flex items-start justify-between gap-4 mb-1">
-							<h1 class="text-xl font-bold tracking-tight text-ink min-w-0" style="font-family: var(--font-serif)">{ email.Subject }</h1>
+							<h1 class="text-xl font-bold tracking-tight text-ink min-w-0">{ email.Subject }</h1>
 							@EmailBodyStyleTabs(email.ID, true, "h-8", "h-7")
 						</div>
 						<div class="flex items-center gap-2 mb-6">
@@ -778,7 +778,7 @@ templ MailViewSender(email *models.Email) {
 		}
 	</div>
 	<div class="mail-view-subject-row flex items-start justify-between gap-4 mt-5">
-		<h1 class="text-xl font-bold tracking-tight text-ink min-w-0" style="font-family: var(--font-serif)">{ email.Subject }</h1>
+		<h1 class="text-xl font-bold tracking-tight text-ink min-w-0">{ email.Subject }</h1>
 		@EmailBodyStyleTabs(email.ID, true, "h-8", "h-7")
 	</div>
 	@MailViewAttachments(email)
@@ -976,7 +976,7 @@ templ MailViewDraftBar(email *models.Email) {
 templ MailViewEmpty() {
 	<div class="flex flex-col items-center justify-center h-full text-center" data-mail-view-empty>
 		<div class="space-y-4 animate-fade-in">
-			<div class="size-20 rounded-2xl bg-card flex items-center justify-center mx-auto raised">
+			<div class="size-20 rounded-2xl bg-card flex items-center justify-center mx-auto border">
 				@icon.Mail(icon.Props{Class: "size-9 text-muted-foreground/30"})
 			</div>
 			<div>

@@ -1149,12 +1149,12 @@ templ ContactsListPane(contacts []models.Contact, selected *models.Contact, filt
 			<div class="flex items-center justify-between">
 				<div class="flex items-center gap-2">
 					@PhoneNavToggle("")
-					<h2 class="text-lg font-bold tracking-tight" style="font-family: var(--font-serif)">Contacts</h2>
+					<h2 class="text-lg font-bold tracking-tight">Contacts</h2>
 					<span id="contacts-count" class="inline-flex h-5 min-w-10 items-center justify-center rounded-md bg-muted px-2 text-xs font-medium text-muted-foreground shadow-[0_1px_2px_rgba(0,0,0,0.06)]">{ fmt.Sprintf("%d", totalCount) }</span>
 				</div>
 			</div>
 			<div class="flex items-center gap-2">
-				<form action="/contacts" method="get" class="relative groove rounded-lg flex-1 min-w-0" data-contact-search-form>
+				<form action="/contacts" method="get" class="relative rounded-lg flex-1 min-w-0" data-contact-search-form>
 					<input type="hidden" name="source" value={ filters.Source }/>
 					<input type="hidden" name="save_target" value={ filters.SaveTarget }/>
 					<input type="hidden" name="activity" value={ filters.Activity }/>
@@ -1376,7 +1376,7 @@ templ ContactsListPane(contacts []models.Contact, selected *models.Contact, filt
 		>
 			if len(contacts) == 0 {
 				<div class="flex flex-col items-center justify-center py-20 px-4 text-center">
-					<div class="empty-icon-box size-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-4 raised">
+					<div class="empty-icon-box size-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-4 border">
 						@icon.BookUser(icon.Props{Class: "size-5"})
 					</div>
 					<h3 class="font-semibold text-sm mb-1">No contacts yet</h3>
@@ -1397,7 +1397,7 @@ templ ContactsListPane(contacts []models.Contact, selected *models.Contact, filt
 }
 
 templ ContactsViewPane(selected *models.Contact, selectedProfile *models.ContactProfile, showNew bool, syncQueued bool, accounts []models.Account) {
-	<section id="mail-view" class="hidden flex-1 min-w-0 bg-background surface-desk xl:flex xl:flex-col">
+	<section id="mail-view" class="hidden flex-1 min-w-0 bg-background xl:flex xl:flex-col">
 		@ContactsDetail(selected, selectedProfile, showNew, syncQueued, accounts)
 	</section>
 }
@@ -1600,7 +1600,7 @@ templ ContactsDetail(contact *models.Contact, profile *models.ContactProfile, sh
 		}
 	>
 		if contact != nil || showNew {
-			<div class="surface-paper rounded-md flex flex-col h-full overflow-hidden">
+			<div class="bg-paper text-ink rounded-md flex flex-col h-full overflow-hidden">
 				@ContactEditor(contact, profile, syncQueued, accounts)
 			</div>
 		} else {
@@ -1612,7 +1612,7 @@ templ ContactsDetail(contact *models.Contact, profile *models.ContactProfile, sh
 templ ContactsEmptyDetail() {
 	<div class="flex flex-col items-center justify-center h-full text-center">
 		<div class="space-y-4 animate-fade-in">
-			<div class="size-20 rounded-2xl bg-card flex items-center justify-center mx-auto raised">
+			<div class="size-20 rounded-2xl bg-card flex items-center justify-center mx-auto border">
 				@icon.BookUser(icon.Props{Class: "size-9 text-muted-foreground/30"})
 			</div>
 			<div>
@@ -1945,7 +1945,7 @@ templ ContactEditorHeader(contact *models.Contact, profile *models.ContactProfil
 				}
 				<div class="min-w-0 pt-0.5">
 					<div class="flex flex-wrap items-center gap-2">
-						<h1 class="min-w-0 text-2xl font-bold leading-tight tracking-tight text-ink" style="font-family: var(--font-serif)">
+						<h1 class="min-w-0 text-2xl font-bold leading-tight tracking-tight text-ink">
 							if contact != nil {
 								{ contact.Name }
 							} else {
@@ -2019,7 +2019,7 @@ templ ContactEditDialog(contact models.Contact, profile *models.ContactProfile, 
 				</div>
 				<div class="flex flex-col-reverse gap-2 border-t border-ink/10 bg-paper/90 px-5 py-3 backdrop-blur sm:flex-row sm:items-center sm:justify-end sm:px-6">
 					<button type="button" class="inline-flex h-9 items-center justify-center rounded-lg border border-ink/10 bg-paper px-4 text-sm font-semibold text-ink/55 transition-colors hover:bg-ink/[0.04] hover:text-ink" data-contact-editor-cancel>Cancel</button>
-					<button type="submit" class="btn-skeuo inline-flex h-9 items-center justify-center gap-1.5 rounded-lg px-4 text-sm font-semibold">
+					<button type="submit" class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors inline-flex h-9 items-center justify-center gap-1.5 rounded-lg px-4 text-sm font-semibold">
 						@icon.Save(icon.Props{Class: "size-4"})
 						Save changes
 					</button>
@@ -2125,7 +2125,7 @@ templ ContactAvatarPreviewDialog(contact models.Contact, dialogID string) {
 
 templ ContactEditorSaveActions() {
 	<div class="sticky bottom-0 z-10 flex items-center justify-end gap-3 border-t border-ink/10 bg-paper/90 px-5 py-3 backdrop-blur sm:px-7">
-		<button type="submit" class="btn-skeuo inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold">
+		<button type="submit" class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold">
 			@icon.Save(icon.Props{Class: "size-4"})
 			Save contact
 		</button>
@@ -2300,7 +2300,7 @@ templ ContactSyncSetupDiscover(setup models.ContactSyncSetup) {
 		</div>
 		@dialog.Footer(dialog.FooterProps{Class: "shrink-0 items-center justify-between border-t border-ink/10 bg-card px-5 py-4 sm:justify-between sm:px-6"}) {
 			@button.Button(button.Props{Variant: button.VariantOutline, Class: "text-ink/55", Attributes: templ.Attributes{"data-contact-sync-setup-cancel": ""}}) { Keep sync disabled }
-			@button.Button(button.Props{Type: button.TypeSubmit, Form: selectionFormID, Class: "btn-skeuo"}) {
+			@button.Button(button.Props{Type: button.TypeSubmit, Form: selectionFormID, Class: "bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors"}) {
 				Review values
 				@icon.ArrowRight(icon.Props{Class: "size-4"})
 			}
@@ -2418,7 +2418,7 @@ templ ContactSyncSetupResolve(setup models.ContactSyncSetup) {
 		</div>
 		@dialog.Footer(dialog.FooterProps{Class: "shrink-0 items-center justify-between border-t border-ink/10 bg-card px-5 py-4 sm:justify-between sm:px-6"}) {
 			@button.Button(button.Props{Variant: button.VariantOutline, Class: "text-ink/55", Attributes: templ.Attributes{"data-contact-sync-setup-cancel": ""}}) { Keep sync disabled }
-			@button.Button(button.Props{Type: button.TypeSubmit, Class: "btn-skeuo"}) {
+			@button.Button(button.Props{Type: button.TypeSubmit, Class: "bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors"}) {
 				@icon.CloudSync(icon.Props{Class: "size-4"})
 				Use selected values and sync
 			}
@@ -2434,7 +2434,7 @@ templ ContactSyncSetupValueLocations(labels []string) {
 				{ contactSyncSetupLocationCountLabel(len(labels)) }
 			</button>
 		}
-		@popover.Content(popover.ContentProps{Placement: popover.PlacementBottomStart, Offset: 8, ShowArrow: true, Class: "w-72 border-ink/10 bg-card p-3 text-ink shadow-raised"}) {
+		@popover.Content(popover.ContentProps{Placement: popover.PlacementBottomStart, Offset: 8, ShowArrow: true, Class: "w-72 border-ink/10 bg-card p-3 text-ink shadow-menu"}) {
 			<div class="text-[10px] font-semibold uppercase tracking-wider text-ink/40">Locations using this value</div>
 			<div class="mt-2 space-y-1.5">
 				for _, label := range labels {

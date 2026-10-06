@@ -583,8 +583,15 @@ func themeClass(settings map[string]string) string {
 	return ""
 }
 
+// themeStyle returns the accent preset: "raven", "classic" (copper) or
+// "minimal" (mono). Classic and minimal were once full structural themes;
+// stored values still load and now select an accent. Anything else is raven.
 func themeStyle(settings map[string]string) string {
-	return uiSettingGet(settings, "theme_style", "raven")
+	switch style := uiSettingGet(settings, "theme_style", "raven"); style {
+	case "classic", "minimal":
+		return style
+	}
+	return "raven"
 }
 
 func senderDisplay(contact models.Contact, mode string) string {

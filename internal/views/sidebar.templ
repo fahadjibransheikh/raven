@@ -16,7 +16,7 @@ import (
 )
 
 templ Sidebar(accounts []models.Account, activeFolder string, width string, uiSettings map[string]string, scheduledCount int, filters models.EmailFilters) {
-	<aside class="hidden lg:flex flex-col surface-leather text-sidebar-foreground h-full overflow-hidden" style={ "width:" + width } data-app-sidebar data-phone-drawer>
+	<aside class="hidden lg:flex flex-col bg-sidebar text-sidebar-foreground h-full overflow-hidden" style={ "width:" + width } data-app-sidebar data-phone-drawer>
 		@SidebarHeader(accounts, "mail")
 		@MailSidebarBody(accounts, activeFolder, uiSettings, scheduledCount, filters)
 		@SidebarFooter()
@@ -24,7 +24,7 @@ templ Sidebar(accounts []models.Account, activeFolder string, width string, uiSe
 }
 
 templ ContactsSidebar(accounts []models.Account, activeFolder string, width string, uiSettings map[string]string, filters models.ContactFilters) {
-	<aside class="hidden lg:flex flex-col surface-leather text-sidebar-foreground h-full overflow-hidden" style={ "width:" + width } data-app-sidebar data-phone-drawer>
+	<aside class="hidden lg:flex flex-col bg-sidebar text-sidebar-foreground h-full overflow-hidden" style={ "width:" + width } data-app-sidebar data-phone-drawer>
 		@SidebarHeader(accounts, "contacts")
 		@ContactsSidebarBody(accounts, activeFolder, uiSettings, filters)
 		@SidebarFooter()
@@ -34,7 +34,7 @@ templ ContactsSidebar(accounts []models.Account, activeFolder string, width stri
 templ MailSidebarBody(accounts []models.Account, activeFolder string, uiSettings map[string]string, scheduledCount int, filters models.EmailFilters) {
 	<div id="sidebar-app-body" class="flex min-h-0 flex-1 flex-col" data-sidebar-app-body="mail">
 		<div class="px-4 pb-4">
-			<button id="sidebar-compose-btn" type="button" onclick="openNewCompose()" class="btn-skeuo flex items-center justify-center gap-2 w-full h-10 rounded-lg text-sidebar-primary-foreground font-semibold text-sm">
+			<button id="sidebar-compose-btn" type="button" onclick="openNewCompose()" class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors flex items-center justify-center gap-2 w-full h-10 rounded-lg text-sidebar-primary-foreground font-semibold text-sm">
 				@icon.Pen(icon.Props{Class: "size-4"})
 				Compose
 			</button>
@@ -48,13 +48,13 @@ templ ContactsSidebarBody(accounts []models.Account, activeFolder string, uiSett
 	<div id="sidebar-app-body" class="flex min-h-0 flex-1 flex-col" data-sidebar-app-body="contacts">
 		<div class="px-4 pb-4">
 			<div class="inline-flex w-full items-stretch rounded-lg shadow-sm">
-				<a href="/contacts?new=1" hx-get="/contacts?new=1" hx-target="#main-content" hx-swap="outerHTML" hx-push-url="/contacts?new=1" class="btn-skeuo flex h-10 min-w-0 flex-1 items-center justify-center gap-2 rounded-l-lg rounded-r-none text-sidebar-primary-foreground font-semibold text-sm">
+				<a href="/contacts?new=1" hx-get="/contacts?new=1" hx-target="#main-content" hx-swap="outerHTML" hx-push-url="/contacts?new=1" class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors flex h-10 min-w-0 flex-1 items-center justify-center gap-2 rounded-l-lg rounded-r-none text-sidebar-primary-foreground font-semibold text-sm">
 					@icon.UserPlus(icon.Props{Class: "size-4"})
 					New contact
 				</a>
 				@dropdown.Dropdown() {
 					@dropdown.Trigger() {
-						<button type="button" class="btn-skeuo inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-l-none rounded-r-lg border-l border-sidebar-border/70 text-sidebar-primary-foreground" aria-label="Contact actions">
+						<button type="button" class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-l-none rounded-r-lg border-l border-sidebar-border/70 text-sidebar-primary-foreground" aria-label="Contact actions">
 							@icon.EllipsisVertical(icon.Props{Class: "size-4"})
 						</button>
 					}
@@ -247,11 +247,11 @@ func contactSidebarBookName(book models.ContactAddressBook) string {
 }
 
 templ SettingsSidebar(activeTab string, width string) {
-	<aside class="hidden lg:flex flex-col surface-leather text-sidebar-foreground h-full overflow-hidden" style={ "width:" + width } data-phone-drawer>
+	<aside class="hidden lg:flex flex-col bg-sidebar text-sidebar-foreground h-full overflow-hidden" style={ "width:" + width } data-phone-drawer>
 		<div class="px-4 pt-5 pb-4">
 			<div class="flex items-center gap-2.5 mb-5">
 				<img src="/assets/logo.svg" alt="Raven" class="h-8 w-8 shrink-0 p-1"/>
-				<span class="text-lg font-bold tracking-tight text-sidebar-accent-foreground" style="font-family: var(--font-serif)">Settings</span>
+				<span class="text-lg font-bold tracking-tight text-sidebar-accent-foreground">Settings</span>
 			</div>
 			<a href="/" class="flex items-center justify-center gap-2 w-full h-10 rounded-lg border border-sidebar-border bg-sidebar-accent/35 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors font-semibold text-sm">
 				@icon.ArrowLeft(icon.Props{Class: "size-4"})
@@ -331,7 +331,7 @@ templ SidebarHeader(accounts []models.Account, activeApp string) {
 		<div class="flex items-center justify-between mb-5">
 			<div class="flex items-center gap-2.5">
 				<img src="/assets/logo.svg" alt="Raven" class="h-8 w-8 shrink-0 p-1"/>
-				<span class="text-lg font-bold tracking-tight text-sidebar-accent-foreground" style="font-family: var(--font-serif)">Raven</span>
+				<span class="text-lg font-bold tracking-tight text-sidebar-accent-foreground">Raven</span>
 			</div>
 			<div id="sidebar-sync-controls">
 				if activeApp != "calendar" {
@@ -441,7 +441,7 @@ templ SidebarSyncControls(accounts []models.Account, activeApp string) {
 						</button>
 					}
 				}
-				@tooltip.Content(tooltip.ContentProps{Position: tooltip.PositionBottom, ShowArrow: true, Class: "sidebar-account-error-tooltip w-fit whitespace-nowrap border-sidebar-border bg-sidebar px-3 py-2 text-left text-xs leading-relaxed text-sidebar-foreground shadow-raised [&_[data-tui-popover-arrow]]:!bg-sidebar"}) {
+				@tooltip.Content(tooltip.ContentProps{Position: tooltip.PositionBottom, ShowArrow: true, Class: "sidebar-account-error-tooltip w-fit whitespace-nowrap border-sidebar-border bg-sidebar px-3 py-2 text-left text-xs leading-relaxed text-sidebar-foreground shadow-menu [&_[data-tui-popover-arrow]]:!bg-sidebar"}) {
 					if activeApp == "contacts" {
 						<span>Sync contacts.</span>
 					} else {
@@ -459,7 +459,7 @@ templ SidebarSyncControls(accounts []models.Account, activeApp string) {
 						@icon.ChevronDown(icon.Props{Class: "size-3.5"})
 					</button>
 				}
-				@popover.Content(popover.ContentProps{Placement: popover.PlacementBottomEnd, Offset: 10, ShowArrow: true, Class: "sidebar-shortcuts-popover w-64 border-sidebar-border bg-sidebar p-2 text-sidebar-foreground shadow-raised [&_[data-tui-popover-arrow]]:!bg-sidebar"}) {
+				@popover.Content(popover.ContentProps{Placement: popover.PlacementBottomEnd, Offset: 10, ShowArrow: true, Class: "sidebar-shortcuts-popover w-64 border-sidebar-border bg-sidebar p-2 text-sidebar-foreground shadow-menu [&_[data-tui-popover-arrow]]:!bg-sidebar"}) {
 					if activeApp == "contacts" {
 						<div class="px-2 py-1.5 text-[11px] font-semibold uppercase text-sidebar-foreground/55">Sync individual contact account</div>
 						<div class="space-y-1">
@@ -555,7 +555,7 @@ templ SidebarMailSyncErrorSummaryTooltip(accounts []models.Account) {
 				@icon.CircleAlert(icon.Props{Class: "size-4"})
 			</button>
 		}
-		@tooltip.Content(tooltip.ContentProps{Position: tooltip.PositionBottom, ShowArrow: true, Class: "sidebar-account-error-tooltip w-80 border-sidebar-border bg-sidebar px-3 py-2 text-left text-xs leading-relaxed text-sidebar-foreground shadow-raised [&_[data-tui-popover-arrow]]:!bg-sidebar"}) {
+		@tooltip.Content(tooltip.ContentProps{Position: tooltip.PositionBottom, ShowArrow: true, Class: "sidebar-account-error-tooltip w-80 border-sidebar-border bg-sidebar px-3 py-2 text-left text-xs leading-relaxed text-sidebar-foreground shadow-menu [&_[data-tui-popover-arrow]]:!bg-sidebar"}) {
 			<div class="space-y-2" data-mail-sync-error-summary>
 				for _, account := range accounts {
 					if account.EmailSyncEnabled && !account.IsDeleting && strings.TrimSpace(account.EmailSyncError) != "" {
@@ -860,7 +860,7 @@ templ SidebarAccountSyncErrorTooltip(account models.Account, uiSettings map[stri
 				@icon.CircleAlert(icon.Props{Class: "size-4"})
 			</span>
 		}
-		@tooltip.Content(tooltip.ContentProps{Position: tooltip.PositionRight, ShowArrow: true, Class: "sidebar-account-error-tooltip w-72 border-sidebar-border bg-sidebar px-3 py-2 text-left text-xs leading-relaxed text-sidebar-foreground shadow-raised [&_[data-tui-popover-arrow]]:!bg-sidebar"}) {
+		@tooltip.Content(tooltip.ContentProps{Position: tooltip.PositionRight, ShowArrow: true, Class: "sidebar-account-error-tooltip w-72 border-sidebar-border bg-sidebar px-3 py-2 text-left text-xs leading-relaxed text-sidebar-foreground shadow-menu [&_[data-tui-popover-arrow]]:!bg-sidebar"}) {
 			<div class="space-y-1">
 				<div class="font-semibold">Mail sync failed</div>
 				if strings.TrimSpace(account.EmailSyncErrorAt) != "" {
@@ -926,9 +926,9 @@ templ SidebarFooter() {
 						@icon.CircleQuestionMark(icon.Props{Class: "size-4"})
 					</button>
 				}
-				@popover.Content(popover.ContentProps{Placement: popover.PlacementTopStart, Offset: 10, ShowArrow: true, Class: "sidebar-shortcuts-popover w-72 border-sidebar-border bg-sidebar p-3 text-sidebar-foreground shadow-raised [&_[data-tui-popover-arrow]]:!bg-sidebar"}) {
+				@popover.Content(popover.ContentProps{Placement: popover.PlacementTopStart, Offset: 10, ShowArrow: true, Class: "sidebar-shortcuts-popover w-72 border-sidebar-border bg-sidebar p-3 text-sidebar-foreground shadow-menu [&_[data-tui-popover-arrow]]:!bg-sidebar"}) {
 					<div class="mb-2">
-						<h3 class="text-sm font-bold tracking-tight text-sidebar-accent-foreground" style="font-family: var(--font-serif)">Keyboard navigation</h3>
+						<h3 class="text-sm font-bold tracking-tight text-sidebar-accent-foreground">Keyboard navigation</h3>
 						<p class="mt-0.5 text-[11px] leading-relaxed text-sidebar-foreground/60">Shortcuts for moving through mail.</p>
 					</div>
 					<div class="space-y-1 text-[12px] leading-relaxed">

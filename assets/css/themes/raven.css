@@ -1,222 +1,122 @@
-/* === RAVEN THEME === */
-/* Near-black, flat surfaces, hairline borders, one pink accent used as a
-   solid for actions and as low-alpha tints for hover/selection. System font. */
+/* === RAVEN PALETTE === */
+/* One structural design: warm neutrals, hairline borders, flat selection,
+   and a single accent used for the primary action, the unread dot and links.
+   data-theme only picks the accent preset (raven / classic / minimal); every
+   other token is shared. Declared on [data-theme] as well as :root so a
+   nested preview element re-resolves var(--raven-pink) for its own preset. */
 
-[data-theme="raven"] {
+:root,
+[data-theme] {
   --raven-pink: #d6246e;
+  --primary-text: #b81d5c;
+  --primary-foreground: #ffffff;
   --radius: 0.5rem;
   --background: #ffffff;
-  --foreground: #0a0a0b;
-  --card: #fafafa;
-  --card-foreground: #0a0a0b;
+  --foreground: #1d1b16;
+  --card: #ffffff;
+  --card-foreground: #1d1b16;
   --popover: #ffffff;
-  --popover-foreground: #0a0a0b;
+  --popover-foreground: #1d1b16;
   --primary: var(--raven-pink);
-  --primary-foreground: #ffffff;
-  --secondary: #f2f2f3;
-  --secondary-foreground: #0a0a0b;
-  --muted: #f2f2f3;
-  --muted-foreground: #6b6f76;
-  --accent: color-mix(in srgb, var(--raven-pink) 7%, #ffffff);
-  --accent-foreground: #0a0a0b;
+  --secondary: #f4f4f2;
+  --secondary-foreground: #1d1b16;
+  --muted: #f4f4f2;
+  --muted-foreground: #5f5e5b;
+  --subtle-foreground: #6b6a67;
+  --accent: #f4f4f2;
+  --accent-foreground: #1d1b16;
+  --row-hover: #f4f4f2;
+  --row-selected: #ebebe8;
   --destructive: #dc2626;
   --success: #2f855a;
-  --border: #e6e6e8;
-  --input: #e6e6e8;
+  --warning: #b45309;
+  --border: #e7e7e4;
+  --input: #dcdcd8;
   --ring: var(--raven-pink);
-  --sidebar: #f7f7f8;
-  --sidebar-foreground: #55585e;
+  --sidebar: #f7f7f5;
+  --sidebar-foreground: #5f5e5b;
   --sidebar-primary: var(--raven-pink);
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: color-mix(in srgb, var(--raven-pink) 9%, #f7f7f8);
-  --sidebar-accent-foreground: #0a0a0b;
-  --sidebar-border: #e6e6e8;
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: #e9e9e6;
+  --sidebar-accent-foreground: #1d1b16;
+  --sidebar-border: #e7e7e4;
   --sidebar-ring: var(--raven-pink);
+  /* Email body surface and compose; app.js reads these for the body palette. */
   --paper: #ffffff;
-  --paper-foreground: #0a0a0b;
-  --copper: var(--raven-pink);
-  --brass: #6b6f76;
-  --ink: #0a0a0b;
-  --font-serif: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", system-ui, sans-serif;
-  --shadow-card: none;
-  --shadow-card-hover: none;
-  --shadow-raised: 0 12px 48px rgba(0,0,0,0.12);
-  --shadow-emboss: none;
-  --shadow-inset: none;
-  --shadow-paper: none;
-  --shadow-button: none;
-  --shadow-button-pressed: none;
+  --paper-foreground: #1d1b16;
+  --ink: #1d1b16;
+  --copper: var(--primary-text);
+  --elev-menu: 0 0 2px rgba(0,0,0,0.12), 0 8px 16px rgba(0,0,0,0.14);
+  --elev-dialog: 0 0 8px rgba(0,0,0,0.12), 0 14px 28px rgba(0,0,0,0.14);
 }
 
-[data-theme="raven"].dark {
-  --raven-pink: #ff4f9a;
-  --background: #0a0a0b;
-  --foreground: #ededee;
-  --card: #111113;
-  --card-foreground: #ededee;
-  --popover: #141416;
-  --popover-foreground: #ededee;
-  --primary: var(--raven-pink);
-  --primary-foreground: #0a0a0b;
-  --secondary: #17171a;
-  --secondary-foreground: #ededee;
-  --muted: #141416;
-  --muted-foreground: #8b8f96;
-  --accent: color-mix(in srgb, var(--raven-pink) 9%, #0a0a0b);
-  --accent-foreground: #ededee;
+:root.dark,
+[data-theme].dark {
+  --raven-pink: #ff5fa3;
+  --primary-text: #ff7ab4;
+  --primary-foreground: #161618;
+  --background: #161618;
+  --foreground: #ececee;
+  --card: #161618;
+  --card-foreground: #ececee;
+  --popover: #1e1e22;
+  --popover-foreground: #ececee;
+  --secondary: #1e1e22;
+  --secondary-foreground: #ececee;
+  --muted: #1e1e22;
+  --muted-foreground: #a3a6ad;
+  --subtle-foreground: #90949b;
+  --accent: #1e1e22;
+  --accent-foreground: #ececee;
+  --row-hover: #1e1e22;
+  --row-selected: #26262b;
   --destructive: #ff5a5f;
   --success: #5fbf8a;
-  --border: #202024;
-  --input: #26262b;
-  --ring: var(--raven-pink);
-  --sidebar: #060607;
-  --sidebar-foreground: #8b8f96;
-  --sidebar-primary: var(--raven-pink);
-  --sidebar-primary-foreground: #0a0a0b;
-  --sidebar-accent: color-mix(in srgb, var(--raven-pink) 11%, #060607);
-  --sidebar-accent-foreground: #ededee;
-  --sidebar-border: #18181b;
-  --sidebar-ring: var(--raven-pink);
-  --paper: #0e0e10;
-  --paper-foreground: #ededee;
-  --copper: var(--raven-pink);
-  --brass: #8b8f96;
-  --ink: #ededee;
-  --shadow-raised: 0 12px 48px rgba(0,0,0,0.6);
+  --warning: #f5b84a;
+  --border: #2a2a2f;
+  --input: #3a3a40;
+  --sidebar: #111113;
+  --sidebar-foreground: #a3a6ad;
+  --sidebar-accent: #1f1f24;
+  --sidebar-accent-foreground: #ececee;
+  --sidebar-border: #2a2a2f;
+  --paper: #161618;
+  --paper-foreground: #ececee;
+  --ink: #ececee;
+  --elev-menu: 0 0 2px rgba(0,0,0,0.24), 0 8px 16px rgba(0,0,0,0.28);
+  --elev-dialog: 0 0 8px rgba(0,0,0,0.24), 0 14px 28px rgba(0,0,0,0.28);
 }
 
-/* === TYPE === */
-/* --font-sans is inlined by @theme inline, so override where it lands. */
+/* === ACCENT PRESETS === */
+/* Colour tokens only. No layout, radius or material changes. Each pair was
+   checked for WCAG AA: label on primary >= 4.5, primary-text on the page and
+   on a pink/copper tint >= 4.5. A stored "classic" or "minimal" value from
+   the old structural themes simply selects these. */
 
-[data-theme="raven"] body,
-[data-theme="raven"] .font-sans,
-[data-theme="raven"] .font-serif {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", system-ui, sans-serif;
+[data-theme="classic"] {
+  --raven-pink: #a8641f;
+  --primary-text: #8a4f12;
 }
 
-[data-theme="raven"] body {
-  letter-spacing: -0.01em;
-  -webkit-font-smoothing: antialiased;
+[data-theme="classic"].dark {
+  --raven-pink: #d49040;
+  --primary-text: #e0a560;
+  --primary-foreground: #1a1408;
 }
 
-/* === STRUCTURAL OVERRIDES (flat, like minimal, but rounded) === */
-
-[data-theme="raven"] .surface-desk {
-  background: var(--background);
+[data-theme="minimal"] {
+  --raven-pink: #111111;
+  --primary-text: #111111;
 }
 
-[data-theme="raven"] .surface-leather {
-  background: var(--sidebar);
+[data-theme="minimal"].dark {
+  --raven-pink: #f5f5f5;
+  --primary-text: #f5f5f5;
+  --primary-foreground: #111111;
 }
 
-[data-theme="raven"] .surface-paper {
-  background: var(--paper);
-  color: var(--paper-foreground);
-  box-shadow: none;
-}
-
-[data-theme="raven"] .raised {
-  box-shadow: none;
-  border: 1px solid var(--border);
-}
-
-[data-theme="raven"] .btn-skeuo,
-[data-theme="raven"] .compose-send-btn,
-[data-theme="raven"] .compose-seal {
-  background: var(--primary);
-  color: var(--primary-foreground);
-  box-shadow: none;
-}
-
-[data-theme="raven"] .btn-skeuo:hover,
-[data-theme="raven"] .compose-send-btn:hover {
-  background: color-mix(in srgb, var(--primary) 88%, var(--foreground));
-  box-shadow: none;
-}
-
-[data-theme="raven"] .btn-skeuo:active,
-[data-theme="raven"] .compose-send-btn:active {
-  box-shadow: none;
-  transform: none;
-}
-
-[data-theme="raven"] .envelope {
-  border: 1px solid var(--border);
-  box-shadow: none;
-}
-
-[data-theme="raven"] .envelope:hover {
-  box-shadow: none;
-  transform: none;
-  background: color-mix(in srgb, var(--primary) 4%, var(--card));
-  border-color: color-mix(in srgb, var(--primary) 25%, var(--border));
-}
-
-[data-theme="raven"] .envelope-active,
-[data-theme="raven"] [data-contact-list-shell] .mail-list-item > a.envelope-active {
-  border: 1px solid color-mix(in srgb, var(--primary) 40%, transparent);
-  background: color-mix(in srgb, var(--primary) 10%, var(--background));
-  box-shadow: inset 3px 0 0 var(--primary);
-}
-
-[data-theme="raven"] .compose-titlebar {
-  background: var(--sidebar);
-  border-bottom: 1px solid var(--border);
-}
-
-[data-theme="raven"] .compose-body {
-  background: var(--background);
-}
-
-[data-theme="raven"] .compose-fields,
-[data-theme="raven"] .compose-field-row {
-  border-bottom: 1px solid var(--border);
-}
-
-[data-theme="raven"] .compose-field-label {
-  color: var(--muted-foreground);
-}
-
-[data-theme="raven"] .compose-toolbar {
-  background: var(--muted);
-  border-bottom: 1px solid var(--border);
-}
-
-[data-theme="raven"] .compose-footer {
-  border-top: 1px solid var(--border);
-  background: var(--muted);
-}
-
-[data-theme="raven"] .compose-draft-btn {
-  background: var(--muted);
-  box-shadow: none;
-}
-
-[data-theme="raven"] .compose-draft-btn:hover {
-  background: var(--accent);
-  box-shadow: none;
-}
-
-[data-theme="raven"] .divider-etched {
-  background: var(--border);
-}
-
-[data-theme="raven"] [data-folder-unread],
-[data-theme="raven"] #mail-folder-count {
-  box-shadow: none;
-}
-
-[data-theme="raven"] .empty-icon-box {
-  box-shadow: none;
-  border: 1px solid var(--border);
-  background: var(--card);
-}
-
-/* Floating menus get Marco's frosted look. */
-[data-theme="raven"] [data-tui-popover-content]:not(.bg-sidebar) {
-  background: color-mix(in srgb, var(--popover) 88%, transparent);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+body {
+  letter-spacing: -0.005em;
 }
 
 /* === COMMAND PALETTE (assets/js/raven.js) — styled for every theme === */

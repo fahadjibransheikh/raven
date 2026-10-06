@@ -347,7 +347,7 @@ templ AdminSidebar(activeSection string) {
 		<div class="px-5 py-5 border-b border-border">
 			<a href="/admin" class="inline-flex items-center gap-2.5 text-foreground hover:text-primary transition-colors">
 				<img src="/assets/logo.svg" alt="Raven" class="h-8 w-8 shrink-0 p-1"/>
-				<span class="text-lg font-bold tracking-tight" style="font-family: var(--font-serif)">Raven Admin</span>
+				<span class="text-lg font-bold tracking-tight">Raven Admin</span>
 			</a>
 			<p class="mt-2 text-xs text-muted-foreground leading-relaxed">Operational controls and diagnostics.</p>
 		</div>
@@ -477,7 +477,7 @@ templ AdminSecurityActivityPage(data AdminSecurityActivityData, verification ...
 			<div class="max-w-7xl px-6 py-8 lg:px-8 lg:py-10">
 				<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 					<div>
-						<h2 class="text-2xl font-bold text-foreground" style="font-family: var(--font-serif)">Admin security activity</h2>
+						<h2 class="text-2xl font-bold text-foreground">Admin security activity</h2>
 						<p class="mt-1 max-w-3xl text-sm text-muted-foreground">Review sanitized authentication and account-security events across this Raven instance.</p>
 					</div>
 					<div class="flex shrink-0 items-center gap-3">
@@ -681,7 +681,7 @@ templ AdminUsersPage(data AdminUsersData, verification ...AdminSecurityVerificat
 			<div class="max-w-6xl px-6 py-8 lg:px-8 lg:py-10">
 				<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 					<div>
-						<h2 class="text-2xl font-bold text-foreground" style="font-family: var(--font-serif)">Users</h2>
+						<h2 class="text-2xl font-bold text-foreground">Users</h2>
 						<p class="mt-1 max-w-3xl text-sm text-muted-foreground">Review Raven application users, account state, and role. Invite a new standard user without setting their credentials.</p>
 					</div>
 					<div class="flex flex-wrap items-center gap-2">
@@ -1411,7 +1411,7 @@ templ AdminSecurityPage(data models.MailSecurityAdminData, verification ...Admin
 		<div class="flex-1 overflow-y-auto">
 			<div class="max-w-6xl px-6 py-8 lg:px-8 lg:py-10">
 				<div class="mb-7">
-					<h2 class="text-2xl font-bold text-foreground" style="font-family: var(--font-serif)">Mail security</h2>
+					<h2 class="text-2xl font-bold text-foreground">Mail security</h2>
 					<p class="mt-1 max-w-3xl text-sm text-muted-foreground">Manage narrow exceptions for test labs and local mail servers. Normal account discovery and mail connections remain encrypted by default.</p>
 				</div>
 				if data.Notice != "" {
@@ -1688,7 +1688,7 @@ templ AdminPage(status models.AvatarStatus, activeTab string) {
 			<div class="max-w-6xl px-6 py-8 lg:px-8 lg:py-10">
 				<div class="mb-7 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
 					<div>
-						<h2 class="text-2xl font-bold text-foreground" style="font-family: var(--font-serif)">Avatar checks</h2>
+						<h2 class="text-2xl font-bold text-foreground">Avatar checks</h2>
 						<p class="mt-1 max-w-2xl text-sm text-muted-foreground">Inspect avatar outcomes and sender history for the selected webmail scope. Scheduled checks remain instance-wide.</p>
 					</div>
 					<div class="flex w-full shrink-0 flex-col items-end gap-3 lg:w-auto">
@@ -2331,7 +2331,7 @@ templ AdminLabelsPage(status models.LabelAdminStatus) {
 			<div class="max-w-6xl px-6 py-8 lg:px-8 lg:py-10">
 				<div class="mb-7 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
 					<div>
-						<h2 class="text-2xl font-bold text-foreground" style="font-family: var(--font-serif)">Labels</h2>
+						<h2 class="text-2xl font-bold text-foreground">Labels</h2>
 						<p class="mt-1 max-w-2xl text-sm text-muted-foreground">Inspect provider label coverage, unresolved message identities, and queued label mutations for the selected webmail scope.</p>
 					</div>
 					<div class="flex w-full flex-col items-end gap-3 lg:w-auto">
@@ -2518,7 +2518,7 @@ templ AdminContactsPage(status models.ContactAdminStatus) {
 			<div class="max-w-6xl px-6 py-8 lg:px-8 lg:py-10">
 				<div class="mb-7 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
 					<div>
-						<h2 class="text-2xl font-bold text-foreground" style="font-family: var(--font-serif)">Contacts</h2>
+						<h2 class="text-2xl font-bold text-foreground">Contacts</h2>
 						<p class="mt-1 max-w-2xl text-sm text-muted-foreground">Track contact discovery, deletion, sync, and backfill activity for the selected webmail scope.</p>
 					</div>
 					<div class="flex w-full shrink-0 flex-col items-end gap-3 lg:w-auto">
@@ -2799,7 +2799,7 @@ templ AdminProviderCard(provider models.AvatarProviderStats) {
 	<div class="rounded-lg border border-border bg-card p-4 transition-colors hover:bg-accent/20">
 		<div class="mb-4 flex items-start justify-between gap-3">
 			<div class="min-w-0">
-				<div class="truncate text-base font-bold text-foreground" style="font-family: var(--font-serif)">{ adminProviderLabel(provider.Provider) }</div>
+				<div class="truncate text-base font-bold text-foreground">{ adminProviderLabel(provider.Provider) }</div>
 				<div class="mt-0.5 text-xs font-medium text-muted-foreground">{ adminProviderRole(provider.Provider) }</div>
 			</div>
 			<div class="rounded-md border border-border bg-background px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{ provider.Provider }</div>
@@ -2891,7 +2891,7 @@ templ AdminMailOperationsPage(status models.MailOperationsAdminStatus) {
 			<div class="max-w-6xl px-6 py-8 lg:px-8 lg:py-10">
 				<div class="mb-7 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
 					<div>
-						<h2 class="text-2xl font-bold text-foreground" style="font-family: var(--font-serif)">Mail operations</h2>
+						<h2 class="text-2xl font-bold text-foreground">Mail operations</h2>
 						<p class="mt-1 max-w-3xl text-sm text-muted-foreground">Aggregate health for durable provider work. This page avoids message content and raw provider errors.</p>
 					</div>
 					@AdminWebmailScopeFilter(status.Scope, "/admin/operations")

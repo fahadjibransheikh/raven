@@ -27,7 +27,7 @@ templ SettingsPage(accounts []models.Account, syncSettings models.SyncSettings, 
 			<div id="settings-content" class="max-w-3xl px-8 py-10">
 				<div class="mb-6">
 					@PhoneNavToggle("-ml-2 mb-2")
-					<h2 class="text-2xl font-bold text-foreground mb-1" style="font-family: var(--font-serif)">Settings</h2>
+					<h2 class="text-2xl font-bold text-foreground mb-1">Settings</h2>
 					<p class="text-sm text-muted-foreground">Manage your accounts and preferences</p>
 				</div>
 				if activeTab == "accounts" {
@@ -465,11 +465,11 @@ templ SettingsAppearanceTab(uiSettings map[string]string) {
 			<div class="bg-card rounded-lg border p-6 space-y-6">
 				<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 					<div>
-						<h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-1">Visual Style</h3>
-						<p class="text-xs text-muted-foreground">Choose the overall look and feel of Raven.</p>
+						<h3 class="text-sm font-semibold text-foreground mb-1">Accent</h3>
+						<p class="text-xs text-muted-foreground">Choose the accent used for buttons, the unread dot and links. The layout is the same for every choice.</p>
 					</div>
 					<div class="space-y-1 sm:text-right" data-mode-picker>
-						<h4 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Color Mode</h4>
+						<h4 class="text-sm font-semibold text-foreground">Color mode</h4>
 						<div class="inline-flex rounded-lg border border-border bg-background p-0.5 gap-0.5">
 							<button
 								type="button"
@@ -498,97 +498,30 @@ templ SettingsAppearanceTab(uiSettings map[string]string) {
 						</div>
 					</div>
 				</div>
-				<div class="grid grid-cols-2 sm:grid-cols-3 gap-4 max-w-2xl" data-theme-picker>
-					<label class="relative flex flex-col rounded-lg border-2 p-3 cursor-pointer transition-all duration-200 text-left hover:shadow-md group border-border has-[:checked]:border-primary has-[:checked]:ring-2 has-[:checked]:ring-primary/20">
-						@radio.Radio(radio.Props{Name: "theme_style", Value: "raven", Checked: uiSettingGet(uiSettings, "theme_style", "raven") == "raven", Class: "absolute right-2.5 bottom-2.5 z-10"})
-						<div data-theme="raven" data-theme-preview class={ "overflow-hidden h-36 mb-2 flex", templ.KV("dark", uiSettingGet(uiSettings, "theme", "dark") == "dark") } style="background:var(--background); border-radius:8px">
-							<div class="w-1/4 p-2 flex flex-col gap-1.5" style="background:var(--sidebar); border-right:1px solid var(--sidebar-border)">
-								<div style="height:3px; width:70%; background:var(--sidebar-foreground); opacity:0.4; border-radius:4px"></div>
-								<div style="height:6px; width:95%; background:var(--sidebar-accent); border-radius:3px"></div>
-								<div style="height:3px; width:80%; background:var(--sidebar-foreground); opacity:0.25; border-radius:4px"></div>
-								<div style="height:3px; width:60%; background:var(--sidebar-foreground); opacity:0.25; border-radius:4px"></div>
-							</div>
-							<div class="flex-1 p-2 flex flex-col gap-1.5" style="background:var(--background)">
-								<div style="height:3px; width:60%; background:var(--foreground); opacity:0.2; border-radius:4px; margin-bottom:2px"></div>
-								<div class="flex-1 p-2 flex flex-col" style="background:var(--card); border:1px solid var(--border); border-radius:8px">
-									<div style="height:2px; width:75%; background:var(--foreground); opacity:0.3; border-radius:4px; margin-bottom:3px"></div>
-									<div style="height:2px; width:50%; background:var(--muted-foreground); opacity:0.3; border-radius:4px; margin-bottom:3px"></div>
-									<div style="height:2px; width:85%; background:var(--foreground); opacity:0.12; border-radius:4px; margin-bottom:3px"></div>
-									<div style="height:2px; width:60%; background:var(--foreground); opacity:0.08; border-radius:4px; margin-bottom:3px"></div>
-									<div style="flex:1; width:100%; background:var(--secondary); border-radius:6px; margin-bottom:3px"></div>
-									<div style="display:inline-flex; gap:4px; margin-top:auto">
-										<div style="height:10px; width:28px; background:var(--primary); border-radius:6px"></div>
-										<div style="height:10px; width:28px; background:var(--card); border:1px solid var(--border); border-radius:6px"></div>
-									</div>
-								</div>
-							</div>
-						</div>
-						<span class="text-sm font-medium text-foreground leading-tight">Raven</span>
-						<span class="text-xs text-muted-foreground">Black, pink, quiet</span>
+				<div class="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-2xl" data-theme-picker>
+					<label class="relative flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors hover:bg-row-hover border-border has-[:checked]:border-primary has-[:checked]:ring-2 has-[:checked]:ring-primary/20">
+						@radio.Radio(radio.Props{Name: "theme_style", Value: "raven", Checked: uiSettingGet(uiSettings, "theme_style", "raven") == "raven", Class: "absolute right-3 top-3 z-10"})
+						<span data-theme="raven" data-theme-preview class={ "size-8 shrink-0 rounded-full border", templ.KV("dark", uiSettingGet(uiSettings, "theme", "dark") == "dark") } style="background:var(--primary)"></span>
+						<span class="flex flex-col">
+							<span class="text-sm font-medium text-foreground leading-tight">Raven pink</span>
+							<span class="text-xs text-muted-foreground">The default accent</span>
+						</span>
 					</label>
-
-					<label class="relative flex flex-col rounded-lg border-2 p-3 cursor-pointer transition-all duration-200 text-left hover:shadow-md group border-border has-[:checked]:border-primary has-[:checked]:ring-2 has-[:checked]:ring-primary/20">
-						@radio.Radio(radio.Props{Name: "theme_style", Value: "classic", Checked: uiSettingGet(uiSettings, "theme_style", "raven") == "classic", Class: "absolute right-2.5 bottom-2.5 z-10"})
-						<div data-theme="classic" data-theme-preview class={ "overflow-hidden h-36 mb-2 flex", templ.KV("dark", uiSettingGet(uiSettings, "theme", "dark") == "dark") } style="background:var(--background); border-radius:12px">
-							<div class="w-1/4 p-2 flex flex-col gap-1.5" style="background:var(--sidebar)">
-								<div style="height:3px; width:70%; background:var(--sidebar-foreground); opacity:0.5; border-radius:10px"></div>
-								<div style="height:3px; width:90%; background:var(--sidebar-foreground); opacity:0.3; border-radius:10px"></div>
-								<div style="height:3px; width:50%; background:var(--primary); opacity:0.7; border-radius:10px"></div>
-								<div style="height:3px; width:80%; background:var(--sidebar-foreground); opacity:0.3; border-radius:10px"></div>
-								<div style="height:3px; width:60%; background:var(--sidebar-foreground); opacity:0.3; border-radius:10px"></div>
-							</div>
-							<div class="flex-1 p-2 flex flex-col gap-1.5" style="background:var(--background)">
-								<div style="height:3px; width:60%; background:var(--foreground); opacity:0.3; border-radius:10px; margin-bottom:2px"></div>
-								<div class="flex-1 p-2 flex flex-col" style="background:var(--card); border:1px solid var(--border); border-radius:12px">
-									<div style="height:2px; width:75%; background:var(--foreground); opacity:0.4; border-radius:10px; margin-bottom:3px"></div>
-									<div style="height:2px; width:50%; background:var(--muted-foreground); opacity:0.3; border-radius:10px; margin-bottom:3px"></div>
-									<div style="height:2px; width:85%; background:var(--foreground); opacity:0.2; border-radius:10px; margin-bottom:3px"></div>
-									<div style="height:2px; width:60%; background:var(--foreground); opacity:0.15; border-radius:10px; margin-bottom:3px"></div>
-									<div style="height:2px; width:90%; background:var(--foreground); opacity:0.1; border-radius:10px; margin-bottom:3px"></div>
-									<div style="height:2px; width:40%; background:var(--foreground); opacity:0.15; border-radius:10px; margin-bottom:3px"></div>
-									<div style="height:2px; width:70%; background:var(--foreground); opacity:0.1; border-radius:10px; margin-bottom:3px"></div>
-									<div style="flex:1; width:100%; background:var(--secondary); border-radius:6px; margin-bottom:3px"></div>
-									<div style="display:inline-flex; gap:4px; margin-top:auto">
-										<div style="height:10px; width:28px; background:var(--primary); border-radius:8px"></div>
-										<div style="height:10px; width:28px; background:var(--card); border:1px solid var(--border); border-radius:8px"></div>
-									</div>
-								</div>
-							</div>
-						</div>
-						<span class="text-sm font-medium text-foreground leading-tight">Classic</span>
-						<span class="text-xs text-muted-foreground">Warm tones, soft rounded</span>
+					<label class="relative flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors hover:bg-row-hover border-border has-[:checked]:border-primary has-[:checked]:ring-2 has-[:checked]:ring-primary/20">
+						@radio.Radio(radio.Props{Name: "theme_style", Value: "classic", Checked: uiSettingGet(uiSettings, "theme_style", "raven") == "classic", Class: "absolute right-3 top-3 z-10"})
+						<span data-theme="classic" data-theme-preview class={ "size-8 shrink-0 rounded-full border", templ.KV("dark", uiSettingGet(uiSettings, "theme", "dark") == "dark") } style="background:var(--primary)"></span>
+						<span class="flex flex-col">
+							<span class="text-sm font-medium text-foreground leading-tight">Copper</span>
+							<span class="text-xs text-muted-foreground">Warm and earthy</span>
+						</span>
 					</label>
-
-					<label class="relative flex flex-col rounded-lg border-2 p-3 cursor-pointer transition-all duration-200 text-left hover:shadow-md group border-border has-[:checked]:border-primary has-[:checked]:ring-2 has-[:checked]:ring-primary/20">
-						@radio.Radio(radio.Props{Name: "theme_style", Value: "minimal", Checked: uiSettingGet(uiSettings, "theme_style", "raven") == "minimal", Class: "absolute right-2.5 bottom-2.5 z-10"})
-						<div data-theme="minimal" data-theme-preview class={ "overflow-hidden h-36 mb-2 flex", templ.KV("dark", uiSettingGet(uiSettings, "theme", "dark") == "dark") } style="background:var(--background); border-radius:0">
-							<div class="w-1/4 p-2 flex flex-col gap-1.5" style="background:var(--sidebar); border-right:1px solid var(--sidebar-border)">
-								<div style="height:3px; width:70%; background:var(--sidebar-foreground); opacity:0.4; border-radius:0"></div>
-								<div style="height:3px; width:90%; background:var(--sidebar-foreground); opacity:0.25; border-radius:0"></div>
-								<div style="height:3px; width:50%; background:var(--primary); opacity:0.7; border-radius:0"></div>
-								<div style="height:3px; width:80%; background:var(--sidebar-foreground); opacity:0.25; border-radius:0"></div>
-								<div style="height:3px; width:60%; background:var(--sidebar-foreground); opacity:0.25; border-radius:0"></div>
-							</div>
-							<div class="flex-1 p-2 flex flex-col gap-1.5" style="background:var(--background)">
-								<div style="height:3px; width:60%; background:var(--foreground); opacity:0.2; border-radius:0; margin-bottom:2px"></div>
-								<div class="flex-1 p-2 flex flex-col" style="background:var(--card); border:1px solid var(--border); border-radius:0">
-									<div style="height:2px; width:75%; background:var(--foreground); opacity:0.3; border-radius:0; margin-bottom:3px"></div>
-									<div style="height:2px; width:50%; background:var(--muted-foreground); opacity:0.2; border-radius:0; margin-bottom:3px"></div>
-									<div style="height:2px; width:85%; background:var(--foreground); opacity:0.12; border-radius:0; margin-bottom:3px"></div>
-									<div style="height:2px; width:60%; background:var(--foreground); opacity:0.08; border-radius:0; margin-bottom:3px"></div>
-									<div style="height:2px; width:90%; background:var(--foreground); opacity:0.05; border-radius:0; margin-bottom:3px"></div>
-									<div style="height:2px; width:40%; background:var(--foreground); opacity:0.08; border-radius:0; margin-bottom:3px"></div>
-									<div style="height:2px; width:70%; background:var(--foreground); opacity:0.05; border-radius:0; margin-bottom:3px"></div>
-									<div style="flex:1; width:100%; background:var(--secondary); border-radius:0; margin-bottom:3px"></div>
-									<div style="display:inline-flex; gap:4px; margin-top:auto">
-										<div style="height:10px; width:28px; background:var(--primary); border-radius:0"></div>
-										<div style="height:10px; width:28px; background:var(--card); border:1px solid var(--border); border-radius:0"></div>
-									</div>
-								</div>
-							</div>
-						</div>
-						<span class="text-sm font-medium text-foreground leading-tight">Minimal</span>
-						<span class="text-xs text-muted-foreground">Clean, flat, sharp edges</span>
+					<label class="relative flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors hover:bg-row-hover border-border has-[:checked]:border-primary has-[:checked]:ring-2 has-[:checked]:ring-primary/20">
+						@radio.Radio(radio.Props{Name: "theme_style", Value: "minimal", Checked: uiSettingGet(uiSettings, "theme_style", "raven") == "minimal", Class: "absolute right-3 top-3 z-10"})
+						<span data-theme="minimal" data-theme-preview class={ "size-8 shrink-0 rounded-full border", templ.KV("dark", uiSettingGet(uiSettings, "theme", "dark") == "dark") } style="background:var(--primary)"></span>
+						<span class="flex flex-col">
+							<span class="text-sm font-medium text-foreground leading-tight">Mono</span>
+							<span class="text-xs text-muted-foreground">Black and white</span>
+						</span>
 					</label>
 				</div>
 			</div>
@@ -1148,7 +1081,7 @@ templ SettingsAccountsTab(accounts []models.Account) {
 			@dialog.Trigger(dialog.TriggerProps{For: "choose-account-type-dialog"}) {
 				@button.Button(button.Props{
 					Size:    button.SizeSm,
-					Class:   "btn-skeuo shrink-0",
+					Class:   "bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors shrink-0",
 				}) {
 					@icon.Plus(icon.Props{Class: "size-4"})
 					Add Account
@@ -2358,7 +2291,7 @@ templ AccountSignaturesSettings(accounts []models.AccountSignatureData) {
 				</div>
 			</div>
 			@dialog.Trigger(dialog.TriggerProps{For: "compose-signatures-dialog"}) {
-				<button type="button" class="btn-skeuo inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold">
+				<button type="button" class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold">
 					@icon.Signature(icon.Props{Class: "size-4"})
 					Manage Signatures
 				</button>
@@ -2433,7 +2366,7 @@ templ SignatureManagerGrid(accounts []models.AccountSignatureData) {
 							@AccountSignatureAssignmentRow("forward", "Forwards", data.Settings.ForwardEnabled, data.Settings.ForwardSignatureID, data.Settings.ForwardPlacement, data.Signatures)
 							<div class="flex items-center justify-between gap-3 pt-1">
 								<span class="text-xs text-muted-foreground" data-signature-settings-status></span>
-								<button type="submit" class="btn-skeuo inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold">
+								<button type="submit" class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold">
 									@icon.Check(icon.Props{Class: "size-3.5"})
 									Save
 								</button>
@@ -2501,7 +2434,7 @@ templ SignatureLibrary(data models.AccountSignatureData) {
 				<span class="text-xs text-muted-foreground" data-signature-save-status></span>
 				<div class="flex items-center gap-2">
 					<button type="button" class="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:border-destructive/30 hover:text-destructive" data-signature-delete-current>Delete</button>
-					<button type="submit" class="btn-skeuo inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold">
+					<button type="submit" class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold">
 						@icon.Save(icon.Props{Class: "size-3.5"})
 						Save Signature
 					</button>
@@ -2578,7 +2511,7 @@ templ AccountSignaturesDialog(data models.AccountSignatureData) {
 								<span class="text-xs text-muted-foreground" data-signature-save-status></span>
 								<div class="flex items-center gap-2">
 									<button type="button" class="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:border-destructive/30 hover:text-destructive" data-signature-delete-current>Delete</button>
-									<button type="submit" class="btn-skeuo inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold">
+									<button type="submit" class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold">
 										@icon.Save(icon.Props{Class: "size-3.5"})
 										Save Signature
 									</button>
@@ -2598,7 +2531,7 @@ templ AccountSignaturesDialog(data models.AccountSignatureData) {
 					@AccountSignatureAssignmentRow("forward", "Forwards", data.Settings.ForwardEnabled, data.Settings.ForwardSignatureID, data.Settings.ForwardPlacement, data.Signatures)
 					<div class="flex items-center justify-between gap-3 pt-2">
 						<span class="text-xs text-muted-foreground" data-signature-settings-status></span>
-						<button type="submit" class="btn-skeuo inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold">
+						<button type="submit" class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold">
 							@icon.Check(icon.Props{Class: "size-3.5"})
 							Save Assignments
 						</button>
@@ -3783,7 +3716,7 @@ templ AddAccountDialog() {
 									@icon.ArrowLeft(icon.Props{Class: "size-4"})
 									Back
 								</button>
-								<button type="submit" data-add-account-submit-button aria-label="Setup Contacts" disabled class="btn-skeuo inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-lg disabled:pointer-events-none disabled:opacity-50">
+								<button type="submit" data-add-account-submit-button aria-label="Setup Contacts" disabled class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-lg disabled:pointer-events-none disabled:opacity-50">
 									<span data-add-account-submit-icon="contacts" class="inline-flex">
 										@icon.BookUser(icon.Props{Class: "size-4"})
 									</span>
@@ -3955,7 +3888,7 @@ templ AddAccountWizardFooter() {
 				@icon.ArrowLeft(icon.Props{Class: "size-4"})
 				Back
 			</button>
-			<button type="submit" form="account-form" data-add-account-submit-button aria-label="Setup Contacts" disabled class="btn-skeuo inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-lg disabled:pointer-events-none disabled:opacity-50">
+			<button type="submit" form="account-form" data-add-account-submit-button aria-label="Setup Contacts" disabled class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-lg disabled:pointer-events-none disabled:opacity-50">
 				<span data-add-account-submit-icon="contacts" class="inline-flex">
 					@icon.BookUser(icon.Props{Class: "size-4"})
 				</span>

@@ -1,6 +1,4 @@
 @import "tailwindcss";
-@import "./themes/classic.css";
-@import "./themes/minimal.css";
 @import "./themes/raven.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
@@ -26,6 +24,11 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-subtle-foreground: var(--subtle-foreground);
+  --color-primary-text: var(--primary-text);
+  --color-row-hover: var(--row-hover);
+  --color-row-selected: var(--row-selected);
+  --color-warning: var(--warning);
   --color-destructive: var(--destructive);
   --color-border: var(--border);
   --color-input: var(--input);
@@ -39,23 +42,15 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  --font-sans: "Nunito Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "Fraunces", ui-serif, Georgia, serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", system-ui, sans-serif;
 
   --color-paper: var(--paper);
   --color-paper-foreground: var(--paper-foreground);
   --color-copper: var(--copper);
-  --color-brass: var(--brass);
   --color-ink: var(--ink);
 
-  --shadow-card: 0 1px 3px rgba(26,22,18,0.12), 0 4px 12px rgba(26,22,18,0.08);
-  --shadow-card-hover: 0 2px 8px rgba(26,22,18,0.18), 0 8px 24px rgba(26,22,18,0.12);
-  --shadow-raised: 0 4px 12px rgba(26,22,18,0.15), 0 12px 32px rgba(26,22,18,0.1);
-  --shadow-emboss: 0 -1px 0 rgba(255,255,255,0.06) inset, 0 1px 2px rgba(0,0,0,0.3) inset;
-  --shadow-inset: 0 2px 4px rgba(0,0,0,0.15) inset, 0 -1px 0 rgba(255,255,255,0.05) inset;
-  --shadow-paper: 0 2px 4px rgba(26,22,18,0.08), 0 8px 24px rgba(26,22,18,0.12), 0 16px 48px rgba(26,22,18,0.06);
-  --shadow-button: 0 1px 0 rgba(255,255,255,0.1) inset, 0 -1px 0 rgba(0,0,0,0.2) inset, 0 2px 4px rgba(0,0,0,0.2);
-  --shadow-button-pressed: 0 1px 2px rgba(0,0,0,0.3) inset;
+  --shadow-menu: var(--elev-menu);
+  --shadow-dialog: var(--elev-dialog);
 
   --animate-fade-in: fade-in 0.4s ease-out;
   --animate-slide-up: slide-up 0.3s ease-out;
@@ -118,24 +113,6 @@
   *::-webkit-scrollbar-thumb:hover {
     background: var(--color-foreground);
   }
-  html[data-theme="classic"]:not(.dark) #mail-list-scroll {
-    scrollbar-color: #a99b88 transparent;
-  }
-  html[data-theme="classic"]:not(.dark) #mail-list-scroll::-webkit-scrollbar-thumb {
-    background: #a99b88;
-  }
-  html[data-theme="classic"]:not(.dark) #mail-list-scroll::-webkit-scrollbar-thumb:hover {
-    background: #6f6253;
-  }
-  html[data-theme="classic"]:not(.dark) #mail-list-scroll:active {
-    scrollbar-color: #2f241b transparent;
-  }
-  html[data-theme="classic"]:not(.dark) #mail-list-scroll:active::-webkit-scrollbar-thumb {
-    background: #2f241b;
-  }
-  html[data-theme="classic"]:not(.dark) #mail-list-scroll::-webkit-scrollbar-thumb:active {
-    background: #2f241b;
-  }
   body {
     @apply bg-background text-foreground;
     -webkit-font-smoothing: antialiased;
@@ -181,67 +158,12 @@
   background-color: color-mix(in srgb, var(--copper) 35%, transparent);
 }
 
-/* === SKEUOMORPHIC MATERIALS === */
-
-.surface-desk {
-  background: linear-gradient(170deg, var(--background) 0%, color-mix(in srgb, var(--background) 95%, #000) 100%);
-}
-
-.surface-leather {
-  background: linear-gradient(180deg, var(--sidebar) 0%, color-mix(in srgb, var(--sidebar) 97%, #000) 100%);
-}
-
-.surface-paper {
-  background: linear-gradient(175deg, var(--paper) 0%, color-mix(in srgb, var(--paper) 97%, #c0a880) 100%);
-  color: var(--ink);
-  box-shadow: var(--shadow-paper);
-}
-
-.dark .surface-paper {
-  background: var(--paper);
-  color: var(--ink);
-}
-
-/* === SKEUOMORPHIC COMPONENTS === */
-
-.raised {
-  box-shadow: var(--shadow-raised);
-}
-
-.groove {
-  box-shadow: var(--shadow-inset);
-}
-
-.embossed {
-  text-shadow: 0 -1px 0 rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.05);
-}
-
-.debossed {
-  text-shadow: 0 1px 0 rgba(0,0,0,0.3);
-}
-
-.btn-skeuo {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--color-sidebar-primary) 100%, #fff) 0%, var(--color-sidebar-primary) 100%);
-  color: var(--color-sidebar-primary-foreground);
-  box-shadow: var(--shadow-button);
-  transition: all 0.1s ease;
-}
-
-.btn-skeuo:hover {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--color-sidebar-primary) 100%, #fff) 0%, color-mix(in srgb, var(--color-sidebar-primary) 95%, #000) 100%);
-}
-
-.btn-skeuo:active {
-  box-shadow: var(--shadow-button-pressed);
-  transform: translateY(1px);
-}
-
 .divider-etched {
   border: none;
   height: 1px;
   margin-left: 1rem;
   margin-right: 1rem;
-  background: color-mix(in srgb, var(--color-border) 40%, transparent);
+  background: var(--border);
 }
 
 .compose-sep {
@@ -342,7 +264,7 @@
   border-radius: var(--radius-lg);
   background: var(--popover);
   color: var(--popover-foreground);
-  box-shadow: var(--shadow-raised);
+  box-shadow: var(--shadow-menu);
   padding: 0.25rem;
 }
 
@@ -833,7 +755,7 @@
   border-radius: var(--radius);
   background: var(--popover);
   color: var(--popover-foreground);
-  box-shadow: var(--shadow-raised);
+  box-shadow: var(--shadow-menu);
 }
 
 .compose-inline-image-toolbar.hidden {
@@ -976,22 +898,6 @@
 
 .account-color-swatch[data-account-color-active="true"] {
   box-shadow: 0 0 0 2px var(--popover), 0 0 0 4px var(--ring), 0 1px 2px rgba(0,0,0,0.16);
-}
-
-html[data-theme="minimal"] .account-color-marker {
-  border-radius: 0;
-}
-
-html[data-theme="minimal"] .account-color-swatch {
-  border-radius: 0;
-}
-
-html[data-theme="minimal"] input[role="switch"] + div {
-  border-radius: 0;
-}
-
-html[data-theme="minimal"] input[role="switch"] + div::after {
-  border-radius: 0;
 }
 
 input[role="switch"] + .gofer-switch-track::after {
@@ -1400,10 +1306,6 @@ input[role="switch"] + .gofer-switch-track::after {
   overflow: hidden;
 }
 
-html[data-theme="classic"] .mail-list-search-input-wrap {
-  box-shadow: none;
-}
-
 #mail-folder-name {
   min-width: 0;
   overflow: hidden;
@@ -1519,12 +1421,6 @@ html[data-theme="classic"] .mail-list-search-input-wrap {
   box-shadow: inset 3px 0 0 var(--color-primary), inset 0 0 0 1px color-mix(in srgb, var(--color-primary) 35%, transparent);
 }
 
-[data-theme="minimal"].dark [data-contact-list-shell] .mail-list-item > a.envelope-active {
-  background: color-mix(in srgb, var(--color-foreground) 7%, var(--color-background));
-  border-color: var(--color-border);
-  box-shadow: inset 3px 0 0 var(--color-primary), inset 0 0 0 1px color-mix(in srgb, var(--color-primary) 42%, transparent);
-}
-
 .mail-list-item[data-mail-selected] > a,
 .mail-list-item > a[data-mail-selected] {
   background: color-mix(in srgb, var(--color-primary) 6%, transparent);
@@ -1537,11 +1433,6 @@ html[data-theme="classic"] .mail-list-search-input-wrap {
 
 .mail-list-item > a:focus-visible {
   box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--color-ring) 55%, transparent);
-}
-
-[data-theme="minimal"]:not(.dark) .mail-list-item[data-mail-selected] > a,
-[data-theme="minimal"]:not(.dark) .mail-list-item > a[data-mail-selected] {
-  box-shadow: inset 3px 0 0 #000000, inset 0 0 0 1px #000000;
 }
 
 [data-view-mode="table"] .mail-list-item[data-mail-selected] > a,
@@ -2431,7 +2322,7 @@ body.mail-list-column-resizing {
   cursor: pointer;
   background: var(--color-primary);
   color: var(--color-primary-foreground);
-  box-shadow: var(--shadow-raised);
+  box-shadow: var(--shadow-menu);
   transition: all 0.15s ease;
 }
 
@@ -2444,20 +2335,11 @@ body.mail-list-column-resizing {
 .envelope {
   background: var(--color-card);
   border: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
-  transition: all 0.2s ease;
-}
-
-[data-theme="classic"]:not(.dark) .envelope {
-  border-color: color-mix(in srgb, var(--color-border) 80%, transparent);
+  transition: background-color 0.12s ease, border-color 0.12s ease;
 }
 
 .envelope:hover {
   border-color: color-mix(in srgb, var(--color-foreground) 20%, transparent);
-}
-
-[data-theme="classic"]:not(.dark) .envelope:hover,
-[data-theme="minimal"]:not(.dark) .envelope:hover {
-  background: color-mix(in srgb, var(--color-foreground) 4%, var(--color-card));
 }
 
 .envelope-active {
@@ -2506,7 +2388,6 @@ body.mail-list-column-resizing {
 }
 
 .prose h3 {
-  font-family: var(--font-serif);
   font-weight: 600;
   font-size: 1.05em;
   margin-top: 1.5em;
@@ -2718,31 +2599,25 @@ body.mail-list-column-resizing {
   align-items: center;
   justify-content: space-between;
   padding: 10px 14px;
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--sidebar) 95%, #fff) 0%, var(--sidebar) 100%);
-  border-bottom: 1px solid rgba(255,255,255,0.04);
+  background: var(--background);
+  border-bottom: 1px solid var(--border);
 }
 
 .compose-titlebar-text {
-  font-family: var(--font-serif);
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--sidebar-primary);
-  letter-spacing: 0.01em;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--foreground);
 }
 
 .compose-seal {
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(180deg, var(--sidebar-primary), color-mix(in srgb, var(--sidebar-primary) 80%, #000));
-  color: var(--sidebar-primary-foreground);
-  box-shadow:
-    0 1px 0 rgba(255,255,255,0.15) inset,
-    0 2px 4px rgba(0,0,0,0.3);
+  background: var(--primary);
+  color: var(--primary-foreground);
 }
 
 .compose-titlebar-btn {
@@ -2752,30 +2627,31 @@ body.mail-list-column-resizing {
   width: 28px;
   height: 28px;
   border-radius: 6px;
-  color: rgba(255,255,255,0.35);
-  transition: all 0.15s ease;
+  color: var(--muted-foreground);
+  transition: color 0.12s ease, background-color 0.12s ease;
 }
 
 .compose-titlebar-btn:hover {
-  color: rgba(255,255,255,0.7);
-  background: rgba(255,255,255,0.08);
+  color: var(--foreground);
+  background: var(--row-hover);
 }
 
 .compose-body {
-  background: linear-gradient(175deg, var(--paper) 0%, color-mix(in srgb, var(--paper) 97%, #c0a880) 100%);
+  background: var(--background);
 }
 
 .compose-fields {
   padding: 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--ink) 6%, transparent);
+  border-bottom: 1px solid var(--border);
 }
 
 .compose-field-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 16px;
-  border-bottom: 1px solid color-mix(in srgb, var(--ink) 4%, transparent);
+  min-height: 40px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border);
 }
 
 .compose-field-row:last-child {
@@ -2783,70 +2659,62 @@ body.mail-list-column-resizing {
 }
 
 .compose-field-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: color-mix(in srgb, var(--copper) 60%, var(--ink));
-  width: 32px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--subtle-foreground);
+  width: 40px;
   flex-shrink: 0;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
 
 .compose-field-input {
   border: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
-  height: 28px !important;
-  font-size: 13px !important;
-  color: var(--ink) !important;
+  height: 32px !important;
+  font-size: 14px !important;
+  color: var(--foreground) !important;
 }
 
 .compose-field-input::placeholder {
-  color: color-mix(in srgb, var(--ink) 20%, transparent) !important;
-  font-style: italic;
+  color: var(--subtle-foreground) !important;
 }
 
 .compose-field-input:focus {
   outline: none !important;
-  ring: none !important;
 }
 
 .compose-field-toggle {
-  font-size: 11px;
-  color: color-mix(in srgb, var(--copper) 50%, transparent);
+  font-size: 12px;
+  color: var(--primary-text);
   padding: 2px 6px;
   border-radius: 4px;
-  transition: all 0.15s ease;
+  transition: background-color 0.12s ease;
   font-weight: 500;
-  letter-spacing: 0.02em;
 }
 
 .compose-field-toggle:hover {
-  color: var(--copper);
-  background: color-mix(in srgb, var(--copper) 8%, transparent);
+  background: var(--row-hover);
 }
 
 .compose-subject {
-  padding: 4px 16px;
-  border-bottom: 1px solid color-mix(in srgb, var(--ink) 6%, transparent);
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border);
 }
 
 .compose-subject-input {
   border: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
-  height: 38px !important;
-  font-size: 15px !important;
-  font-family: var(--font-serif) !important;
+  height: 44px !important;
+  font-size: 16px !important;
   font-weight: 600 !important;
-  color: var(--ink) !important;
+  color: var(--foreground) !important;
   letter-spacing: -0.01em;
 }
 
 .compose-subject-input::placeholder {
   font-weight: 400 !important;
-  color: color-mix(in srgb, var(--ink) 22%, transparent) !important;
-  font-style: italic;
+  color: var(--subtle-foreground) !important;
 }
 
 .compose-subject-input:focus {
@@ -2854,9 +2722,10 @@ body.mail-list-column-resizing {
 }
 
 .compose-toolbar {
-  padding: 4px 12px;
-  border-bottom: 1px solid color-mix(in srgb, var(--ink) 5%, transparent);
-  background: color-mix(in srgb, var(--paper) 97%, #c0a880);
+  padding: 2px 12px;
+  min-height: 36px;
+  border-bottom: 1px solid var(--border);
+  background: var(--background);
 }
 
 .compose-tool-btn {
@@ -2865,40 +2734,29 @@ body.mail-list-column-resizing {
   justify-content: center;
   width: 30px;
   height: 30px;
-  border-radius: 5px;
-  color: color-mix(in srgb, var(--ink) 35%, transparent);
-  transition: all 0.12s ease;
+  border-radius: 6px;
+  color: var(--muted-foreground);
+  transition: color 0.12s ease, background-color 0.12s ease;
 }
 
 .compose-tool-btn:hover {
-  color: var(--ink);
-  background: color-mix(in srgb, var(--ink) 6%, transparent);
-  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  color: var(--foreground);
+  background: var(--row-hover);
 }
 
 .compose-tool-btn:active {
-  background: color-mix(in srgb, var(--ink) 10%, transparent);
-  box-shadow: 0 1px 2px rgba(0,0,0,0.08) inset;
-  transform: translateY(1px);
+  background: var(--row-selected);
 }
 
 .compose-tool-divider {
   width: 1px;
   height: 18px;
-  background: color-mix(in srgb, var(--ink) 8%, transparent);
+  background: var(--border);
   margin: 0 3px;
 }
 
 .compose-writing-area {
   min-height: 180px;
-  background:
-    repeating-linear-gradient(
-      transparent,
-      transparent 27px,
-      color-mix(in srgb, var(--ink) 4%, transparent) 27px,
-      color-mix(in srgb, var(--ink) 4%, transparent) 28px
-    );
-  background-position: 0 5px;
 }
 
 .compose-body-input {
@@ -2906,15 +2764,14 @@ body.mail-list-column-resizing {
   background: transparent !important;
   box-shadow: none !important;
   resize: none !important;
-  font-size: 14px !important;
-  line-height: 28px !important;
-  color: var(--ink) !important;
+  font-size: 15px !important;
+  line-height: 1.6 !important;
+  color: var(--foreground) !important;
   min-height: 160px !important;
 }
 
 .compose-body-input::placeholder {
-  color: color-mix(in srgb, var(--ink) 18%, transparent) !important;
-  font-style: italic;
+  color: var(--subtle-foreground) !important;
 }
 
 .compose-body-input:focus {
@@ -2926,8 +2783,8 @@ body.mail-list-column-resizing {
   align-items: center;
   justify-content: space-between;
   padding: 10px 16px;
-  border-top: 1px solid color-mix(in srgb, var(--ink) 6%, transparent);
-  background: color-mix(in srgb, var(--paper) 97%, #c0a880);
+  border-top: 1px solid var(--border);
+  background: var(--background);
 }
 
 .compose-discard-btn {
@@ -2936,91 +2793,56 @@ body.mail-list-column-resizing {
   gap: 6px;
   padding: 6px 12px;
   border-radius: 6px;
-  font-size: 13px;
-  color: color-mix(in srgb, var(--ink) 35%, transparent);
-  transition: all 0.15s ease;
+  font-size: 14px;
+  color: var(--muted-foreground);
+  transition: color 0.12s ease, background-color 0.12s ease;
 }
 
 .compose-discard-btn:hover {
-  color: color-mix(in srgb, #c44040 70%, var(--ink));
-  background: color-mix(in srgb, #c44040 6%, transparent);
+  color: var(--destructive);
+  background: color-mix(in srgb, var(--destructive) 8%, transparent);
 }
 
 .compose-draft-btn {
   display: flex;
   align-items: center;
   gap: 6px;
-  height: 34px;
+  height: 36px;
   padding: 0 14px;
+  border: 1px solid var(--input);
   border-radius: 6px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
-  color: color-mix(in srgb, var(--ink) 50%, transparent);
-  background: color-mix(in srgb, var(--ink) 4%, transparent);
-  box-shadow:
-    0 1px 0 rgba(255,255,255,0.15) inset,
-    0 -1px 0 rgba(0,0,0,0.1) inset,
-    0 1px 3px rgba(0,0,0,0.08);
-  transition: all 0.12s ease;
+  color: var(--foreground);
+  background: var(--background);
+  transition: background-color 0.12s ease;
 }
 
 .compose-draft-btn:hover {
-  color: var(--ink);
-  background: color-mix(in srgb, var(--ink) 7%, transparent);
-  box-shadow:
-    0 1px 0 rgba(255,255,255,0.1) inset,
-    0 -1px 0 rgba(0,0,0,0.12) inset,
-    0 2px 4px rgba(0,0,0,0.1);
-}
-
-.compose-draft-btn:active {
-  box-shadow: 0 1px 2px rgba(0,0,0,0.12) inset;
-  transform: translateY(1px);
+  background: var(--row-hover);
 }
 
 .compose-send-btn {
   display: flex;
   align-items: center;
   gap: 7px;
-  height: 34px;
+  height: 36px;
   padding: 0 18px;
   border-radius: 6px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--primary-foreground);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--copper) 100%, #fff) 0%, var(--copper) 100%);
-  box-shadow:
-    0 1px 0 rgba(255,255,255,0.15) inset,
-    0 -1px 0 rgba(0,0,0,0.2) inset,
-    0 2px 6px rgba(0,0,0,0.2);
-  transition: all 0.12s ease;
-  letter-spacing: 0.01em;
+  background: var(--primary);
+  transition: background-color 0.12s ease, opacity 0.12s ease;
 }
 
 .compose-send-btn:hover {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--copper) 100%, #fff) 0%, color-mix(in srgb, var(--copper) 95%, #000) 100%);
-  box-shadow:
-    0 1px 0 rgba(255,255,255,0.1) inset,
-    0 -1px 0 rgba(0,0,0,0.25) inset,
-    0 4px 12px rgba(0,0,0,0.2);
+  background: color-mix(in srgb, var(--primary) 88%, var(--foreground));
 }
 
-.compose-send-btn:active {
-  box-shadow: 0 1px 2px rgba(0,0,0,0.3) inset;
-  transform: translateY(1px);
-}
-
-.btn-skeuo:disabled {
+.compose-send-btn:disabled {
   cursor: not-allowed;
   opacity: 0.6;
-  filter: grayscale(0.2);
-}
-
-.btn-skeuo:disabled:hover {
-  box-shadow:
-    0 1px 0 rgba(255,255,255,0.15) inset,
-    0 -1px 0 rgba(0,0,0,0.2) inset,
-    0 2px 6px rgba(0,0,0,0.2);
 }
 
 .avatar-live-switch::after {

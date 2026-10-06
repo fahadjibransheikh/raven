@@ -1436,7 +1436,7 @@ document.addEventListener("DOMContentLoaded", function () {
           var dot = document.createElement("span")
           dot.dataset.mailCardField = "unread"
           dot.className = "inline-flex size-4 shrink-0 items-center justify-center"
-          dot.innerHTML = '<span class="size-2 rounded-full bg-primary shadow-[0_0_6px_rgba(199,123,48,0.4)]"></span>'
+          dot.innerHTML = '<span class="size-2 rounded-full bg-primary"></span>'
           unreadFields[u].replaceWith(dot)
         }
       }
@@ -1954,9 +1954,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function shortcutHelpHTML() {
       return '<div id="mail-shortcut-help" class="fixed inset-0 z-[1000] flex items-center justify-center bg-background/70 px-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">' +
-        '<div class="w-full max-w-lg rounded-2xl border border-border bg-card p-5 shadow-raised animate-fade-in">' +
+        '<div class="w-full max-w-lg rounded-2xl border border-border bg-card p-5 shadow-menu animate-fade-in">' +
           '<div class="mb-4 flex items-start justify-between gap-3">' +
-            '<div><h2 class="text-lg font-bold tracking-tight" style="font-family: var(--font-serif)">Keyboard shortcuts</h2><p class="mt-1 text-xs text-muted-foreground">Shortcuts are disabled while typing or composing.</p></div>' +
+            '<div><h2 class="text-lg font-bold tracking-tight">Keyboard shortcuts</h2><p class="mt-1 text-xs text-muted-foreground">Shortcuts are disabled while typing or composing.</p></div>' +
             '<button type="button" class="rounded-md border border-border px-2 py-1 text-xs font-semibold text-muted-foreground hover:bg-accent hover:text-foreground" data-mail-shortcut-help-close>Esc</button>' +
           '</div>' +
           '<div class="grid gap-2 sm:grid-cols-2">' +
@@ -4810,14 +4810,14 @@ document.addEventListener("DOMContentLoaded", function () {
       '<div class="mail-list-header px-4 py-4 space-y-3">' +
       '<div class="mail-list-title-row flex items-center justify-between">' +
       '<div class="mail-list-title flex items-center gap-2 min-w-0">' +
-      '<h2 id="mail-folder-name" class="text-lg font-bold tracking-tight" style="font-family: var(--font-serif)">' + escapeHTML(folderName) + '</h2>' +
+      '<h2 id="mail-folder-name" class="text-lg font-bold tracking-tight">' + escapeHTML(folderName) + '</h2>' +
       (count ? '<span id="mail-folder-count" class="inline-flex h-5 min-w-10 items-center justify-center rounded-full bg-muted px-2 text-xs font-medium text-muted-foreground shadow-[0_1px_2px_rgba(0,0,0,0.06)]">' + escapeHTML(count) + '</span>' : '') +
       '</div>' +
       '<div class="h-8 w-8 rounded-md bg-muted/50"></div>' +
       '</div>' +
       '<div class="mail-list-search-section">' +
       '<div class="mail-list-search-primary">' +
-      '<div class="mail-list-search-input-wrap relative groove rounded-lg min-w-0">' +
+      '<div class="mail-list-search-input-wrap relative rounded-lg min-w-0">' +
       '<input type="text" placeholder="Search, or use from: subject: body: then Enter" disabled class="h-9 w-full pl-3 pr-3 rounded-lg text-sm bg-background border border-border/50 opacity-60" />' +
       '</div>' +
       '<div class="mail-list-search-actions">' +
@@ -4839,7 +4839,7 @@ document.addEventListener("DOMContentLoaded", function () {
       '</div>' +
       '</div>' +
       '<div class="resize-handle" data-panel="maillist" draggable="false"></div>' +
-      '<div id="mail-view" class="hidden lg:flex flex-1 flex-col min-w-0 bg-background surface-desk">' +
+      '<div id="mail-view" class="hidden lg:flex flex-1 flex-col min-w-0 bg-background">' +
       '<div class="flex flex-col items-center justify-center h-full text-center p-8" data-mail-view-empty>' +
       '<h3 class="text-lg font-semibold mb-2">Select an email</h3>' +
       '<p class="text-sm text-muted-foreground">Choose a message from the list to read it.</p>' +
@@ -4991,12 +4991,12 @@ document.addEventListener("DOMContentLoaded", function () {
     var html = '<div class="px-4 pb-4">'
     if (mode === "contacts") {
       html += '<div class="inline-flex w-full items-stretch rounded-lg shadow-sm">'
-      html += '<div class="btn-skeuo flex h-10 min-w-0 flex-1 items-center justify-center gap-2 rounded-l-lg rounded-r-none text-sm font-semibold text-sidebar-primary-foreground opacity-75">'
+      html += '<div class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors flex h-10 min-w-0 flex-1 items-center justify-center gap-2 rounded-l-lg rounded-r-none text-sm font-semibold text-sidebar-primary-foreground opacity-75">'
       html += pendingSidebarIcon("user-plus", "size-4") + '<span>New contact</span></div>'
-      html += '<div class="btn-skeuo inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-l-none rounded-r-lg border-l border-sidebar-border/70 text-sidebar-primary-foreground opacity-75">'
+      html += '<div class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-l-none rounded-r-lg border-l border-sidebar-border/70 text-sidebar-primary-foreground opacity-75">'
       html += pendingSidebarIcon("ellipsis-vertical", "size-4") + '</div></div>'
     } else {
-      html += '<div class="btn-skeuo flex h-10 w-full items-center justify-center gap-2 rounded-lg text-sm font-semibold text-sidebar-primary-foreground opacity-75">'
+      html += '<div class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors flex h-10 w-full items-center justify-center gap-2 rounded-lg text-sm font-semibold text-sidebar-primary-foreground opacity-75">'
       html += pendingSidebarIcon("pen", "size-4") + '<span>Compose</span></div>'
     }
     html += '</div>'
@@ -5068,8 +5068,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function mailPendingHeaderHTML() {
     return '<div class="mail-list-header px-4 py-4 space-y-3">' +
-      '<div class="mail-list-title-row flex items-center justify-between"><div class="mail-list-title flex items-center gap-2 min-w-0"><h2 id="mail-folder-name" class="text-lg font-bold tracking-tight" style="font-family: var(--font-serif)">Inbox</h2><span id="mail-folder-count" class="inline-flex h-5 min-w-10 items-center justify-center rounded-full bg-muted px-2 text-xs font-medium text-muted-foreground shadow-[0_1px_2px_rgba(0,0,0,0.06)] animate-pulse"></span></div></div>' +
-      '<div class="mail-list-search-section"><div class="mail-list-search-primary"><div class="mail-list-search-input-wrap relative groove rounded-lg min-w-0">' +
+      '<div class="mail-list-title-row flex items-center justify-between"><div class="mail-list-title flex items-center gap-2 min-w-0"><h2 id="mail-folder-name" class="text-lg font-bold tracking-tight">Inbox</h2><span id="mail-folder-count" class="inline-flex h-5 min-w-10 items-center justify-center rounded-full bg-muted px-2 text-xs font-medium text-muted-foreground shadow-[0_1px_2px_rgba(0,0,0,0.06)] animate-pulse"></span></div></div>' +
+      '<div class="mail-list-search-section"><div class="mail-list-search-primary"><div class="mail-list-search-input-wrap relative rounded-lg min-w-0">' +
           '<span class="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 rounded-sm bg-muted-foreground/30"></span>' +
           '<input type="text" disabled placeholder="Search, or use from: subject: body: then Enter" class="h-9 w-full pl-8 pr-3 rounded-lg text-sm bg-background border border-border/50 outline-none opacity-70"/>' +
         '</div><div class="mail-list-search-actions">' +
@@ -5080,8 +5080,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function contactsPendingHeaderHTML() {
     return '<div class="px-4 py-4 space-y-3">' +
-      '<div class="flex items-center justify-between"><div class="flex items-center gap-2"><h2 class="text-lg font-bold tracking-tight" style="font-family: var(--font-serif)">Contacts</h2><span id="contacts-count" class="inline-flex h-5 min-w-10 items-center justify-center rounded-md bg-muted px-2 text-xs font-medium text-muted-foreground shadow-[0_1px_2px_rgba(0,0,0,0.06)] animate-pulse"></span></div></div>' +
-      '<div class="flex items-center gap-2"><div class="relative groove rounded-lg flex-1 min-w-0">' +
+      '<div class="flex items-center justify-between"><div class="flex items-center gap-2"><h2 class="text-lg font-bold tracking-tight">Contacts</h2><span id="contacts-count" class="inline-flex h-5 min-w-10 items-center justify-center rounded-md bg-muted px-2 text-xs font-medium text-muted-foreground shadow-[0_1px_2px_rgba(0,0,0,0.06)] animate-pulse"></span></div></div>' +
+      '<div class="flex items-center gap-2"><div class="relative rounded-lg flex-1 min-w-0">' +
         '<span class="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 rounded-sm bg-muted-foreground/30"></span>' +
         '<input type="search" disabled placeholder="Search contacts" class="h-9 w-full rounded-lg border border-border/50 bg-background pl-8 pr-3 text-sm text-foreground placeholder:text-muted-foreground opacity-70"/>' +
       '</div></div>' +
@@ -5205,7 +5205,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function readPanePendingHTML(mode) {
     var label = mode === "contacts" ? "Loading contacts..." : "Loading message..."
-    return '<div class="flex flex-col h-full p-2"><div class="surface-paper rounded-md flex flex-col h-full overflow-hidden"><div class="flex items-center justify-between px-6 py-2.5"><div class="flex items-center gap-1"><div class="size-8 rounded-md bg-ink/[0.03] border border-ink/6"></div><div class="size-8 rounded-md bg-ink/[0.03] border border-ink/6"></div></div><div class="h-4 w-20 rounded bg-ink/5 animate-pulse"></div></div><div class="h-px bg-gradient-to-r from-transparent via-amber-900/10 to-transparent"></div><div class="flex-1 overflow-y-auto"><div class="mx-auto px-8 py-6"><div class="flex items-center gap-2 text-sm text-ink/45"><div class="size-4 border-2 border-ink/15 border-t-ink/45 rounded-full animate-spin"></div><span>' + label + '</span></div><div class="space-y-3 mt-5"><div class="h-4 w-full rounded bg-ink/5 animate-pulse"></div><div class="h-4 w-11/12 rounded bg-ink/5 animate-pulse"></div><div class="h-4 w-4/5 rounded bg-ink/5 animate-pulse"></div></div></div></div></div></div>'
+    return '<div class="flex flex-col h-full p-2"><div class="bg-paper text-ink rounded-md flex flex-col h-full overflow-hidden"><div class="flex items-center justify-between px-6 py-2.5"><div class="flex items-center gap-1"><div class="size-8 rounded-md bg-ink/[0.03] border border-ink/6"></div><div class="size-8 rounded-md bg-ink/[0.03] border border-ink/6"></div></div><div class="h-4 w-20 rounded bg-ink/5 animate-pulse"></div></div><div class="h-px bg-gradient-to-r from-transparent via-amber-900/10 to-transparent"></div><div class="flex-1 overflow-y-auto"><div class="mx-auto px-8 py-6"><div class="flex items-center gap-2 text-sm text-ink/45"><div class="size-4 border-2 border-ink/15 border-t-ink/45 rounded-full animate-spin"></div><span>' + label + '</span></div><div class="space-y-3 mt-5"><div class="h-4 w-full rounded bg-ink/5 animate-pulse"></div><div class="h-4 w-11/12 rounded bg-ink/5 animate-pulse"></div><div class="h-4 w-4/5 rounded bg-ink/5 animate-pulse"></div></div></div></div></div></div>'
   }
 
   function showAppSwitchPending(mode) {
@@ -5245,7 +5245,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     var pane = document.getElementById("mail-view")
     if (pane) {
-      pane.className = mode === "contacts" ? "hidden flex-1 min-w-0 bg-background surface-desk xl:flex xl:flex-col" : "hidden lg:flex flex-1 flex-col min-w-0 bg-background surface-desk"
+      pane.className = mode === "contacts" ? "hidden flex-1 min-w-0 bg-background xl:flex xl:flex-col" : "hidden lg:flex flex-1 flex-col min-w-0 bg-background"
       pane.innerHTML = readPanePendingHTML(mode)
     }
   }
@@ -5553,14 +5553,14 @@ document.addEventListener("DOMContentLoaded", function () {
       : '<div class="flex size-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-b from-amber-700/70 to-amber-900/70 text-base font-bold text-amber-100 shadow-[0_8px_22px_rgba(0,0,0,0.16)]">' + initials + '</div>'
     detail.setAttribute("aria-busy", "true")
     detail.innerHTML =
-      '<div class="surface-paper rounded-md flex flex-col h-full overflow-hidden" data-contact-detail-loading>' +
+      '<div class="bg-paper text-ink rounded-md flex flex-col h-full overflow-hidden" data-contact-detail-loading>' +
         '<span class="sr-only" role="status">Loading contact details</span>' +
         '<div class="shrink-0 border-b border-ink/10 bg-paper/70 px-5 py-4 sm:px-7">' +
           '<div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">' +
             '<div class="flex min-w-0 items-start gap-4">' +
               avatarHTML +
               '<div class="min-w-0 pt-0.5">' +
-                '<h1 class="min-w-0 truncate text-2xl font-bold leading-tight tracking-tight text-ink" style="font-family: var(--font-serif)">' + name + '</h1>' +
+                '<h1 class="min-w-0 truncate text-2xl font-bold leading-tight tracking-tight text-ink">' + name + '</h1>' +
                 '<div class="mt-1 text-sm text-ink/45">Contact entry</div>' +
               '</div>' +
             '</div>' +
@@ -5630,7 +5630,7 @@ document.addEventListener("DOMContentLoaded", function () {
     var bodyHint = escapeHTML(preview.preview || "Fetching message body...")
     mailView.innerHTML =
       '<div class="flex flex-col h-full p-2">' +
-        '<div class="surface-paper rounded-md flex flex-col h-full overflow-hidden">' +
+        '<div class="bg-paper text-ink rounded-md flex flex-col h-full overflow-hidden">' +
           '<div class="flex items-center justify-between px-6 py-2.5">' +
             '<div class="flex items-center gap-1">' +
               '<div class="size-8 rounded-md flex items-center justify-center text-ink/45 bg-ink/[0.03] border border-ink/6">↩</div>' +
@@ -5656,7 +5656,7 @@ document.addEventListener("DOMContentLoaded", function () {
                   '<div class="text-xs text-ink/40">Preparing message...</div>' +
                 '</div>' +
               '</div>' +
-              '<h1 class="text-xl font-bold mt-5 tracking-tight text-ink" style="font-family: var(--font-serif)">' + subject + '</h1>' +
+              '<h1 class="text-xl font-bold mt-5 tracking-tight text-ink">' + subject + '</h1>' +
               '<div class="h-px bg-gradient-to-r from-transparent via-ink/10 to-transparent my-6"></div>' +
               '<p class="text-sm text-ink/45 mb-4">' + bodyHint + '</p>' +
               '<div class="space-y-3">' +
@@ -6077,7 +6077,7 @@ function setMailViewEmpty() {
   mailView.innerHTML =
     '<div class="flex flex-col items-center justify-center h-full text-center" data-mail-view-empty>' +
       '<div class="space-y-4 animate-fade-in">' +
-        '<div class="size-20 rounded-2xl bg-card flex items-center justify-center mx-auto raised">' +
+        '<div class="size-20 rounded-2xl bg-card flex items-center justify-center mx-auto border">' +
           '<svg class="size-9 text-muted-foreground/30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7"/><rect x="2" y="4" width="20" height="16" rx="2"/></svg>' +
         '</div>' +
         '<div>' +
@@ -10907,7 +10907,7 @@ function composeOpeningShellHTML() {
     '<div class="px-4 py-4 space-y-3">' +
       '<div class="flex items-center justify-between">' +
         '<div class="flex items-center gap-2">' +
-          '<h2 class="text-lg font-bold tracking-tight" style="font-family: var(--font-serif)">Inbox</h2>' +
+          '<h2 class="text-lg font-bold tracking-tight">Inbox</h2>' +
           '<span class="h-5 w-10 rounded-full bg-muted animate-pulse"></span>' +
         '</div>' +
         '<div class="h-8 w-8 rounded-md bg-muted/50"></div>' +
@@ -10930,13 +10930,13 @@ function composeOpeningShellHTML() {
     '</div>' +
   '</div>' +
   '<div class="resize-handle" data-panel="maillist" draggable="false"></div>' +
-  '<div id="mail-view" class="hidden lg:flex flex-1 flex-col min-w-0 bg-background surface-desk">' + composeOpeningHTML() + '</div>'
+  '<div id="mail-view" class="hidden lg:flex flex-1 flex-col min-w-0 bg-background">' + composeOpeningHTML() + '</div>'
 }
 
 function composeOpeningFullShellHTML() {
   return '<div id="mail-list" class="w-full lg:flex flex-col border-r border-border bg-card h-full overflow-hidden" style="display:none;width:0px;opacity:0;overflow:hidden;border-width:0"></div>' +
     '<div class="resize-handle" data-panel="maillist" draggable="false" style="display:none;opacity:0"></div>' +
-    '<div id="mail-view" class="hidden lg:flex flex-1 flex-col min-w-0 bg-background surface-desk">' + composeOpeningHTML() + '</div>'
+    '<div id="mail-view" class="hidden lg:flex flex-1 flex-col min-w-0 bg-background">' + composeOpeningHTML() + '</div>'
 }
 
 function mergeFolderShellBehindCompose(folderID, fullWidth) {

@@ -38,7 +38,7 @@ func calendarAccountNamesJSON(accounts []models.Account) string {
 }
 
 templ CalendarSidebar(accounts []models.Account, width string, uiSettings map[string]string) {
-	<aside class="hidden lg:flex flex-col surface-leather text-sidebar-foreground h-full overflow-hidden" style={ "width:" + width } data-app-sidebar data-phone-drawer>
+	<aside class="hidden lg:flex flex-col bg-sidebar text-sidebar-foreground h-full overflow-hidden" style={ "width:" + width } data-app-sidebar data-phone-drawer>
 		@SidebarHeader(accounts, "calendar")
 		@CalendarSidebarBody()
 		@SidebarFooter()
@@ -78,7 +78,7 @@ templ CalendarMainPane(accounts []models.Account) {
 					@icon.ChevronRight(icon.Props{Class: "size-4"})
 				</button>
 			</div>
-			<h2 data-cal-title class="cal-title min-w-0 flex-1 truncate text-lg font-bold tracking-tight" style="font-family: var(--font-serif)" aria-live="polite"></h2>
+			<h2 data-cal-title class="cal-title min-w-0 flex-1 truncate text-lg font-bold tracking-tight" aria-live="polite"></h2>
 			<span data-cal-status class="hidden text-xs text-muted-foreground" role="status"></span>
 			<div class="cal-seg" role="group" aria-label="Calendar view">
 				<button type="button" data-cal-view="day" aria-pressed="false">Day</button>
@@ -136,9 +136,6 @@ templ CalendarLayout(accounts []models.Account, uiSettings map[string]string) {
 			<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 			<title>Calendar — Raven</title>
 			@AppIcon()
-			<link rel="preconnect" href="https://fonts.googleapis.com"/>
-			<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous"/>
-			<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;0,9..144,800;1,9..144,400&family=Nunito+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet"/>
 			@SavedPanelSizeStyle()
 			<link rel="stylesheet" href="/assets/css/output.css"/>
 			@dialog.Script()
@@ -154,7 +151,7 @@ templ CalendarLayout(accounts []models.Account, uiSettings map[string]string) {
 			@toast.Script()
 			@AppSidebarResponsiveStyle()
 		</head>
-		<body class="bg-background text-foreground antialiased surface-desk" data-ui-settings={ uiSettingsJSON(uiSettings) }>
+		<body class="bg-background text-foreground antialiased" data-ui-settings={ uiSettingsJSON(uiSettings) }>
 			@CalendarShell(accounts, uiSettings)
 			<div id="app-pane-dialogs"></div>
 			@ComposeDialog(accounts)
