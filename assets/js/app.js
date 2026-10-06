@@ -25,6 +25,9 @@ document.addEventListener("DOMContentLoaded", function () {
   var preserveMailListSelectionFor = null
   var selectedMailIds = new Set()
   var lastSelectedMailId = null
+  // Set while the only "selected" row is the open message, which the user never ticked.
+  // It still feeds the toolbar actions but does not show as a bulk selection.
+  var implicitMailSelectionId = null
   var mailSelectionBusy = false
   var accountDeletionPolls = Object.create(null)
 
@@ -1216,12 +1219,13 @@ document.addEventListener("DOMContentLoaded", function () {
           if (e.shiftKey || e.metaKey || e.ctrlKey) {
             e.preventDefault()
             e.stopPropagation()
-            var linkNext = e.shiftKey && lastSelectedMailId ? true : !selectedMailIds.has(linkRow.dataset.emailId)
+            var linkNext = e.shiftKey && lastSelectedMailId ? true : (implicitSelectedOnly() ? true : !selectedMailIds.has(linkRow.dataset.emailId))
             if (e.shiftKey && lastSelectedMailId) selectMailRange(lastSelectedMailId, linkRow.dataset.emailId, linkNext)
             else setMailSelected(linkRow.dataset.emailId, linkNext)
           } else {
             selectedMailIds.clear()
             setMailSelected(linkRow.dataset.emailId, true)
+            implicitMailSelectionId = linkRow.dataset.emailId
           }
           lastSelectedMailId = linkRow.dataset.emailId
           syncMailSelectionControls()
@@ -1326,8 +1330,13 @@ document.addEventListener("DOMContentLoaded", function () {
       })
     }
 
+    function implicitSelectedOnly() {
+      return !!implicitMailSelectionId && selectedMailIds.size === 1 && selectedMailIds.has(implicitMailSelectionId)
+    }
+
     function setMailSelected(emailId, selected) {
       if (!emailId) return
+      implicitMailSelectionId = null
       if (selected) selectedMailIds.add(emailId)
       else selectedMailIds.delete(emailId)
     }
@@ -1338,6 +1347,7 @@ document.addEventListener("DOMContentLoaded", function () {
       var row = active && active.closest(".mail-list-item[data-email-id]")
       if (!row || !row.dataset.emailId) return
       setMailSelected(row.dataset.emailId, true)
+      implicitMailSelectionId = row.dataset.emailId
       lastSelectedMailId = row.dataset.emailId
     }
 
@@ -1360,16 +1370,18 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function clearMailSelection() {
       selectedMailIds.clear()
+      implicitMailSelectionId = null
       lastSelectedMailId = null
       syncMailSelectionControls()
     }
 
     function syncMailSelectionControls() {
       var rows = renderedMailRows()
+      var implicitOnly = implicitSelectedOnly()
       var visibleSelected = 0
       for (var i = 0; i < rows.length; i++) {
         var selected = selectedMailIds.has(rows[i].dataset.emailId)
-        if (selected) visibleSelected++
+        if (selected && !implicitOnly) visibleSelected++
         rows[i].toggleAttribute("data-mail-selected", selected)
         var anchor = rows[i].querySelector(":scope > a")
         if (anchor) anchor.toggleAttribute("data-mail-selected", selected)
@@ -1383,13 +1395,14 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       var count = selectedMailIds.size
+      var shownCount = implicitOnly ? 0 : count
       var summary = document.querySelector("[data-mail-selection-summary]")
-      if (summary) summary.textContent = count === 1 ? "1 selected" : count + " selected"
+      if (summary) summary.textContent = shownCount === 1 ? "1 selected" : shownCount + " selected"
 
       var clear = document.querySelector("[data-mail-selection-clear]")
       if (clear) {
-        clear.classList.toggle("hidden", count === 0)
-        clear.classList.toggle("inline-flex", count > 0)
+        clear.classList.toggle("hidden", shownCount === 0)
+        clear.classList.toggle("inline-flex", shownCount > 0)
       }
 
       var actions = document.querySelectorAll("[data-mail-selection-action]")
