@@ -1225,6 +1225,14 @@ document.addEventListener("DOMContentLoaded", function () {
         }
       }
 
+      var selectAll = e.target.closest && e.target.closest("[data-mail-select-all]")
+      if (selectAll) {
+        var rows = renderedMailRows()
+        for (var r = 0; r < rows.length; r++) setMailSelected(rows[r].dataset.emailId, selectAll.checked)
+        syncMailSelectionControls()
+        return
+      }
+
       var clearSelection = e.target.closest && e.target.closest("[data-mail-selection-clear]")
       if (clearSelection) {
         e.preventDefault()
@@ -1344,6 +1352,13 @@ document.addEventListener("DOMContentLoaded", function () {
         rows[i].toggleAttribute("data-mail-selected", selected)
         var anchor = rows[i].querySelector(":scope > a")
         if (anchor) anchor.toggleAttribute("data-mail-selected", selected)
+      }
+
+      var selectAllBox = document.querySelector("[data-mail-select-all]")
+      if (selectAllBox) {
+        selectAllBox.checked = rows.length > 0 && visibleSelected === rows.length
+        selectAllBox.indeterminate = visibleSelected > 0 && !selectAllBox.checked
+        selectAllBox.disabled = rows.length === 0
       }
 
       var count = selectedMailIds.size
