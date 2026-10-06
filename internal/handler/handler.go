@@ -1389,9 +1389,10 @@ func remoteImagesDetectScript(emailID string) []byte {
 // absolute http(s)/mailto links in a new window. The iframe has no popup
 // permission: a popup that escaped the sandbox would run on the app origin.
 // Relative and cid: hrefs are dropped so a message cannot point the user at
-// app routes.
+// app routes. Keystrokes are forwarded too (except while typing into a form
+// field), because focus in the frame would otherwise swallow the mail shortcuts.
 func emailExternalLinksScript() []byte {
-	return []byte(`<script>document.addEventListener('click',function(e){var t=e.target,a=t&&t.closest?t.closest('a[href]'):null;if(!a)return;var h=(a.getAttribute('href')||'').trim();if(h.charAt(0)==='#')return;e.preventDefault();if(/^(?:https?:|mailto:)/i.test(h))parent.postMessage({type:'emailLinkClick',href:a.href},'*')},true);</script>`)
+	return []byte(`<script>document.addEventListener('click',function(e){var t=e.target,a=t&&t.closest?t.closest('a[href]'):null;if(!a)return;var h=(a.getAttribute('href')||'').trim();if(h.charAt(0)==='#')return;e.preventDefault();if(/^(?:https?:|mailto:)/i.test(h))parent.postMessage({type:'emailLinkClick',href:a.href},'*')},true);document.addEventListener('keydown',function(e){var t=e.target;if(e.isComposing||(t&&(t.isContentEditable||(t.closest&&t.closest('input,textarea,select')))))return;parent.postMessage({type:'emailKeydown',key:e.key,shiftKey:e.shiftKey,ctrlKey:e.ctrlKey,metaKey:e.metaKey,altKey:e.altKey},'*')},true);</script>`)
 }
 
 // newCSPNonce returns a per-response script nonce.

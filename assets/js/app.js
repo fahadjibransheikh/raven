@@ -11738,6 +11738,19 @@ window.addEventListener("message", function (e) {
     if (linkFrame && /^(https?:|mailto:)/i.test(String(e.data.href || ""))) window.open(String(e.data.href), "_blank", "noopener,noreferrer")
     return
   }
+  if (e.data.type === "emailKeydown") {
+    // Focus inside the sandboxed frame hides keystrokes from the page, so the shortcuts
+    // would die after a click into the body. Replay them, from a real message frame only.
+    var keyFrame = Array.prototype.find.call(document.querySelectorAll("[data-email-body-frame]"), function (f) { return f.contentWindow === e.source })
+    var key = String(e.data.key || "")
+    if (keyFrame && key.length > 0 && key.length <= 12) {
+      document.body.dispatchEvent(new KeyboardEvent("keydown", {
+        key: key, shiftKey: !!e.data.shiftKey, ctrlKey: !!e.data.ctrlKey, metaKey: !!e.data.metaKey, altKey: !!e.data.altKey,
+        bubbles: true, cancelable: true
+      }))
+    }
+    return
+  }
   if (e.data.type === "remoteContentBlocked" && e.data.emailId) {
     var banner = document.querySelector('[data-remote-content-banner="' + e.data.emailId + '"]')
     if (banner) banner.classList.remove("hidden")
