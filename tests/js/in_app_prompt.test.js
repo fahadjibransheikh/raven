@@ -107,3 +107,12 @@ test("Insert link wraps the selection captured before the prompt, even though fo
   await tick()
   assert.deepEqual(wrapped, ["world|https://example.com"])
 })
+
+test("opening a prompt closes open hover tooltips", () => {
+  const w = new JSDOM("<!doctype html><body></body>", { runScripts: "outside-only" }).window
+  let closed = 0
+  w.tui = { popover: { closeAll: function () { closed++ } } }
+  w.eval(ravenJS)
+  w.goferPrompt("Insert link", "Paste a URL")
+  assert.equal(closed, 1)
+})
