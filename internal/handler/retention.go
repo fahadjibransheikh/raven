@@ -12,6 +12,8 @@ import (
 const (
 	mailRetentionInterval      = 6 * time.Hour
 	mailRetentionMaxBatchesRun = 10
+	// The avatar rate limiter needs 7 days of attempts; the rest is admin history.
+	avatarAttemptLogRetention = 30 * 24 * time.Hour
 )
 
 // StartMailRetentionWorker keeps the durable queue bounded for the lifetime
@@ -57,6 +59,10 @@ func (h *Handler) runMailRetentionAt(ctx context.Context, now time.Time) {
 		if pruned.Total() == 0 {
 			break
 		}
+	}
+
+	if _, err := h.db.PruneAvatarAttemptLogs(ctx, now.Add(-avatarAttemptLogRetention)); err != nil && ctx.Err() == nil {
+		log.Printf("mail-retention: prune avatar attempt logs: %v", err)
 	}
 
 	h.retentionMu.Lock()

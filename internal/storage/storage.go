@@ -50,7 +50,7 @@ type ThreadingState struct {
 	Total      int  `json:"total"`
 }
 
-const CurrentSchemaVersion = 97
+const CurrentSchemaVersion = 98
 
 func New(dbPath string) (*DB, error) {
 	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
@@ -910,6 +910,17 @@ func (db *DB) migrate() error {
 		}
 		if err := calendarTx.Commit(); err != nil {
 			return fmt.Errorf("commit v96 to v97 migration: %w", err)
+		}
+	}
+	if currentVersion <= 97 {
+		deleted, err := db.migrateV97ToV98(context.Background())
+		if err != nil {
+			return fmt.Errorf("migrate v97 to v98: %w", err)
+		}
+		if deleted > 0 {
+			if err := db.vacuumIfWorthwhile(context.Background()); err != nil {
+				log.Printf("storage: vacuum after orphan thread cleanup: %v", err)
+			}
 		}
 	}
 

@@ -521,6 +521,17 @@ func (db *DB) CountSenderAvatarAttemptsSince(ctx context.Context, hash string, s
 	return count, err
 }
 
+// PruneAvatarAttemptLogs deletes attempt-log rows older than before. created_at
+// holds CURRENT_TIMESTAMP text, so the cutoff is formatted the same way.
+func (db *DB) PruneAvatarAttemptLogs(ctx context.Context, before time.Time) (int64, error) {
+	res, err := db.Write().ExecContext(ctx,
+		`DELETE FROM avatar_attempt_logs WHERE created_at < ?`, before.UTC().Format("2006-01-02 15:04:05"))
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
+}
+
 func (db *DB) SaveSenderAvatarFound(ctx context.Context, hash, email, source, contentType, storagePath string, data []byte, expiresAt time.Time, gravatarStatus, bimiStatus string) error {
 	source = strings.ToLower(strings.TrimSpace(source))
 	if source == "" {

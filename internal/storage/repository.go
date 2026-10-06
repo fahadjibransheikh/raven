@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html"
 	"html/template"
@@ -351,6 +352,19 @@ func (db *DB) reconcileMessageThreadTx(ctx context.Context, tx *sql.Tx, msgID in
 		}
 	}
 
+	// A re-sync of a known message keeps its thread unless References resolved
+	// to a parent above; otherwise every upsert of a root message would mint a
+	// new thread and orphan the old one.
+	if threadID == "" {
+		var cur sql.NullString
+		_ = tx.QueryRowContext(ctx, `SELECT thread_id FROM messages WHERE id = ?`, msgID).Scan(&cur)
+		if cur.Valid && cur.String != "" {
+			var one int
+			if tx.QueryRowContext(ctx, `SELECT 1 FROM threads WHERE id = ?`, cur.String).Scan(&one) == nil {
+				threadID = cur.String
+			}
+		}
+	}
 	if threadID == "" && len(refs) == 0 {
 		threadID = db.findSubjectFallbackThreadTx(ctx, tx, msgID, accountID, normalizedSubject, subject, sentAt)
 	}
@@ -361,6 +375,9 @@ func (db *DB) reconcileMessageThreadTx(ctx context.Context, tx *sql.Tx, msgID in
 			return err
 		}
 	}
+
+	var oldThreadID sql.NullString
+	_ = tx.QueryRowContext(ctx, `SELECT thread_id FROM messages WHERE id = ?`, msgID).Scan(&oldThreadID)
 
 	var parentValue any
 	if parentID.Valid {
@@ -391,6 +408,11 @@ func (db *DB) reconcileMessageThreadTx(ctx context.Context, tx *sql.Tx, msgID in
 			return err
 		}
 		if err := db.reattachResolvedChildrenTx(ctx, tx, msgID, accountID, messageID, normalizedSubject, threadID); err != nil {
+			return err
+		}
+	}
+	if oldThreadID.Valid && oldThreadID.String != "" && oldThreadID.String != threadID {
+		if err := db.updateThreadAggregatesTx(ctx, tx, oldThreadID.String); err != nil {
 			return err
 		}
 	}
@@ -575,6 +597,12 @@ func (db *DB) updateThreadAggregatesTx(ctx context.Context, tx *sql.Tx, threadID
 		`SELECT account_id, subject, normalized_subject, id, date_received
 		 FROM messages WHERE thread_id = ? ORDER BY date_received ASC, id ASC LIMIT 1`, threadID,
 	).Scan(&accountID, &subject, &normalizedSubject, &rootID, new(sqliteNullTime))
+	if errors.Is(err, sql.ErrNoRows) {
+		// No message references the thread any more; drop the row so moved
+		// messages do not leave orphans behind.
+		_, err = tx.ExecContext(ctx, `DELETE FROM threads WHERE id = ?`, threadID)
+		return err
+	}
 	if err != nil {
 		return nil
 	}

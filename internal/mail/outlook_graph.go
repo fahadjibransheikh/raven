@@ -639,7 +639,7 @@ func (o *SyncOrchestrator) syncOutlookGraphFolder(ctx context.Context, accountID
 	folder := target.Folder
 	graphFolder := target.Graph
 	full := outlookGraphFolderNeedsFullReconcile(folder)
-	if !full && o.db != nil {
+	if !full && o.db != nil && outlookGraphMissingSenderRepairDue(folder, time.Now()) {
 		missingHeaders, err := o.db.HasProviderFolderMessagesMissingSender(ctx, accountID, folder.ID)
 		if err != nil {
 			return fmt.Errorf("outlook graph metadata completeness check %s/%s: %w", accountID, graphFolder.DisplayName, err)
@@ -841,6 +841,18 @@ func outlookGraphFolderNeedsFullReconcile(folder storage.FolderSyncInfo) bool {
 		return true
 	}
 	return false
+}
+
+// Some items (e.g. note-like messages) never carry a sender in Graph, so the
+// missing-sender repair cannot converge. Rate-limit it so those items cost one
+// full baseline per day instead of one per sync cycle.
+const outlookGraphMissingSenderRepairInterval = 24 * time.Hour
+
+func outlookGraphMissingSenderRepairDue(folder storage.FolderSyncInfo, now time.Time) bool {
+	if !folder.LastFullSyncAt.Valid {
+		return true
+	}
+	return now.Sub(folder.LastFullSyncAt.Time) >= outlookGraphMissingSenderRepairInterval
 }
 
 func outlookGraphDeltaNextLink(cursor string) bool {

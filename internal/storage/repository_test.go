@@ -3335,3 +3335,122 @@ func TestUpsertProviderSyncMessagesDoesNotAdoptAmbiguousOutlookSent(t *testing.T
 		t.Fatalf("count = %d, %v; want 3 (tie must not adopt)", count, err)
 	}
 }
+
+func seedThreadTestAccount(t *testing.T, provider string) *DB {
+	t.Helper()
+	ctx := context.Background()
+	db := newContactsTestDB(t)
+	if _, err := db.Write().ExecContext(ctx, `INSERT INTO accounts (id, user_id, provider, email_address) VALUES ('acc', 'default', ?, 'user@example.com')`, provider); err != nil {
+		t.Fatalf("insert account: %v", err)
+	}
+	if err := db.UpsertFolders(ctx, []UpsertFolderInput{{
+		ID: "acc_inbox", AccountID: "acc", RemoteID: "INBOX", ProviderRemoteID: "INBOX",
+		Name: "Inbox", Role: "inbox", Selectable: true,
+	}}); err != nil {
+		t.Fatalf("UpsertFolders() error = %v", err)
+	}
+	return db
+}
+
+func threadTestMsg(providerID, subject, references string, at time.Time) ProviderSyncMessage {
+	return ProviderSyncMessage{
+		AccountID: "acc", FolderID: "acc_inbox", ProviderMessageID: providerID,
+		InternetMessageID: "<" + providerID + "@example.com>", Subject: subject,
+		References: references, FromEmail: "sender@example.com",
+		DateSent: at, DateReceived: at, IsRead: true,
+	}
+}
+
+func threadTestState(t *testing.T, db *DB, providerID string) (threadID string, threads int) {
+	t.Helper()
+	ctx := context.Background()
+	if err := db.Read().QueryRowContext(ctx, `SELECT thread_id FROM messages WHERE account_id = 'acc' AND internet_message_id = ?`, "<"+providerID+"@example.com>").Scan(&threadID); err != nil {
+		t.Fatalf("read thread_id: %v", err)
+	}
+	if err := db.Read().QueryRowContext(ctx, `SELECT COUNT(*) FROM threads`).Scan(&threads); err != nil {
+		t.Fatalf("count threads: %v", err)
+	}
+	return threadID, threads
+}
+
+func TestProviderUpsertOfKnownRootMessageKeepsThread(t *testing.T) {
+	ctx := context.Background()
+	db := seedThreadTestAccount(t, "outlook")
+	msg := threadTestMsg("root1", "Newsletter", "", time.Date(2020, 8, 7, 12, 0, 0, 0, time.UTC))
+
+	var first string
+	for i := 0; i < 5; i++ {
+		if _, err := db.UpsertProviderSyncMessages(ctx, []ProviderSyncMessage{msg}); err != nil {
+			t.Fatalf("upsert #%d: %v", i, err)
+		}
+		tid, threads := threadTestState(t, db, "root1")
+		if i == 0 {
+			first = tid
+		}
+		if tid != first || threads != 1 {
+			t.Fatalf("upsert #%d: thread_id=%q (first %q) threads=%d, want stable id and 1 thread", i, tid, first, threads)
+		}
+	}
+}
+
+func TestLateParentStillRethreadsAndDropsEmptyThread(t *testing.T) {
+	ctx := context.Background()
+	db := seedThreadTestAccount(t, "outlook")
+	base := time.Date(2020, 8, 7, 12, 0, 0, 0, time.UTC)
+	child := threadTestMsg("child", "Re: Topic", "<parent@example.com>", base.Add(time.Hour))
+	parent := threadTestMsg("parent", "Topic", "", base)
+
+	if _, err := db.UpsertProviderSyncMessages(ctx, []ProviderSyncMessage{child}); err != nil {
+		t.Fatal(err)
+	}
+	childThread, _ := threadTestState(t, db, "child")
+	if _, err := db.UpsertProviderSyncMessages(ctx, []ProviderSyncMessage{parent}); err != nil {
+		t.Fatal(err)
+	}
+	parentThread, threads := threadTestState(t, db, "parent")
+	if got, _ := threadTestState(t, db, "child"); got != parentThread {
+		t.Fatalf("child thread=%q after parent arrived, want parent's %q (was %q)", got, parentThread, childThread)
+	}
+	if threads != 1 {
+		t.Fatalf("threads=%d, want 1 (child's old thread should be deleted)", threads)
+	}
+	// Re-syncing the child must keep it with the parent.
+	if _, err := db.UpsertProviderSyncMessages(ctx, []ProviderSyncMessage{child}); err != nil {
+		t.Fatal(err)
+	}
+	if got, n := threadTestState(t, db, "child"); got != parentThread || n != 1 {
+		t.Fatalf("after child re-sync thread=%q threads=%d, want %q and 1", got, n, parentThread)
+	}
+}
+
+func TestMigrateV97ToV98DeletesOnlyUnreferencedThreads(t *testing.T) {
+	ctx := context.Background()
+	db := seedThreadTestAccount(t, "outlook")
+	if _, err := db.UpsertProviderSyncMessages(ctx, []ProviderSyncMessage{threadTestMsg("live", "Live", "", time.Now())}); err != nil {
+		t.Fatal(err)
+	}
+	liveThread, _ := threadTestState(t, db, "live")
+	for i := 0; i < 5; i++ {
+		if _, err := db.Write().ExecContext(ctx, `INSERT INTO threads (id, account_id, subject) VALUES (?, 'acc', 'orphan')`, fmt.Sprintf("orphan-%d", i)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := db.Write().ExecContext(ctx, `UPDATE schema_version SET version = 97`); err != nil {
+		t.Fatal(err)
+	}
+	// Force the delete to span several batches to exercise the range loop.
+	if _, err := db.Write().ExecContext(ctx, `UPDATE threads SET rowid = rowid + ? WHERE id = 'orphan-4'`, 3*orphanThreadBatchRowids); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := db.migrate(); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	var live, total, version int
+	_ = db.Read().QueryRowContext(ctx, `SELECT COUNT(*) FROM threads WHERE id = ?`, liveThread).Scan(&live)
+	_ = db.Read().QueryRowContext(ctx, `SELECT COUNT(*) FROM threads`).Scan(&total)
+	_ = db.Read().QueryRowContext(ctx, `SELECT MAX(version) FROM schema_version`).Scan(&version)
+	if live != 1 || total != 1 || version != 98 {
+		t.Fatalf("live=%d total=%d version=%d, want 1, 1, 98", live, total, version)
+	}
+}
