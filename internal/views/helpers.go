@@ -77,6 +77,34 @@ func mailFolderIDIsSpam(folderID string, accounts []models.Account) bool {
 	return false
 }
 
+// mailListEmptyText names the folder in the empty state instead of always saying "inbox".
+// Unified folders use the role as their id; account folders carry it in Role.
+func mailListEmptyText(accounts []models.Account, folderID string) string {
+	role := strings.ToLower(strings.TrimSpace(folderID))
+	for _, account := range accounts {
+		for _, folder := range account.Folders {
+			if folder.ID == folderID && folder.Role != "" {
+				role = strings.ToLower(strings.TrimSpace(folder.Role))
+			}
+		}
+	}
+	switch role {
+	case "inbox":
+		return "Your inbox is empty"
+	case "sent":
+		return "No sent messages yet"
+	case "drafts":
+		return "No drafts"
+	case "spam", "junk":
+		return "No spam"
+	case "trash":
+		return "Trash is empty"
+	case "archive":
+		return "Nothing archived"
+	}
+	return "This folder is empty"
+}
+
 func mailEmailIsSpam(email *models.Email) bool {
 	if email == nil {
 		return false

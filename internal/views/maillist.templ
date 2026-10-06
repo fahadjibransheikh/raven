@@ -601,6 +601,7 @@ templ MailListEmails(accounts []models.Account, emails []models.Email, folderID 
 		data-window-start={ fmt.Sprintf("%d", windowStart) }
 		data-page-size={ fmt.Sprintf("%d", mailListPaginationPageSize()) }
 		data-account-marker-style={ accountMarkerStyle(accounts) }
+		data-no-accounts?={ len(accounts) == 0 }
 		data-load-folder?={ totalCount < 0 || scrollCount < 0 }
 	>
 		if totalCount < 0 || scrollCount < 0 {
@@ -618,7 +619,7 @@ templ MailListEmails(accounts []models.Account, emails []models.Email, folderID 
 				@MailListItem(accounts, email, windowStart+i, selectedEmail, senderDisplayMode, mailListViewMode(viewMode))
 			}
 			if len(emails) == 0 {
-				@MailListEmpty()
+				@MailListEmpty(accounts, folderID)
 			}
 		}
 	</div>
@@ -1068,13 +1069,19 @@ templ MailListTableItem(email models.Email, position int, selectedEmail *models.
 	</div>
 }
 
-templ MailListEmpty() {
+templ MailListEmpty(accounts []models.Account, folderID string) {
 	<div class="flex flex-col items-center justify-center py-20 px-4 text-center">
 		<div class="empty-icon-box size-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-4 raised">
 			@icon.Inbox(icon.Props{Class: "size-7 text-muted-foreground/40"})
 		</div>
-		<h3 class="font-semibold text-sm mb-1">No emails</h3>
-		<p class="text-xs text-muted-foreground">Your inbox is empty</p>
+		if len(accounts) == 0 {
+			<h3 class="font-semibold text-sm mb-1">No accounts yet</h3>
+			<p class="text-xs text-muted-foreground">Add an email account to start reading mail.</p>
+			<a href="/settings/accounts" class="mt-4 inline-flex h-8 items-center rounded-md border border-border px-3 text-xs font-semibold text-foreground hover:bg-accent">Add account</a>
+		} else {
+			<h3 class="font-semibold text-sm mb-1">No emails</h3>
+			<p class="text-xs text-muted-foreground">{ mailListEmptyText(accounts, folderID) }</p>
+		}
 	</div>
 }
 

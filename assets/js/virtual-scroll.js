@@ -332,9 +332,14 @@ class VirtualMailList {
       this.rowByIndex.clear()
       var syncing = this.syncState && this.syncState.active
       var syncCount = syncing ? this.syncCountLabel() : ""
+      var empty = this.emptyStateCopy()
       var subtitle = syncing
         ? (this.syncActionLabel() + (syncCount ? " (" + syncCount + ")" : "..."))
-        : "This folder is empty"
+        : empty.text
+      var cta = !syncing && empty.ctaHref
+        ? '<a href="' + empty.ctaHref + '" class="mt-4 inline-flex h-8 items-center rounded-md border border-border px-3 text-xs font-semibold text-foreground hover:bg-accent">' + empty.ctaLabel + '</a>'
+        : ''
+      var title = syncing ? 'Syncing folder' : empty.title
       this.itemsContainer.innerHTML =
         '<div class="flex flex-col items-center justify-center py-20 px-4 text-center">' +
           '<div class="empty-icon-box size-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-4 raised">' +
@@ -343,8 +348,8 @@ class VirtualMailList {
               '<path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>' +
             '</svg>' +
           '</div>' +
-          '<h3 class="font-semibold text-sm mb-1">' + (syncing ? 'Syncing folder' : 'No emails') + '</h3>' +
-          '<p class="text-xs text-muted-foreground">' + subtitle + '</p>' +
+          '<h3 class="font-semibold text-sm mb-1">' + title + '</h3>' +
+          '<p class="text-xs text-muted-foreground">' + subtitle + '</p>' + cta +
         '</div>'
       this.animateExitingRows(stale ? stale.rows : null, new Set(), 180, "cubic-bezier(0.2, 0, 0, 1)", 14, 18)
       return
@@ -1950,6 +1955,30 @@ class VirtualMailList {
       sep = "&"
     }
     return url
+  }
+
+  // Empty-state wording: no accounts -> Add account; a search/filter with no hits -> No results;
+  // otherwise the text names the folder (role comes from the sidebar link, or is the unified folder id).
+  emptyStateCopy() {
+    if (this.container && this.container.hasAttribute("data-no-accounts")) {
+      return { title: "No accounts yet", text: "Add an email account to start reading mail.", ctaHref: "/settings/accounts", ctaLabel: "Add account" }
+    }
+    var base = this.emptyFilters()
+    var current = this.filters || base
+    var filtered = Object.keys(base).some(function (key) {
+      return key !== "sortBy" && key !== "sortOrder" && current[key] && current[key] !== base[key]
+    })
+    if (filtered) return { title: "No results", text: "No messages match your search or filters." }
+    var role = String(this.folderID || "").toLowerCase()
+    var links = document.querySelectorAll('aside a[hx-get^="/folder/"]')
+    for (var i = 0; i < links.length; i++) {
+      if (links[i].getAttribute("hx-get") === "/folder/" + this.folderID && links[i].dataset.folderRole) role = links[i].dataset.folderRole.toLowerCase()
+    }
+    var text = {
+      inbox: "Your inbox is empty", sent: "No sent messages yet", drafts: "No drafts", spam: "No spam", junk: "No spam",
+      trash: "Trash is empty", archive: "Nothing archived",
+    }[role] || "This folder is empty"
+    return { title: "No emails", text: text }
   }
 
   emptyFilters() {
