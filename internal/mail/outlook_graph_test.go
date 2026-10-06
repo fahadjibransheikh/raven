@@ -1447,3 +1447,24 @@ func queryOutlookGraphVisibleThreadCount(t *testing.T, ctx context.Context, db *
 	}
 	return count
 }
+
+func TestOutlookGraphMissingSenderRepairThrottledTo24h(t *testing.T) {
+	now := time.Date(2026, 10, 6, 12, 0, 0, 0, time.UTC)
+	at := func(ago time.Duration) storage.FolderSyncInfo {
+		var f storage.FolderSyncInfo
+		f.LastFullSyncAt.Time, f.LastFullSyncAt.Valid = now.Add(-ago), true
+		return f
+	}
+	if !outlookGraphMissingSenderRepairDue(storage.FolderSyncInfo{}, now) {
+		t.Fatal("never fully synced: repair should be due")
+	}
+	if outlookGraphMissingSenderRepairDue(at(time.Minute), now) {
+		t.Fatal("full sync 1m ago: repair must not re-run")
+	}
+	if outlookGraphMissingSenderRepairDue(at(23*time.Hour), now) {
+		t.Fatal("full sync 23h ago: repair must not re-run")
+	}
+	if !outlookGraphMissingSenderRepairDue(at(25*time.Hour), now) {
+		t.Fatal("full sync 25h ago: repair should be due")
+	}
+}
