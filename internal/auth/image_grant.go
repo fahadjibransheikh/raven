@@ -56,7 +56,10 @@ func (m *Manager) imageGrantMAC(session *Session, messageID, expires int64) []by
 // or any auth_version bump revokes it. Empty when there is no session (no-login
 // mode needs none) or no server key.
 func (m *Manager) SignImageGrant(session *Session, messageID int64) string {
-	if m == nil || session == nil || messageID <= 0 || len(m.bucketHashKey) < minimumBucketHashKeyBytes {
+	if session == nil {
+		return m.signDesktopImageGrant(messageID)
+	}
+	if m == nil || messageID <= 0 || len(m.bucketHashKey) < minimumBucketHashKeyBytes {
 		return ""
 	}
 	expires := m.clock.Now().Add(imageGrantTTL).Unix()

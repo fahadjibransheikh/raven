@@ -24,6 +24,7 @@
       }
     ],
     "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
       "capabilities": [
         "default",
         "remote-notifications"
@@ -55,6 +56,11 @@
     "resources": []
   },
   "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["mailto"]
+      }
+    },
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDcyOTcxOTkwQUM5NUFEQ0IKUldUTHJaV3NrQm1YY3U2ajc2NXdHL0d3bENOTU1kdW9JM3dHTjNOVWRmajdxamlqczBkeU02YVUK",
       "endpoints": [

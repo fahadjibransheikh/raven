@@ -3,12 +3,15 @@
 //! This crate is deliberately NOT a UI. It exists only to:
 //!   1. Launch the compiled Gofer Go binary (bundled as a Tauri "sidecar",
 //!      see https://v2.tauri.app/develop/sidecar/) as a background process.
-//!   2. Wait for it to start listening on 127.0.0.1:8090.
-//!   3. Point the one native window at http://127.0.0.1:8090, so the user
+//!   2. Wait for it to start listening on 127.0.0.1:<port> (8090 unless something
+//!      else holds it), for as long as the process is alive (migrations can take minutes); if it exits first,
+//!      show its last output and a "Try again" button instead.
+//!   3. Point the one native window at http://127.0.0.1:<port>, so the user
 //!      gets Gofer's existing server-rendered UI inside a real macOS app
 //!      window (Dock icon, Cmd+Q, its own process) instead of a browser tab.
-//!   4. Kill the Gofer process when the window closes / the app quits, so
-//!      nothing is left running in the background.
+//!   4. Kill the Gofer process when the app quits (tray Quit or Cmd+Q), so
+//!      nothing is left running in the background. Closing the window only
+//!      hides it to the tray.
 //!
 //! Gofer's own HTML/HTMX frontend is loaded as plain remote content -- it
 //! never calls any Tauri API -- so there is intentionally no IPC/frontend
@@ -16,15 +19,19 @@
 //! ../frontend/index.html that this window shows for the second or two
 //! before the navigate() call below replaces it.
 
+use std::collections::VecDeque;
+use std::io::{Read, Write};
 use std::net::TcpStream;
-use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicBool, AtomicU16, AtomicU64, Ordering};
+use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::TrayIconBuilder;
 use tauri::{AppHandle, Manager, RunEvent, WindowEvent};
+use tauri_plugin_deep_link::DeepLinkExt;
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
-use tauri_plugin_shell::process::CommandChild;
+use tauri_plugin_shell::process::{CommandChild, CommandEvent};
 use tauri_plugin_shell::ShellExt;
 use tauri_plugin_updater::UpdaterExt;
 
@@ -33,22 +40,18 @@ use tauri_plugin_updater::UpdaterExt;
 /// below parses back out into the Dock/taskbar badge.
 const UNREAD_BADGE_SCRIPT: &str = include_str!("unread_badge.js");
 
-/// Host/port Gofer listens on. This matches `GOFER_ADDR=127.0.0.1:8090` in
-/// the repo's `.env` (see .env / .env.example). If you change
-/// GOFER_ADDR, update these two constants to match.
-const GOFER_HOST: &str = "127.0.0.1";
-const GOFER_PORT: u16 = 8090;
-const GOFER_URL: &str = "http://127.0.0.1:8090";
+/// The port Gofer is started on when it is free. The Microsoft app's redirect
+/// URIs are registered for http://localhost:8090, so every other port breaks
+/// the "Add Outlook account" sign-in (see pick_port).
+const PREFERRED_PORT: u16 = 8090;
 
-/// Microsoft settings the desktop app always runs Gofer with, so Outlook works
-/// on every install without editing a .env. The client ID is Raven's Azure app,
+/// Settings the desktop app always runs Gofer with, so Outlook works on every
+/// install without editing a .env. The client ID is Raven's Azure app,
 /// registered as a public client (no secret; PKCE protects the code exchange),
-/// so it is safe to ship. Its redirect URIs are registered for
-/// http://localhost:8090, hence the fixed base URL. Gofer's .env loader never
-/// overrides variables that are already set, so these win over any stale
-/// values in a user's .env.
-const SIDECAR_ENV: [(&str, &str); 4] = [
-    ("GOFER_BASE_URL", "http://localhost:8090"),
+/// so it is safe to ship. Gofer's .env loader never overrides variables that
+/// are already set, so these win over any stale values in a user's .env.
+/// GOFER_ADDR and GOFER_BASE_URL are added per launch, from the chosen port.
+const SIDECAR_ENV: [(&str, &str); 3] = [
     ("MICROSOFT_OAUTH_CLIENT_ID", "57979fc5-6850-4d3d-8e8b-ab3122e4dc0c"),
     ("MICROSOFT_OAUTH_CLIENT_SECRET", ""),
     ("MICROSOFT_OAUTH_TENANT", "common"),
@@ -60,53 +63,328 @@ const SIDECAR_ENV: [(&str, &str); 4] = [
 /// (~/Library/Application Support/<identifier> on macOS,
 /// ~/.local/share/<identifier> on Linux) on every machine, including the
 /// one that builds the app. Never the repo: that is for development only.
-fn gofer_working_dir(app: &AppHandle) -> std::path::PathBuf {
+fn gofer_working_dir(app: &AppHandle) -> Result<std::path::PathBuf, String> {
     let dir = app
         .path()
         .app_data_dir()
-        .expect("failed to resolve the app data folder");
-    std::fs::create_dir_all(&dir).expect("failed to create the app data folder");
-    dir
+        .map_err(|err| format!("Could not locate the Raven data folder: {err}"))?;
+    std::fs::create_dir_all(&dir)
+        .map_err(|err| format!("Could not create the Raven data folder {}: {err}", dir.display()))?;
+    Ok(dir)
 }
 
-/// How long to wait for Gofer to come up before giving up and leaving the
-/// "Starting Gofer..." placeholder on screen. Schema migrations run before the
-/// server listens and can take minutes on a large mailbox (v98's orphan-thread
-/// cleanup took ~1 min on 1.5M rows), so this must outlast them.
-const STARTUP_TIMEOUT: Duration = Duration::from_secs(30 * 60);
+/// How long the placeholder says only "Starting Raven..." before switching to
+/// the longer "Updating your mailbox" text. A normal launch is well under this.
+const SLOW_START_AFTER: Duration = Duration::from_secs(5);
 const POLL_INTERVAL: Duration = Duration::from_millis(200);
+/// How many of the sidecar's last output lines the error page shows.
+const TAIL_LINES: usize = 12;
 
-/// Managed app state: holds the spawned sidecar's child-process handle, if
-/// this instance of the app is the one that spawned it. `None` covers two
-/// cases: (a) we haven't spawned yet, or (b) Gofer was already running on
-/// the port when we started (e.g. a previous copy of this app, or the user
-/// running `task dev`/`./dist/gofer` manually), so we never spawned our own
-/// copy and there is nothing for us to kill on exit.
-struct SidecarState(Arc<Mutex<Option<CommandChild>>>);
-
-fn port_is_open() -> bool {
-    TcpStream::connect((GOFER_HOST, GOFER_PORT)).is_ok()
+/// What the placeholder page (frontend/status.js) should currently show.
+#[derive(Clone, serde::Serialize)]
+struct StartupView {
+    /// "starting", "slow" or "error".
+    state: &'static str,
+    /// One line of progress (slow) or the failure reason (error).
+    detail: String,
+    /// The sidecar's last output lines, error state only.
+    tail: String,
 }
 
-fn wait_for_port(timeout: Duration) -> bool {
-    let start = Instant::now();
-    while start.elapsed() < timeout {
-        if port_is_open() {
-            return true;
-        }
-        std::thread::sleep(POLL_INTERVAL);
+impl StartupView {
+    fn starting() -> Self {
+        Self { state: "starting", detail: String::new(), tail: String::new() }
     }
-    false
+}
+
+/// Managed app state for the sidecar this app instance spawned. `child` is
+/// `None` before the first spawn and after a kill.
+struct SidecarState {
+    child: Mutex<Option<CommandChild>>,
+    /// The port the current sidecar was told to listen on.
+    port: AtomicU16,
+    /// Bumped on every (re)start so a superseded startup thread stops itself.
+    attempt: AtomicU64,
+    /// Set once the window has been pointed at Gofer; "Try again" is a no-op after.
+    ready: AtomicBool,
+    /// Why the sidecar process ended, if it did.
+    exit: Mutex<Option<String>>,
+    /// The sidecar's most recent output lines.
+    tail: Mutex<VecDeque<String>>,
+    /// Latest migration/boot progress line from the sidecar's log.
+    progress: Mutex<String>,
+    view: Mutex<StartupView>,
+    /// A same-origin path (a mailto: compose link) waiting for the window to be
+    /// pointed at Gofer. Guards `ready` too: see open_mailto.
+    pending_next: Mutex<Option<String>>,
+    /// Random per-launch secret. Passed to the sidecar as GOFER_DESKTOP_TOKEN
+    /// and traded for a cookie at /desktop-auth, so only this app's webview can
+    /// use the server. Never written to disk or logged.
+    token: String,
+}
+
+impl SidecarState {
+    fn new() -> Self {
+        Self {
+            child: Mutex::new(None),
+            port: AtomicU16::new(PREFERRED_PORT),
+            attempt: AtomicU64::new(0),
+            ready: AtomicBool::new(false),
+            exit: Mutex::new(None),
+            tail: Mutex::new(VecDeque::new()),
+            progress: Mutex::new(String::new()),
+            view: Mutex::new(StartupView::starting()),
+            pending_next: Mutex::new(None),
+            token: new_token(),
+        }
+    }
+}
+
+fn new_token() -> String {
+    let mut bytes = [0u8; 32];
+    getrandom::fill(&mut bytes).expect("the OS random number generator is unavailable");
+    bytes.iter().map(|b| format!("{b:02x}")).collect()
+}
+
+/// True once the server on `port` answers as Gofer's desktop gate: an
+/// unauthenticated GET /desktop-auth gets 403 with an X-Raven-Desktop header.
+/// Checked before the token is ever sent, so a listener that merely accepts
+/// TCP connections is not enough to receive it.
+fn gofer_answers(port: u16) -> bool {
+    let addr = std::net::SocketAddr::from(([127, 0, 0, 1], port));
+    let Ok(mut stream) = TcpStream::connect_timeout(&addr, Duration::from_millis(500)) else {
+        return false;
+    };
+    let timeout = Some(Duration::from_secs(2));
+    let _ = stream.set_read_timeout(timeout);
+    let _ = stream.set_write_timeout(timeout);
+    let request =
+        format!("GET /desktop-auth HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nConnection: close\r\n\r\n");
+    if stream.write_all(request.as_bytes()).is_err() {
+        return false;
+    }
+    let mut response = String::new();
+    // Headers are all that is needed; a read error after them is fine.
+    let _ = stream.take(8192).read_to_string(&mut response);
+    let mut lines = response.lines();
+    lines.next().is_some_and(|status| status.contains(" 403"))
+        && lines.any(|line| line.eq_ignore_ascii_case("x-raven-desktop: 1"))
+}
+
+/// The URL that logs the webview in and lands on `next` (a same-origin path).
+fn login_url(port: u16, token: &str, next: &str) -> tauri::Url {
+    let mut url: tauri::Url = format!("http://127.0.0.1:{port}/desktop-auth")
+        .parse()
+        .expect("valid URL");
+    url.query_pairs_mut().append_pair("t", token).append_pair("next", next);
+    url
+}
+
+/// Picks the port for this launch: 8090 if it can be bound, otherwise any free
+/// port. OAuth implication of the fallback: GOFER_BASE_URL (and so the
+/// redirect URI sent to Microsoft/Google) follows the port, and redirect URIs
+/// registered for localhost:8090 will not match, so adding a mailbox through
+/// OAuth can fail until 8090 is free again. Everything else keeps working.
+/// The port is released before the sidecar binds it; if someone grabs it in
+/// that gap the sidecar exits with a bind error, which the error page shows.
+fn pick_port() -> u16 {
+    use std::net::TcpListener;
+    for candidate in [PREFERRED_PORT, 0] {
+        if let Ok(listener) = TcpListener::bind(("127.0.0.1", candidate)) {
+            if let Ok(addr) = listener.local_addr() {
+                return addr.port();
+            }
+        }
+    }
+    PREFERRED_PORT
 }
 
 fn kill_sidecar(app_handle: &tauri::AppHandle) {
     let state = app_handle.state::<SidecarState>();
-    let child = state.0.lock().unwrap().take();
+    let child = state.child.lock().unwrap().take();
     if let Some(child) = child {
         // Best-effort: if the process already exited, this can fail; that's
         // fine, there's nothing to clean up.
         let _ = child.kill();
     }
+}
+
+/// Records the view and pushes it to the placeholder page. The page also pulls
+/// it with `startup_state` on load, so a push that lands before the page has
+/// loaded (and is dropped) is not lost.
+fn set_view(app: &AppHandle, view: StartupView) {
+    *app.state::<SidecarState>().view.lock().unwrap() = view.clone();
+    if let Some(window) = app.get_webview_window("main") {
+        if let Ok(json) = serde_json::to_string(&view) {
+            let _ = window.eval(format!("window.ravenStatus&&window.ravenStatus.render({json})"));
+        }
+    }
+}
+
+#[tauri::command]
+fn startup_state(state: tauri::State<'_, SidecarState>) -> StartupView {
+    state.view.lock().unwrap().clone()
+}
+
+/// The error page's "Try again" button. Ignored once Gofer is up, so the
+/// remote Raven page (which can also reach app commands) cannot restart it.
+#[tauri::command]
+fn retry_startup(app: AppHandle) {
+    if !app.state::<SidecarState>().ready.load(Ordering::SeqCst) {
+        start_sidecar(&app);
+    }
+}
+
+fn push_output(state: &SidecarState, bytes: &[u8]) {
+    let line = String::from_utf8_lossy(bytes).trim().to_string();
+    if line.is_empty() {
+        return;
+    }
+    // Go's log lines look like "2026/10/06 12:00:00 storage: vacuuming (...)":
+    // keep the part from the subsystem prefix on as user-facing progress.
+    if let Some(at) = ["storage:", "boot:"].iter().filter_map(|p| line.find(p)).min() {
+        *state.progress.lock().unwrap() = line[at..].to_string();
+    }
+    let mut tail = state.tail.lock().unwrap();
+    if tail.len() == TAIL_LINES {
+        tail.pop_front();
+    }
+    tail.push_back(line);
+}
+
+/// (Re)starts Gofer and the background thread that waits for it. Safe to call
+/// again after a failure: it supersedes any earlier attempt.
+fn start_sidecar(app: &AppHandle) {
+    let state = app.state::<SidecarState>();
+    let attempt = state.attempt.fetch_add(1, Ordering::SeqCst) + 1;
+    kill_sidecar(app);
+    state.ready.store(false, Ordering::SeqCst);
+    *state.exit.lock().unwrap() = None;
+    state.tail.lock().unwrap().clear();
+    state.progress.lock().unwrap().clear();
+    set_view(app, StartupView::starting());
+
+    let fail = |detail: String| {
+        let tail = app.state::<SidecarState>().tail.lock().unwrap().iter().cloned().collect::<Vec<_>>().join("\n");
+        set_view(app, StartupView { state: "error", detail, tail });
+    };
+
+    // Never adopt a server that is already listening: it cannot be told apart
+    // from an impostor, and a Raven started elsewhere does not know this
+    // launch's secret. If 8090 is taken we simply use another port.
+    let port = pick_port();
+    state.port.store(port, Ordering::SeqCst);
+    {
+        let command = match app.shell().sidecar("gofer") {
+            Ok(command) => command,
+            Err(err) => {
+                fail(format!(
+                    "The bundled server could not be found ({err}). Reinstall Raven, or see \
+                     tauri-wrapper/README.md to stage the sidecar binary."
+                ));
+                return;
+            }
+        };
+        let working_dir = match gofer_working_dir(app) {
+            Ok(dir) => dir,
+            Err(err) => {
+                fail(err);
+                return;
+            }
+        };
+        let (mut rx, child) = match command
+            .current_dir(working_dir)
+            .envs(SIDECAR_ENV)
+            .env("GOFER_ADDR", format!("127.0.0.1:{port}"))
+            .env("GOFER_BASE_URL", format!("http://localhost:{port}"))
+            .env("GOFER_DESKTOP_TOKEN", &state.token)
+            .spawn() {
+            Ok(spawned) => spawned,
+            Err(err) => {
+                fail(format!("The server could not be started: {err}"));
+                return;
+            }
+        };
+        *state.child.lock().unwrap() = Some(child);
+
+        // Drain the sidecar's output (a full pipe would stall it) and note when
+        // it exits. This is also the only way to learn it died before listening.
+        let app_for_events = app.clone();
+        tauri::async_runtime::spawn(async move {
+            while let Some(event) = rx.recv().await {
+                let state = app_for_events.state::<SidecarState>();
+                if state.attempt.load(Ordering::SeqCst) != attempt {
+                    return;
+                }
+                match event {
+                    CommandEvent::Stdout(bytes) | CommandEvent::Stderr(bytes) => {
+                        push_output(&state, &bytes)
+                    }
+                    CommandEvent::Error(err) => push_output(&state, err.as_bytes()),
+                    CommandEvent::Terminated(payload) => {
+                        let how = match (payload.code, payload.signal) {
+                            (Some(code), _) => format!("exited with code {code}"),
+                            (None, Some(signal)) => format!("was stopped by signal {signal}"),
+                            _ => "stopped".to_string(),
+                        };
+                        *state.exit.lock().unwrap() = Some(format!("The server {how} before it started."));
+                        return;
+                    }
+                    _ => {}
+                }
+            }
+        });
+    }
+
+    // Wait on a background thread so setup() returns immediately and the window
+    // can show the placeholder. WebviewWindow::navigate() is safe off the main
+    // thread -- Tauri proxies it onto the event loop.
+    let app = app.clone();
+    std::thread::spawn(move || {
+        let state = app.state::<SidecarState>();
+        let started = Instant::now();
+        let mut shown_progress = String::new();
+        let mut slow = false;
+        loop {
+            if state.attempt.load(Ordering::SeqCst) != attempt {
+                return;
+            }
+            // Process death is checked before the port so nothing else that
+            // happens to be listening can be mistaken for Gofer.
+            if let Some(reason) = state.exit.lock().unwrap().clone() {
+                // Give the output reader a moment to deliver the last lines.
+                std::thread::sleep(Duration::from_millis(300));
+                let tail = state.tail.lock().unwrap().iter().cloned().collect::<Vec<_>>().join("\n");
+                set_view(&app, StartupView { state: "error", detail: reason, tail });
+                return;
+            }
+            if gofer_answers(port) {
+                break;
+            }
+            if started.elapsed() >= SLOW_START_AFTER {
+                let progress = state.progress.lock().unwrap().clone();
+                if !slow || progress != shown_progress {
+                    slow = true;
+                    shown_progress = progress.clone();
+                    set_view(&app, StartupView { state: "slow", detail: progress, tail: String::new() });
+                }
+            }
+            std::thread::sleep(POLL_INTERVAL);
+        }
+
+        let next = {
+            let mut pending = state.pending_next.lock().unwrap();
+            state.ready.store(true, Ordering::SeqCst);
+            pending.take().unwrap_or_else(|| "/".to_string())
+        };
+        if let Some(window) = app.get_webview_window("main") {
+            if let Err(err) = window.navigate(login_url(port, &state.token, &next)) {
+                eprintln!("failed to navigate main window to Gofer: {err}");
+            }
+        } else {
+            eprintln!("main window not found; could not navigate to Gofer");
+        }
+    });
 }
 
 const RELEASES_URL: &str = "https://github.com/fahadjibransheikh/raven/releases/latest";
@@ -237,6 +515,38 @@ async fn check_for_update(app: AppHandle, user_initiated: bool) {
     app.restart();
 }
 
+/// `/?mailto=<url>`, which Raven's own page turns into a prefilled compose
+/// (to/cc/bcc/subject/body; see setupMailtoIntent in assets/js/app.js), so the
+/// wrapper does not parse the link itself.
+fn mailto_path(raw: &str) -> String {
+    let mut url: tauri::Url = "http://localhost/".parse().expect("valid URL");
+    url.query_pairs_mut().append_pair("mailto", raw);
+    format!("/?{}", url.query().unwrap_or_default())
+}
+
+/// Opens compose for a mailto: link handed to the app by the OS. Before the
+/// server is up the link is parked and used by the startup thread instead.
+fn open_mailto(app: &AppHandle, urls: Vec<tauri::Url>) {
+    let Some(url) = urls.into_iter().find(|url| url.scheme() == "mailto") else {
+        return;
+    };
+    let next = mailto_path(url.as_str());
+    show_main_window(app, false);
+    let state = app.state::<SidecarState>();
+    let mut pending = state.pending_next.lock().unwrap();
+    if !state.ready.load(Ordering::SeqCst) {
+        *pending = Some(next);
+        return;
+    }
+    drop(pending);
+    if let Some(window) = app.get_webview_window("main") {
+        let port = state.port.load(Ordering::SeqCst);
+        if let Err(err) = window.navigate(login_url(port, &state.token, &next)) {
+            eprintln!("failed to open mailto link: {err}");
+        }
+    }
+}
+
 /// Shared by the tray "Show"/"Compose" items and the global shortcut: bring
 /// the main window to the front, and optionally trigger Gofer's own compose
 /// UI via its existing top-level `openNewCompose()` JS function (the page
@@ -257,6 +567,13 @@ fn show_main_window(app_handle: &AppHandle, open_compose: bool) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // Must be first. A second launch (how Windows/Linux deliver a mailto:
+        // click) hands its arguments to the running app, which the deep-link
+        // feature turns into an open-url event, and exits.
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            show_main_window(app, false);
+        }))
+        .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_shell::init())
         // The two below are driven only from Rust (check_for_update), never
         // via invoke(), so like the global shortcut they need no capability.
@@ -289,7 +606,8 @@ pub fn run() {
                 })
                 .build(),
         )
-        .manage(SidecarState(Arc::new(Mutex::new(None))))
+        .manage(SidecarState::new())
+        .invoke_handler(tauri::generate_handler![startup_state, retry_startup])
         .setup(|app| {
             let app_handle = app.handle().clone();
 
@@ -315,6 +633,33 @@ pub fn run() {
                         }
                     }
                     tauri::webview::NewWindowResponse::Deny
+                })
+                .on_navigation({
+                    let app_handle = app_handle.clone();
+                    move |url| {
+                        // GOFER_BASE_URL says localhost (that is what the OAuth
+                        // redirect URIs are registered for), so a mailbox
+                        // sign-in comes back to localhost:<port>. The desktop
+                        // cookie belongs to 127.0.0.1, so replay that
+                        // navigation there instead of landing cookieless.
+                        let port = app_handle.state::<SidecarState>().port.load(Ordering::SeqCst);
+                        if url.scheme() == "http"
+                            && url.host_str() == Some("localhost")
+                            && url.port() == Some(port)
+                        {
+                            let mut local = url.clone();
+                            if local.set_host(Some("127.0.0.1")).is_ok() {
+                                let app_handle = app_handle.clone();
+                                std::thread::spawn(move || {
+                                    if let Some(window) = app_handle.get_webview_window("main") {
+                                        let _ = window.navigate(local);
+                                    }
+                                });
+                                return false;
+                            }
+                        }
+                        true
+                    }
                 })
                 .initialization_script(UNREAD_BADGE_SCRIPT)
                 .on_document_title_changed(|window, title| {
@@ -370,63 +715,39 @@ pub fn run() {
 
             tauri::async_runtime::spawn(check_for_update(app_handle.clone(), false));
 
-            // If Gofer is already listening (previous run, or started by
-            // hand), don't spawn a second copy -- just adopt it.
-            if !port_is_open() {
-                let sidecar_command = app_handle.shell().sidecar("gofer").expect(
-                    "failed to resolve the `gofer` sidecar binary -- did you copy it to \
-                         src-tauri/binaries/gofer-<target-triple>? See tauri-wrapper/README.md.",
-                );
+            start_sidecar(&app_handle);
 
-                let (_rx, child) = sidecar_command
-                    .current_dir(gofer_working_dir(&app_handle))
-                    .envs(SIDECAR_ENV)
-                    .spawn()
-                    .expect("failed to spawn the Gofer sidecar process");
-
-                let state = app_handle.state::<SidecarState>();
-                *state.0.lock().unwrap() = Some(child);
+            // mailto: links (registered for the app by tauri.conf.json's
+            // deep-link scheme list). The URL that launched us, if any, is
+            // available now; later ones arrive as events.
+            let mailto_handle = app_handle.clone();
+            app.deep_link().on_open_url(move |event| open_mailto(&mailto_handle, event.urls()));
+            if let Ok(Some(urls)) = app.deep_link().get_current() {
+                open_mailto(&app_handle, urls);
             }
-
-            // Poll for the server on a background thread so setup() returns
-            // immediately and the window can appear right away with the
-            // placeholder page. WebviewWindow::navigate() is safe to call
-            // off the main thread -- Tauri proxies it onto the event loop.
-            let app_handle_for_poll = app_handle.clone();
-            std::thread::spawn(move || {
-                if !wait_for_port(STARTUP_TIMEOUT) {
-                    eprintln!(
-                        "Gofer did not start listening on {GOFER_HOST}:{GOFER_PORT} within \
-                         {STARTUP_TIMEOUT:?}. Leaving the loading screen up. Check that \
-                         src-tauri/binaries/gofer-<target-triple> exists and runs standalone \
-                         (try running it directly from a terminal to see its own errors)."
-                    );
-                    return;
-                }
-
-                if let Some(window) = app_handle_for_poll.get_webview_window("main") {
-                    if let Err(err) = window.navigate(GOFER_URL.parse().expect("valid URL")) {
-                        eprintln!("failed to navigate main window to Gofer: {err}");
-                    }
-                } else {
-                    eprintln!("main window not found; could not navigate to Gofer");
-                }
-            });
 
             Ok(())
         })
-        // Belt-and-suspenders: kill the sidecar as soon as the window is
-        // asked to close, in addition to the RunEvent::Exit handler below.
+        // Closing the window hides it; the tray icon (always built in setup)
+        // is how it comes back. Quit from the tray menu or Cmd+Q ends the app,
+        // and RunEvent::Exit below stops the sidecar.
         .on_window_event(|window, event| {
-            if let WindowEvent::CloseRequested { .. } = event {
-                kill_sidecar(window.app_handle());
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
+                let _ = window.hide();
             }
         })
         .build(tauri::generate_context!())
         .expect("error while building the Tauri application")
         .run(|app_handle, event| {
-            if let RunEvent::Exit = event {
-                kill_sidecar(app_handle);
+            match event {
+                RunEvent::Exit => kill_sidecar(app_handle),
+                // Dock icon clicked while the window is hidden.
+                #[cfg(target_os = "macos")]
+                RunEvent::Reopen { has_visible_windows, .. } if !has_visible_windows => {
+                    show_main_window(app_handle, false)
+                }
+                _ => {}
             }
         });
 }

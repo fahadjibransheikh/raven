@@ -5,9 +5,13 @@ icon and its own window pointed at `http://127.0.0.1:8090`, instead of a
 browser tab. **It reimplements none of Gofer's UI.** On launch it:
 
 1. Spawns the compiled Gofer binary as a background "sidecar" process.
-2. Polls `127.0.0.1:8090` until it accepts connections (15s timeout).
+2. Waits for `127.0.0.1:8090` to accept connections for as long as the sidecar
+   process is alive (a schema migration can take minutes). If the sidecar exits
+   first, the window shows its last output and a "Try again" button.
 3. Points the one native window at that URL.
-4. Kills the Gofer process when you close the window / quit the app.
+4. Kills the Gofer process when you quit the app (tray Quit or Cmd+Q).
+   Closing the window only hides it to the tray; the Dock icon or the tray's
+   Show Raven brings it back.
 
 Gofer's port is read from this repo's `gofer/.env` (`GOFER_ADDR=127.0.0.1:8090`)
 at the time this was scaffolded. If you ever change `GOFER_ADDR`, update the
@@ -105,6 +109,11 @@ tauri-wrapper/src-tauri/target/release/bundle/dmg/Raven_<version>_aarch64.dmg
 Drag the `.app` to `/Applications` (or double-click the `.dmg`) as usual.
 
 ## Desktop-native features
+
+- **mailto: links.** The bundle declares the `mailto` scheme (deep-link plugin,
+  `tauri.conf.json`), so Raven can be chosen as the default mail app; a link
+  opens compose via Raven's own `/?mailto=` handling. Windows/Linux deliver the
+  link as a second launch, which the single-instance plugin forwards.
 
 Beyond the plain window wrapper described above, this app adds a few things
 a browser tab can't give you:
