@@ -3807,14 +3807,15 @@ func (h *Handler) handlePushVAPIDPublicKey(w http.ResponseWriter, r *http.Reques
 
 func (h *Handler) handleSavePushSubscription(w http.ResponseWriter, r *http.Request) {
 	var req pushSubscriptionRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 16<<10)).Decode(&req); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}
 	req.Endpoint = strings.TrimSpace(req.Endpoint)
 	req.Keys.P256DH = strings.TrimSpace(req.Keys.P256DH)
 	req.Keys.Auth = strings.TrimSpace(req.Keys.Auth)
-	if !netguard.ValidEndpoint(req.Endpoint) || req.Keys.P256DH == "" || req.Keys.Auth == "" {
+	if !netguard.ValidEndpoint(req.Endpoint) || req.Keys.P256DH == "" || req.Keys.Auth == "" ||
+		len(req.Endpoint) > 2048 || len(req.Keys.P256DH) > 256 || len(req.Keys.Auth) > 256 {
 		http.Error(w, "invalid subscription", http.StatusBadRequest)
 		return
 	}
@@ -3824,10 +3825,14 @@ func (h *Handler) handleSavePushSubscription(w http.ResponseWriter, r *http.Requ
 		UserID:    h.userID(r.Context()),
 		P256DH:    req.Keys.P256DH,
 		Auth:      req.Keys.Auth,
-		UserAgent: r.UserAgent(),
+		UserAgent: truncateString(r.UserAgent(), 512),
 	}); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			http.NotFound(w, r)
+			return
+		}
+		if errors.Is(err, storage.ErrTooManyPushSubscriptions) {
+			http.Error(w, err.Error(), http.StatusConflict)
 			return
 		}
 		http.Error(w, "save subscription failed", http.StatusInternalServerError)
@@ -3836,6 +3841,13 @@ func (h *Handler) handleSavePushSubscription(w http.ResponseWriter, r *http.Requ
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]bool{"ok": true})
+}
+
+func truncateString(value string, max int) string {
+	if len(value) <= max {
+		return value
+	}
+	return strings.ToValidUTF8(value[:max], "")
 }
 
 func (h *Handler) handleDeletePushSubscription(w http.ResponseWriter, r *http.Request) {

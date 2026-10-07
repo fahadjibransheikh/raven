@@ -3,8 +3,15 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 )
+
+// maxWebPushSubscriptionsPerUser bounds the outbound POSTs one new message can
+// fan out to; a person has a handful of browsers, not hundreds.
+const maxWebPushSubscriptionsPerUser = 20
+
+var ErrTooManyPushSubscriptions = errors.New("too many push subscriptions for this user")
 
 type WebPushSubscription struct {
 	Endpoint  string
@@ -18,6 +25,15 @@ type WebPushSubscription struct {
 func (db *DB) SaveWebPushSubscription(ctx context.Context, sub WebPushSubscription) error {
 	if sub.Endpoint == "" || sub.UserID == "" || sub.P256DH == "" || sub.Auth == "" {
 		return fmt.Errorf("invalid web push subscription")
+	}
+	var existing, owned int
+	if err := db.Write().QueryRowContext(ctx, `
+		SELECT COUNT(*), COALESCE(SUM(endpoint = ?), 0) FROM web_push_subscriptions WHERE user_id = ?`,
+		sub.Endpoint, sub.UserID).Scan(&existing, &owned); err != nil {
+		return err
+	}
+	if owned == 0 && existing >= maxWebPushSubscriptionsPerUser {
+		return ErrTooManyPushSubscriptions
 	}
 	result, err := db.Write().ExecContext(ctx, `
 		INSERT INTO web_push_subscriptions (endpoint, user_id, p256dh, auth, user_agent, last_error)
