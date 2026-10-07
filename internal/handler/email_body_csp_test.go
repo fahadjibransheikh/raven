@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -82,5 +83,31 @@ func TestEmailBodyLinksAreOpenedByTheParent(t *testing.T) {
 	}
 	if !strings.Contains(body, "emailKeydown") {
 		t.Errorf("frame must forward keystrokes so shortcuts survive focus in the message: %q", body)
+	}
+}
+
+// Bodies stored by the old regex sanitizer are re-sanitized when served.
+func TestStoredLegacyBodyIsResanitizedOnServe(t *testing.T) {
+	h, db := newAccountOwnershipTestHandler(t)
+	fx := insertVictimReadableMessage(t, h, db)
+	var bodyPath string
+	if err := db.Read().QueryRowContext(t.Context(), `SELECT body_html_path FROM messages WHERE id = ?`, fx.messageID).Scan(&bodyPath); err != nil {
+		t.Fatal(err)
+	}
+	legacy := `<p>keep me</p><img/src=x/onerror=alert(1)><svg/onload=alert(2)></svg>` +
+		`<a href=javascript:alert(3)>link</a><a href="&#106;avascript:alert(4)">link2</a>` +
+		`<img srcset="https://t.example/a.png 1x" src="/api/inline-content/101/victim-inline"><div style="background:u\72l(https://t.example/b.png)">x</div>` +
+		`<button formaction="https://t.example/f">b</button><base href="https://t.example/">`
+	if err := os.WriteFile(bodyPath, []byte(legacy), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	body := getEmailBody(t, h, fx.messageID, "").Body.String()
+	for _, bad := range []string{"onerror", "onload=alert", "javascript", "srcset", `url("https://t.example`, "formaction", "<base", "<svg"} {
+		if strings.Contains(body, bad) {
+			t.Errorf("legacy body still contains %q: %s", bad, body)
+		}
+	}
+	if !strings.Contains(body, "keep me") || !strings.Contains(body, "/api/inline-content/101/victim-inline") {
+		t.Errorf("sanitizing dropped legitimate content: %s", body)
 	}
 }

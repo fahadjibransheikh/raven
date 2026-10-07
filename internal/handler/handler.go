@@ -1502,6 +1502,12 @@ func (h *Handler) handleEmailBody(w http.ResponseWriter, r *http.Request) {
 		}
 		if err == nil && body == nil {
 			body, err = h.db.GetEmailBodyForUser(ctx, emailID, userID)
+			// Bodies stored before the parse-tree sanitizer were cleaned by the old
+			// regex one; the sanitizer is idempotent on its own output (translation
+			// already relies on that), so every stored body is re-checked here.
+			if body != nil {
+				body = message.SanitizeHTML(body)
+			}
 		}
 		if err != nil || body == nil {
 			http.NotFound(w, r)
@@ -4264,6 +4270,11 @@ func (h *Handler) handleAllowRemoteContent(w http.ResponseWriter, r *http.Reques
 	accountID := info.AccountID
 
 	body, err := h.db.GetEmailBodyForUser(ctx, emailID, userID)
+	if err == nil && body != nil {
+		// Same legacy-body re-check as handleEmailBody, and it keeps the copy
+		// written back below clean.
+		body = message.SanitizeHTML(body)
+	}
 	if err != nil || body == nil {
 		http.NotFound(w, r)
 		return
