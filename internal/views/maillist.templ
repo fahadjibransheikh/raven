@@ -970,9 +970,9 @@ templ MailListCardItem(accounts []models.Account, email models.Email, position i
 						{ contactsDisplay(email.To, senderDisplayMode) }
 					</p>
 				}
+				<p class="min-w-0 flex-1 text-xs leading-4 text-subtle-foreground truncate" data-mail-card-field="preview">{ email.Preview }</p>
 			</div>
 			<div class="mail-list-card-zone mail-list-card-zone-footer" data-mail-card-zone="footer">
-				<p class="min-w-0 flex-1 text-xs leading-4 text-subtle-foreground truncate" data-mail-card-field="preview">{ email.Preview }</p>
 				if len(email.Labels) > 0 {
 					for _, label := range email.Labels {
 						<span class={ "text-xs leading-4 px-1.5 rounded font-medium shrink-0", label.Color } data-mail-card-field="labels">

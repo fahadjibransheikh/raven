@@ -1,8 +1,17 @@
-// Row heights in px. Keep in sync with .mail-list-item / .mail-list-thread-main /
-// the skeleton rules in assets/css/input.css (comfortable cards, compact table).
-var MAIL_ROW_HEIGHT = { cards: 64, table: 36 }
-function mailRowHeight(viewMode) {
-  return viewMode === "table" ? MAIL_ROW_HEIGHT.table : MAIL_ROW_HEIGHT.cards
+// Row heights in px. Keep in sync with --mail-row-height in assets/css/input.css
+// (per [data-mail-density]) and the .mail-list-item / .mail-list-thread-main /
+// skeleton rules that read it; tests/js/mail_list_density.test.js checks they agree.
+// cards: per list density, read from <html data-mail-density>; contactCards and
+// table are fixed (the contacts list keeps the old 64px card row).
+var MAIL_ROW_HEIGHT = { cards: { calm: 68, airy: 84 }, contactCards: 64, table: 36 }
+function mailListDensity() {
+  var root = typeof document !== "undefined" ? document.documentElement : null
+  return root && root.dataset && root.dataset.mailDensity === "airy" ? "airy" : "calm"
+}
+function mailRowHeight(viewMode, scope) {
+  if (viewMode === "table") return MAIL_ROW_HEIGHT.table
+  if (scope === "contacts") return MAIL_ROW_HEIGHT.contactCards
+  return MAIL_ROW_HEIGHT.cards[mailListDensity()]
 }
 
 class VirtualMailList {
@@ -105,6 +114,33 @@ class VirtualMailList {
       this.prevLast = null
       this.trimRowPool()
     }
+  }
+
+  // Re-reads the card row height for the current list density (<html
+  // data-mail-density>) and re-lays-out the visible rows, keeping the row at the
+  // top of the viewport where it was. Returns true if the height changed.
+  applyRowDensity() {
+    var height = mailRowHeight(this.viewMode)
+    if (height === this.itemHeight) return false
+    var oldHeight = this.itemHeight
+    var scrollTop = this.container.scrollTop
+    var anchorIndex = this.positionAtOffset(scrollTop)
+    var anchorOffset = Math.max(0, scrollTop - this.offsetAtPosition(anchorIndex))
+    var anchorRatio = oldHeight > 0 ? Math.min(1, anchorOffset / oldHeight) : 0
+    this.itemHeight = height
+    // Expanded threads were measured at the old row height.
+    this.expandedThreads.forEach(function (thread) { thread.measuredHeight = 0 })
+    this.invalidateOffsets()
+    this.prevFirst = null
+    this.prevLast = null
+    this.container.scrollTop = this.offsetAtPosition(anchorIndex) + Math.round(anchorRatio * height)
+    this.render()
+    this.visibleRows.forEach(function (index, shell) {
+      var item = this.cache.get(index)
+      if (item && this.expandedThreads.has(item.id)) this.updateExpandedThreadMeasuredHeight(item.id, shell)
+    }, this)
+    if (this.edgeSkeletonEl) this.edgeSkeletonEl.style.height = height + "px"
+    return true
   }
 
   trimRowPool() {
@@ -908,35 +944,26 @@ class VirtualMailList {
       return row
     }
     row.setAttribute("data-mail-card-layout-scope", "")
+    // Only the fields every row shows: avatar, sender, date, subject, preview. The
+    // layout moves them into their zones; the other zones stay empty (and hidden).
     row.innerHTML =
       '<div class="mail-list-card-zone mail-list-card-zone-rail-top" data-mail-card-zone="railTop">' +
-      '<div data-mail-card-field="avatar" class="size-6 rounded-full bg-muted animate-pulse"></div>' +
+      '<div data-mail-card-field="avatar" class="rounded-full bg-muted animate-pulse"></div>' +
       "</div>" +
-      '<div class="mail-list-card-zone mail-list-card-zone-rail-middle" data-mail-card-zone="railMiddle">' +
-      '<div data-mail-card-field="accountMarker" class="account-color-marker size-2.5 shrink-0 bg-muted animate-pulse"></div>' +
-      "</div>" +
-      '<div class="mail-list-card-zone mail-list-card-zone-rail-bottom" data-mail-card-zone="railBottom">' +
-      '<div data-mail-card-field="thread" class="mail-list-card-empty-icon-slot"></div>' +
-      "</div>" +
+      '<div class="mail-list-card-zone mail-list-card-zone-rail-middle" data-mail-card-zone="railMiddle"></div>' +
+      '<div class="mail-list-card-zone mail-list-card-zone-rail-bottom" data-mail-card-zone="railBottom"></div>' +
       '<div class="mail-list-card-zone mail-list-card-zone-header" data-mail-card-zone="header">' +
       '<div data-mail-card-field="from" class="h-3.5 w-32 max-w-[42%] rounded bg-muted animate-pulse"></div>' +
       '<div data-mail-card-field="date" class="h-3 w-16 rounded bg-muted animate-pulse"></div>' +
-      '<div data-mail-card-field="account" class="h-4 w-20 rounded-full border border-border bg-background animate-pulse"></div>' +
       "</div>" +
-      '<div class="mail-list-card-zone mail-list-card-zone-meta" data-mail-card-zone="meta">' +
-      '<div data-mail-card-field="attachment" class="mail-list-card-empty-icon-slot"></div>' +
-      '<div data-mail-card-field="unread" class="inline-flex size-4 shrink-0 items-center justify-center"><span class="size-2 rounded-full bg-muted animate-pulse"></span></div>' +
-      "</div>" +
+      '<div class="mail-list-card-zone mail-list-card-zone-meta" data-mail-card-zone="meta"></div>' +
       '<div class="mail-list-card-zone mail-list-card-zone-body" data-mail-card-zone="body">' +
-      '<div data-mail-card-field="subject" class="h-3.5 w-56 max-w-[58%] rounded bg-muted animate-pulse"></div>' +
-      '<div data-mail-card-field="to" class="h-3 w-36 max-w-[46%] rounded bg-muted animate-pulse"></div>' +
+      '<div data-mail-card-field="subject" class="h-3.5 w-40 max-w-[50%] rounded bg-muted animate-pulse"></div>' +
+      '<div data-mail-card-field="preview" class="h-3 w-48 max-w-[45%] rounded bg-muted animate-pulse"></div>' +
       "</div>" +
-      '<div class="mail-list-card-zone mail-list-card-zone-footer" data-mail-card-zone="footer">' +
-      '<div data-mail-card-field="preview" class="h-3 w-72 max-w-[70%] rounded bg-muted animate-pulse"></div>' +
-      '<div data-mail-card-field="labels" class="h-4 w-10 rounded bg-muted animate-pulse"></div>' +
-      "</div>" +
+      '<div class="mail-list-card-zone mail-list-card-zone-footer" data-mail-card-zone="footer"></div>' +
       '<div class="mail-list-card-zone mail-list-card-zone-status" data-mail-card-zone="status"></div>' +
-      '<div class="mail-list-card-zone mail-list-card-zone-corner" data-mail-card-zone="corner"><div data-mail-card-field="starred" class="h-3 w-3 rounded bg-muted animate-pulse"></div></div>' +
+      '<div class="mail-list-card-zone mail-list-card-zone-corner" data-mail-card-zone="corner"></div>' +
       '<div class="hidden" data-mail-card-zone="hidden"></div>'
     if (typeof window.applyMailCardLayoutSettings === "function") window.applyMailCardLayoutSettings(row)
     return row
@@ -2543,7 +2570,7 @@ class VirtualContactsList {
   constructor(container, options) {
     this.container = container
     this.viewMode = options.viewMode || container.dataset.viewMode || "cards"
-    this.itemHeight = mailRowHeight(this.viewMode)
+    this.itemHeight = mailRowHeight(this.viewMode, "contacts")
     this.overscan = 10
     this.chunkSize = 100
     this.loadingSkeletonMinDuration = 180
@@ -2628,7 +2655,7 @@ class VirtualContactsList {
 
   setViewMode(viewMode, keepRows) {
     this.viewMode = viewMode === "table" ? "table" : "cards"
-    this.itemHeight = mailRowHeight(this.viewMode)
+    this.itemHeight = mailRowHeight(this.viewMode, "contacts")
     this.container.dataset.viewMode = this.viewMode
     var shell = document.querySelector("[data-contact-list-shell]") || document.getElementById("mail-list")
     if (shell) shell.dataset.viewMode = this.viewMode

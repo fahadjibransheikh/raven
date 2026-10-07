@@ -624,6 +624,15 @@ func themeStyle(settings map[string]string) string {
 	return "raven"
 }
 
+// mailListDensity is the row density of the message list: "calm" (default,
+// two lines) or "airy" (roomier rows). Anything else is calm.
+func mailListDensity(settings map[string]string) string {
+	if uiSettingGet(settings, "mail_list_density", "calm") == "airy" {
+		return "airy"
+	}
+	return "calm"
+}
+
 func senderDisplay(contact models.Contact, mode string) string {
 	switch mode {
 	case "email":
