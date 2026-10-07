@@ -49,13 +49,13 @@
       return {
         railTop: ["avatar"],
         header: ["from", "date"],
-        meta: ["thread", "attachment", "unread"],
+        meta: ["attachment", "unread"],
         railMiddle: [],
         body: ["subject"],
         status: [],
         railBottom: [],
         footer: ["preview", "labels"],
-        corner: ["starred"],
+        corner: ["thread", "starred"],
         hidden: ["account", "accountMarker", "to"],
       }
     }
@@ -65,13 +65,13 @@
       return {
         railTop: ["avatar"],
         header: ["from", "date"],
-        meta: ["thread", "attachment", "unread"],
+        meta: ["attachment", "unread"],
         railMiddle: [],
         body: ["subject"],
         status: [],
         railBottom: [],
         footer: ["preview", "labels"],
-        corner: ["starred"],
+        corner: ["thread", "starred"],
         hidden: ["account", "accountMarker", "to"],
       }
     }
