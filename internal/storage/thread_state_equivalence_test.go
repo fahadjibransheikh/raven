@@ -243,3 +243,66 @@ func must(t *testing.T, err error) {
 		t.Fatal(fmt.Sprint(err))
 	}
 }
+
+// The sidebar counts come from an unread-only index, and folders.unread_count
+// is maintained by the mutation paths; both must track real unread mail.
+func TestSidebarUnreadCountsTrackMutations(t *testing.T) {
+	ctx := context.Background()
+	db, id := seedThreadStateDB(t)
+	brute := func(role string) int {
+		var n int
+		if err := db.Read().QueryRow(`SELECT COUNT(*) FROM message_folder_state mfs JOIN folders f ON f.id = mfs.folder_id
+			WHERE f.role = ? AND mfs.is_deleted = 0 AND mfs.is_read = 0`, role).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	check := func(step string) {
+		t.Helper()
+		counts, err := db.GetAllFolderUnreadCounts(ctx, "default")
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, role := range []string{"inbox", "archive", "trash", "spam"} {
+			// Seed folder ids equal their roles, so the per-folder and unified
+			// entries of the result land on the same key and add up.
+			var stored int
+			if err := db.Read().QueryRow(`SELECT unread_count FROM folders WHERE id = ?`, role).Scan(&stored); err != nil {
+				t.Fatal(err)
+			}
+			if stored != brute(role) {
+				t.Errorf("%s: stored %s = %d, actual %d", step, role, stored, brute(role))
+			}
+			if unified := counts[role] - stored; unified != brute(role) {
+				t.Errorf("%s: unified %s = %d, actual %d", step, role, unified, brute(role))
+			}
+		}
+	}
+	check("seed")
+	if brute("inbox") == 0 {
+		t.Fatal("seed has no unread mail")
+	}
+	must(t, db.SetMessagesReadAndQueue(ctx, []int64{id["a2"]}, false))
+	check("unread")
+	must(t, db.SetMessagesReadAndQueue(ctx, []int64{id["b1"], id["c1"]}, true))
+	check("read")
+	must(t, db.MoveMessagesAndQueue(ctx, []int64{id["a2"], id["b2"]}, "inbox", "trash"))
+	check("move")
+	must(t, db.PermanentlyDeleteMessagesAndQueue(ctx, []int64{id["a2"]}, "trash"))
+	check("permanent delete")
+	_, err := db.RemoveExpungedUIDs(ctx, "inbox", []uint32{1, 2})
+	must(t, err)
+	check("expunge")
+
+	// An Outlook folder that is only partly downloaded reports the provider's count.
+	if _, err := db.Write().Exec(`UPDATE accounts SET provider = 'outlook'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Write().Exec(`UPDATE folders SET provider_remote_id = 'remote-inbox', total_count = 1000, unread_count = 77 WHERE id = 'inbox'`); err != nil {
+		t.Fatal(err)
+	}
+	counts, err := db.GetAllFolderUnreadCounts(ctx, "default")
+	if err != nil || counts["inbox"]-77 != 77 { // stored 77 + unified 77, same key
+		t.Fatalf("partial outlook inbox = %d, %v; want provider count 77 for both entries", counts["inbox"], err)
+	}
+}

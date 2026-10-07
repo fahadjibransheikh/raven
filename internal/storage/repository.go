@@ -4541,21 +4541,22 @@ func (db *DB) GetAllFolderUnreadCounts(ctx context.Context, userID string) (map[
 			       COALESCE(f.total_count, 0) AS provider_total,
 			       COALESCE(a.provider, '') AS account_provider,
 			       COALESCE(f.provider_remote_id, '') AS provider_remote_id,
-			       COUNT(mfs.message_id) AS local_total,
-			       COALESCE(SUM(CASE WHEN mfs.is_read = 0 THEN 1 ELSE 0 END), 0) AS local_unread
+			       -- Counted through idx_folder_state_unread, so the cost follows the
+			       -- number of unread messages, not the size of the mailbox.
+			       (SELECT COUNT(*) FROM message_folder_state mfs
+			         WHERE mfs.folder_id = f.id AND mfs.is_deleted = 0 AND mfs.is_read = 0) AS local_unread
 			FROM folders f
 			JOIN accounts a ON f.account_id = a.id
-			LEFT JOIN message_folder_state mfs ON mfs.folder_id = f.id AND mfs.is_deleted = 0
 			WHERE a.user_id = ? AND COALESCE(a.is_deleting, 0) = 0 AND COALESCE(a.email_sync_enabled, 1) = 1
 			  AND f.role IN ('inbox', 'sent', 'drafts', 'archive', 'spam', 'junk', 'trash')
-			GROUP BY f.id
 		)
 		SELECT role, account_id,
 		       CASE
 		         WHEN account_provider = 'outlook'
 		              AND provider_remote_id != ''
 		              AND provider_total > 0
-		              AND local_total < provider_total
+		              AND (SELECT COUNT(*) FROM message_folder_state mfs
+		                    WHERE mfs.folder_id = folder_counts.id AND mfs.is_deleted = 0) < provider_total
 		         THEN provider_unread
 		         ELSE local_unread
 		       END
