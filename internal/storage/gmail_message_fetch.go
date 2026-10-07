@@ -201,9 +201,6 @@ func (db *DB) MarkProviderMessageDeleted(ctx context.Context, accountID, provide
 		if _, err := db.RefreshFolderUnreadCount(ctx, folderID); err != nil {
 			return folderIDs, fmt.Errorf("refresh deleted provider message unread count %s: %w", folderID, err)
 		}
-		if err := db.RefreshFolderThreadState(ctx, folderID); err != nil {
-			return folderIDs, fmt.Errorf("refresh deleted provider message thread state %s: %w", folderID, err)
-		}
 	}
 	return folderIDs, nil
 }

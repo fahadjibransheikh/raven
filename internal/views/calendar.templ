@@ -159,6 +159,7 @@ templ CalendarLayout(accounts []models.Account, uiSettings map[string]string) {
 			@GmailAccountDialog()
 			@OutlookAccountDialog()
 			@AddAccountDialog()
+			<script src={ AssetURL("/assets/js/account-wizard.js") }></script>
 			<div id="edit-account-container"></div>
 			<script src={ AssetURL("/assets/js/htmx.min.js") }></script>
 			<script src={ AssetURL("/assets/js/virtual-scroll.js") }></script>

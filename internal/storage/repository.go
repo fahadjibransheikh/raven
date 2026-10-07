@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"html"
 	"html/template"
+	"io"
 	"log"
 	"math"
 	"os"
@@ -54,22 +55,69 @@ func truncatePreview(s string) string {
 	return s
 }
 
+// Preview inputs are capped: a preview is 200 characters, so reading a whole
+// multi-megabyte body (or parsing all of its HTML) per list row is waste.
+const (
+	previewMaxTextBytes = 64 << 10
+	previewMaxHTMLBytes = 256 << 10
+)
+
+func readFilePrefix(path string, max int64) []byte {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil
+	}
+	defer f.Close()
+	data, _ := io.ReadAll(io.LimitReader(f, max))
+	return data
+}
+
 func previewFromBodyPaths(textPath, htmlPath string) string {
 	if textPath != "" {
-		if data, err := os.ReadFile(textPath); err == nil && len(data) > 0 {
+		if data := readFilePrefix(textPath, previewMaxTextBytes); len(data) > 0 {
 			if preview := mailmessage.PreviewFromText(string(data)); preview != "" {
 				return preview
 			}
 		}
 	}
 	if htmlPath != "" {
-		if data, err := os.ReadFile(htmlPath); err == nil && len(data) > 0 {
+		if data := readFilePrefix(htmlPath, previewMaxHTMLBytes); len(data) > 0 {
 			if preview := mailmessage.PreviewFromHTML(data); preview != "" {
 				return preview
 			}
 		}
 	}
 	return ""
+}
+
+// computedPreview is a preview read from a body file because the stored
+// snippet was empty or just the subject. old is the stored value it replaces.
+type computedPreview struct {
+	msgID int64
+	text  string
+	old   string
+}
+
+// persistPreviews stores previews computed from body files in
+// messages.preview_text so later list renders skip the file read. The WHERE
+// clause only replaces the exact value that was read, so a snippet written by
+// a concurrent sync or body fetch wins.
+func (db *DB) persistPreviews(ctx context.Context, previews []computedPreview) {
+	if len(previews) == 0 {
+		return
+	}
+	tx, err := db.Write().BeginTx(ctx, nil)
+	if err != nil {
+		return
+	}
+	defer tx.Rollback()
+	for _, p := range previews {
+		if _, err := tx.ExecContext(ctx, `UPDATE messages SET preview_text = ?
+			WHERE id = ? AND COALESCE(NULLIF(preview_text, ''), snippet) = ?`, p.text, p.msgID, p.old); err != nil {
+			return
+		}
+	}
+	_ = tx.Commit()
 }
 
 func initials(name string) string {
@@ -1177,7 +1225,7 @@ func (db *DB) SaveDraftMessage(ctx context.Context, draft DraftMessageInput) (in
 		return 0, err
 	}
 	db.UpsertObservedContactsForMessage(ctx, draft.AccountID, draft.FromName, draft.FromEmail, draft.ToRecipients, draft.CCRecipients, draft.BCCRecipients, draft.Date)
-	db.RefreshFolderUnreadCount(ctx, draft.FolderID)
+	db.refreshFolderForMessages(ctx, draft.FolderID, []int64{msgID})
 	return msgID, nil
 }
 
@@ -1316,6 +1364,11 @@ func (db *DB) DeleteDraftMessage(ctx context.Context, accountID, internetMessage
 		return "", err
 	}
 
+	var threadKey string
+	if err := tx.QueryRowContext(ctx, `SELECT COALESCE(NULLIF(thread_id, ''), printf('msg:%d', id)) FROM messages WHERE id = ?`, msgID).Scan(&threadKey); err != nil {
+		return "", err
+	}
+
 	if _, err := tx.ExecContext(ctx, `DELETE FROM message_folder_state WHERE message_id = ?`, msgID); err != nil {
 		return "", err
 	}
@@ -1337,7 +1390,8 @@ func (db *DB) DeleteDraftMessage(ctx context.Context, accountID, internetMessage
 	if err := db.deleteMessageSearch(ctx, msgID); err != nil {
 		return "", err
 	}
-	db.RefreshFolderUnreadCount(ctx, folderID)
+	_, _ = db.UpdateFolderUnreadCount(ctx, folderID)
+	_ = db.refreshFolderThreadKeys(ctx, folderID, []string{threadKey})
 	return folderID, nil
 }
 
@@ -4164,7 +4218,21 @@ func (db *DB) GetFolderRole(ctx context.Context, folderID string) (string, error
 	return role, nil
 }
 
+// RefreshFolderUnreadCount recomputes the stored unread count and rebuilds the
+// whole folder's thread state. Hot paths that know which messages changed use
+// refreshFolderForMessages instead.
 func (db *DB) RefreshFolderUnreadCount(ctx context.Context, folderID string) (int, error) {
+	count, err := db.UpdateFolderUnreadCount(ctx, folderID)
+	if err != nil {
+		return count, err
+	}
+	return count, db.RefreshFolderThreadState(ctx, folderID)
+}
+
+// UpdateFolderUnreadCount recomputes folders.unread_count only. For an Outlook
+// folder that is only partially downloaded the provider count stays
+// authoritative and nothing is written.
+func (db *DB) UpdateFolderUnreadCount(ctx context.Context, folderID string) (int, error) {
 	var count, localTotal, storedUnread, providerTotal int
 	var accountProvider, providerRemoteID string
 	err := db.Read().QueryRowContext(ctx,
@@ -4184,21 +4252,24 @@ func (db *DB) RefreshFolderUnreadCount(ctx context.Context, folderID string) (in
 		return 0, err
 	}
 	if strings.TrimSpace(accountProvider) == "outlook" && strings.TrimSpace(providerRemoteID) != "" && providerTotal > 0 && localTotal < providerTotal {
-		if err := db.RefreshFolderThreadState(ctx, folderID); err != nil {
-			return storedUnread, err
-		}
 		return storedUnread, nil
 	}
-	_, err = db.Write().ExecContext(ctx,
-		`UPDATE folders SET unread_count = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-		count, folderID)
-	if err != nil {
-		return 0, err
+	if count != storedUnread {
+		if _, err = db.Write().ExecContext(ctx,
+			`UPDATE folders SET unread_count = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+			count, folderID); err != nil {
+			return 0, err
+		}
 	}
-	if err := db.RefreshFolderThreadState(ctx, folderID); err != nil {
-		return count, err
-	}
-	return count, err
+	return count, nil
+}
+
+// refreshFolderForMessages is the incremental counterpart of
+// RefreshFolderUnreadCount for mutations that touched known messages without
+// changing their thread_id: only those messages' threads are recomputed.
+func (db *DB) refreshFolderForMessages(ctx context.Context, folderID string, messageIDs []int64) {
+	_, _ = db.UpdateFolderUnreadCount(ctx, folderID)
+	_ = db.RefreshFolderThreadsForMessages(ctx, folderID, messageIDs)
 }
 
 func (db *DB) RefreshFolderThreadState(ctx context.Context, folderID string) error {
@@ -4258,6 +4329,13 @@ func (db *DB) RefreshFolderThreadsForMessages(ctx context.Context, folderID stri
 		return err
 	}
 	rows.Close()
+	return db.refreshFolderThreadKeys(ctx, folderID, threadKeys)
+}
+
+// refreshFolderThreadKeys recomputes the given threads of one folder from
+// message_folder_state. Callers that delete messages must collect the keys
+// before the delete, since the keys come from messages.thread_id.
+func (db *DB) refreshFolderThreadKeys(ctx context.Context, folderID string, threadKeys []string) error {
 	if len(threadKeys) == 0 {
 		return nil
 	}
@@ -4274,7 +4352,29 @@ func (db *DB) RefreshFolderThreadsForMessages(ctx context.Context, folderID stri
 		`DELETE FROM folder_thread_state WHERE folder_id = ? AND thread_key IN (`+threadPlaceholders+`)`, deleteArgs...); err != nil {
 		return err
 	}
-	insertArgs := append([]any{folderID}, threadArgs...)
+	// Thread keys are thread_id, or "msg:<id>" for messages without one. Match
+	// them with sargable predicates (idx_messages_thread on account_id,
+	// thread_id and the primary key) instead of the key expression, which
+	// would scan the whole folder.
+	var realKeys []string
+	var soloIDs []int64
+	for _, key := range threadKeys {
+		if id, ok := strings.CutPrefix(key, "msg:"); ok {
+			if n, err := strconv.ParseInt(id, 10, 64); err == nil {
+				soloIDs = append(soloIDs, n)
+				continue
+			}
+		}
+		realKeys = append(realKeys, key)
+	}
+	// "IN ()" is valid SQLite and matches nothing, so empty lists are fine.
+	keyPlaceholders := sqlPlaceholders(len(realKeys))
+	soloPlaceholders := sqlPlaceholders(len(soloIDs))
+	insertArgs := []any{folderID, folderID}
+	insertArgs = append(insertArgs, stringsToAny(realKeys)...)
+	for _, id := range soloIDs {
+		insertArgs = append(insertArgs, id)
+	}
 	insertArgs = append(insertArgs, folderID)
 	_, err = tx.ExecContext(ctx, `WITH base AS (
 			SELECT m.id, m.account_id, m.date_received, m.has_attachments,
@@ -4284,7 +4384,13 @@ func (db *DB) RefreshFolderThreadsForMessages(ctx context.Context, folderID stri
 			FROM message_folder_state mfs
 			JOIN messages m ON mfs.message_id = m.id
 			WHERE mfs.folder_id = ? AND mfs.is_deleted = 0
-			  AND COALESCE(NULLIF(m.thread_id, ''), printf('msg:%d', m.id)) IN (`+threadPlaceholders+`)
+			  AND m.id IN (
+				SELECT m2.id FROM messages m2
+				WHERE m2.account_id = (SELECT account_id FROM folders WHERE id = ?)
+				  AND m2.thread_id IN (`+keyPlaceholders+`)
+				UNION
+				SELECT m3.id FROM messages m3
+				WHERE COALESCE(m3.thread_id, '') = '' AND m3.id IN (`+soloPlaceholders+`))
 		), grouped AS (
 			SELECT thread_key, MAX(row_key) AS row_key, COUNT(*) AS thread_count,
 			       MIN(is_read) AS thread_is_read, MAX(is_starred) AS thread_is_starred,
@@ -4435,21 +4541,22 @@ func (db *DB) GetAllFolderUnreadCounts(ctx context.Context, userID string) (map[
 			       COALESCE(f.total_count, 0) AS provider_total,
 			       COALESCE(a.provider, '') AS account_provider,
 			       COALESCE(f.provider_remote_id, '') AS provider_remote_id,
-			       COUNT(mfs.message_id) AS local_total,
-			       COALESCE(SUM(CASE WHEN mfs.is_read = 0 THEN 1 ELSE 0 END), 0) AS local_unread
+			       -- Counted through idx_folder_state_unread, so the cost follows the
+			       -- number of unread messages, not the size of the mailbox.
+			       (SELECT COUNT(*) FROM message_folder_state mfs
+			         WHERE mfs.folder_id = f.id AND mfs.is_deleted = 0 AND mfs.is_read = 0) AS local_unread
 			FROM folders f
 			JOIN accounts a ON f.account_id = a.id
-			LEFT JOIN message_folder_state mfs ON mfs.folder_id = f.id AND mfs.is_deleted = 0
 			WHERE a.user_id = ? AND COALESCE(a.is_deleting, 0) = 0 AND COALESCE(a.email_sync_enabled, 1) = 1
 			  AND f.role IN ('inbox', 'sent', 'drafts', 'archive', 'spam', 'junk', 'trash')
-			GROUP BY f.id
 		)
 		SELECT role, account_id,
 		       CASE
 		         WHEN account_provider = 'outlook'
 		              AND provider_remote_id != ''
 		              AND provider_total > 0
-		              AND local_total < provider_total
+		              AND (SELECT COUNT(*) FROM message_folder_state mfs
+		                    WHERE mfs.folder_id = folder_counts.id AND mfs.is_deleted = 0) < provider_total
 		         THEN provider_unread
 		         ELSE local_unread
 		       END
@@ -4872,7 +4979,20 @@ func (db *DB) getUnifiedFolderLocalThreadCount(ctx context.Context, userID, fold
 	return count, err
 }
 
+// getFolderThreadStateCount counts once; only an empty result falls back to
+// ensureFolderThreadState (which rebuilds a never-built folder) and a recount.
 func (db *DB) getFolderThreadStateCount(ctx context.Context, folderID string) (int, error) {
+	count, err := db.countFolderThreadState(ctx, folderID)
+	if err != nil || count > 0 {
+		return count, err
+	}
+	if err := db.ensureFolderThreadState(ctx, folderID); err != nil {
+		return 0, err
+	}
+	return db.countFolderThreadState(ctx, folderID)
+}
+
+func (db *DB) countFolderThreadState(ctx context.Context, folderID string) (int, error) {
 	var count int
 	err := db.Read().QueryRowContext(ctx, `SELECT COUNT(*) FROM folder_thread_state WHERE folder_id = ?`, folderID).Scan(&count)
 	return count, err
@@ -4880,9 +5000,6 @@ func (db *DB) getFolderThreadStateCount(ctx context.Context, folderID string) (i
 
 func (db *DB) GetFolderEmailCountUnfiltered(ctx context.Context, folderID string) (int, error) {
 	if !isStarredFolder(folderID) {
-		if err := db.ensureFolderThreadState(ctx, folderID); err != nil {
-			return 0, err
-		}
 		return db.getFolderThreadStateCount(ctx, folderID)
 	}
 	fromWhere, args := accountMailListFromWhere(folderID)
@@ -4974,9 +5091,6 @@ func (db *DB) GetEmailsRangeFilteredWithTotal(ctx context.Context, folderID stri
 	totalCount := knownTotal
 	var err error
 	if emailFiltersEmpty(filters) && !isStarredFolder(folderID) {
-		if err := db.ensureFolderThreadState(ctx, folderID); err != nil {
-			return nil, err
-		}
 		totalCount, err = db.getFolderThreadStateCount(ctx, folderID)
 		if err != nil {
 			return nil, err
@@ -5363,7 +5477,6 @@ func (db *DB) getThreadMessages(ctx context.Context, accountID, threadID, userID
 		}
 		item.Preview = mailmessage.PreviewFromText(item.Preview)
 		item.From = contactFromSender(fromName, fromEmail)
-		db.hydrateContactAvatar(ctx, &item.From)
 		item.IsRead = isRead == 1
 		item.IsStarred = isStarred == 1
 		item.HasAttachment = hasAttach == 1
@@ -5389,6 +5502,14 @@ func (db *DB) getThreadMessages(ctx context.Context, accountID, threadID, userID
 		items = append(items, item)
 	}
 	if len(items) > 0 {
+		froms := make([]models.Contact, len(items))
+		for i := range items {
+			froms[i] = items[i].From
+		}
+		db.hydrateContactAvatars(ctx, froms)
+		for i := range items {
+			items[i].From = froms[i]
+		}
 		msgIDs := make([]int64, 0, len(items))
 		index := make(map[string]int, len(items))
 		for i, item := range items {
@@ -5404,13 +5525,15 @@ func (db *DB) getThreadMessages(ctx context.Context, accountID, threadID, userID
 				items[i].Labels = labels
 			}
 		}
+		toMap, _ := db.batchGetRecipients(ctx, msgIDs, "to")
+		ccMap, _ := db.batchGetRecipients(ctx, msgIDs, "cc")
 		for i, item := range items {
 			id, err := strconv.ParseInt(item.ID, 10, 64)
 			if err != nil {
 				continue
 			}
-			items[i].To, _ = db.getRecipients(ctx, id, "to")
-			items[i].CC, _ = db.getRecipients(ctx, id, "cc")
+			items[i].To = toMap[id]
+			items[i].CC = ccMap[id]
 			if item.HasAttachment {
 				items[i].Attachments, _ = db.GetAttachmentsInternal(ctx, id)
 			}
@@ -5818,7 +5941,7 @@ func (db *DB) listEmailsFromFolderThreadStateUnion(ctx context.Context, folderID
 		args = append(args, id, offset+limit)
 	}
 	query := `SELECT m.id, m.account_id, a.color AS account_color, m.subject, m.from_name, m.from_email,
-		       m.date_received, m.snippet, m.has_attachments, m.body_text_path, m.body_html_path,
+		       m.date_received, COALESCE(NULLIF(m.preview_text, ''), m.snippet) AS snippet, m.has_attachments, m.body_text_path, m.body_html_path,
 		       fts.thread_has_attachments, fts.folder_id, fts.thread_is_read, fts.thread_is_starred,
 		       m.thread_id, fts.thread_count
 		FROM (` + strings.Join(branches, " UNION ALL ") + `) fts
@@ -5837,7 +5960,7 @@ func (db *DB) listEmailsFromFolderThreadStateUnion(ctx context.Context, folderID
 
 func (db *DB) listEmailsFromFolderThreadState(ctx context.Context, where string, args []any, offset, limit int) ([]models.Email, error) {
 	query := `SELECT m.id, m.account_id, a.color AS account_color, m.subject, m.from_name, m.from_email,
-		       m.date_received, m.snippet, m.has_attachments, m.body_text_path, m.body_html_path,
+		       m.date_received, COALESCE(NULLIF(m.preview_text, ''), m.snippet) AS snippet, m.has_attachments, m.body_text_path, m.body_html_path,
 		       fts.thread_has_attachments, fts.folder_id, fts.thread_is_read, fts.thread_is_starred,
 		       m.thread_id, fts.thread_count
 		FROM folder_thread_state fts
@@ -5858,7 +5981,7 @@ func (db *DB) listEmailsFromFolderThreadState(ctx context.Context, where string,
 func (db *DB) listEmailsUnfilteredFrom(ctx context.Context, fromWhere string, args []any, offset, limit int) ([]models.Email, error) {
 	query := `WITH base AS (
 			SELECT m.id, m.account_id, a.color AS account_color, m.subject, m.from_name, m.from_email,
-			       m.date_received, m.snippet, m.has_attachments, m.body_text_path, m.body_html_path,
+			       m.date_received, COALESCE(NULLIF(m.preview_text, ''), m.snippet) AS snippet, m.has_attachments, m.body_text_path, m.body_html_path,
 			       mfs.folder_id, mfs.is_read, mfs.is_starred, m.thread_id,
 			       COALESCE(NULLIF(m.thread_id, ''), printf('msg:%d', m.id)) AS thread_key,
 			       COALESCE(m.date_received, '') || ':' || printf('%020d', m.id) || ':' || mfs.folder_id AS row_key
@@ -5922,7 +6045,7 @@ func (db *DB) listEmailsFilteredForUser(ctx context.Context, userID, folderID st
 
 	query := `WITH ` + filterSQL.withClause + `visible AS (
 			  SELECT m.id, m.account_id, a.color AS account_color, m.subject, m.from_name, m.from_email,
-			         m.date_received, m.snippet, m.has_attachments, m.body_text_path, m.body_html_path,
+			         m.date_received, COALESCE(NULLIF(m.preview_text, ''), m.snippet) AS snippet, m.has_attachments, m.body_text_path, m.body_html_path,
 			         mfs.folder_id, mfs.is_read, mfs.is_starred, m.thread_id,
 			         ROW_NUMBER() OVER (PARTITION BY COALESCE(NULLIF(m.thread_id, ''), printf('msg:%d', m.id)) ORDER BY m.date_received DESC, m.id DESC) AS rn,
 			         COUNT(*) OVER (PARTITION BY COALESCE(NULLIF(m.thread_id, ''), printf('msg:%d', m.id))) AS thread_count,
@@ -5955,7 +6078,7 @@ func (db *DB) listEmailsFiltered(ctx context.Context, folderID string, offset, l
 	filterSQL := emailFilterSQL(filters)
 	query := `WITH ` + filterSQL.withClause + `visible AS (
 			  SELECT m.id, m.account_id, a.color AS account_color, m.subject, m.from_name, m.from_email,
-			         m.date_received, m.snippet, m.has_attachments, m.body_text_path, m.body_html_path,
+			         m.date_received, COALESCE(NULLIF(m.preview_text, ''), m.snippet) AS snippet, m.has_attachments, m.body_text_path, m.body_html_path,
 			         mfs.folder_id, mfs.is_read, mfs.is_starred, m.thread_id,
 			         ROW_NUMBER() OVER (PARTITION BY COALESCE(NULLIF(m.thread_id, ''), printf('msg:%d', m.id)) ORDER BY m.date_received DESC, m.id DESC) AS rn,
 			         COUNT(*) OVER (PARTITION BY COALESCE(NULLIF(m.thread_id, ''), printf('msg:%d', m.id))) AS thread_count,
@@ -5978,7 +6101,7 @@ func (db *DB) listEmailsFiltered(ctx context.Context, folderID string, offset, l
 	if isStarredFolder(folderID) {
 		query = `WITH ` + filterSQL.withClause + `visible AS (
 			 SELECT m.id, m.account_id, a.color AS account_color, m.subject, m.from_name, m.from_email,
-			        m.date_received, m.snippet, m.has_attachments, m.body_text_path, m.body_html_path,
+			        m.date_received, COALESCE(NULLIF(m.preview_text, ''), m.snippet) AS snippet, m.has_attachments, m.body_text_path, m.body_html_path,
 				        mfs.folder_id, mfs.is_read, mfs.is_starred, m.thread_id,
 				        ROW_NUMBER() OVER (PARTITION BY COALESCE(NULLIF(m.thread_id, ''), printf('msg:%d', m.id)) ORDER BY m.date_received DESC, m.id DESC) AS rn,
 				        COUNT(*) OVER (PARTITION BY COALESCE(NULLIF(m.thread_id, ''), printf('msg:%d', m.id))) AS thread_count,
@@ -6017,6 +6140,7 @@ func (db *DB) scanEmailRows(ctx context.Context, rows *sql.Rows) ([]models.Email
 	}
 
 	var items []emailRow
+	var computed []computedPreview
 	now := time.Now()
 	loc := timezoneLocationFromContext(ctx)
 
@@ -6045,6 +6169,7 @@ func (db *DB) scanEmailRows(ctx context.Context, rows *sql.Rows) ([]models.Email
 		if r.email.Preview == "" || r.email.Preview == subject {
 			if preview := previewFromBodyPaths(nullStringValue(textPath), nullStringValue(htmlPath)); preview != "" {
 				r.email.Preview = preview
+				computed = append(computed, computedPreview{msgID: r.msgID, text: preview, old: snippet})
 			}
 		}
 		r.email.IsRead = isRead == 1
@@ -6062,6 +6187,7 @@ func (db *DB) scanEmailRows(ctx context.Context, rows *sql.Rows) ([]models.Email
 		items = append(items, r)
 	}
 
+	db.persistPreviews(ctx, computed)
 	if len(items) > 0 {
 		// One avatar query for the page instead of one (blob-selecting) query per row.
 		froms := make([]models.Contact, len(items))
@@ -6252,7 +6378,8 @@ func (db *DB) batchGetRecipients(ctx context.Context, msgIDs []int64, kind strin
 	}
 	defer rows.Close()
 
-	result := make(map[int64][]models.Contact)
+	var owners []int64
+	var contacts []models.Contact
 	for rows.Next() {
 		var msgID int64
 		var c models.Contact
@@ -6261,8 +6388,16 @@ func (db *DB) batchGetRecipients(ctx context.Context, msgIDs []int64, kind strin
 		}
 		c.Initials = initials(c.Name)
 		c.AvatarHash = avatarresolver.GravatarHash(c.Email)
-		db.hydrateContactAvatar(ctx, &c)
-		result[msgID] = append(result[msgID], c)
+		owners = append(owners, msgID)
+		contacts = append(contacts, c)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	db.hydrateContactAvatars(ctx, contacts)
+	result := make(map[int64][]models.Contact)
+	for i, c := range contacts {
+		result[owners[i]] = append(result[owners[i]], c)
 	}
 	return result, nil
 }
@@ -6308,7 +6443,7 @@ func (db *DB) SearchMessages(ctx context.Context, userID string, query string, l
 
 	rows, err := db.Read().QueryContext(ctx,
 		`SELECT DISTINCT m.id, m.account_id, a.color, m.subject, m.from_name, m.from_email,
-		        m.date_received, m.snippet, m.has_attachments, m.body_text_path, m.body_html_path,
+		        m.date_received, COALESCE(NULLIF(m.preview_text, ''), m.snippet) AS snippet, m.has_attachments, m.body_text_path, m.body_html_path,
 		        mfs.folder_id, mfs.is_read, mfs.is_starred
 		 FROM message_search
 		 JOIN messages m ON message_search.rowid = m.id
@@ -6328,6 +6463,7 @@ func (db *DB) SearchMessages(ctx context.Context, userID string, query string, l
 	}
 
 	var items []emailRow
+	var computed []computedPreview
 	now := time.Now()
 	loc := timezoneLocationFromContext(ctx)
 
@@ -6349,11 +6485,11 @@ func (db *DB) SearchMessages(ctx context.Context, userID string, query string, l
 		r.email.AccountColor = accountColor
 		r.email.Subject = subject
 		r.email.From = contactFromSender(fromName, fromEmail)
-		db.hydrateContactAvatar(ctx, &r.email.From)
 		r.email.Preview = mailmessage.PreviewFromText(snippet)
 		if r.email.Preview == "" || r.email.Preview == subject {
 			if preview := previewFromBodyPaths(nullStringValue(textPath), nullStringValue(htmlPath)); preview != "" {
 				r.email.Preview = preview
+				computed = append(computed, computedPreview{msgID: r.msgID, text: preview, old: snippet})
 			}
 		}
 		r.email.IsRead = isRead == 1
@@ -6365,7 +6501,16 @@ func (db *DB) SearchMessages(ctx context.Context, userID string, query string, l
 		items = append(items, r)
 	}
 
+	db.persistPreviews(ctx, computed)
 	if len(items) > 0 {
+		froms := make([]models.Contact, len(items))
+		for i := range items {
+			froms[i] = items[i].email.From
+		}
+		db.hydrateContactAvatars(ctx, froms)
+		for i := range items {
+			items[i].email.From = froms[i]
+		}
 		msgIDs := make([]int64, len(items))
 		for i, r := range items {
 			msgIDs[i] = r.msgID
@@ -8118,6 +8263,26 @@ func (db *DB) RemoveExpungedUIDs(ctx context.Context, folderID string, expungedU
 		placeholders[i] = "?"
 		args[i+1] = uid
 	}
+	// Thread keys of the rows about to go, read before messages can be deleted.
+	var threadKeys []string
+	keyRows, err := tx.QueryContext(ctx, fmt.Sprintf(`
+		SELECT DISTINCT COALESCE(NULLIF(m.thread_id, ''), printf('msg:%%d', m.id))
+		FROM message_folder_state mfs JOIN messages m ON m.id = mfs.message_id
+		WHERE mfs.folder_id = ? AND mfs.remote_uid IN (%s)`, strings.Join(placeholders, ",")), args...)
+	if err != nil {
+		return 0, fmt.Errorf("collect expunged threads: %w", err)
+	}
+	for keyRows.Next() {
+		var key string
+		if err := keyRows.Scan(&key); err != nil {
+			keyRows.Close()
+			return 0, err
+		}
+		threadKeys = append(threadKeys, key)
+	}
+	if err := keyRows.Close(); err != nil {
+		return 0, err
+	}
 	confirmQuery := fmt.Sprintf(`
 		DELETE FROM message_mutations
 		WHERE kind = 'delete' AND status = 'applied' AND EXISTS (
@@ -8155,7 +8320,8 @@ func (db *DB) RemoveExpungedUIDs(ctx context.Context, folderID string, expungedU
 		return 0, fmt.Errorf("commit: %w", err)
 	}
 	if removed > 0 {
-		db.RefreshFolderUnreadCount(ctx, folderID)
+		_, _ = db.UpdateFolderUnreadCount(ctx, folderID)
+		_ = db.refreshFolderThreadKeys(ctx, folderID, threadKeys)
 	}
 
 	return int(removed), nil
@@ -8253,6 +8419,7 @@ func (db *DB) applyIMAPFlagUpdates(ctx context.Context, folderID string, expecte
 	defer stmt.Close()
 
 	changed := 0
+	var changedIDs []int64
 	for _, u := range updates {
 		var messageID int64
 		var isRead, isStarred int
@@ -8290,6 +8457,7 @@ func (db *DB) applyIMAPFlagUpdates(ctx context.Context, folderID string, expecte
 				continue
 			}
 			changed++
+			changedIDs = append(changedIDs, messageID)
 		}
 		if u.LabelsKnown && strings.TrimSpace(u.LabelProvider) != "" {
 			var accountID string
@@ -8324,7 +8492,7 @@ func (db *DB) applyIMAPFlagUpdates(ctx context.Context, folderID string, expecte
 		return 0, fmt.Errorf("commit: %w", err)
 	}
 	if changed > 0 {
-		db.RefreshFolderUnreadCount(ctx, folderID)
+		db.refreshFolderForMessages(ctx, folderID, changedIDs)
 	}
 
 	return changed, nil

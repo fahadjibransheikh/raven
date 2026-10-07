@@ -97,10 +97,29 @@ func New(dbPath string) (*DB, error) {
 		read.Close()
 		return nil, fmt.Errorf("migrate: %w", err)
 	}
+	if err := db.ensureUnreadIndex(); err != nil {
+		// Only an optimization; counts stay correct without it.
+		log.Printf("storage: unread index not created: %v", err)
+	}
 	log.Printf("storage: schema migration check complete")
 	log.Printf("storage: threading backfill deferred to background startup worker")
 
 	return db, nil
+}
+
+// ensureUnreadIndex keeps the sidebar's unread counts proportional to unread
+// mail instead of all mail. It is idempotent and created at open rather than in
+// a numbered migration so it needs no schema version bump.
+func (db *DB) ensureUnreadIndex() error {
+	var table string
+	if err := db.write.QueryRow(`SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'message_folder_state'`).Scan(&table); err == sql.ErrNoRows {
+		return nil
+	} else if err != nil {
+		return err
+	}
+	_, err := db.write.Exec(`CREATE INDEX IF NOT EXISTS idx_folder_state_unread
+		ON message_folder_state(folder_id) WHERE is_deleted = 0 AND is_read = 0`)
+	return err
 }
 
 // OpenReadOnly opens an existing, current-schema database without creating

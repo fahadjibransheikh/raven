@@ -1,10 +1,15 @@
-// Polls Gofer's unified unread count and reflects it in document.title as a
-// "(N) " prefix, so the Rust side (on_document_title_changed in lib.rs) can
-// parse it back out and set the Dock/taskbar badge. Only ever runs against
-// the real Gofer origin -- this init script also runs on the placeholder
-// frontend/index.html page and on OAuth provider pages, so the origin check is
-// not optional. The port varies per launch (lib.rs pick_port), so it is not
-// part of the check; only the wrapper ever points this window at 127.0.0.1.
+// Reflects Gofer's unified unread count in document.title as a "(N) " prefix,
+// so the Rust side (on_document_title_changed in lib.rs) can parse it back out
+// and set the Dock/taskbar badge. Only ever runs against the real Gofer
+// origin -- this init script also runs on the placeholder frontend/index.html
+// page and on OAuth provider pages, so the origin check is not optional. The
+// port varies per launch (lib.rs pick_port), so it is not part of the check;
+// only the wrapper ever points this window at 127.0.0.1.
+//
+// The page already refetches /api/folders/unread whenever the server pushes a
+// new-mail or mutation event over SSE, so instead of polling every 30s we
+// listen to those responses. A slow poll remains as a fallback for a dropped
+// SSE connection.
 (function () {
   if (window.location.protocol !== "http:" || window.location.hostname !== "127.0.0.1") {
     return;
@@ -27,8 +32,35 @@
     document.title = next;
   }
 
+  var UNREAD_PATH = "/api/folders/unread";
+  var FALLBACK_POLL_MS = 5 * 60 * 1000;
+  var nativeFetch = window.fetch.bind(window);
+
+  // Pick up the counts the page fetches in response to SSE events.
+  window.fetch = function (input) {
+    var promise = nativeFetch.apply(window, arguments);
+    try {
+      var url = typeof input === "string" ? input : (input && input.url) || "";
+      if (url.indexOf(UNREAD_PATH) !== -1) {
+        promise
+          .then(function (res) {
+            return res.ok ? res.clone().json() : null;
+          })
+          .then(function (counts) {
+            if (counts) {
+              applyCount(counts.inbox || 0);
+            }
+          })
+          .catch(function () {});
+      }
+    } catch (_) {
+      // Never let badge bookkeeping break the page's own request.
+    }
+    return promise;
+  };
+
   function poll() {
-    fetch("/api/folders/unread")
+    nativeFetch(UNREAD_PATH)
       .then(function (res) {
         return res.ok ? res.json() : {};
       })
@@ -66,5 +98,5 @@
     }
   });
 
-  setInterval(poll, 30000);
+  setInterval(poll, FALLBACK_POLL_MS);
 })();

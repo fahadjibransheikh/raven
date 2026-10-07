@@ -3,6 +3,7 @@ package views
 import (
 	"bytes"
 	"context"
+	"os"
 	"slices"
 	"strings"
 	"testing"
@@ -541,7 +542,7 @@ func TestEditAccountDialogRendersOutlookGraphMailPanels(t *testing.T) {
 
 func TestAccountDialogsOfferOnlyExplicitMailTransportModes(t *testing.T) {
 	var addOut bytes.Buffer
-	if err := AddAccountDialog().Render(context.Background(), &addOut); err != nil {
+	if err := AddAccountDialogContent().Render(context.Background(), &addOut); err != nil {
 		t.Fatalf("AddAccountDialog.Render() error = %v", err)
 	}
 	var editOut bytes.Buffer
@@ -569,10 +570,10 @@ func TestAccountDialogsOfferOnlyExplicitMailTransportModes(t *testing.T) {
 
 func TestAccountDiscoveryRequiresExplicitCandidateSelection(t *testing.T) {
 	var out bytes.Buffer
-	if err := AddAccountDialog().Render(context.Background(), &out); err != nil {
-		t.Fatalf("AddAccountDialog.Render() error = %v", err)
+	if err := AddAccountDialogContent().Render(context.Background(), &out); err != nil {
+		t.Fatalf("AddAccountDialogContent.Render() error = %v", err)
 	}
-	html := out.String()
+	html := out.String() + accountWizardScript(t)
 	if strings.Contains(html, "applyMailDiscoveryCandidate(0);") {
 		t.Fatal("mail discovery still automatically applies the first candidate")
 	}
@@ -586,9 +587,10 @@ func TestChooseAccountTypeDialogOffersICloudPreset(t *testing.T) {
 	if err := ChooseAccountTypeDialog().Render(context.Background(), &chooser); err != nil {
 		t.Fatalf("ChooseAccountTypeDialog.Render() error = %v", err)
 	}
-	if err := AddAccountDialog().Render(context.Background(), &add); err != nil {
-		t.Fatalf("AddAccountDialog.Render() error = %v", err)
+	if err := AddAccountDialogContent().Render(context.Background(), &add); err != nil {
+		t.Fatalf("AddAccountDialogContent.Render() error = %v", err)
 	}
+	add.WriteString(accountWizardScript(t))
 	if !strings.Contains(chooser.String(), "openICloudAccountDialog()") || !strings.Contains(chooser.String(), ">iCloud<") {
 		t.Fatal("account chooser does not offer an iCloud option")
 	}
@@ -599,5 +601,35 @@ func TestChooseAccountTypeDialogOffersICloudPreset(t *testing.T) {
 		if !strings.Contains(add.String(), want) {
 			t.Fatalf("add account dialog missing iCloud preset detail %q", want)
 		}
+	}
+}
+
+// The wizard's behaviour lives in a static asset shared with the edit dialog;
+// its markup is fetched on first open.
+func accountWizardScript(t *testing.T) string {
+	t.Helper()
+	data, err := os.ReadFile("../../assets/js/account-wizard.js")
+	if err != nil {
+		t.Fatalf("read account wizard script: %v", err)
+	}
+	return string(data)
+}
+
+func TestAddAccountDialogSlotDoesNotCarryTheWizard(t *testing.T) {
+	var slot, content bytes.Buffer
+	if err := AddAccountDialog().Render(context.Background(), &slot); err != nil {
+		t.Fatal(err)
+	}
+	if err := AddAccountDialogContent().Render(context.Background(), &content); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(slot.String(), `id="add-account-dialog-slot"`) || slot.Len() > 200 {
+		t.Fatalf("slot should be a tiny placeholder, got %d bytes: %s", slot.Len(), slot.String())
+	}
+	if !strings.Contains(content.String(), `id="add-account-dialog"`) || content.Len() < 20000 {
+		t.Fatalf("content fragment missing the wizard dialog (%d bytes)", content.Len())
+	}
+	if strings.Contains(content.String(), "<script>") {
+		t.Fatal("wizard fragment must not carry the shared script; it is a static asset")
 	}
 }

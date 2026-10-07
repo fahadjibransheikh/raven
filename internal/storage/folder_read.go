@@ -232,7 +232,6 @@ func (db *DB) MarkFolderReadAndQueueForUser(ctx context.Context, userID, folderI
 	}
 	for id := range touched {
 		_, _ = db.RefreshFolderUnreadCount(ctx, id)
-		_ = db.RefreshFolderThreadState(ctx, id)
 	}
 	return results, nil
 }
