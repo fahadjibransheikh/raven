@@ -117,6 +117,18 @@ func (m *Manager) GetSessionByToken(ctx context.Context, token string) (*Session
 	return m.activeSession(ctx, "token_hash", hashToken(token), true)
 }
 
+// SessionStillActive reports whether the session for token is still valid
+// (not revoked or expired, user active, auth version current). Unlike
+// GetSessionByToken it does not slide the idle expiry, so a long-lived stream
+// can poll it without keeping a session alive.
+func (m *Manager) SessionStillActive(ctx context.Context, token string) (bool, error) {
+	if strings.TrimSpace(token) == "" {
+		return false, nil
+	}
+	session, err := m.activeSession(ctx, "token_hash", hashToken(token), false)
+	return session != nil, err
+}
+
 // activeSession loads a live session by an indexed column (a constant, never
 // user input). touch slides the idle expiry; grant checks must not keep a
 // session alive.

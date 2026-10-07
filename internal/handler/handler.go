@@ -4410,6 +4410,9 @@ func (h *Handler) handleRemoteAsset(w http.ResponseWriter, r *http.Request) {
 	serveUntrusted(w, r, filename, mime.TypeByExtension(filepath.Ext(filename)), f, "private, max-age=31536000", true)
 }
 
+// sseRecheckInterval is a variable so tests can shorten it.
+var sseRecheckInterval = 20 * time.Second
+
 func (h *Handler) handleSSE(w http.ResponseWriter, r *http.Request) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
@@ -4487,6 +4490,12 @@ func (h *Handler) handleSSE(w http.ResponseWriter, r *http.Request) {
 	defer h.syncer.Events().Unsubscribe(ch)
 	ticker := time.NewTicker(1200 * time.Millisecond)
 	defer ticker.Stop()
+	// An open stream outlives the request that authenticated it: re-check the
+	// session (logout, "revoke other sessions", disabled user) and refresh the
+	// account set (accounts added or removed since connect) periodically.
+	recheck := time.NewTicker(sseRecheckInterval)
+	defer recheck.Stop()
+	sessionToken := auth.GetSessionToken(r)
 	lastProcessingActive := false
 
 	fmt.Fprintf(w, "event: connected\ndata: {}\n\n")
@@ -4502,6 +4511,19 @@ func (h *Handler) handleSSE(w http.ResponseWriter, r *http.Request) {
 		select {
 		case <-r.Context().Done():
 			return
+		case <-recheck.C:
+			if h.auth != nil && h.auth.IsEnabled() {
+				if active, err := h.auth.SessionStillActive(r.Context(), sessionToken); err == nil && !active {
+					return
+				}
+			}
+			if ids, err := h.db.GetAccountIDs(r.Context(), userID); err == nil {
+				userAccounts = ids
+				accountSet = make(map[string]bool, len(ids))
+				for _, id := range ids {
+					accountSet[id] = true
+				}
+			}
 		case <-ticker.C:
 			if !isAdmin {
 				continue
