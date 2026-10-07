@@ -8432,6 +8432,46 @@ function _sanitizeComposeImageStyle(style) {
   return out.join("; ")
 }
 
+// CSS lets "u\72l(" spell url(, so every check runs on the value with escapes
+// decoded and comments removed (the same view the browser has). Mirrors
+// sanitizeCSS in internal/mail/message/sanitize.go: @import, image-set()/src()/
+// expression() and friends, and any url() that is not a local image are refused.
+// A remote url() is refused too: the editor must not fetch images for the sender.
+function _decodeCSSEscapes(css) {
+  return String(css || "").replace(/\\(?:([0-9a-fA-F]{1,6})[ \t\n\r\f]?|([\s\S]))/g, function (m, hex, ch) {
+    if (hex) {
+      var n = parseInt(hex, 16)
+      if (n === 0 || n > 0x10FFFF || (n >= 0xD800 && n <= 0xDFFF)) n = 0xFFFD
+      return String.fromCodePoint(n)
+    }
+    return /[\n\r\f]/.test(ch) ? "" : ch
+  })
+}
+
+var _composeLocalImagePrefixes = ["cid:", "/api/inline-content/", "/api/remote-assets/", "data:image/png", "data:image/jpeg", "data:image/jpg", "data:image/gif", "data:image/webp", "data:image/bmp", "data:image/svg+xml", "data:image/x-icon"]
+
+function _composeCSSValueIsSafe(value) {
+  var d = _decodeCSSEscapes(value)
+  for (var pass = 0; pass < 8; pass++) {
+    var stripped = d.replace(/\/\*[\s\S]*?(?:\*\/|$)/g, "")
+    if (stripped === d) break
+    d = stripped
+  }
+  if (/\/\*|@(?:import|namespace)\b|expression\s*\(|javascript:|vbscript:|-moz-binding|behavior\s*:/i.test(d)) return false
+  if (/(?:-[a-z]+-)?(?:image-set|cross-fade|element|image-rect|image|src|paint)\s*\(/i.test(d)) return false
+  var urlCalls = d.match(/url\s*\(/gi) || []
+  if (!urlCalls.length) return true
+  var ok = 0
+  var re = /url\s*\(\s*(?:"([^"]*)"|'([^']*)'|([^)]*))\s*\)/gi
+  var m
+  while ((m = re.exec(d))) {
+    var v = String(m[1] !== undefined ? m[1] : m[2] !== undefined ? m[2] : m[3]).trim().toLowerCase()
+    if (/["'()\\\s]/.test(v) || !_composeLocalImagePrefixes.some(function (p) { return v.indexOf(p) === 0 })) return false
+    ok++
+  }
+  return ok === urlCalls.length
+}
+
 function _sanitizeComposeStyle(style) {
   var safe = []
   var allowed = {
@@ -8451,8 +8491,7 @@ function _sanitizeComposeStyle(style) {
     var prop = part.slice(0, idx).trim().toLowerCase()
     var value = part.slice(idx + 1).trim()
     if (!allowed[prop] || !value) return
-    if (/expression\s*\(|javascript:|vbscript:|-moz-binding|behavior\s*:/i.test(value)) return
-    if (/url\s*\(/i.test(value) && !/url\s*\(\s*['"]?https?:/i.test(value)) return
+    if (!_composeCSSValueIsSafe(value)) return
     safe.push(prop + ": " + value)
   })
   return safe.join("; ")
