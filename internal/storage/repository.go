@@ -4930,7 +4930,20 @@ func (db *DB) getUnifiedFolderLocalThreadCount(ctx context.Context, userID, fold
 	return count, err
 }
 
+// getFolderThreadStateCount counts once; only an empty result falls back to
+// ensureFolderThreadState (which rebuilds a never-built folder) and a recount.
 func (db *DB) getFolderThreadStateCount(ctx context.Context, folderID string) (int, error) {
+	count, err := db.countFolderThreadState(ctx, folderID)
+	if err != nil || count > 0 {
+		return count, err
+	}
+	if err := db.ensureFolderThreadState(ctx, folderID); err != nil {
+		return 0, err
+	}
+	return db.countFolderThreadState(ctx, folderID)
+}
+
+func (db *DB) countFolderThreadState(ctx context.Context, folderID string) (int, error) {
 	var count int
 	err := db.Read().QueryRowContext(ctx, `SELECT COUNT(*) FROM folder_thread_state WHERE folder_id = ?`, folderID).Scan(&count)
 	return count, err
@@ -4938,9 +4951,6 @@ func (db *DB) getFolderThreadStateCount(ctx context.Context, folderID string) (i
 
 func (db *DB) GetFolderEmailCountUnfiltered(ctx context.Context, folderID string) (int, error) {
 	if !isStarredFolder(folderID) {
-		if err := db.ensureFolderThreadState(ctx, folderID); err != nil {
-			return 0, err
-		}
 		return db.getFolderThreadStateCount(ctx, folderID)
 	}
 	fromWhere, args := accountMailListFromWhere(folderID)
@@ -5032,9 +5042,6 @@ func (db *DB) GetEmailsRangeFilteredWithTotal(ctx context.Context, folderID stri
 	totalCount := knownTotal
 	var err error
 	if emailFiltersEmpty(filters) && !isStarredFolder(folderID) {
-		if err := db.ensureFolderThreadState(ctx, folderID); err != nil {
-			return nil, err
-		}
 		totalCount, err = db.getFolderThreadStateCount(ctx, folderID)
 		if err != nil {
 			return nil, err
