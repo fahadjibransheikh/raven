@@ -1063,3 +1063,10 @@ func folderMarkAllReadAvailable(folder models.Folder) bool {
 // AssetURL appends the content-hash version so a changed asset gets a new URL
 // (the server marks versioned URLs immutable).
 func AssetURL(path string) string { return utils.ScriptURL(path) }
+
+func boolParam(b bool) string {
+	if b {
+		return "1"
+	}
+	return "0"
+}

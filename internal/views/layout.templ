@@ -67,6 +67,7 @@ templ Layout(accounts []models.Account, activeFolder string, emails []models.Ema
 			@GmailAccountDialog()
 			@OutlookAccountDialog()
 			@AddAccountDialog()
+			<script src={ AssetURL("/assets/js/account-wizard.js") }></script>
 			@MailSyncProgressDialog()
 			<div id="edit-account-container"></div>
 			<script src={ AssetURL("/assets/js/htmx.min.js") }></script>
@@ -188,6 +189,7 @@ templ SettingsRuntime(accounts []models.Account) {
 	@GmailAccountDialog()
 	@OutlookAccountDialog()
 	@AddAccountDialog()
+	<script src={ AssetURL("/assets/js/account-wizard.js") }></script>
 	<div id="edit-account-container"></div>
 	<script src={ AssetURL("/assets/js/htmx.min.js") }></script>
 	<script src={ AssetURL("/assets/js/virtual-scroll.js") }></script>
@@ -308,6 +310,7 @@ templ ContactsLayout(accounts []models.Account, contacts []models.Contact, selec
 			@GmailAccountDialog()
 			@OutlookAccountDialog()
 			@AddAccountDialog()
+			<script src={ AssetURL("/assets/js/account-wizard.js") }></script>
 			<div id="edit-account-container"></div>
 			<script src={ AssetURL("/assets/js/htmx.min.js") }></script>
 			<script src={ AssetURL("/assets/js/virtual-scroll.js") }></script>

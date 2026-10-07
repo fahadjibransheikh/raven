@@ -356,10 +356,6 @@ templ ComposeAttachments() {
 }
 
 templ ComposeSchedulePopover(fromPane bool, buttonClass string) {
-	{{ suffix := "" }}
-	if fromPane {
-		{{ suffix = "pane-" }}
-	}
 	@popover.Root(popover.RootProps{Class: "inline-flex"}) {
 		@popover.Trigger() {
 			if fromPane {
@@ -376,66 +372,79 @@ templ ComposeSchedulePopover(fromPane bool, buttonClass string) {
 		}
 		@popover.Content(popover.ContentProps{Placement: popover.PlacementTopEnd, Offset: 10, Class: "w-[16.5rem] max-w-[calc(100vw-1.5rem)] p-3"}) {
 			<div data-compose-schedule-panel data-compose-schedule-pane?={ fromPane }>
-				<div class="mb-2 flex items-center justify-between gap-3">
-					<div>
-						<div class="text-sm font-semibold text-popover-foreground">Schedule send</div>
-						<p class="text-xs text-muted-foreground">Pick a date and local time.</p>
-					</div>
-					@icon.CalendarClock(icon.Props{Class: "size-4 text-muted-foreground"})
-				</div>
-				<div class="inline-flex rounded-lg border border-border/70 bg-background/35 p-2">
-					@calendar.Calendar(calendar.Props{ID: "compose-" + suffix + "schedule-calendar", Name: "compose_" + suffix + "schedule_date", Class: "[--cell-size:1.75rem]", HideHiddenInput: false})
-				</div>
-				<label class="mt-3 block text-xs font-medium text-muted-foreground" for={ "compose-" + suffix + "schedule-hour" }>Send time</label>
-				<div class="mt-1 flex items-center gap-2">
-					<div class="flex shrink-0 items-center gap-1.5">
-						@selectbox.SelectBox(selectbox.Props{ID: "compose-" + suffix + "schedule-hour", Class: "w-[4.25rem]", Attributes: templ.Attributes{"data-compose-schedule-hour": ""}}) {
-							@selectbox.Trigger(selectbox.TriggerProps{DisableClear: true, Class: "h-9 px-2 font-mono text-sm tabular-nums"}) {
-								@selectbox.Value(selectbox.ValueProps{Placeholder: "HH", Class: "font-mono text-sm tabular-nums"})
-							}
-							@selectbox.Content(selectbox.ContentProps{NoSearch: true, DisableExclusive: true, Class: "[&>div>div]:max-h-52"}) {
-								@selectbox.Group() {
-									for hour := 0; hour < 24; hour++ {
-										{{ value := fmt.Sprintf("%02d", hour) }}
-										@selectbox.Item(selectbox.ItemProps{Value: value, Class: "font-mono text-sm tabular-nums"}) {
-											{ value }
-										}
-									}
-								}
-							}
-						}
-						<span class="text-sm font-semibold text-muted-foreground">:</span>
-						@selectbox.SelectBox(selectbox.Props{ID: "compose-" + suffix + "schedule-minute", Class: "w-[4.25rem]", Attributes: templ.Attributes{"data-compose-schedule-minute": ""}}) {
-							@selectbox.Trigger(selectbox.TriggerProps{DisableClear: true, Class: "h-9 px-2 font-mono text-sm tabular-nums"}) {
-								@selectbox.Value(selectbox.ValueProps{Placeholder: "MM", Class: "font-mono text-sm tabular-nums"})
-							}
-							@selectbox.Content(selectbox.ContentProps{NoSearch: true, DisableExclusive: true, Class: "[&>div>div]:max-h-52"}) {
-								@selectbox.Group() {
-									for minute := 0; minute < 60; minute += 5 {
-										{{ value := fmt.Sprintf("%02d", minute) }}
-										@selectbox.Item(selectbox.ItemProps{Value: value, Class: "font-mono text-sm tabular-nums"}) {
-											{ value }
-										}
-									}
-								}
-							}
-						}
-					</div>
-					<div class="flex h-9 min-w-0 flex-1 items-center justify-end text-xs font-medium text-muted-foreground" title="Local timezone">
-						<span class="truncate" data-compose-schedule-timezone>UTC</span>
-					</div>
-				</div>
-				<div class="mt-3 flex items-center justify-end gap-2">
-					<button type="button" class="rounded-md px-2.5 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-accent hover:text-foreground" onclick="closeComposeSchedulePopover(this)">Cancel</button>
-					if fromPane {
-						<button type="button" class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors rounded-md px-3 py-1.5 text-xs font-semibold" onclick="scheduleCompose(true, this)">Schedule</button>
-					} else {
-						<button type="button" class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors rounded-md px-3 py-1.5 text-xs font-semibold" onclick="scheduleCompose(false, this)">Schedule</button>
-					}
-				</div>
+				<div style="min-height:23rem" hx-get={ "/ui/compose-schedule-panel?pane=" + boolParam(fromPane) } hx-trigger="intersect once" hx-swap="outerHTML"></div>
 			</div>
 		}
 	}
+}
+
+// ComposeSchedulePanel is the schedule popover's body (calendar plus time
+// pickers, ~50 KB). It is fetched when the popover first opens instead of being
+// rendered into every page.
+templ ComposeSchedulePanel(fromPane bool) {
+	{{ suffix := "" }}
+	if fromPane {
+		{{ suffix = "pane-" }}
+	}
+	<div data-compose-schedule-content>
+		<div class="mb-2 flex items-center justify-between gap-3">
+			<div>
+				<div class="text-sm font-semibold text-popover-foreground">Schedule send</div>
+				<p class="text-xs text-muted-foreground">Pick a date and local time.</p>
+			</div>
+			@icon.CalendarClock(icon.Props{Class: "size-4 text-muted-foreground"})
+		</div>
+		<div class="inline-flex rounded-lg border border-border/70 bg-background/35 p-2">
+			@calendar.Calendar(calendar.Props{ID: "compose-" + suffix + "schedule-calendar", Name: "compose_" + suffix + "schedule_date", Class: "[--cell-size:1.75rem]", HideHiddenInput: false})
+		</div>
+		<label class="mt-3 block text-xs font-medium text-muted-foreground" for={ "compose-" + suffix + "schedule-hour" }>Send time</label>
+		<div class="mt-1 flex items-center gap-2">
+			<div class="flex shrink-0 items-center gap-1.5">
+				@selectbox.SelectBox(selectbox.Props{ID: "compose-" + suffix + "schedule-hour", Class: "w-[4.25rem]", Attributes: templ.Attributes{"data-compose-schedule-hour": ""}}) {
+					@selectbox.Trigger(selectbox.TriggerProps{DisableClear: true, Class: "h-9 px-2 font-mono text-sm tabular-nums"}) {
+						@selectbox.Value(selectbox.ValueProps{Placeholder: "HH", Class: "font-mono text-sm tabular-nums"})
+					}
+					@selectbox.Content(selectbox.ContentProps{NoSearch: true, DisableExclusive: true, Class: "[&>div>div]:max-h-52"}) {
+						@selectbox.Group() {
+							for hour := 0; hour < 24; hour++ {
+								{{ value := fmt.Sprintf("%02d", hour) }}
+								@selectbox.Item(selectbox.ItemProps{Value: value, Class: "font-mono text-sm tabular-nums"}) {
+									{ value }
+								}
+							}
+						}
+					}
+				}
+				<span class="text-sm font-semibold text-muted-foreground">:</span>
+				@selectbox.SelectBox(selectbox.Props{ID: "compose-" + suffix + "schedule-minute", Class: "w-[4.25rem]", Attributes: templ.Attributes{"data-compose-schedule-minute": ""}}) {
+					@selectbox.Trigger(selectbox.TriggerProps{DisableClear: true, Class: "h-9 px-2 font-mono text-sm tabular-nums"}) {
+						@selectbox.Value(selectbox.ValueProps{Placeholder: "MM", Class: "font-mono text-sm tabular-nums"})
+					}
+					@selectbox.Content(selectbox.ContentProps{NoSearch: true, DisableExclusive: true, Class: "[&>div>div]:max-h-52"}) {
+						@selectbox.Group() {
+							for minute := 0; minute < 60; minute += 5 {
+								{{ value := fmt.Sprintf("%02d", minute) }}
+								@selectbox.Item(selectbox.ItemProps{Value: value, Class: "font-mono text-sm tabular-nums"}) {
+									{ value }
+								}
+							}
+						}
+					}
+				}
+			</div>
+			<div class="flex h-9 min-w-0 flex-1 items-center justify-end text-xs font-medium text-muted-foreground" title="Local timezone">
+				<span class="truncate" data-compose-schedule-timezone>UTC</span>
+			</div>
+		</div>
+		<div class="mt-3 flex items-center justify-end gap-2">
+			<button type="button" class="rounded-md px-2.5 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-accent hover:text-foreground" onclick="closeComposeSchedulePopover(this)">Cancel</button>
+			if fromPane {
+				<button type="button" class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors rounded-md px-3 py-1.5 text-xs font-semibold" onclick="scheduleCompose(true, this)">Schedule</button>
+			} else {
+				<button type="button" class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors rounded-md px-3 py-1.5 text-xs font-semibold" onclick="scheduleCompose(false, this)">Schedule</button>
+			}
+		</div>
+	</div>
 }
 
 templ ComposeField(label string, name string, placeholder string) {

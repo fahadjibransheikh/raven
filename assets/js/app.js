@@ -10448,6 +10448,15 @@ function prepareComposeSchedule(button, fromPane) {
   var root = button && button.closest ? button.closest("[data-tui-popover-root]") : null
   var panel = root && root.querySelector("[data-compose-schedule-panel]")
   if (!panel) return true
+  initComposeSchedulePanel(panel)
+  return true
+}
+
+// The panel body is fetched when the popover first opens; until then there is
+// nothing to initialise, and the htmx:load listener below runs this once the
+// content arrives.
+function initComposeSchedulePanel(panel) {
+  if (!panel || !panel.querySelector("[data-compose-schedule-content]")) return
   var dateInput = panel.querySelector("[data-tui-calendar-hidden-input]")
   var timeInputs = getComposeScheduleTimeInputs(panel)
   var timezone = getGoferTimezone()
@@ -10462,8 +10471,15 @@ function prepareComposeSchedule(button, fromPane) {
     selectComposeScheduleDate(panel, desiredDate)
   }
   disableComposeSchedulePastDates(panel)
-  return true
 }
+
+document.addEventListener("htmx:load", function (event) {
+  var content = event.detail && event.detail.elt
+  if (!content || !content.matches || !content.matches("[data-compose-schedule-content]")) return
+  var panel = content.closest("[data-compose-schedule-panel]")
+  // Let the calendar and select box scripts initialise the new nodes first.
+  setTimeout(function () { initComposeSchedulePanel(panel) }, 30)
+})
 
 document.addEventListener("click", function (event) {
   var button = event.target && event.target.closest ? event.target.closest("[data-tui-calendar-prev], [data-tui-calendar-next], [data-tui-calendar-day]") : null
@@ -12160,6 +12176,9 @@ function writeComposePane(html, vals, fullWidth, instantFullWidth) {
   if (!mailView) return
 
   mailView.innerHTML = html
+  // The pane carries hx-get placeholders (the schedule popover loads lazily),
+  // and htmx only processes markup it swapped in itself.
+  if (window.htmx) htmx.process(mailView)
 
   var paneForm = document.getElementById("compose-pane-form")
   _writeComposeFormValues(paneForm, vals, "compose-pane-")

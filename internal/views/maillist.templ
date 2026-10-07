@@ -3,6 +3,7 @@ package views
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/cristianadrielbraun/gofer/components/button"
 	"github.com/cristianadrielbraun/gofer/components/calendar"
@@ -580,9 +581,33 @@ templ MailFilterCalendarField(name string, id string, placeholder string) {
 			</button>
 		}
 		@popover.Content(popover.ContentProps{Placement: popover.PlacementBottomStart, Exclusive: false, Class: "z-[80] w-auto p-3"}) {
-			@calendar.Calendar(calendar.Props{ID: id, Name: name, Class: "[--cell-size:1.9rem]", HideHiddenInput: false})
+			@LazyFilterCalendar(id, name)
 		}
 	}
+}
+
+// LazyFilterCalendar keeps the wrapper and hidden input in the page (filter
+// state is read from and restored into that input while the popover is closed)
+// and fetches the calendar grid when the popover first becomes visible. The
+// server renders the fetched calendar from the input's current value.
+templ LazyFilterCalendar(id string, name string) {
+	<div
+		id={ id + "-wrapper" }
+		class="inline-flex flex-col [--cell-size:1.9rem]"
+		data-tui-calendar-wrapper="true"
+		hx-get={ "/ui/filter-calendar?name=" + name }
+		hx-trigger="intersect once"
+		hx-include={ "#" + id + "-hidden" }
+		hx-swap="outerHTML"
+	>
+		<input type="hidden" name={ name } value="" id={ id + "-hidden" } data-tui-calendar-hidden-input/>
+		<div style="height:14.6rem;width:14.8rem"></div>
+	</div>
+}
+
+// FilterCalendar is the fetched calendar that replaces LazyFilterCalendar.
+templ FilterCalendar(id string, name string, value *time.Time) {
+	@calendar.Calendar(calendar.Props{ID: id, Name: name, Class: "[--cell-size:1.9rem]", Value: value, HideHiddenInput: false})
 }
 
 templ MailListEmails(accounts []models.Account, emails []models.Email, folderID string, selectedEmail *models.Email, totalCount int, scrollCount int, windowStart int, senderDisplayMode string, viewMode string, navigationMode string) {
