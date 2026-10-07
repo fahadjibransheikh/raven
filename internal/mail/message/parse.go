@@ -15,6 +15,7 @@ import (
 	"github.com/emersion/go-message/mail"
 	xhtml "golang.org/x/net/html"
 
+	"github.com/cristianadrielbraun/gofer/internal/models"
 	"github.com/cristianadrielbraun/gofer/internal/store"
 )
 
@@ -98,7 +99,7 @@ func ParseMessage(ctx context.Context, r io.Reader, blobStore *store.BlobStore, 
 	}
 
 	if fromList, err := header.AddressList("From"); err == nil && len(fromList) > 0 {
-		parsed.FromName = DecodeHeader(fromList[0].Name)
+		parsed.FromName = models.CleanDisplayName(DecodeHeader(fromList[0].Name))
 		parsed.FromEmail = fromList[0].Address
 	}
 

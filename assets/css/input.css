@@ -1139,6 +1139,11 @@ input[role="switch"] + .gofer-switch-track::after {
   display: none;
 }
 
+/* Archive, delete and mark-read only make sense with a selection. */
+.mail-list-toolbar:not(:has([data-mail-selection-clear]:not(.hidden))) .mail-list-bulk-actions {
+  display: none;
+}
+
 .mail-list-search-section {
   display: grid;
   gap: 0;
@@ -2250,6 +2255,32 @@ body.mail-list-column-resizing {
 
 [data-thread-toggle][data-expanded] .thread-toggle-chevron {
   transform: rotate(90deg);
+}
+
+/* Thread count: a small muted pill in the corner column, under the date (the hover row actions cover the top-right, so not the meta column; thread is an icon-type field so it needs a side zone); fills when expanded. */
+.mail-list-thread-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-width: 1.25rem;
+  height: 1.125rem;
+  padding-inline: 0.3125rem;
+  border-radius: 9999px;
+  background: var(--color-muted);
+  color: var(--color-muted-foreground);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.mail-list-thread-pill:hover,
+.mail-list-thread-pill[data-expanded] {
+  background: color-mix(in srgb, var(--color-foreground) 14%, var(--color-muted));
+  color: var(--color-foreground);
 }
 
 .mail-list-skeleton {

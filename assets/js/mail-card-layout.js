@@ -53,9 +53,9 @@
         railMiddle: [],
         body: ["subject"],
         status: [],
-        railBottom: ["thread"],
+        railBottom: [],
         footer: ["preview", "labels"],
-        corner: ["starred"],
+        corner: ["thread", "starred"],
         hidden: ["account", "accountMarker", "to"],
       }
     }
@@ -69,9 +69,9 @@
         railMiddle: [],
         body: ["subject"],
         status: [],
-        railBottom: ["thread"],
+        railBottom: [],
         footer: ["preview", "labels"],
-        corner: ["starred"],
+        corner: ["thread", "starred"],
         hidden: ["account", "accountMarker", "to"],
       }
     }

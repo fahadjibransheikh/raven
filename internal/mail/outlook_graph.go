@@ -892,7 +892,7 @@ func outlookGraphMessageToProviderSync(accountID, folderID string, msg outlookGr
 		InReplyTo:         outlookGraphHeaderValue(msg.InternetMessageHeaders, "In-Reply-To"),
 		References:        outlookGraphHeaderValue(msg.InternetMessageHeaders, "References"),
 		Subject:           subject,
-		FromName:          strings.TrimSpace(from.Name),
+		FromName:          models.CleanDisplayName(from.Name),
 		FromEmail:         strings.TrimSpace(from.Address),
 		DateSent:          msg.SentDateTime,
 		DateReceived:      msg.ReceivedDateTime,
@@ -1134,7 +1134,7 @@ func outlookGraphAddressHeaderValue(headers []outlookGraphHeader, name string) o
 		return outlookGraphEmailAddress{}
 	}
 	return outlookGraphEmailAddress{
-		Name:    strings.TrimSpace(message.DecodeHeader(addresses[0].Name)),
+		Name:    models.CleanDisplayName(message.DecodeHeader(addresses[0].Name)),
 		Address: strings.TrimSpace(addresses[0].Address),
 	}
 }
@@ -1147,7 +1147,7 @@ func outlookGraphRecipients(recipients []outlookGraphRecipient) []storage.Recipi
 			continue
 		}
 		out = append(out, storage.Recipient{
-			Name:  strings.TrimSpace(recipient.EmailAddress.Name),
+			Name:  models.CleanDisplayName(recipient.EmailAddress.Name),
 			Email: email,
 		})
 	}
@@ -1173,7 +1173,7 @@ func outlookGraphRecipientsWithHeaderFallback(recipients []outlookGraphRecipient
 			continue
 		}
 		out = append(out, storage.Recipient{
-			Name:  strings.TrimSpace(message.DecodeHeader(address.Name)),
+			Name:  models.CleanDisplayName(message.DecodeHeader(address.Name)),
 			Email: strings.TrimSpace(address.Address),
 		})
 	}
