@@ -44,6 +44,8 @@ templ SettingsPage(accounts []models.Account, syncSettings models.SyncSettings, 
 					@SettingsRegionalTab(uiSettings)
 				} else if activeTab == "compose-display" {
 					@SettingsComposeDisplayTab(uiSettings, signatureData)
+				} else if activeTab == "security" {
+					@SettingsSecurityOpenTab()
 				} else if activeTab == "advanced" {
 					@SettingsAdvancedTab(uiSettings)
 				}
@@ -647,6 +649,19 @@ templ SettingsRegionalTab(uiSettings map[string]string) {
 		});
 	})();
 	</script>
+}
+
+// SettingsSecurityOpenTab is the Security tab when Raven runs without a login
+// (local/desktop mode): there is no account to protect with a password.
+templ SettingsSecurityOpenTab() {
+	<div class="mt-6 space-y-6" data-settings-security-open>
+		<div class="bg-card rounded-lg border p-6 space-y-2">
+			<h3 class="text-sm font-semibold text-muted-foreground">Security</h3>
+			<h4 class="text-sm font-medium text-foreground">Login is off</h4>
+			<p class="text-xs text-muted-foreground">Raven is running without a login, so there is no password, authenticator or passkey to manage. Anyone who can reach this Raven can read its mail, so keep it on a device only you use.</p>
+			<p class="text-xs text-muted-foreground">To require a login, run Raven as a server with authentication enabled. Password and two-step verification settings will appear here.</p>
+		</div>
+	</div>
 }
 
 templ SettingsAdvancedTab(uiSettings map[string]string) {
