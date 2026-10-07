@@ -70,8 +70,10 @@ fn gofer_working_dir(app: &AppHandle) -> std::path::PathBuf {
 }
 
 /// How long to wait for Gofer to come up before giving up and leaving the
-/// "Starting Gofer..." placeholder on screen.
-const STARTUP_TIMEOUT: Duration = Duration::from_secs(15);
+/// "Starting Gofer..." placeholder on screen. Schema migrations run before the
+/// server listens and can take minutes on a large mailbox (v98's orphan-thread
+/// cleanup took ~1 min on 1.5M rows), so this must outlast them.
+const STARTUP_TIMEOUT: Duration = Duration::from_secs(30 * 60);
 const POLL_INTERVAL: Duration = Duration::from_millis(200);
 
 /// Managed app state: holds the spawned sidecar's child-process handle, if
