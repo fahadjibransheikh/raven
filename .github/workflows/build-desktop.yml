@@ -164,9 +164,10 @@ jobs:
           TW_BIN="$(go env GOPATH)/bin/tailwindcss${{ matrix.ext }}"
           curl -fsSL -o "$TW_BIN" \
             "https://github.com/tailwindlabs/tailwindcss/releases/download/${TW_VERSION}/${TW_ASSET}"
-          # shasum is on all three runner images; compare by hash so Windows
-          # backslash paths can't confuse a checksum file.
-          ACTUAL="$(shasum -a 256 "$TW_BIN" | cut -d' ' -f1)"
+          # sha256sum is on the Linux and Windows (Git Bash) runners, shasum on
+          # macOS. Hash stdin: GNU sha256sum prefixes a "\" to the output when
+          # the file path has backslashes, as Windows paths do.
+          if command -v sha256sum >/dev/null; then ACTUAL="$(sha256sum < "$TW_BIN" | cut -d' ' -f1)"; else ACTUAL="$(shasum -a 256 < "$TW_BIN" | cut -d' ' -f1)"; fi
           if [ "$ACTUAL" != "$TW_SHA" ]; then
             echo "::error::Tailwind CLI checksum mismatch for ${TW_ASSET}: got $ACTUAL, expected $TW_SHA"
             exit 1
