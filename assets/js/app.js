@@ -11769,19 +11769,33 @@ function invalidateMailListItem(emailId) {
   }
 }
 
+function _cssAttrEscape(value) {
+  return String(value).replace(/[^a-zA-Z0-9_-]/g, "\\$&")
+}
+
+function emailBodyFrameForSource(source) {
+  return Array.prototype.find.call(document.querySelectorAll("[data-email-body-frame], #email-body-frame"), function (f) { return f.contentWindow === source })
+}
+
 window.addEventListener("message", function (e) {
   if (!e.data || !e.data.type) return
   if (e.data.type === "emailBodyResize") {
-    var iframe = e.data.emailId ? document.querySelector('[data-email-body-frame][data-email-id="' + e.data.emailId + '"]') : document.getElementById("email-body-frame")
-    if (iframe) {
-      iframe.style.height = e.data.height + "px"
+    // Only a real message frame may resize itself, and the id comes from that frame's
+    // element, never from the message: a script in another frame cannot steer the
+    // selector or touch another message's frame.
+    var iframe = emailBodyFrameForSource(e.source)
+    var height = Number(e.data.height)
+    if (iframe && isFinite(height) && height >= 0) {
+      var frameEmailId = iframe.dataset.emailId || ""
+      iframe.style.height = Math.min(height, 100000) + "px"
       iframe.classList.remove("opacity-0")
-      var loader = e.data.emailId ? document.querySelector('[data-email-body-loading="' + e.data.emailId + '"]') : null
+      var loader = frameEmailId ? document.querySelector('[data-email-body-loading="' + _cssAttrEscape(frameEmailId) + '"]') : null
       if (loader) loader.remove()
       if (iframe.dataset.translationActive === "true" && typeof window.goferEmailTranslationFrameLoaded === "function") {
-        window.goferEmailTranslationFrameLoaded(e.data.emailId)
+        window.goferEmailTranslationFrameLoaded(frameEmailId)
       }
     }
+    return
   }
   if (e.data.type === "emailLinkClick") {
     // The sandboxed message frame cannot open popups; open its links here.
@@ -11803,8 +11817,10 @@ window.addEventListener("message", function (e) {
     }
     return
   }
-  if (e.data.type === "remoteContentBlocked" && e.data.emailId) {
-    var banner = document.querySelector('[data-remote-content-banner="' + e.data.emailId + '"]')
+  if (e.data.type === "remoteContentBlocked") {
+    var blockedFrame = emailBodyFrameForSource(e.source)
+    var blockedId = blockedFrame && blockedFrame.dataset.emailId
+    var banner = blockedId ? document.querySelector('[data-remote-content-banner="' + _cssAttrEscape(blockedId) + '"]') : null
     if (banner) banner.classList.remove("hidden")
   }
 })
