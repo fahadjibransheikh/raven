@@ -13,6 +13,7 @@ import (
 	"github.com/emersion/go-imap/v2/imapclient"
 
 	"github.com/cristianadrielbraun/gofer/internal/mail/message"
+	"github.com/cristianadrielbraun/gofer/internal/models"
 	"github.com/cristianadrielbraun/gofer/internal/storage"
 )
 
@@ -164,7 +165,7 @@ func (c *Client) SyncFolder(ctx context.Context, folderID, remoteName string, op
 							syncMsg.InReplyTo = item.Envelope.InReplyTo[0]
 						}
 						if len(item.Envelope.From) > 0 {
-							syncMsg.FromName = message.DecodeHeader(item.Envelope.From[0].Name)
+							syncMsg.FromName = models.CleanDisplayName(message.DecodeHeader(item.Envelope.From[0].Name))
 							syncMsg.FromEmail = item.Envelope.From[0].Addr()
 						}
 						if !item.Envelope.Date.IsZero() {
@@ -324,7 +325,7 @@ func (c *Client) SyncFolderIncremental(ctx context.Context, folderID, remoteName
 						syncMsg.InReplyTo = item.Envelope.InReplyTo[0]
 					}
 					if len(item.Envelope.From) > 0 {
-						syncMsg.FromName = message.DecodeHeader(item.Envelope.From[0].Name)
+						syncMsg.FromName = models.CleanDisplayName(message.DecodeHeader(item.Envelope.From[0].Name))
 						syncMsg.FromEmail = item.Envelope.From[0].Addr()
 					}
 					if !item.Envelope.Date.IsZero() {

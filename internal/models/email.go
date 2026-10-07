@@ -283,3 +283,14 @@ const (
 	SendFailed
 	SendAmbiguous
 )
+
+// CleanDisplayName trims a sender display name and strips the literal quotes
+// some senders (and some IMAP servers) leave around it, e.g. `"Expedia.com"`.
+// Only a matching outer pair is removed; inner quotes are kept.
+func CleanDisplayName(name string) string {
+	name = strings.TrimSpace(name)
+	for len(name) >= 2 && name[0] == '"' && name[len(name)-1] == '"' {
+		name = strings.TrimSpace(name[1 : len(name)-1])
+	}
+	return name
+}

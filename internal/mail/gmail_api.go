@@ -1673,7 +1673,7 @@ func gmailAPIRecipients(value string) []storage.Recipient {
 		if strings.TrimSpace(addr.Address) == "" {
 			continue
 		}
-		out = append(out, storage.Recipient{Name: message.DecodeHeader(addr.Name), Email: strings.TrimSpace(addr.Address)})
+		out = append(out, storage.Recipient{Name: models.CleanDisplayName(message.DecodeHeader(addr.Name)), Email: strings.TrimSpace(addr.Address)})
 	}
 	return out
 }
