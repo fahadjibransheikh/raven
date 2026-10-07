@@ -134,19 +134,31 @@ jobs:
           go install github.com/a-h/templ/cmd/templ@v0.3.1001
           cargo install tauri-cli --version "^2" --locked
 
+      # Pinned version and checksums (from the release's sha256sums.txt, and
+      # identical to the digests the GitHub API reports for each asset). To
+      # bump: change TW_VERSION and the three hashes together.
       - name: Install standalone Tailwind CSS CLI
         shell: bash
+        env:
+          TW_VERSION: v4.3.3
         run: |
           case "${{ runner.os }}" in
-            macOS)   TW_ASSET=tailwindcss-macos-arm64 ;;
-            Linux)   TW_ASSET=tailwindcss-linux-x64 ;;
-            Windows) TW_ASSET=tailwindcss-windows-x64.exe ;;
+            macOS)   TW_ASSET=tailwindcss-macos-arm64;      TW_SHA=cdf646702987a743464dff4d9c60fd4480d1c1e73dd819a9a67f1078815dce9d ;;
+            Linux)   TW_ASSET=tailwindcss-linux-x64;        TW_SHA=dc61b3ac6b8c9ca874c0cc4c57b2409791a64c5540404ca5f5367360babc313a ;;
+            Windows) TW_ASSET=tailwindcss-windows-x64.exe;  TW_SHA=e0e260ce048014e9268f6237ff18f8ccf02cef521cbd0ae04e82c2cdf7aa3955 ;;
           esac
           # Go's bin dir is already on PATH (see above) in a form Windows
           # understands, and Windows only finds the binary with its .exe suffix.
           TW_BIN="$(go env GOPATH)/bin/tailwindcss${{ matrix.ext }}"
-          curl -sL -o "$TW_BIN" \
-            "https://github.com/tailwindlabs/tailwindcss/releases/latest/download/${TW_ASSET}"
+          curl -fsSL -o "$TW_BIN" \
+            "https://github.com/tailwindlabs/tailwindcss/releases/download/${TW_VERSION}/${TW_ASSET}"
+          # shasum is on all three runner images; compare by hash so Windows
+          # backslash paths can't confuse a checksum file.
+          ACTUAL="$(shasum -a 256 "$TW_BIN" | cut -d' ' -f1)"
+          if [ "$ACTUAL" != "$TW_SHA" ]; then
+            echo "::error::Tailwind CLI checksum mismatch for ${TW_ASSET}: got $ACTUAL, expected $TW_SHA"
+            exit 1
+          fi
           chmod +x "$TW_BIN"
 
       - name: Build the Go sidecar (native to this runner)
