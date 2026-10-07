@@ -4530,7 +4530,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function mailListNearTop(vml) {
     if (!vml || !vml.container) return true
-    return vml.container.scrollTop < (vml.itemHeight || MAIL_ROW_HEIGHT.cards) * 2
+    return vml.container.scrollTop < (vml.itemHeight || mailRowHeight("cards")) * 2
   }
 
   function refreshActiveMailListAfterAccountSync(data) {
@@ -5166,7 +5166,7 @@ document.addEventListener("DOMContentLoaded", function () {
   function pendingRowCount(list, mode, viewMode) {
     var height = list && list.getBoundingClientRect ? list.getBoundingClientRect().height : 0
     var reserved = mode === "contacts" ? 148 : 160
-    var itemHeight = mailRowHeight(viewMode)
+    var itemHeight = mailRowHeight(viewMode, mode)
     var count = Math.ceil(Math.max(0, height - reserved) / itemHeight) + 2
     if (!isFinite(count) || count <= 0) count = viewMode === "table" ? 14 : 8
     return Math.max(viewMode === "table" ? 10 : 6, Math.min(viewMode === "table" ? 28 : 12, count))

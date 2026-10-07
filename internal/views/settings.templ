@@ -550,6 +550,28 @@ templ SettingsAppearanceTab(uiSettings map[string]string) {
 					</label>
 				</div>
 			</div>
+			<div class="bg-card rounded-lg border p-6 space-y-6">
+				<div>
+					<h3 class="text-sm font-semibold text-foreground mb-1">List density</h3>
+					<p class="text-xs text-muted-foreground">How much of each message the list shows. Applies to the card view; the table view is unchanged.</p>
+				</div>
+				<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl" data-density-picker>
+					<label class="relative flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors hover:bg-row-hover border-border has-[:checked]:border-primary has-[:checked]:ring-2 has-[:checked]:ring-primary/20">
+						@radio.Radio(radio.Props{Name: "mail_list_density", Value: "calm", Checked: mailListDensity(uiSettings) == "calm", Class: "absolute right-3 top-3 z-10"})
+						<span class="flex flex-col pr-6">
+							<span class="text-sm font-medium text-foreground leading-tight">Calm</span>
+							<span class="text-xs text-muted-foreground">Two lines, more on screen</span>
+						</span>
+					</label>
+					<label class="relative flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors hover:bg-row-hover border-border has-[:checked]:border-primary has-[:checked]:ring-2 has-[:checked]:ring-primary/20">
+						@radio.Radio(radio.Props{Name: "mail_list_density", Value: "airy", Checked: mailListDensity(uiSettings) == "airy", Class: "absolute right-3 top-3 z-10"})
+						<span class="flex flex-col pr-6">
+							<span class="text-sm font-medium text-foreground leading-tight">Airy</span>
+							<span class="text-xs text-muted-foreground">Roomier rows</span>
+						</span>
+					</label>
+				</div>
+			</div>
 		</div>
 	<script>
 	(function() {
@@ -570,6 +592,10 @@ templ SettingsAppearanceTab(uiSettings map[string]string) {
 			var themeStyle = e.target.closest('input[name="theme_style"]');
 			if (themeStyle && typeof GoferSettings !== 'undefined') {
 				GoferSettings.set('theme_style', themeStyle.value);
+			}
+			var density = e.target.closest('input[name="mail_list_density"]');
+			if (density && typeof GoferSettings !== 'undefined') {
+				GoferSettings.set('mail_list_density', density.value);
 			}
 		});
 	})();

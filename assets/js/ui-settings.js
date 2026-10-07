@@ -79,7 +79,10 @@ var GoferSettings;
   var DEFAULT_MAIL_CARD_FIELDS = "avatar,thread,from,attachment,date,unread,subject,preview,labels,starred";
   var MAIL_CARD_LAYOUT_ZONES = ["railTop", "header", "meta", "railMiddle", "body", "status", "railBottom", "footer", "corner", "hidden"];
   var MAIL_CARD_VISIBLE_LAYOUT_ZONES = ["railTop", "header", "meta", "railMiddle", "body", "status", "railBottom", "footer", "corner"];
-  var DEFAULT_MAIL_CARD_LAYOUT = "railTop:avatar|header:from,date|meta:attachment,unread|railMiddle:|body:subject|status:|railBottom:|footer:preview,labels|corner:thread,starred|hidden:account,accountMarker,to";
+  // Subject and preview share the body zone: the "calm" density renders them as one
+// truncating line, "airy" stacks them. Keep in sync with defaultMailCardLayout in
+// internal/storage/mail_card_layout_migration.go.
+  var DEFAULT_MAIL_CARD_LAYOUT = "railTop:avatar|header:from,date|meta:attachment,unread|railMiddle:|body:subject,preview|status:|railBottom:|footer:labels|corner:thread,starred|hidden:account,accountMarker,to";
   var LEGACY_DEFAULT_MAIL_CARD_LAYOUTS = [
     "rail:avatar,thread|header:from,account|meta:attachment,date|body:subject,to,preview|footer:labels,starred|status:unread|hidden:",
     "rail:avatar,thread|header:from|meta:attachment,date|body:subject,preview|footer:labels,starred|status:unread|hidden:account,to",
@@ -87,6 +90,7 @@ var GoferSettings;
     "rail:avatar,thread|header:from|meta:attachment,date,unread|body:subject|footer:preview,labels|status:|corner:starred|hidden:account,accountMarker,to",
     "rail:avatar,thread|header:from,date|meta:attachment,unread|body:subject|footer:preview,labels|status:|corner:starred|hidden:account,accountMarker,to",
     "railTop:avatar|header:from,date|meta:attachment,unread|railMiddle:|body:subject|status:|railBottom:thread|footer:preview,labels|corner:starred|hidden:account,accountMarker,to",
+    "railTop:avatar|header:from,date|meta:attachment,unread|railMiddle:|body:subject|status:|railBottom:|footer:preview,labels|corner:thread,starred|hidden:account,accountMarker,to",
   ];
   var MAIL_CARD_ICON_FIELD_MAP = {
     avatar: true,
@@ -404,6 +408,21 @@ var GoferSettings;
     applyMailCardLayoutToScopes(scope, layout);
   }
 
+  var MAIL_LIST_DENSITIES = ["calm", "airy"];
+
+  function mailListDensityValue(value) {
+    return MAIL_LIST_DENSITIES.indexOf(value) !== -1 ? value : "calm";
+  }
+
+  // The density is a root attribute so CSS switches without a reload; the
+  // virtual list then re-reads its row height and re-lays-out.
+  function applyMailListDensity(value) {
+    document.documentElement.setAttribute("data-mail-density", mailListDensityValue(value));
+    var scroll = document.getElementById("mail-list-scroll");
+    var list = scroll && scroll._virtualMailList;
+    if (list && typeof list.applyRowDensity === "function") list.applyRowDensity();
+  }
+
   function mailPaneLayout(value) {
     return value === "stacked" ? "stacked" : "side";
   }
@@ -576,6 +595,9 @@ var GoferSettings;
     if (key === "mail_card_layout") {
       _cache.mail_card_layout = serializeMailCardLayout(normalizeMailCardLayout(value, _cache.mail_card_fields));
       applyMailCardSettings();
+    }
+    if (key === "mail_list_density") {
+      applyMailListDensity(value);
     }
     if (key === "timezone") {
       document.documentElement.setAttribute("data-timezone", value || browserTimezone());
