@@ -133,7 +133,7 @@ func initials(name string) string {
 }
 
 func contactFromSender(name, email string) models.Contact {
-	display := strings.TrimSpace(name)
+	display := models.CleanDisplayName(name)
 	if display == "" {
 		display = strings.TrimSpace(email)
 	}

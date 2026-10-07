@@ -79,7 +79,7 @@ var GoferSettings;
   var DEFAULT_MAIL_CARD_FIELDS = "avatar,thread,from,attachment,date,unread,subject,preview,labels,starred";
   var MAIL_CARD_LAYOUT_ZONES = ["railTop", "header", "meta", "railMiddle", "body", "status", "railBottom", "footer", "corner", "hidden"];
   var MAIL_CARD_VISIBLE_LAYOUT_ZONES = ["railTop", "header", "meta", "railMiddle", "body", "status", "railBottom", "footer", "corner"];
-  var DEFAULT_MAIL_CARD_LAYOUT = "railTop:avatar|header:from,date|meta:attachment,unread|railMiddle:|body:subject|status:|railBottom:thread|footer:preview,labels|corner:starred|hidden:account,accountMarker,to";
+  var DEFAULT_MAIL_CARD_LAYOUT = "railTop:avatar|header:from,date|meta:thread,attachment,unread|railMiddle:|body:subject|status:|railBottom:|footer:preview,labels|corner:starred|hidden:account,accountMarker,to";
   var LEGACY_DEFAULT_MAIL_CARD_LAYOUTS = [
     "rail:avatar,thread|header:from,account|meta:attachment,date|body:subject,to,preview|footer:labels,starred|status:unread|hidden:",
     "rail:avatar,thread|header:from|meta:attachment,date|body:subject,preview|footer:labels,starred|status:unread|hidden:account,to",
@@ -108,7 +108,7 @@ var GoferSettings;
   var MAIL_CARD_DEFAULT_ZONE_BY_ID = {
     avatar: "railTop",
     accountMarker: "railMiddle",
-    thread: "railBottom",
+    thread: "meta",
     from: "header",
     account: "header",
     attachment: "meta",
