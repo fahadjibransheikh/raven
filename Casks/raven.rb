@@ -1,7 +1,7 @@
 cask "raven" do
-  version "0.2.0"
-  sha256 arm:          "8d4219f532391e1ea7903173a187a49f1d329c6a4bc0aee01b99b796b08366eb",
-         x86_64_linux: "19b3cbb6f0e99420df46d932936f02f4625a08e7d49b64408bd5b8eac575217d"
+  version "0.2.1"
+  sha256 arm:          "dde566579833ade657da119cdb7798611deb1923f142c586b13273e8c87cae8f",
+         x86_64_linux: "330466e90061718337e96d1d1b508f27513b5f3d0d5fe7edae752565c4c7c95e"
 
   on_macos do
     url "https://github.com/fahadjibransheikh/raven/releases/download/v#{version}/Raven_#{version}_aarch64.dmg"
