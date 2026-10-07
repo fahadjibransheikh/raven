@@ -3,7 +3,7 @@ name = "gofer-desktop"
 version = "0.2.0"
 description = "Native desktop wrapper for the Raven email client"
 edition = "2021"
-rust-version = "1.77.2"
+rust-version = "1.90"
 
 # See https://v2.tauri.app/reference/config/ for tauri.conf.json.
 # See https://v2.tauri.app/develop/sidecar/ for the sidecar mechanism used here.
