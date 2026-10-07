@@ -110,6 +110,11 @@ Drag the `.app` to `/Applications` (or double-click the `.dmg`) as usual.
 
 ## Desktop-native features
 
+- **mailto: links.** The bundle declares the `mailto` scheme (deep-link plugin,
+  `tauri.conf.json`), so Raven can be chosen as the default mail app; a link
+  opens compose via Raven's own `/?mailto=` handling. Windows/Linux deliver the
+  link as a second launch, which the single-instance plugin forwards.
+
 Beyond the plain window wrapper described above, this app adds a few things
 a browser tab can't give you:
 

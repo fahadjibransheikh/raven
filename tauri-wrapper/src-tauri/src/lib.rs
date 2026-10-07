@@ -29,6 +29,7 @@ use std::time::{Duration, Instant};
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::TrayIconBuilder;
 use tauri::{AppHandle, Manager, RunEvent, WindowEvent};
+use tauri_plugin_deep_link::DeepLinkExt;
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 use tauri_plugin_shell::process::{CommandChild, CommandEvent};
 use tauri_plugin_shell::ShellExt;
@@ -113,6 +114,9 @@ struct SidecarState {
     /// Latest migration/boot progress line from the sidecar's log.
     progress: Mutex<String>,
     view: Mutex<StartupView>,
+    /// A same-origin path (a mailto: compose link) waiting for the window to be
+    /// pointed at Gofer. Guards `ready` too: see open_mailto.
+    pending_next: Mutex<Option<String>>,
     /// Random per-launch secret. Passed to the sidecar as GOFER_DESKTOP_TOKEN
     /// and traded for a cookie at /desktop-auth, so only this app's webview can
     /// use the server. Never written to disk or logged.
@@ -130,6 +134,7 @@ impl SidecarState {
             tail: Mutex::new(VecDeque::new()),
             progress: Mutex::new(String::new()),
             view: Mutex::new(StartupView::starting()),
+            pending_next: Mutex::new(None),
             token: new_token(),
         }
     }
@@ -367,9 +372,13 @@ fn start_sidecar(app: &AppHandle) {
             std::thread::sleep(POLL_INTERVAL);
         }
 
-        state.ready.store(true, Ordering::SeqCst);
+        let next = {
+            let mut pending = state.pending_next.lock().unwrap();
+            state.ready.store(true, Ordering::SeqCst);
+            pending.take().unwrap_or_else(|| "/".to_string())
+        };
         if let Some(window) = app.get_webview_window("main") {
-            if let Err(err) = window.navigate(login_url(port, &state.token, "/")) {
+            if let Err(err) = window.navigate(login_url(port, &state.token, &next)) {
                 eprintln!("failed to navigate main window to Gofer: {err}");
             }
         } else {
@@ -506,6 +515,38 @@ async fn check_for_update(app: AppHandle, user_initiated: bool) {
     app.restart();
 }
 
+/// `/?mailto=<url>`, which Raven's own page turns into a prefilled compose
+/// (to/cc/bcc/subject/body; see setupMailtoIntent in assets/js/app.js), so the
+/// wrapper does not parse the link itself.
+fn mailto_path(raw: &str) -> String {
+    let mut url: tauri::Url = "http://localhost/".parse().expect("valid URL");
+    url.query_pairs_mut().append_pair("mailto", raw);
+    format!("/?{}", url.query().unwrap_or_default())
+}
+
+/// Opens compose for a mailto: link handed to the app by the OS. Before the
+/// server is up the link is parked and used by the startup thread instead.
+fn open_mailto(app: &AppHandle, urls: Vec<tauri::Url>) {
+    let Some(url) = urls.into_iter().find(|url| url.scheme() == "mailto") else {
+        return;
+    };
+    let next = mailto_path(url.as_str());
+    show_main_window(app, false);
+    let state = app.state::<SidecarState>();
+    let mut pending = state.pending_next.lock().unwrap();
+    if !state.ready.load(Ordering::SeqCst) {
+        *pending = Some(next);
+        return;
+    }
+    drop(pending);
+    if let Some(window) = app.get_webview_window("main") {
+        let port = state.port.load(Ordering::SeqCst);
+        if let Err(err) = window.navigate(login_url(port, &state.token, &next)) {
+            eprintln!("failed to open mailto link: {err}");
+        }
+    }
+}
+
 /// Shared by the tray "Show"/"Compose" items and the global shortcut: bring
 /// the main window to the front, and optionally trigger Gofer's own compose
 /// UI via its existing top-level `openNewCompose()` JS function (the page
@@ -526,6 +567,13 @@ fn show_main_window(app_handle: &AppHandle, open_compose: bool) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // Must be first. A second launch (how Windows/Linux deliver a mailto:
+        // click) hands its arguments to the running app, which the deep-link
+        // feature turns into an open-url event, and exits.
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            show_main_window(app, false);
+        }))
+        .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_shell::init())
         // The two below are driven only from Rust (check_for_update), never
         // via invoke(), so like the global shortcut they need no capability.
@@ -668,6 +716,15 @@ pub fn run() {
             tauri::async_runtime::spawn(check_for_update(app_handle.clone(), false));
 
             start_sidecar(&app_handle);
+
+            // mailto: links (registered for the app by tauri.conf.json's
+            // deep-link scheme list). The URL that launched us, if any, is
+            // available now; later ones arrive as events.
+            let mailto_handle = app_handle.clone();
+            app.deep_link().on_open_url(move |event| open_mailto(&mailto_handle, event.urls()));
+            if let Ok(Some(urls)) = app.deep_link().get_current() {
+                open_mailto(&app_handle, urls);
+            }
 
             Ok(())
         })

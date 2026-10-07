@@ -31,6 +31,11 @@ tauri-plugin-window-state = "2"
 tauri-plugin-updater = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-notification = "2"
+# mailto: handler. single-instance (with its deep-link feature) makes a second
+# launch, which is how Windows/Linux deliver a mailto: click, forward the URL
+# to the running app instead of starting another sidecar.
+tauri-plugin-deep-link = "2"
+tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 
 [profile.release]
 panic = "abort"
