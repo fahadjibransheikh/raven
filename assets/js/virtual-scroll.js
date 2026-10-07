@@ -944,35 +944,26 @@ class VirtualMailList {
       return row
     }
     row.setAttribute("data-mail-card-layout-scope", "")
+    // Only the fields every row shows: avatar, sender, date, subject, preview. The
+    // layout moves them into their zones; the other zones stay empty (and hidden).
     row.innerHTML =
       '<div class="mail-list-card-zone mail-list-card-zone-rail-top" data-mail-card-zone="railTop">' +
-      '<div data-mail-card-field="avatar" class="size-6 rounded-full bg-muted animate-pulse"></div>' +
+      '<div data-mail-card-field="avatar" class="rounded-full bg-muted animate-pulse"></div>' +
       "</div>" +
-      '<div class="mail-list-card-zone mail-list-card-zone-rail-middle" data-mail-card-zone="railMiddle">' +
-      '<div data-mail-card-field="accountMarker" class="account-color-marker size-2.5 shrink-0 bg-muted animate-pulse"></div>' +
-      "</div>" +
-      '<div class="mail-list-card-zone mail-list-card-zone-rail-bottom" data-mail-card-zone="railBottom">' +
-      '<div data-mail-card-field="thread" class="mail-list-card-empty-icon-slot"></div>' +
-      "</div>" +
+      '<div class="mail-list-card-zone mail-list-card-zone-rail-middle" data-mail-card-zone="railMiddle"></div>' +
+      '<div class="mail-list-card-zone mail-list-card-zone-rail-bottom" data-mail-card-zone="railBottom"></div>' +
       '<div class="mail-list-card-zone mail-list-card-zone-header" data-mail-card-zone="header">' +
       '<div data-mail-card-field="from" class="h-3.5 w-32 max-w-[42%] rounded bg-muted animate-pulse"></div>' +
       '<div data-mail-card-field="date" class="h-3 w-16 rounded bg-muted animate-pulse"></div>' +
-      '<div data-mail-card-field="account" class="h-4 w-20 rounded-full border border-border bg-background animate-pulse"></div>' +
       "</div>" +
-      '<div class="mail-list-card-zone mail-list-card-zone-meta" data-mail-card-zone="meta">' +
-      '<div data-mail-card-field="attachment" class="mail-list-card-empty-icon-slot"></div>' +
-      '<div data-mail-card-field="unread" class="inline-flex size-4 shrink-0 items-center justify-center"><span class="size-2 rounded-full bg-muted animate-pulse"></span></div>' +
-      "</div>" +
+      '<div class="mail-list-card-zone mail-list-card-zone-meta" data-mail-card-zone="meta"></div>' +
       '<div class="mail-list-card-zone mail-list-card-zone-body" data-mail-card-zone="body">' +
-      '<div data-mail-card-field="subject" class="h-3.5 w-56 max-w-[58%] rounded bg-muted animate-pulse"></div>' +
-      '<div data-mail-card-field="to" class="h-3 w-36 max-w-[46%] rounded bg-muted animate-pulse"></div>' +
+      '<div data-mail-card-field="subject" class="h-3.5 w-40 max-w-[50%] rounded bg-muted animate-pulse"></div>' +
+      '<div data-mail-card-field="preview" class="h-3 w-48 max-w-[45%] rounded bg-muted animate-pulse"></div>' +
       "</div>" +
-      '<div class="mail-list-card-zone mail-list-card-zone-footer" data-mail-card-zone="footer">' +
-      '<div data-mail-card-field="preview" class="h-3 w-72 max-w-[70%] rounded bg-muted animate-pulse"></div>' +
-      '<div data-mail-card-field="labels" class="h-4 w-10 rounded bg-muted animate-pulse"></div>' +
-      "</div>" +
+      '<div class="mail-list-card-zone mail-list-card-zone-footer" data-mail-card-zone="footer"></div>' +
       '<div class="mail-list-card-zone mail-list-card-zone-status" data-mail-card-zone="status"></div>' +
-      '<div class="mail-list-card-zone mail-list-card-zone-corner" data-mail-card-zone="corner"><div data-mail-card-field="starred" class="h-3 w-3 rounded bg-muted animate-pulse"></div></div>' +
+      '<div class="mail-list-card-zone mail-list-card-zone-corner" data-mail-card-zone="corner"></div>' +
       '<div class="hidden" data-mail-card-zone="hidden"></div>'
     if (typeof window.applyMailCardLayoutSettings === "function") window.applyMailCardLayoutSettings(row)
     return row
