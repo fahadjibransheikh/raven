@@ -4,6 +4,8 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/cristianadrielbraun/gofer/internal/auth"
 	"github.com/cristianadrielbraun/gofer/internal/views"
@@ -31,9 +33,14 @@ func (h *Handler) handleChangePassword(w http.ResponseWriter, r *http.Request) {
 		CurrentPassword: r.PostFormValue("current_password"),
 		NewPassword:     newPassword,
 		UserAgent:       r.UserAgent(),
+		Source:          loginSource(r),
 	})
 	if err != nil {
+		var throttleError *auth.LoginThrottleError
 		switch {
+		case errors.As(err, &throttleError):
+			setRetryAfter(w, throttleError.RetryAfter)
+			h.renderPasswordChangeError(w, r, http.StatusTooManyRequests, "Too many attempts. Please wait a moment and try again.")
 		case errors.Is(err, auth.ErrCurrentPasswordInvalid),
 			errors.Is(err, auth.ErrPasswordUnchanged),
 			errors.Is(err, auth.ErrPasswordInvalid),
@@ -69,4 +76,12 @@ func (h *Handler) renderPasswordChangeError(w http.ResponseWriter, r *http.Reque
 		MessageIsError: true,
 		CSRFToken:      auth.CSRFToken(r.Context(), http.MethodPost, passwordChangePath),
 	})
+}
+
+func setRetryAfter(w http.ResponseWriter, retryAfter time.Duration) {
+	seconds := int64((retryAfter + time.Second - 1) / time.Second)
+	if seconds < 1 {
+		seconds = 1
+	}
+	w.Header().Set("Retry-After", strconv.FormatInt(seconds, 10))
 }

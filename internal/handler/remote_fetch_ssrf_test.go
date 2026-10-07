@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -39,5 +40,30 @@ func TestSavePushSubscriptionRejectsUnsafeEndpoints(t *testing.T) {
 	}
 	if code := post("https://fcm.googleapis.com/fcm/send/abc"); code != http.StatusOK {
 		t.Errorf("valid endpoint: status = %d, want 200", code)
+	}
+}
+
+func TestPushSubscriptionSizeAndCountLimits(t *testing.T) {
+	h, _ := newAccountOwnershipTestHandler(t)
+	post := func(endpoint string) int {
+		body := `{"endpoint":"` + endpoint + `","keys":{"p256dh":"k","auth":"a"}}`
+		req := httptest.NewRequest(http.MethodPost, "/api/push/subscription", strings.NewReader(body))
+		rec := httptest.NewRecorder()
+		h.handleSavePushSubscription(rec, ownerRequest(req))
+		return rec.Code
+	}
+	if code := post("https://fcm.googleapis.com/" + strings.Repeat("a", 2100)); code != http.StatusBadRequest {
+		t.Errorf("oversized endpoint: status = %d, want 400", code)
+	}
+	for i := 0; i < 20; i++ {
+		if code := post("https://fcm.googleapis.com/fcm/send/" + strconv.Itoa(i)); code != http.StatusOK {
+			t.Fatalf("subscription %d: status = %d, want 200", i, code)
+		}
+	}
+	if code := post("https://fcm.googleapis.com/fcm/send/21"); code != http.StatusConflict {
+		t.Errorf("subscription over the cap: status = %d, want 409", code)
+	}
+	if code := post("https://fcm.googleapis.com/fcm/send/3"); code != http.StatusOK {
+		t.Errorf("re-registering an existing endpoint at the cap: status = %d, want 200", code)
 	}
 }

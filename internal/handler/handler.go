@@ -100,6 +100,7 @@ const (
 	composeAttachmentMaxBytes     int64 = 25 << 20
 	composeMessageMaxBytes        int64 = 35 << 20
 	contactImportMaxBytes         int64 = 5 << 20
+	multipartOverheadBytes        int64 = 1 << 20 // boundaries and part headers on top of the file
 	contactAvatarMaxBytes         int64 = 2 << 20
 	composeStagedAttachmentMaxAge       = 24 * time.Hour
 	outgoingSendTimeout                 = 5 * time.Minute
@@ -146,8 +147,9 @@ func New(db *storage.DB, accountStore *config.AccountStore, syncer *mail.SyncOrc
 			return imap.NewClient(ctx, cfg, password)
 		},
 		remoteResourceDownloader: downloadRemoteResource,
-		providerAvatarHTTPClient: &http.Client{Timeout: 15 * time.Second},
+		providerAvatarHTTPClient: netguard.NewClient(15 * time.Second),
 	}
+	davPrivateAllowed = h.davPrivateTargetAllowed
 	db.SetContactActivityHook(func(event storage.ContactActivityNotification) {
 		if h.syncer == nil {
 			return
@@ -1244,6 +1246,8 @@ func serveVCard(w http.ResponseWriter, filename string, contacts []models.Contac
 
 func (h *Handler) handleImportContacts(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	// Cap the whole body: ParseMultipartForm spills oversized parts to temp files.
+	r.Body = http.MaxBytesReader(w, r.Body, contactImportMaxBytes+multipartOverheadBytes)
 	if err := r.ParseMultipartForm(contactImportMaxBytes); err != nil {
 		http.Error(w, "invalid vCard import", http.StatusBadRequest)
 		return
@@ -1501,6 +1505,12 @@ func (h *Handler) handleEmailBody(w http.ResponseWriter, r *http.Request) {
 		}
 		if err == nil && body == nil {
 			body, err = h.db.GetEmailBodyForUser(ctx, emailID, userID)
+			// Bodies stored before the parse-tree sanitizer were cleaned by the old
+			// regex one; the sanitizer is idempotent on its own output (translation
+			// already relies on that), so every stored body is re-checked here.
+			if body != nil {
+				body = message.SanitizeHTML(body)
+			}
 		}
 		if err != nil || body == nil {
 			http.NotFound(w, r)
@@ -3806,14 +3816,15 @@ func (h *Handler) handlePushVAPIDPublicKey(w http.ResponseWriter, r *http.Reques
 
 func (h *Handler) handleSavePushSubscription(w http.ResponseWriter, r *http.Request) {
 	var req pushSubscriptionRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 16<<10)).Decode(&req); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}
 	req.Endpoint = strings.TrimSpace(req.Endpoint)
 	req.Keys.P256DH = strings.TrimSpace(req.Keys.P256DH)
 	req.Keys.Auth = strings.TrimSpace(req.Keys.Auth)
-	if !netguard.ValidEndpoint(req.Endpoint) || req.Keys.P256DH == "" || req.Keys.Auth == "" {
+	if !netguard.ValidEndpoint(req.Endpoint) || req.Keys.P256DH == "" || req.Keys.Auth == "" ||
+		len(req.Endpoint) > 2048 || len(req.Keys.P256DH) > 256 || len(req.Keys.Auth) > 256 {
 		http.Error(w, "invalid subscription", http.StatusBadRequest)
 		return
 	}
@@ -3823,10 +3834,14 @@ func (h *Handler) handleSavePushSubscription(w http.ResponseWriter, r *http.Requ
 		UserID:    h.userID(r.Context()),
 		P256DH:    req.Keys.P256DH,
 		Auth:      req.Keys.Auth,
-		UserAgent: r.UserAgent(),
+		UserAgent: truncateString(r.UserAgent(), 512),
 	}); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			http.NotFound(w, r)
+			return
+		}
+		if errors.Is(err, storage.ErrTooManyPushSubscriptions) {
+			http.Error(w, err.Error(), http.StatusConflict)
 			return
 		}
 		http.Error(w, "save subscription failed", http.StatusInternalServerError)
@@ -3835,6 +3850,13 @@ func (h *Handler) handleSavePushSubscription(w http.ResponseWriter, r *http.Requ
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]bool{"ok": true})
+}
+
+func truncateString(value string, max int) string {
+	if len(value) <= max {
+		return value
+	}
+	return strings.ToValidUTF8(value[:max], "")
 }
 
 func (h *Handler) handleDeletePushSubscription(w http.ResponseWriter, r *http.Request) {
@@ -3973,10 +3995,17 @@ func (h *Handler) handleAttachmentPreview(w http.ResponseWriter, r *http.Request
 
 func (h *Handler) handleComposeAttachmentUpload(w http.ResponseWriter, r *http.Request) {
 	h.cleanupUnreferencedComposeAttachments(r.Context())
+	// Cap the whole body: ParseMultipartForm spills oversized parts to temp files.
+	r.Body = http.MaxBytesReader(w, r.Body, composeAttachmentMaxBytes+multipartOverheadBytes)
 	if err := r.ParseMultipartForm(composeAttachmentMaxBytes); err != nil {
+		message := "invalid attachment upload"
+		var tooLarge *http.MaxBytesError
+		if errors.As(err, &tooLarge) {
+			message = "attachment is too large"
+		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "invalid attachment upload"})
+		json.NewEncoder(w).Encode(map[string]string{"error": message})
 		return
 	}
 	file, header, err := r.FormFile("attachment")
@@ -4251,6 +4280,11 @@ func (h *Handler) handleAllowRemoteContent(w http.ResponseWriter, r *http.Reques
 	accountID := info.AccountID
 
 	body, err := h.db.GetEmailBodyForUser(ctx, emailID, userID)
+	if err == nil && body != nil {
+		// Same legacy-body re-check as handleEmailBody, and it keeps the copy
+		// written back below clean.
+		body = message.SanitizeHTML(body)
+	}
 	if err != nil || body == nil {
 		http.NotFound(w, r)
 		return
@@ -4376,6 +4410,9 @@ func (h *Handler) handleRemoteAsset(w http.ResponseWriter, r *http.Request) {
 	serveUntrusted(w, r, filename, mime.TypeByExtension(filepath.Ext(filename)), f, "private, max-age=31536000", true)
 }
 
+// sseRecheckInterval is a variable so tests can shorten it.
+var sseRecheckInterval = 20 * time.Second
+
 func (h *Handler) handleSSE(w http.ResponseWriter, r *http.Request) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
@@ -4453,6 +4490,12 @@ func (h *Handler) handleSSE(w http.ResponseWriter, r *http.Request) {
 	defer h.syncer.Events().Unsubscribe(ch)
 	ticker := time.NewTicker(1200 * time.Millisecond)
 	defer ticker.Stop()
+	// An open stream outlives the request that authenticated it: re-check the
+	// session (logout, "revoke other sessions", disabled user) and refresh the
+	// account set (accounts added or removed since connect) periodically.
+	recheck := time.NewTicker(sseRecheckInterval)
+	defer recheck.Stop()
+	sessionToken := auth.GetSessionToken(r)
 	lastProcessingActive := false
 
 	fmt.Fprintf(w, "event: connected\ndata: {}\n\n")
@@ -4468,6 +4511,19 @@ func (h *Handler) handleSSE(w http.ResponseWriter, r *http.Request) {
 		select {
 		case <-r.Context().Done():
 			return
+		case <-recheck.C:
+			if h.auth != nil && h.auth.IsEnabled() {
+				if active, err := h.auth.SessionStillActive(r.Context(), sessionToken); err == nil && !active {
+					return
+				}
+			}
+			if ids, err := h.db.GetAccountIDs(r.Context(), userID); err == nil {
+				userAccounts = ids
+				accountSet = make(map[string]bool, len(ids))
+				for _, id := range ids {
+					accountSet[id] = true
+				}
+			}
 		case <-ticker.C:
 			if !isAdmin {
 				continue

@@ -58,7 +58,7 @@ func (h *Handler) handleRecoveryCodeLoginSubmit(w http.ResponseWriter, r *http.R
 	}
 	challenge, err := h.auth.StartRecoveryCodeRepair(r.Context(), auth.RecoveryCodeLoginOptions{
 		Token: auth.GetPreAuthToken(r), Code: r.PostFormValue("code"),
-		Origin: h.auth.Config().BaseURL, Source: directLoginSource(r.RemoteAddr),
+		Origin: h.auth.Config().BaseURL, Source: loginSource(r),
 		UserAgent: r.UserAgent(),
 	})
 	if err != nil {
@@ -229,7 +229,7 @@ func (h *Handler) handleRecoveryRepairCodesSubmit(w http.ResponseWriter, r *http
 		session, err := h.auth.CompleteRecoveryRepair(r.Context(), auth.CompleteRecoveryRepairOptions{
 			Token: auth.GetPreAuthToken(r), Origin: h.auth.Config().BaseURL,
 			BatchID: r.PostFormValue("batch_id"), Saved: r.PostFormValue("saved") == "yes",
-			Source: directLoginSource(r.RemoteAddr), UserAgent: r.UserAgent(),
+			Source: loginSource(r), UserAgent: r.UserAgent(),
 		})
 		if err != nil {
 			switch {

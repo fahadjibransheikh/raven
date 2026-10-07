@@ -29,7 +29,7 @@ func (s *BlobStore) msgDir(accountID string, localID int64) string {
 }
 
 func (s *BlobStore) ensureDir(dir string) error {
-	return os.MkdirAll(dir, 0755)
+	return os.MkdirAll(dir, 0700)
 }
 
 func (s *BlobStore) StoreRaw(ctx context.Context, accountID string, localID int64, data []byte) (string, error) {
@@ -38,7 +38,7 @@ func (s *BlobStore) StoreRaw(ctx context.Context, accountID string, localID int6
 		return "", fmt.Errorf("create message dir: %w", err)
 	}
 	p := filepath.Join(dir, "raw.eml")
-	return p, os.WriteFile(p, data, 0644)
+	return p, os.WriteFile(p, data, 0600)
 }
 
 func (s *BlobStore) StoreBodyText(ctx context.Context, accountID string, localID int64, data []byte) (string, error) {
@@ -47,7 +47,7 @@ func (s *BlobStore) StoreBodyText(ctx context.Context, accountID string, localID
 		return "", fmt.Errorf("create message dir: %w", err)
 	}
 	p := filepath.Join(dir, "body.txt")
-	return p, os.WriteFile(p, data, 0644)
+	return p, os.WriteFile(p, data, 0600)
 }
 
 func (s *BlobStore) StoreBodyHTML(ctx context.Context, accountID string, localID int64, data []byte) (string, error) {
@@ -56,7 +56,7 @@ func (s *BlobStore) StoreBodyHTML(ctx context.Context, accountID string, localID
 		return "", fmt.Errorf("create message dir: %w", err)
 	}
 	p := filepath.Join(dir, "body.html")
-	return p, os.WriteFile(p, data, 0644)
+	return p, os.WriteFile(p, data, 0600)
 }
 
 func (s *BlobStore) StoreBodyOriginalHTML(ctx context.Context, accountID string, localID int64, data []byte) (string, error) {
@@ -65,7 +65,7 @@ func (s *BlobStore) StoreBodyOriginalHTML(ctx context.Context, accountID string,
 		return "", fmt.Errorf("create message dir: %w", err)
 	}
 	p := filepath.Join(dir, "body_original.html")
-	return p, os.WriteFile(p, data, 0644)
+	return p, os.WriteFile(p, data, 0600)
 }
 
 func (s *BlobStore) StoreAttachment(ctx context.Context, accountID string, localID int64, attID int64, filename string, r io.Reader) (string, error) {
@@ -79,7 +79,7 @@ func (s *BlobStore) StoreAttachment(ctx context.Context, accountID string, local
 	}
 	p := filepath.Join(dir, fmt.Sprintf("%d-%s", attID, sanitized))
 
-	f, err := os.Create(p)
+	f, err := os.OpenFile(p, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return "", fmt.Errorf("create attachment file: %w", err)
 	}
@@ -120,7 +120,7 @@ func (s *BlobStore) StoreComposeAttachment(ctx context.Context, userID, filename
 		sanitized = "attachment"
 	}
 	path = filepath.Join(dir, id+"-"+sanitized)
-	f, err := os.Create(path)
+	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return "", "", err
 	}
@@ -249,7 +249,7 @@ func (s *BlobStore) StoreRemoteAsset(accountID string, localID int64, url string
 		filename += ext
 	}
 	p := filepath.Join(dir, filename)
-	return p, os.WriteFile(p, data, 0644)
+	return p, os.WriteFile(p, data, 0600)
 }
 
 func (s *BlobStore) StoreRemoteBodyHTML(accountID string, localID int64, data []byte) (string, error) {
@@ -258,7 +258,7 @@ func (s *BlobStore) StoreRemoteBodyHTML(accountID string, localID int64, data []
 		return "", fmt.Errorf("create message dir: %w", err)
 	}
 	p := filepath.Join(dir, "body_remote.html")
-	return p, os.WriteFile(p, data, 0644)
+	return p, os.WriteFile(p, data, 0600)
 }
 
 func (s *BlobStore) ReadRemoteBodyHTML(path string) (io.ReadCloser, error) {

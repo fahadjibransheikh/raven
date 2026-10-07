@@ -32,7 +32,7 @@ func (h *Handler) handleSecurityStepUp(w http.ResponseWriter, r *http.Request) {
 	}
 	err := h.auth.VerifySecurityTOTPStepUp(
 		r.Context(), auth.GetSessionToken(r), r.PostFormValue("code"),
-		directLoginSource(r.RemoteAddr), r.UserAgent(),
+		loginSource(r), r.UserAgent(),
 	)
 	if err != nil {
 		var throttleError *auth.LoginThrottleError
@@ -117,7 +117,7 @@ func (h *Handler) handleSecurityTOTPConfirm(w http.ResponseWriter, r *http.Reque
 	)
 	session, err := h.auth.ConfirmTOTPManagement(
 		r.Context(), auth.GetSecurityChallengeToken(r), auth.GetSessionToken(r),
-		h.auth.Config().BaseURL, r.PostFormValue("code"), directLoginSource(r.RemoteAddr), r.UserAgent(),
+		h.auth.Config().BaseURL, r.PostFormValue("code"), loginSource(r), r.UserAgent(),
 	)
 	if err != nil {
 		var throttleError *auth.LoginThrottleError

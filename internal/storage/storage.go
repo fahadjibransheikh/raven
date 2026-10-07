@@ -52,10 +52,26 @@ type ThreadingState struct {
 
 const CurrentSchemaVersion = 100
 
+// restrictDatabaseFiles makes the database (message metadata, credential
+// ciphertext, session hashes) and its WAL/SHM readable by the owner only. SQLite
+// gives -wal and -shm the database file's mode, so the main file is created
+// first. Best effort: a filesystem without Unix modes just keeps what it has.
+func restrictDatabaseFiles(dbPath string) {
+	if f, err := os.OpenFile(dbPath, os.O_CREATE|os.O_RDONLY, 0600); err == nil {
+		f.Close()
+	}
+	for _, p := range []string{dbPath, dbPath + "-wal", dbPath + "-shm"} {
+		if err := os.Chmod(p, 0600); err != nil && !os.IsNotExist(err) {
+			log.Printf("storage: could not restrict permissions on %s: %v", p, err)
+		}
+	}
+}
+
 func New(dbPath string) (*DB, error) {
-	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(dbPath), 0700); err != nil {
 		return nil, fmt.Errorf("create db directory: %w", err)
 	}
+	restrictDatabaseFiles(dbPath)
 
 	write, err := openDB(dbPath)
 	if err != nil {

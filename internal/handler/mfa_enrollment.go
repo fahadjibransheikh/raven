@@ -143,7 +143,7 @@ func (h *Handler) handleMFAEnrollmentCodesSubmit(w http.ResponseWriter, r *http.
 		session, err := h.auth.CompleteMFAEnrollment(r.Context(), auth.CompleteMFAEnrollmentOptions{
 			Token: auth.GetPreAuthToken(r), Origin: h.auth.Config().BaseURL,
 			BatchID: r.PostFormValue("batch_id"), Saved: r.PostFormValue("saved") == "yes",
-			Source: directLoginSource(r.RemoteAddr), UserAgent: r.UserAgent(),
+			Source: loginSource(r), UserAgent: r.UserAgent(),
 		})
 		if err != nil {
 			switch {

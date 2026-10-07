@@ -18,6 +18,8 @@ type PasswordChangeOptions struct {
 	CurrentPassword string
 	NewPassword     string
 	UserAgent       string
+	// Source is the throttle identity of the caller (see Manager.CheckLoginThrottle).
+	Source string
 }
 
 type PasswordChangeResult struct {
@@ -45,9 +47,29 @@ func (m *Manager) ChangePassword(ctx context.Context, options PasswordChangeOpti
 		return nil, ErrCurrentPasswordInvalid
 	}
 
+	// A stolen session cookie must not become an offline-speed oracle for the
+	// real password, so the current-password check shares the login throttle.
+	buckets, err := m.passwordChangeThrottleBuckets(candidate.session.UserID, options.Source)
+	if err != nil {
+		return nil, err
+	}
+	decision, err := m.checkLoginThrottleBuckets(ctx, buckets)
+	if err != nil {
+		return nil, fmt.Errorf("check password change throttle: %w", err)
+	}
+	if decision.Throttled {
+		return nil, m.rejectThrottledAuthentication(ctx, decision, candidate.session.UserID, candidate.session.UserID, candidate.session.ID, AuthEventCredentialChanged, AuthenticationMethodPassword)
+	}
+
 	matches, _, err := VerifyPassword(candidate.passwordHash, options.CurrentPassword)
 	if err != nil || !matches {
 		if eventErr := m.runSecurityTransition(ctx, SecurityTransitionCredentialChange, func(tx *sql.Tx) error {
+			now := m.clock.Now().UTC()
+			for _, bucket := range buckets {
+				if _, err := recordLoginThrottleFailure(ctx, tx, bucket, now); err != nil {
+					return err
+				}
+			}
 			current, err := m.currentSecuritySession(ctx, tx, options.SessionToken, m.clock.Now().UTC(), false, true)
 			if err != nil {
 				return err

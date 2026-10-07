@@ -15,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cristianadrielbraun/gofer/internal/netguard"
 	"golang.org/x/net/html"
 	"golang.org/x/net/publicsuffix"
 )
@@ -63,7 +64,9 @@ type inFlightLookup struct {
 
 func NewResolver() *Resolver {
 	return &Resolver{
-		client:       &http.Client{Timeout: 4 * time.Second},
+		// Strict guard: the dial-time check covers DNS rebinding that the
+		// resolve-then-connect pre-check in validateRemoteAvatarURL cannot.
+		client:       netguard.NewClient(4 * time.Second),
 		lookupTXT:    net.DefaultResolver.LookupTXT,
 		lookupIPAddr: net.DefaultResolver.LookupIPAddr,
 		cache:        make(map[string]cacheEntry),
@@ -690,15 +693,7 @@ func (r *Resolver) validateRemoteAvatarRedirect(req *http.Request) error {
 	return r.validateRemoteAvatarURL(req.Context(), req.URL.String())
 }
 
-func isPrivateIP(ip net.IP) bool {
-	if ip == nil {
-		return true
-	}
-	if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() || ip.IsMulticast() {
-		return true
-	}
-	return false
-}
+func isPrivateIP(ip net.IP) bool { return netguard.ForbiddenIP(ip) }
 
 func parseIconLinks(baseURL string, data []byte) []string {
 	base, err := url.Parse(baseURL)

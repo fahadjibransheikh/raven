@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"github.com/cristianadrielbraun/gofer/internal/auth"
 	"github.com/cristianadrielbraun/gofer/internal/authoperator"
@@ -18,11 +19,13 @@ import (
 	"github.com/cristianadrielbraun/gofer/internal/storage"
 	"github.com/cristianadrielbraun/gofer/internal/store"
 	"io"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	webpush "github.com/SherClockHolmes/webpush-go"
 	"github.com/joho/godotenv"
@@ -84,7 +87,7 @@ func runServer() {
 	log.Printf("boot: database path resolved to %s", dbPath)
 
 	dataDir := filepath.Dir(dbPath)
-	if err := os.MkdirAll(dataDir, 0755); err != nil {
+	if err := os.MkdirAll(dataDir, 0700); err != nil {
 		log.Fatalf("failed to create database directory: %v", err)
 	}
 	runtimeLock, err := runtimeguard.Acquire(dbPath)
@@ -185,6 +188,7 @@ func runServer() {
 	var handler http.Handler = mux
 	handler = authManager.Middleware(handler)
 	handler = httpConfig.Middleware(handler)
+	handler = httpConfig.ClientSourceMiddleware(handler)
 	handler = httpConfig.ClientNetworkMiddleware(authConfig.Enabled, handler)
 	handler = httpguard.Gzip(handler)
 
@@ -215,7 +219,15 @@ func runServer() {
 	if _, err := setupNotice.WriteTo(os.Stderr); err != nil {
 		log.Fatalf("failed to display setup notice: %v", err)
 	}
-	log.Fatal(http.ListenAndServe(httpConfig.ListenAddr, handler))
+	// No Read/WriteTimeout: SSE streams and large attachment up/downloads are
+	// long-lived. Header and idle limits stop slowloris-style connection holding.
+	server := &http.Server{
+		Addr:              httpConfig.ListenAddr,
+		Handler:           handler,
+		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       2 * time.Minute,
+	}
+	log.Fatal(server.ListenAndServe())
 }
 
 func provisionInitialSetupToken(ctx context.Context, manager *auth.Manager, configuredToken string, console io.Writer) error {
@@ -266,7 +278,7 @@ func loadOrGenerateVAPIDKeys(privatePath, publicPath string) (string, string) {
 	if err != nil {
 		log.Fatalf("generate VAPID keys: %v", err)
 	}
-	os.MkdirAll(filepath.Dir(privatePath), 0755)
+	os.MkdirAll(filepath.Dir(privatePath), 0700)
 	if err := os.WriteFile(privatePath, []byte(privateKey), 0600); err != nil {
 		log.Fatalf("write VAPID private key: %v", err)
 	}
@@ -286,21 +298,52 @@ func loadOrGenerateSecretKey(path string) []byte {
 		return key
 	}
 
-	data, err := os.ReadFile(path)
-	if err == nil && len(data) == 32 {
-		return data
+	key, err := readOrCreateSecretKey(path)
+	if err != nil {
+		// Never fall back to a fresh key: every stored mailbox password, TOTP seed
+		// and passkey record is encrypted under the existing one.
+		log.Fatalf("secret key %s: %v", path, err)
 	}
+	return key
+}
 
+// readOrCreateSecretKey returns the key at path. It creates one only when the
+// file does not exist; an unreadable or malformed file is an error, because
+// overwriting it would orphan everything encrypted with it.
+func readOrCreateSecretKey(path string) ([]byte, error) {
+	data, err := os.ReadFile(path)
+	if err == nil {
+		if len(data) != 32 {
+			return nil, fmt.Errorf("expected 32 bytes, found %d; restore it from backup or remove it deliberately to start over", len(data))
+		}
+		return data, nil
+	}
+	if !errors.Is(err, fs.ErrNotExist) {
+		return nil, err
+	}
 	key := make([]byte, 32)
 	if _, err := rand.Read(key); err != nil {
-		log.Fatalf("generate secret key: %v", err)
+		return nil, fmt.Errorf("generate secret key: %w", err)
 	}
-
-	os.MkdirAll(filepath.Dir(path), 0755)
-	if err := os.WriteFile(path, key, 0600); err != nil {
-		log.Fatalf("write secret key: %v", err)
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		return nil, err
 	}
-
+	// O_EXCL: if another process created it in the meantime, use theirs.
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	if errors.Is(err, fs.ErrExist) {
+		return readOrCreateSecretKey(path)
+	}
+	if err != nil {
+		return nil, err
+	}
+	if _, err := f.Write(key); err != nil {
+		f.Close()
+		os.Remove(path)
+		return nil, err
+	}
+	if err := f.Close(); err != nil {
+		return nil, err
+	}
 	log.Printf("generated new secret key at %s", path)
-	return key
+	return key, nil
 }

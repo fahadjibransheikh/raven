@@ -309,7 +309,7 @@ func TestCardDAVDeleteNotFoundIsSuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
-	if err := cardDAVDelete(context.Background(), models.ContactSyncConfig{}, "", server.URL+"/missing.vcf", `"old"`); err != nil {
+	if err := cardDAVDelete(context.Background(), models.ContactSyncConfig{AddressBookURL: server.URL + "/"}, "", server.URL+"/missing.vcf", `"old"`); err != nil {
 		t.Fatalf("cardDAVDelete() error = %v, want nil", err)
 	}
 }
@@ -453,4 +453,10 @@ func newCardDAVDeleteTestStore(t *testing.T) (*storage.DB, *config.AccountStore)
 		t.Fatalf("NewAccountStore() error = %v", err)
 	}
 	return db, store
+}
+
+// The fixtures below serve CardDAV from 127.0.0.1; strictness is covered in
+// dav_client_test.go, which resets this policy per test.
+func init() {
+	davPrivateAllowed = func(context.Context, string, int) bool { return true }
 }

@@ -1,9 +1,11 @@
 package handler
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/cristianadrielbraun/gofer/internal/auth"
 	"github.com/cristianadrielbraun/gofer/internal/mail"
@@ -66,5 +68,46 @@ func TestGlobalProcessingStatusRequiresAdmin(t *testing.T) {
 				t.Fatalf("status = %d, want %d", recorder.Code, tt.want)
 			}
 		})
+	}
+}
+
+func TestSSEStreamEndsWhenItsSessionIsRevoked(t *testing.T) {
+	h, db := newAccountOwnershipTestHandler(t)
+	h.syncer = mail.NewSyncOrchestrator(db, nil, nil, nil)
+	h.auth = auth.NewManager(&auth.Config{Enabled: true, BaseURL: "https://gofer.example"}, db, auth.Dependencies{BucketHashKey: []byte("0123456789abcdef0123456789abcdef")})
+	session, err := h.auth.CreateAuthenticatedSession(t.Context(), "owner", "test", auth.AuthenticationMethodPassword, auth.AssuranceLevelSingleFactor)
+	if err != nil {
+		t.Fatal(err)
+	}
+	old := sseRecheckInterval
+	sseRecheckInterval = 20 * time.Millisecond
+	t.Cleanup(func() { sseRecheckInterval = old })
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h.handleSSE(w, ownerRequest(r))
+	}))
+	defer srv.Close()
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, srv.URL, nil)
+	req.AddCookie(&http.Cookie{Name: "gofer_session", Value: session.Token})
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	ended := make(chan struct{})
+	go func() { _, _ = io.Copy(io.Discard, resp.Body); close(ended) }()
+	select {
+	case <-ended:
+		t.Fatal("stream ended while the session was still valid")
+	case <-time.After(150 * time.Millisecond):
+	}
+	if _, err := db.Write().Exec(`UPDATE sessions SET revoked_at = CURRENT_TIMESTAMP, revocation_reason = 'logout' WHERE user_id = 'owner'`); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-ended:
+	case <-time.After(3 * time.Second):
+		t.Fatal("stream stayed open after its session was revoked")
 	}
 }

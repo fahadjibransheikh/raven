@@ -34,7 +34,7 @@ func (h *Handler) handleLoginPasskeyStart(w http.ResponseWriter, r *http.Request
 	}
 	options, err := h.auth.StartPasskeyLogin(
 		r.Context(), boundedLoginIdentifier(r.PostFormValue("identifier")), h.auth.Config().BaseURL,
-		directLoginSource(r.RemoteAddr),
+		loginSource(r),
 	)
 	if err != nil {
 		var throttleError *auth.LoginThrottleError
@@ -78,7 +78,7 @@ func (h *Handler) handleLoginPasskeyFinish(w http.ResponseWriter, r *http.Reques
 	}
 	session, err := h.auth.FinishPasskeyLogin(
 		r.Context(), auth.GetPasskeyLoginChallengeToken(r), h.auth.Config().BaseURL,
-		responseJSON, directLoginSource(r.RemoteAddr), r.UserAgent(),
+		responseJSON, loginSource(r), r.UserAgent(),
 	)
 	if err != nil {
 		var throttleError *auth.LoginThrottleError
@@ -126,7 +126,7 @@ func (h *Handler) handleSecurityPasskeyStepUpStart(w http.ResponseWriter, r *htt
 		return
 	}
 	options, err := h.auth.StartPasskeyStepUp(
-		r.Context(), auth.GetSessionToken(r), h.auth.Config().BaseURL, directLoginSource(r.RemoteAddr),
+		r.Context(), auth.GetSessionToken(r), h.auth.Config().BaseURL, loginSource(r),
 	)
 	if err != nil {
 		var throttleError *auth.LoginThrottleError
@@ -169,7 +169,7 @@ func (h *Handler) handleSecurityPasskeyStepUpFinish(w http.ResponseWriter, r *ht
 	}
 	err = h.auth.FinishPasskeyStepUp(
 		r.Context(), auth.GetSecurityChallengeToken(r), auth.GetSessionToken(r), h.auth.Config().BaseURL,
-		responseJSON, directLoginSource(r.RemoteAddr), r.UserAgent(),
+		responseJSON, loginSource(r), r.UserAgent(),
 	)
 	if err != nil {
 		var throttleError *auth.LoginThrottleError

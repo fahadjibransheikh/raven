@@ -140,7 +140,8 @@
   })
 
   window.addEventListener("message", function (e) {
-    if (e.data && e.data.type === "emailBodyResize" && e.data.emailId) load(e.data.emailId)
+    // The id is spliced into a request path, so only plain message ids are accepted.
+    if (e.data && e.data.type === "emailBodyResize" && /^\d+$/.test(String(e.data.emailId || ""))) load(String(e.data.emailId))
   })
 
   window.RavenInvite = { load: load, localize: localize }
