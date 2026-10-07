@@ -27,7 +27,7 @@ jobs:
       release_id: ${{ steps.create.outputs.release_id }}
       version: ${{ steps.create.outputs.version }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Create the draft release
         id: create
@@ -98,7 +98,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install Linux system dependencies
         if: runner.os == 'Linux'
@@ -109,15 +109,15 @@ jobs:
             librsvg2-dev patchelf
 
       - name: Set up Go
-        uses: actions/setup-go@v7
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
 
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@89b12181fb390509a0842a86cc55eeb8eb928c1d # stable branch, no version tags
 
       - name: Cache Cargo
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           workspaces: tauri-wrapper/src-tauri
 
@@ -173,7 +173,7 @@ jobs:
         # The macOS DMG step (bundle_dmg.sh drives Finder) fails at random on
         # hosted runners, so a failure here gets one retry below.
         continue-on-error: true
-        uses: tauri-apps/tauri-action@v1
+        uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f # v1.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -198,7 +198,7 @@ jobs:
       # so anything the first attempt already uploaded is replaced, not duplicated.
       - name: Build the desktop app (retry)
         if: steps.build.outcome == 'failure'
-        uses: tauri-apps/tauri-action@v1
+        uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f # v1.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -210,7 +210,7 @@ jobs:
           releaseId: ${{ needs.create-release.outputs.release_id }}
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: raven-${{ runner.os }}-${{ matrix.target_triple }}
           path: |
@@ -254,7 +254,7 @@ jobs:
           gh api -X PATCH "repos/${{ github.repository }}/releases/${{ needs.create-release.outputs.release_id }}" \
             -F draft=false -f make_latest=true
 
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: master
 
