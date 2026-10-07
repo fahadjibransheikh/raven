@@ -380,3 +380,39 @@ func TestLoginThrottleRequiresKeyedHashSecret(t *testing.T) {
 }
 
 const sha256HexLength = 64
+
+func TestLoginThrottleOneAttackerCannotLockOutOtherUsers(t *testing.T) {
+	now := time.Date(2026, time.August, 6, 9, 0, 0, 0, time.UTC)
+	clock := &fixedClock{now: now}
+	manager, db := openLoginThrottleTestManager(t, filepath.Join(t.TempDir(), "gofer.db"), clock, loginThrottleTestKey)
+	t.Cleanup(func() { _ = db.Close() })
+
+	// One attacker address sprays far past the source and instance thresholds.
+	instance := int(loginThrottlePolicies[loginThrottleBucketInstance].delayStartsAt)
+	for i := 0; i < instance+20; i++ {
+		if _, err := manager.RecordLoginFailure(t.Context(), fmt.Sprintf("victim-%d", i), "198.51.100.66"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if d, err := manager.CheckLoginThrottle(t.Context(), "victim-0", "198.51.100.66"); err != nil || !d.Throttled {
+		t.Fatalf("attacker not throttled: %#v %v", d, err)
+	}
+	// An unrelated user from another address, who has never failed, is not delayed
+	// by the global instance bucket.
+	if d, err := manager.CheckLoginThrottle(t.Context(), "bystander", "203.0.113.7"); err != nil || d.Throttled {
+		t.Fatalf("bystander throttled by someone else's failures: %#v %v", d, err)
+	}
+	// Per-account bucket: guessing one account from many addresses is still slowed.
+	identifier := int(loginThrottlePolicies[loginThrottleBucketIdentifier].delayStartsAt)
+	for i := 0; i < identifier; i++ {
+		if _, err := manager.RecordLoginFailure(t.Context(), "target", fmt.Sprintf("192.0.2.%d", i+1)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if d, err := manager.CheckLoginThrottle(t.Context(), "target", "192.0.2.200"); err != nil || !d.Throttled {
+		t.Fatalf("distributed guessing against one account not throttled: %#v %v", d, err)
+	}
+	if d, err := manager.CheckLoginThrottle(t.Context(), "other-account", "192.0.2.200"); err != nil || d.Throttled {
+		t.Fatalf("other account throttled: %#v %v", d, err)
+	}
+}

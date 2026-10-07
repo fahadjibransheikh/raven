@@ -35,7 +35,7 @@ func (h *Handler) handlePasswordResetRequestSubmit(w http.ResponseWriter, r *htt
 	}
 	if err := h.auth.RequestPasswordReset(r.Context(), auth.PasswordResetRequestOptions{
 		Identifier: boundedLoginIdentifier(r.PostFormValue("identifier")),
-		Source:     directLoginSource(r.RemoteAddr),
+		Source:     loginSource(r),
 		UserAgent:  r.UserAgent(),
 	}); err != nil {
 		log.Printf("request password reset: %v", err)

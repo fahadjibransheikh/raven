@@ -1,6 +1,7 @@
 package httpguard
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/netip"
@@ -99,4 +100,50 @@ func (c *Config) clientAddress(r *http.Request) (netip.Addr, bool) {
 		address = hops[i]
 	}
 	return address, true
+}
+
+type clientSourceKey struct{}
+
+// ClientSourceMiddleware records the throttling identity of each request: the
+// real client behind a configured trusted proxy (GOFER_TRUSTED_PROXY_CIDRS),
+// else the socket peer. Without it every client behind cloudflared or another
+// reverse proxy would share the proxy's address and one throttle bucket.
+func (c *Config) ClientSourceMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if source := c.clientSource(r); source != "" {
+			r = r.WithContext(context.WithValue(r.Context(), clientSourceKey{}, source))
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// ClientSource returns the value stored by ClientSourceMiddleware, or "".
+func ClientSource(r *http.Request) string {
+	source, _ := r.Context().Value(clientSourceKey{}).(string)
+	return source
+}
+
+func (c *Config) clientSource(r *http.Request) string {
+	address, ok := c.clientAddress(r)
+	if !ok {
+		peer, err := netip.ParseAddrPort(r.RemoteAddr)
+		if err != nil {
+			return ""
+		}
+		address = peer.Addr().Unmap().WithZone("")
+		// A trusted proxy that sent no X-Forwarded-For (Cloudflare always sets
+		// CF-Connecting-IP) still identifies the client; anything else falls
+		// back to the proxy's own address.
+		if containsAddress(c.trustedProxyCIDRs, address) && r.Header.Get("X-Forwarded-For") == "" {
+			if cf, err := netip.ParseAddr(strings.TrimSpace(r.Header.Get("CF-Connecting-IP"))); err == nil && cf.Zone() == "" && !cf.IsUnspecified() && !cf.IsMulticast() {
+				address = cf.Unmap()
+			}
+		}
+	}
+	if address.Is6() {
+		// A client typically owns a whole /64; keying on the full address would
+		// let it mint unlimited throttle buckets.
+		address = netip.PrefixFrom(address, 64).Masked().Addr()
+	}
+	return address.String()
 }

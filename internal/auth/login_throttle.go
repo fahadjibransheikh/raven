@@ -71,6 +71,7 @@ type LoginThrottleDecision struct {
 type loginThrottleBucket struct {
 	hash   string
 	action string
+	kind   loginThrottleBucketKind
 	policy loginThrottlePolicy
 }
 
@@ -200,7 +201,7 @@ func (m *Manager) passkeyLoginThrottleBuckets(identifier, source string) ([]logi
 			return nil, err
 		}
 		buckets = append(buckets, loginThrottleBucket{
-			hash: hash, action: passkeyLoginThrottleAction, policy: loginThrottlePolicies[value.kind],
+			hash: hash, action: passkeyLoginThrottleAction, kind: value.kind, policy: loginThrottlePolicies[value.kind],
 		})
 	}
 	return buckets, nil
@@ -236,6 +237,7 @@ func (m *Manager) authenticationThrottleBuckets(action, identifier, source strin
 		buckets = append(buckets, loginThrottleBucket{
 			hash:   hash,
 			action: action,
+			kind:   value.kind,
 			policy: loginThrottlePolicies[value.kind],
 		})
 	}
@@ -313,6 +315,10 @@ func recordLoginThrottleFailure(ctx context.Context, tx *sql.Tx, bucket loginThr
 
 func loginThrottleRetryAtTx(ctx context.Context, tx *sql.Tx, buckets []loginThrottleBucket, now time.Time) (time.Time, error) {
 	retryAt := time.Time{}
+	// The instance bucket is a global brake on distributed guessing. Applied to
+	// everyone it would let anybody lock every user out by failing 100 logins,
+	// so it only delays a caller whose own source has also been failing.
+	sourceFailing := false
 	for _, bucket := range buckets {
 		var blockedUntil sql.NullTime
 		var expiresAt time.Time
@@ -326,6 +332,12 @@ func loginThrottleRetryAtTx(ctx context.Context, tx *sql.Tx, buckets []loginThro
 		}
 		if err != nil {
 			return time.Time{}, fmt.Errorf("read login throttle bucket: %w", err)
+		}
+		if bucket.kind == loginThrottleBucketSource && expiresAt.After(now) {
+			sourceFailing = true
+		}
+		if bucket.kind == loginThrottleBucketInstance && !sourceFailing {
+			continue
 		}
 		if !expiresAt.After(now) || !blockedUntil.Valid || !blockedUntil.Time.After(now) {
 			continue

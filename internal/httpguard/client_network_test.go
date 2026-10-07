@@ -143,3 +143,39 @@ func TestNetworkConfigurationRejectsMalformedAndOverridesLegacyRemote(t *testing
 		t.Fatal("invalid trusted proxy configuration accepted")
 	}
 }
+
+func TestClientSourceBehindTrustedProxy(t *testing.T) {
+	cfg, err := newConfig("127.0.0.1:8090", "http://localhost:8090", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg.trustedProxyCIDRs, _ = parseCIDRs("test", "127.0.0.1/32")
+	for _, tt := range []struct{ name, peer, xff, cf, want string }{
+		{"direct peer", "198.51.100.9:1234", "", "", "198.51.100.9"},
+		{"direct peer cannot forge xff", "198.51.100.9:1234", "203.0.113.1", "203.0.113.2", "198.51.100.9"},
+		{"tunnel client via xff", "127.0.0.1:5000", "203.0.113.5", "", "203.0.113.5"},
+		{"client-prepended xff ignored", "127.0.0.1:5000", "10.9.9.9, 203.0.113.5", "", "203.0.113.5"},
+		{"cf-connecting-ip when no xff", "127.0.0.1:5000", "", "203.0.113.6", "203.0.113.6"},
+		{"xff wins over cf header", "127.0.0.1:5000", "203.0.113.5", "203.0.113.99", "203.0.113.5"},
+		{"proxy with no client info", "127.0.0.1:5000", "", "", "127.0.0.1"},
+		{"malformed xff falls back to proxy", "127.0.0.1:5000", "garbage", "", "127.0.0.1"},
+		{"ipv6 client keyed by /64", "127.0.0.1:5000", "2001:db8:1:2:aaaa:bbbb:cccc:dddd", "", "2001:db8:1:2::"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var got string
+			h := cfg.ClientSourceMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { got = ClientSource(r) }))
+			r := httptest.NewRequest(http.MethodPost, "http://localhost:8090/login", nil)
+			r.RemoteAddr = tt.peer
+			if tt.xff != "" {
+				r.Header.Set("X-Forwarded-For", tt.xff)
+			}
+			if tt.cf != "" {
+				r.Header.Set("CF-Connecting-IP", tt.cf)
+			}
+			h.ServeHTTP(httptest.NewRecorder(), r)
+			if got != tt.want {
+				t.Fatalf("source = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}

@@ -12,6 +12,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/cristianadrielbraun/gofer/internal/auth"
+	"github.com/cristianadrielbraun/gofer/internal/httpguard"
 	"github.com/cristianadrielbraun/gofer/internal/views"
 )
 
@@ -70,7 +71,7 @@ func (h *Handler) handlePasswordLoginSubmit(w http.ResponseWriter, r *http.Reque
 		Identifier:       identifier,
 		Password:         r.FormValue("password"),
 		RequiredUserType: requiredType,
-		Source:           directLoginSource(r.RemoteAddr),
+		Source:           loginSource(r),
 		UserAgent:        r.UserAgent(),
 	})
 	if err != nil {
@@ -180,7 +181,7 @@ func (h *Handler) handleLoginMFASubmit(w http.ResponseWriter, r *http.Request) {
 		Token:     auth.GetPreAuthToken(r),
 		Code:      r.PostFormValue("code"),
 		Origin:    h.auth.Config().BaseURL,
-		Source:    directLoginSource(r.RemoteAddr),
+		Source:    loginSource(r),
 		UserAgent: r.UserAgent(),
 	})
 	if err != nil {
@@ -337,6 +338,16 @@ func primaryAuthenticationContinuationPath(result *auth.PrimaryAuthenticationRes
 
 func isManagementReturnTarget(target string) bool {
 	return target == "/admin" || strings.HasPrefix(target, "/admin/")
+}
+
+// loginSource is the throttle identity of the request: the real client address
+// resolved by httpguard.ClientSourceMiddleware (trusted-proxy aware), or the
+// socket peer when that middleware did not run.
+func loginSource(r *http.Request) string {
+	if source := httpguard.ClientSource(r); source != "" {
+		return source
+	}
+	return directLoginSource(r.RemoteAddr)
 }
 
 func directLoginSource(remoteAddress string) string {

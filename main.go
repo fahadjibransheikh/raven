@@ -182,6 +182,7 @@ func runServer() {
 	var handler http.Handler = mux
 	handler = authManager.Middleware(handler)
 	handler = httpConfig.Middleware(handler)
+	handler = httpConfig.ClientSourceMiddleware(handler)
 	handler = httpConfig.ClientNetworkMiddleware(authConfig.Enabled, handler)
 	handler = httpguard.Gzip(handler)
 
