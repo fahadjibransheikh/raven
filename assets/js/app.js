@@ -11169,6 +11169,8 @@ function setupMailtoIntent() {
 function handleReply(el, mode) {
   var bar = el && el.closest ? el.closest("[data-thread-reply-data]") : null
   if (!bar) bar = document.getElementById("reply-bar")
+  // Shortcuts in a conversation act on its newest message, whichever order is shown.
+  if (!bar) bar = document.querySelector("[data-thread-newest]")
   if (!bar) return
   fetch(composeSourceURL(bar))
     .then(function (r) {
@@ -11806,6 +11808,8 @@ window.addEventListener("message", function (e) {
       var frameEmailId = iframe.dataset.emailId || ""
       iframe.style.height = Math.min(height, 100000) + "px"
       iframe.classList.remove("opacity-0")
+      var threadContent = iframe.closest(".mail-view-content")
+      if (threadContent && threadContent._threadRepin) threadContent._threadRepin()
       var loader = frameEmailId ? document.querySelector('[data-email-body-loading="' + _cssAttrEscape(frameEmailId) + '"]') : null
       if (loader) loader.remove()
       if (iframe.dataset.translationActive === "true" && typeof window.goferEmailTranslationFrameLoaded === "function") {
@@ -12628,8 +12632,46 @@ function collapseComposeFullWidth() {
     }
   }
 
+  // Open a thread on its target message (newest, or oldest unread; chosen by the
+  // server and marked data-thread-target) with that message's header at the top of the
+  // reading pane. Body iframes resize after render, so keep re-pinning until the user
+  // takes over the scroll.
+  var THREAD_PAD = 8
+  function pinThreadTarget(root) {
+    var targets = root.querySelectorAll('[data-thread-target]')
+    for (var i = 0; i < targets.length; i++) {
+      var target = targets[i]
+      if (target._threadPinned) continue
+      var content = target.closest('.mail-view-content')
+      var scroller = content && content.parentElement
+      if (!scroller) continue
+      target._threadPinned = true
+      ;(function (target, content, scroller) {
+        var active = true
+        var ro = null
+        function pin() {
+          if (!active || !scroller.clientHeight) return
+          var delta = target.getBoundingClientRect().top - scroller.getBoundingClientRect().top - THREAD_PAD
+          if (Math.abs(delta) >= 1) scroller.scrollTop += delta
+        }
+        function stop() {
+          active = false
+          content._threadRepin = null
+          if (ro) ro.disconnect()
+        }
+        ;['wheel', 'touchstart', 'mousedown', 'keydown'].forEach(function (name) {
+          scroller.addEventListener(name, stop, { once: true, passive: true })
+        })
+        if (typeof ResizeObserver === 'function') { ro = new ResizeObserver(pin); ro.observe(content) }
+        content._threadRepin = pin
+        pin()
+      })(target, content, scroller)
+    }
+  }
+
   initThreadDetails(document.body)
-  new MutationObserver(function () { initThreadDetails(document.body) }).observe(document.body, { childList: true, subtree: true })
+  pinThreadTarget(document.body)
+  new MutationObserver(function () { initThreadDetails(document.body); pinThreadTarget(document.body) }).observe(document.body, { childList: true, subtree: true })
 })()
 
 ;(function () {

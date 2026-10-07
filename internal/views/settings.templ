@@ -226,6 +226,25 @@ templ SettingsComposeDisplayTab(uiSettings map[string]string, signatureData []mo
 			</div>
 			<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 				<div class="min-w-0">
+					<h4 class="text-sm font-medium text-foreground">Conversation order</h4>
+					<p class="text-xs text-muted-foreground mt-1">Choose which end of a conversation is shown first. Newest first opens at the latest message; oldest first scrolls to the latest message, or the oldest unread one.</p>
+				</div>
+				<div class="w-full sm:w-44 shrink-0" data-thread-order-picker>
+					@selectbox.SelectBox(selectbox.Props{Class: "settings-select"}) {
+						@selectbox.Trigger(selectbox.TriggerProps{Name: "thread_order", Class: "bg-background", DisableClear: true}) {
+							@selectbox.Value(selectbox.ValueProps{Placeholder: "Newest first"}) {
+								{ threadOrderSettingLabel(uiSettingGet(uiSettings, "thread_order", "newest_first")) }
+							}
+						}
+						@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
+							@selectbox.Item(selectbox.ItemProps{Value: "newest_first", Selected: ThreadNewestFirst(uiSettings)}) { Newest first }
+							@selectbox.Item(selectbox.ItemProps{Value: "oldest_first", Selected: !ThreadNewestFirst(uiSettings)}) { Oldest first }
+						}
+					}
+				</div>
+			</div>
+			<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+				<div class="min-w-0">
 					<h4 class="text-sm font-medium text-foreground">Automatically mark email read after</h4>
 					<p class="text-xs text-muted-foreground mt-1">Choose how long a message must stay open before it is marked as read.</p>
 				</div>
@@ -420,6 +439,10 @@ templ SettingsComposeDisplayTab(uiSettings map[string]string, signatureData []mo
 			var senderDisplay = e.target.closest('input[name="sender_display"]');
 			if (senderDisplay && typeof GoferSettings !== 'undefined') {
 				GoferSettings.set('sender_display', senderDisplay.value);
+			}
+			var threadOrder = e.target.closest('input[name="thread_order"]');
+			if (threadOrder && typeof GoferSettings !== 'undefined') {
+				GoferSettings.set('thread_order', threadOrder.value);
 			}
 			var mailListNavigation = e.target.closest('input[name="mail_list_navigation"]');
 			if (mailListNavigation && typeof GoferSettings !== 'undefined') {

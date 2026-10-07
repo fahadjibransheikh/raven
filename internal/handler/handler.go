@@ -41,6 +41,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -729,7 +730,11 @@ func (h *Handler) handleEmailPartial(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Query().Get("single") != "1" {
 		thread, _ = h.db.GetThreadMessagesForUser(ctx, email.AccountID, email.ThreadID, userID)
 	}
-	views.MailViewContent(email, thread).Render(ctx, w)
+	newestFirst := views.ThreadNewestFirst(h.db.GetUISettings(ctx, userID))
+	if newestFirst {
+		slices.Reverse(thread)
+	}
+	views.MailViewContent(email, thread, newestFirst).Render(ctx, w)
 }
 
 func (h *Handler) ensureContactsBackfilled(ctx context.Context) {

@@ -695,6 +695,13 @@ func senderDisplaySettingLabel(mode string) string {
 	}
 }
 
+func threadOrderSettingLabel(value string) string {
+	if value == "oldest_first" {
+		return "Oldest first"
+	}
+	return "Newest first"
+}
+
 func defaultComposeViewSettingLabel(view string) string {
 	switch view {
 	case "pane":
