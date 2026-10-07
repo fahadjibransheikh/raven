@@ -925,6 +925,7 @@ func (h *Handler) cardDAVConfig(ctx context.Context, userID, accountID string) (
 }
 
 func cardDAVSync(ctx context.Context, cfg models.ContactSyncConfig, password string) (cardDAVSyncResult, error) {
+	ctx = withDAVAnchor(ctx, cfg.AddressBookURL)
 	if strings.TrimSpace(cfg.LastSyncToken) != "" {
 		result, err := cardDAVSyncCollection(ctx, cfg, password)
 		if err == nil {
@@ -946,7 +947,7 @@ func cardDAVAddressBookQuery(ctx context.Context, cfg models.ContactSyncConfig, 
 	}
 	req.Header.Set("Depth", "1")
 	req.Header.Set("Content-Type", `application/xml; charset="utf-8"`)
-	resp, err := (&http.Client{Timeout: 30 * time.Second}).Do(req)
+	resp, err := davHTTPClient(ctx, 30*time.Second).Do(req)
 	if err != nil {
 		return nil, "", err
 	}
@@ -963,6 +964,7 @@ func cardDAVAddressBookQuery(ctx context.Context, cfg models.ContactSyncConfig, 
 }
 
 func cardDAVAddressBookEmailQuery(ctx context.Context, cfg models.ContactSyncConfig, password, email string) ([]davResponse, error) {
+	ctx = withDAVAnchor(ctx, cfg.AddressBookURL)
 	body := fmt.Sprintf(`<?xml version="1.0" encoding="utf-8"?>
 <card:addressbook-query xmlns:d="DAV:" xmlns:card="urn:ietf:params:xml:ns:carddav">
   <d:prop><d:getetag/><card:address-data/></d:prop>
@@ -978,7 +980,7 @@ func cardDAVAddressBookEmailQuery(ctx context.Context, cfg models.ContactSyncCon
 	}
 	req.Header.Set("Depth", "1")
 	req.Header.Set("Content-Type", `application/xml; charset="utf-8"`)
-	resp, err := (&http.Client{Timeout: 30 * time.Second}).Do(req)
+	resp, err := davHTTPClient(ctx, 30*time.Second).Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -1007,7 +1009,7 @@ func cardDAVSyncCollection(ctx context.Context, cfg models.ContactSyncConfig, pa
 	}
 	req.Header.Set("Depth", "1")
 	req.Header.Set("Content-Type", `application/xml; charset="utf-8"`)
-	resp, err := (&http.Client{Timeout: 30 * time.Second}).Do(req)
+	resp, err := davHTTPClient(ctx, 30*time.Second).Do(req)
 	if err != nil {
 		return cardDAVSyncResult{}, err
 	}
@@ -1066,7 +1068,7 @@ func cardDAVAddressBookMultiget(ctx context.Context, cfg models.ContactSyncConfi
 	}
 	req.Header.Set("Depth", "0")
 	req.Header.Set("Content-Type", `application/xml; charset="utf-8"`)
-	resp, err := (&http.Client{Timeout: 30 * time.Second}).Do(req)
+	resp, err := davHTTPClient(ctx, 30*time.Second).Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -1083,6 +1085,7 @@ func cardDAVAddressBookMultiget(ctx context.Context, cfg models.ContactSyncConfi
 }
 
 func cardDAVFetchContact(ctx context.Context, cfg models.ContactSyncConfig, password, remoteID string) (davResponse, error) {
+	ctx = withDAVAnchor(ctx, cfg.AddressBookURL)
 	responses, err := cardDAVAddressBookMultiget(ctx, cfg, password, []davResponse{{Href: remoteID}})
 	if err != nil {
 		return davResponse{}, err
@@ -1099,13 +1102,14 @@ func cardDAVFetchContact(ctx context.Context, cfg models.ContactSyncConfig, pass
 }
 
 func testCardDAVAddressBook(ctx context.Context, cfg models.ContactSyncConfig, password string) error {
+	ctx = withDAVAnchor(ctx, cfg.AddressBookURL)
 	req, err := newCardDAVRequest(ctx, "PROPFIND", cfg.AddressBookURL, cfg.Username, password, strings.NewReader(`<?xml version="1.0" encoding="utf-8"?><d:propfind xmlns:d="DAV:"><d:prop><d:displayname/></d:prop></d:propfind>`))
 	if err != nil {
 		return err
 	}
 	req.Header.Set("Depth", "0")
 	req.Header.Set("Content-Type", `application/xml; charset="utf-8"`)
-	resp, err := (&http.Client{Timeout: cardDAVDiscoveryHTTPTimeout}).Do(req)
+	resp, err := davHTTPClient(ctx, cardDAVDiscoveryHTTPTimeout).Do(req)
 	if err != nil {
 		return err
 	}
@@ -1123,6 +1127,7 @@ func discoverCardDAVAddressBooks(ctx context.Context, rawBaseURL, username, pass
 		return nil, err
 	}
 
+	ctx = withDAVAnchor(ctx, baseURL)
 	principalURL, err := discoverCardDAVCurrentUserPrincipal(ctx, cardDAVWellKnownURL(baseURL), username, password)
 	if err != nil || principalURL == "" {
 		principalURL, err = discoverCardDAVCurrentUserPrincipal(ctx, baseURL, username, password)
@@ -1167,6 +1172,14 @@ func discoverCardDAVAddressBooksCandidates(ctx context.Context, candidates []str
 		return nil, fmt.Errorf("Could not auto-discover CardDAV because no server URL, username, or email address is available. Enter the provider's CardDAV base URL and try again")
 	}
 	tracker := &cardDAVDiscoveryTracker{progress: progress}
+	// Only what the user supplied may be a private/LAN endpoint; SRV-discovered
+	// hosts added by expansion below never are.
+	typed := make(map[string]bool)
+	for _, candidate := range candidates {
+		if baseURL, err := normalizeCardDAVBaseURL(candidate); err == nil {
+			typed[strings.ToLower(baseURL)] = true
+		}
+	}
 	if autodiscover {
 		candidates = expandCardDAVDiscoveryCandidates(ctx, candidates, tracker)
 	}
@@ -1197,7 +1210,11 @@ func discoverCardDAVAddressBooksCandidates(ctx context.Context, candidates []str
 		if err := ctx.Err(); err != nil {
 			return nil, fmt.Errorf("CardDAV discovery timed out. Tried %s. Enter the provider's exact CardDAV base URL and try again", strings.Join(attempts, ", "))
 		}
-		books, _, err := discoverCardDAVAddressBooksCandidate(ctx, candidate.candidate, candidate.baseURL, username, password, func(endpoint string) {
+		candidateCtx := ctx
+		if typed[strings.ToLower(candidate.baseURL)] {
+			candidateCtx = withDAVAnchor(ctx, candidate.baseURL)
+		}
+		books, _, err := discoverCardDAVAddressBooksCandidate(candidateCtx, candidate.candidate, candidate.baseURL, username, password, func(endpoint string) {
 			log.Printf("contacts carddav discover: probing %s", endpoint)
 			tracker.start(endpoint)
 		}, func() {
@@ -1509,7 +1526,7 @@ func cardDAVPropfind(ctx context.Context, endpoint, username, password, depth, b
 	}
 	req.Header.Set("Depth", depth)
 	req.Header.Set("Content-Type", `application/xml; charset="utf-8"`)
-	resp, err := (&http.Client{Timeout: cardDAVDiscoveryHTTPTimeout}).Do(req)
+	resp, err := davHTTPClient(ctx, cardDAVDiscoveryHTTPTimeout).Do(req)
 	if err != nil {
 		return davMultiStatus{}, err
 	}
@@ -1654,6 +1671,7 @@ func cardDAVAddressBookName(bookURL string) string {
 }
 
 func cardDAVPut(ctx context.Context, cfg models.ContactSyncConfig, password, remoteID, etag string, body []byte) (string, error) {
+	ctx = withDAVAnchor(ctx, cfg.AddressBookURL)
 	req, err := newCardDAVRequest(ctx, http.MethodPut, remoteID, cfg.Username, password, bytes.NewReader(body))
 	if err != nil {
 		return "", err
@@ -1664,7 +1682,7 @@ func cardDAVPut(ctx context.Context, cfg models.ContactSyncConfig, password, rem
 	} else {
 		req.Header.Set("If-None-Match", "*")
 	}
-	resp, err := (&http.Client{Timeout: 30 * time.Second}).Do(req)
+	resp, err := davHTTPClient(ctx, 30*time.Second).Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -1677,6 +1695,7 @@ func cardDAVPut(ctx context.Context, cfg models.ContactSyncConfig, password, rem
 }
 
 func cardDAVDelete(ctx context.Context, cfg models.ContactSyncConfig, password, remoteID, etag string) error {
+	ctx = withDAVAnchor(ctx, cfg.AddressBookURL)
 	if strings.TrimSpace(remoteID) == "" {
 		return nil
 	}
@@ -1687,7 +1706,7 @@ func cardDAVDelete(ctx context.Context, cfg models.ContactSyncConfig, password, 
 	if strings.TrimSpace(etag) != "" {
 		req.Header.Set("If-Match", etag)
 	}
-	resp, err := (&http.Client{Timeout: 30 * time.Second}).Do(req)
+	resp, err := davHTTPClient(ctx, 30*time.Second).Do(req)
 	if err != nil {
 		return err
 	}

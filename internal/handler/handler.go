@@ -146,8 +146,9 @@ func New(db *storage.DB, accountStore *config.AccountStore, syncer *mail.SyncOrc
 			return imap.NewClient(ctx, cfg, password)
 		},
 		remoteResourceDownloader: downloadRemoteResource,
-		providerAvatarHTTPClient: &http.Client{Timeout: 15 * time.Second},
+		providerAvatarHTTPClient: netguard.NewClient(15 * time.Second),
 	}
+	davPrivateAllowed = h.davPrivateTargetAllowed
 	db.SetContactActivityHook(func(event storage.ContactActivityNotification) {
 		if h.syncer == nil {
 			return

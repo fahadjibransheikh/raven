@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
 	"sync"
@@ -699,4 +700,21 @@ func TestResolveDomainIconDedupesConcurrentLookups(t *testing.T) {
 
 func publicLookupIPAddr(context.Context, string) ([]net.IPAddr, error) {
 	return []net.IPAddr{{IP: net.ParseIP("93.184.216.34")}}, nil
+}
+
+func TestDefaultClientRefusesInternalAddressAtDialTime(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.Write([]byte("secret")) }))
+	defer srv.Close()
+	// Bypasses validateRemoteAvatarURL on purpose: this is the DNS-rebinding case,
+	// where the pre-check saw a public IP and the connect lands on loopback.
+	resp, err := NewResolver().client.Get(srv.URL)
+	if err == nil {
+		resp.Body.Close()
+		t.Fatal("default avatar client connected to 127.0.0.1")
+	}
+	for _, ip := range []string{"100.100.100.200", "198.18.0.1", "64:ff9b::7f00:1"} {
+		if !isPrivateIP(net.ParseIP(ip)) {
+			t.Errorf("isPrivateIP(%s) = false", ip)
+		}
+	}
 }
