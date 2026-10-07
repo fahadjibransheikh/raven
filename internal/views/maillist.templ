@@ -197,74 +197,76 @@ templ MailListToolbar(accounts []models.Account, activeFolder string, viewMode s
 			<span data-mail-selection-summary>0 selected</span>
 			<span class="ml-1 text-xs">Clear</span>
 		</button>
-		@tooltip.Tooltip() {
-			@tooltip.Trigger() {
-				@button.Button(button.Props{
-					Variant:    button.VariantGhost,
-					Size:       button.SizeIcon,
-					Class:      "h-7 w-7",
-					Disabled:   true,
-					Attributes: templ.Attributes{"data-mail-selection-action": "archive", "aria-label": "Archive selected messages"},
-				}) {
-					@icon.Archive(icon.Props{Class: "size-3.5"})
-				}
-			}
-			@tooltip.Content(tooltip.ContentProps{
-				Position:  tooltip.PositionBottom,
-				ShowArrow: true,
-			}) {
-				Archive
-			}
-		}
-		@tooltip.Tooltip() {
-			@tooltip.Trigger() {
-				@button.Button(button.Props{
-					Variant:  button.VariantGhost,
-					Size:     button.SizeIcon,
-					Class:    mailDeleteActionClass("h-7 w-7", "", mailFolderIDIsTrash(activeFolder, accounts)),
-					Disabled: true,
-					Attributes: templ.Attributes{
-						"data-mail-selection-action": "delete",
-						"data-mail-delete-permanent": fmt.Sprintf("%t", mailFolderIDIsTrash(activeFolder, accounts)),
-						"aria-label":                 mailDeleteSelectionLabel(mailFolderIDIsTrash(activeFolder, accounts)),
-					},
-				}) {
-					@icon.Trash2(icon.Props{Class: "size-3.5"})
-				}
-			}
-			@tooltip.Content(tooltip.ContentProps{
-				Position:  tooltip.PositionBottom,
-				ShowArrow: true,
-			}) {
-				<span data-mail-delete-tooltip>
-					if mailFolderIDIsTrash(activeFolder, accounts) {
-						Permanently delete
-					} else {
-						Delete
+		<div class="mail-list-bulk-actions flex items-center gap-1">
+			@tooltip.Tooltip() {
+				@tooltip.Trigger() {
+					@button.Button(button.Props{
+						Variant:    button.VariantGhost,
+						Size:       button.SizeIcon,
+						Class:      "h-7 w-7",
+						Disabled:   true,
+						Attributes: templ.Attributes{"data-mail-selection-action": "archive", "aria-label": "Archive selected messages"},
+					}) {
+						@icon.Archive(icon.Props{Class: "size-3.5"})
 					}
-				</span>
-			}
-		}
-		@tooltip.Tooltip() {
-			@tooltip.Trigger() {
-				@button.Button(button.Props{
-					Variant:    button.VariantGhost,
-					Size:       button.SizeIcon,
-					Class:      "h-7 w-7",
-					Disabled:   true,
-					Attributes: templ.Attributes{"data-mail-selection-action": "read", "aria-label": "Mark selected messages as read"},
+				}
+				@tooltip.Content(tooltip.ContentProps{
+					Position:  tooltip.PositionBottom,
+					ShowArrow: true,
 				}) {
-					@icon.MailOpen(icon.Props{Class: "size-3.5"})
+					Archive
 				}
 			}
-			@tooltip.Content(tooltip.ContentProps{
-				Position:  tooltip.PositionBottom,
-				ShowArrow: true,
-			}) {
-				Mark as read
+			@tooltip.Tooltip() {
+				@tooltip.Trigger() {
+					@button.Button(button.Props{
+						Variant:  button.VariantGhost,
+						Size:     button.SizeIcon,
+						Class:    mailDeleteActionClass("h-7 w-7", "", mailFolderIDIsTrash(activeFolder, accounts)),
+						Disabled: true,
+						Attributes: templ.Attributes{
+							"data-mail-selection-action": "delete",
+							"data-mail-delete-permanent": fmt.Sprintf("%t", mailFolderIDIsTrash(activeFolder, accounts)),
+							"aria-label":                 mailDeleteSelectionLabel(mailFolderIDIsTrash(activeFolder, accounts)),
+						},
+					}) {
+						@icon.Trash2(icon.Props{Class: "size-3.5"})
+					}
+				}
+				@tooltip.Content(tooltip.ContentProps{
+					Position:  tooltip.PositionBottom,
+					ShowArrow: true,
+				}) {
+					<span data-mail-delete-tooltip>
+						if mailFolderIDIsTrash(activeFolder, accounts) {
+							Permanently delete
+						} else {
+							Delete
+						}
+					</span>
+				}
 			}
-		}
-		<div class="h-5 w-px bg-border/70 mx-1"></div>
+			@tooltip.Tooltip() {
+				@tooltip.Trigger() {
+					@button.Button(button.Props{
+						Variant:    button.VariantGhost,
+						Size:       button.SizeIcon,
+						Class:      "h-7 w-7",
+						Disabled:   true,
+						Attributes: templ.Attributes{"data-mail-selection-action": "read", "aria-label": "Mark selected messages as read"},
+					}) {
+						@icon.MailOpen(icon.Props{Class: "size-3.5"})
+					}
+				}
+				@tooltip.Content(tooltip.ContentProps{
+					Position:  tooltip.PositionBottom,
+					ShowArrow: true,
+				}) {
+					Mark as read
+				}
+			}
+			<div class="h-5 w-px bg-border/70 mx-1"></div>
+		</div>
 		@MailListColumnSelector()
 		@dropdown.Dropdown() {
 			@dropdown.Trigger() {
@@ -777,10 +779,7 @@ templ MailCardLayoutDialog() {
 								</span>
 							</div>
 							<div class="mail-list-card-zone mail-list-card-zone-rail-bottom" data-mail-card-zone="railBottom" data-mail-card-layout-zone-items="railBottom" data-mail-card-layout-dropzone="railBottom">
-								<span data-mail-card-field="thread" class="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
-									@icon.MessagesSquare(icon.Props{Class: "size-3"})
-									3
-								</span>
+								<span data-mail-card-field="thread" class="mail-list-thread-pill">3</span>
 							</div>
 							<div class="mail-list-card-zone mail-list-card-zone-header" data-mail-card-zone="header" data-mail-card-layout-zone-items="header" data-mail-card-layout-dropzone="header">
 								<span data-mail-card-field="from" class="truncate text-sm font-semibold text-foreground">Cristian Braun</span>
@@ -917,28 +916,21 @@ templ MailListCardItem(accounts []models.Account, email models.Email, position i
 					<span class="account-color-marker size-2.5 shrink-0" style={ accountColorStyle(email.AccountColor) }></span>
 				</span>
 			</div>
-			<div class="mail-list-card-zone mail-list-card-zone-rail-bottom" data-mail-card-zone="railBottom">
-				if email.ThreadCount > 1 {
-					<button type="button" data-thread-toggle={ email.ID } data-mail-card-field="thread" class="flex items-center gap-0.5 text-xs text-muted-foreground shrink-0 hover:text-foreground/70 transition-colors cursor-pointer">
-						@icon.MessagesSquare(icon.Props{Class: "size-3"})
-						{ fmt.Sprintf("%d", email.ThreadCount) }
-						@icon.ChevronRight(icon.Props{Class: "size-3 transition-transform thread-toggle-chevron"})
-					</button>
-				} else {
-					<span data-mail-card-field="thread" class="mail-list-card-empty-icon-slot" aria-hidden="true"></span>
-				}
-			</div>
+			<div class="mail-list-card-zone mail-list-card-zone-rail-bottom" data-mail-card-zone="railBottom"></div>
 			<div class="mail-list-card-zone mail-list-card-zone-header" data-mail-card-zone="header">
 				<span
 					class={
-						"text-sm truncate text-foreground",
-						templ.KV("font-semibold", !email.IsRead),
+						"text-sm truncate",
+						templ.KV("font-semibold text-foreground", !email.IsRead),
+						templ.KV("font-medium text-muted-foreground", email.IsRead),
 					}
 					data-mail-card-field="from"
-				>{ senderDisplay(email.From, senderDisplayMode) }</span>
+				>@SenderLabel(email.From, senderDisplayMode)</span>
 				<span
 					class={
-						"text-xs tabular-nums text-subtle-foreground",
+						"text-xs tabular-nums",
+						templ.KV("text-foreground", !email.IsRead),
+						templ.KV("text-subtle-foreground", email.IsRead),
 					}
 					data-mail-card-field="date"
 				>{ email.Date }</span>
@@ -967,7 +959,7 @@ templ MailListCardItem(accounts []models.Account, email models.Email, position i
 				<p
 					class={
 						"text-[13px] leading-[18px] truncate",
-						templ.KV("font-medium text-foreground", !email.IsRead),
+						templ.KV("font-semibold text-foreground", !email.IsRead),
 						templ.KV("text-muted-foreground", email.IsRead),
 					}
 					data-mail-card-field="subject"
@@ -980,7 +972,7 @@ templ MailListCardItem(accounts []models.Account, email models.Email, position i
 				}
 			</div>
 			<div class="mail-list-card-zone mail-list-card-zone-footer" data-mail-card-zone="footer">
-				<p class="min-w-0 flex-1 text-xs leading-4 text-muted-foreground truncate" data-mail-card-field="preview">{ email.Preview }</p>
+				<p class="min-w-0 flex-1 text-xs leading-4 text-subtle-foreground truncate" data-mail-card-field="preview">{ email.Preview }</p>
 				if len(email.Labels) > 0 {
 					for _, label := range email.Labels {
 						<span class={ "text-xs leading-4 px-1.5 rounded font-medium shrink-0", label.Color } data-mail-card-field="labels">
@@ -991,6 +983,13 @@ templ MailListCardItem(accounts []models.Account, email models.Email, position i
 			</div>
 			<div class="mail-list-card-zone mail-list-card-zone-status" data-mail-card-zone="status"></div>
 			<div class="mail-list-card-zone mail-list-card-zone-corner" data-mail-card-zone="corner">
+				if email.ThreadCount > 1 {
+					<button type="button" data-thread-toggle={ email.ID } data-mail-card-field="thread" class="mail-list-thread-pill" aria-label={ fmt.Sprintf("%d messages in thread, toggle", email.ThreadCount) }>
+						{ fmt.Sprintf("%d", email.ThreadCount) }
+					</button>
+				} else {
+					<span data-mail-card-field="thread" class="mail-list-card-empty-icon-slot" aria-hidden="true"></span>
+				}
 				if email.IsStarred {
 					<span data-mail-card-field="starred">
 						@icon.Star(icon.Props{Class: "size-3.5 text-warning fill-warning shrink-0"})
@@ -1052,7 +1051,7 @@ templ MailListTableItem(email models.Email, position int, selectedEmail *models.
 						"truncate text-foreground",
 						templ.KV("font-semibold", !email.IsRead),
 					}
-				>{ senderDisplay(email.From, senderDisplayMode) }</span>
+				>@SenderLabel(email.From, senderDisplayMode)</span>
 			</div>
 			<div class="flex items-center min-w-0" data-mail-table-cell="to">
 				<span
@@ -1144,7 +1143,7 @@ templ MailListThreadSubItems(items []models.ThreadItem, senderDisplayMode string
 									templ.KV("text-muted-foreground", item.IsRead),
 								}
 								data-mail-table-cell="from"
-							>{ senderDisplay(item.From, senderDisplayMode) }</span>
+							>@SenderLabel(item.From, senderDisplayMode)</span>
 							<span
 								class={
 									"text-xs truncate",
@@ -1180,4 +1179,14 @@ templ MailListThreadSubItems(items []models.ThreadItem, senderDisplayMode string
 			</div>
 		}
 	</div>
+}
+
+// SenderLabel renders a contact for the list. In "both" mode the address follows
+// the name as a smaller muted suffix; the enclosing truncating span clips the
+// address first.
+templ SenderLabel(contact models.Contact, mode string) {
+	{ senderName(contact, mode) }
+	if addr := senderAddress(contact, mode); addr != "" {
+		<span class="ml-1.5 text-xs font-normal text-subtle-foreground">{ addr }</span>
+	}
 }

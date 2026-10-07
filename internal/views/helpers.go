@@ -647,6 +647,23 @@ func senderDisplay(contact models.Contact, mode string) string {
 	}
 }
 
+// senderName and senderAddress split senderDisplay for the "both" mode so the
+// address can be styled apart from the name. Outside "both", or when there is
+// no distinct name and address, senderAddress is empty.
+func senderName(contact models.Contact, mode string) string {
+	if mode == "both" && contact.Name != "" && contact.Email != "" && contact.Name != contact.Email {
+		return contact.Name
+	}
+	return senderDisplay(contact, mode)
+}
+
+func senderAddress(contact models.Contact, mode string) string {
+	if mode == "both" && contact.Name != "" && contact.Email != "" && contact.Name != contact.Email {
+		return contact.Email
+	}
+	return ""
+}
+
 func contactsDisplay(contacts []models.Contact, mode string) string {
 	if len(contacts) == 0 {
 		return ""
