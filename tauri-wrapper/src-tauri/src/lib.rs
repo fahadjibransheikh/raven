@@ -387,6 +387,17 @@ fn start_sidecar(app: &AppHandle) {
     });
 }
 
+/// Raven now lives in the tray when its window is closed, so a launch-only
+/// check could miss updates for days. Re-check this often in the background.
+const UPDATE_RECHECK_EVERY: Duration = Duration::from_secs(6 * 60 * 60);
+/// After "Later", don't ask about the same version again for this long.
+const UPDATE_SNOOZE: Duration = Duration::from_secs(24 * 60 * 60);
+
+/// One update prompt at a time (tray click and background check can race).
+static UPDATE_CHECK_RUNNING: AtomicBool = AtomicBool::new(false);
+/// The version the user last answered "Later" to, and when.
+static UPDATE_DECLINED: Mutex<Option<(String, Instant)>> = Mutex::new(None);
+
 const RELEASES_URL: &str = "https://github.com/fahadjibransheikh/raven/releases/latest";
 
 /// Tauri's updater can only replace an AppImage on Linux (it swaps the file
@@ -427,6 +438,14 @@ async fn check_latest(
 /// is true for the tray item (report every outcome) and false for the launch
 /// check (stay silent unless there is an update, so offline launches are quiet).
 async fn check_for_update(app: AppHandle, user_initiated: bool) {
+    if UPDATE_CHECK_RUNNING.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    check_for_update_inner(app, user_initiated).await;
+    UPDATE_CHECK_RUNNING.store(false, Ordering::SeqCst);
+}
+
+async fn check_for_update_inner(app: AppHandle, user_initiated: bool) {
     if !can_self_update() {
         if user_initiated {
             if let Err(err) = tauri_plugin_opener::open_url(RELEASES_URL, None::<&str>) {
@@ -469,6 +488,14 @@ async fn check_for_update(app: AppHandle, user_initiated: bool) {
         return;
     };
 
+    if !user_initiated {
+        if let Some((version, at)) = UPDATE_DECLINED.lock().unwrap().as_ref() {
+            if *version == update.version && at.elapsed() < UPDATE_SNOOZE {
+                return;
+            }
+        }
+    }
+
     let accepted = dialog(
         &app,
         MessageDialogKind::Info,
@@ -480,6 +507,7 @@ async fn check_for_update(app: AppHandle, user_initiated: bool) {
     )
     .await;
     if !accepted {
+        *UPDATE_DECLINED.lock().unwrap() = Some((update.version.clone(), Instant::now()));
         return;
     }
 
@@ -713,7 +741,12 @@ pub fn run() {
                 })
                 .build(app)?;
 
+            let app_for_updates = app_handle.clone();
             tauri::async_runtime::spawn(check_for_update(app_handle.clone(), false));
+            std::thread::spawn(move || loop {
+                std::thread::sleep(UPDATE_RECHECK_EVERY);
+                tauri::async_runtime::block_on(check_for_update(app_for_updates.clone(), false));
+            });
 
             start_sidecar(&app_handle);
 
