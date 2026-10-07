@@ -1382,7 +1382,8 @@ input[role="switch"] + .gofer-switch-track::after {
 }
 
 /* Row heights are mirrored in assets/js/virtual-scroll.js (MAIL_ROW_HEIGHT):
-   comfortable cards 64px, compact table 36px. Change both together. */
+   table 36px, contacts cards 64px. The message list's cards take their height
+   from --mail-row-height (see "Message list density" below). Change both together. */
 .mail-list-item {
   height: 64px;
   min-height: 64px;
@@ -2341,6 +2342,291 @@ body.mail-list-column-resizing {
   }
   to {
     background-position: -200% 0;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Message list density. <html data-mail-density="calm|airy"> (ui setting
+   mail_list_density, default calm) switches these without a reload.
+   --mail-row-height must equal MAIL_ROW_HEIGHT.cards[density] in
+   assets/js/virtual-scroll.js (tests/js/mail_list_density.test.js checks it).
+   Scoped to the message list's card view; the table view and the contacts list
+   keep their own rules.
+   calm: two lines. Line 1 sender + date, line 2 subject + preview as one
+         truncating line (the body zone), thread count and star in the corner.
+   airy: three lines. Sender + date, subject, preview stacked.
+   --------------------------------------------------------------------------- */
+:root {
+  --mail-row-height: 68px;
+  --mail-avatar-size: 40px;
+  --mail-card-pad-x: 14px;
+  --mail-card-line-gap: 3px;
+  --mail-list-gutter: 8px;
+}
+
+:root[data-mail-density="airy"] {
+  --mail-row-height: 84px;
+  --mail-avatar-size: 36px;
+  --mail-card-pad-x: 16px;
+  --mail-card-line-gap: 6px;
+  --mail-list-gutter: 4px;
+}
+
+/* Header and toolbar line up with the avatars below them. */
+.mail-list-header {
+  padding-inline: calc(var(--mail-list-gutter) + var(--mail-card-pad-x));
+}
+
+.mail-list-toolbar {
+  padding-inline: calc(var(--mail-list-gutter) + var(--mail-card-pad-x) - 4px);
+}
+
+#mail-list-scroll[data-view-mode="cards"] {
+  padding-inline: var(--mail-list-gutter);
+}
+
+#mail-list-scroll[data-view-mode="cards"] .mail-list-item,
+#mail-list-scroll[data-view-mode="cards"] .mail-list-thread-main {
+  height: var(--mail-row-height);
+  min-height: var(--mail-row-height);
+  max-height: var(--mail-row-height);
+}
+
+#mail-list-scroll[data-view-mode="cards"] .mail-list-item > a {
+  border-radius: 10px;
+}
+
+/* Skeleton rows match a real row (2px item padding top and bottom). */
+#mail-list-scroll[data-view-mode="cards"] .mail-list-skeleton.mail-list-card {
+  height: calc(var(--mail-row-height) - 4px);
+  min-height: calc(var(--mail-row-height) - 4px);
+  max-height: calc(var(--mail-row-height) - 4px);
+  margin: 2px 0;
+  border: 0;
+  background: transparent;
+}
+
+#mail-list-scroll[data-view-mode="cards"] .mail-list-skeleton [data-mail-card-field="avatar"] {
+  width: var(--mail-avatar-size);
+  height: var(--mail-avatar-size);
+}
+
+/* The card grid (both densities: two rows; airy's body is just two lines tall): avatar spans every line and is vertically centred; columns are
+   rail | main | footer | status | side (meta on line 1, corner below it). */
+#mail-list-scroll[data-view-mode="cards"] .mail-list-card:not(.mail-card-layout-preview-card) {
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+  grid-template-rows: auto auto;
+  grid-template-areas:
+    "railTop header header header meta"
+    "railTop body footer status corner";
+  column-gap: 0;
+  row-gap: 0;
+  align-content: center;
+  align-items: center;
+  min-height: 0;
+  padding-block: 0;
+  padding-inline: var(--mail-card-pad-x);
+}
+
+#mail-list-scroll[data-view-mode="cards"] .mail-list-card:not(.mail-card-layout-preview-card) .mail-list-card-zone-rail-top {
+  grid-area: railTop;
+  height: auto;
+  align-self: center;
+  align-items: center;
+  width: var(--mail-avatar-size);
+  min-width: var(--mail-avatar-size);
+  margin-right: 12px;
+}
+
+#mail-list-scroll[data-view-mode="cards"] .mail-list-card:not(.mail-card-layout-preview-card) .mail-list-card-zone-rail-top > * {
+  margin-top: 0;
+}
+
+#mail-list-scroll[data-view-mode="cards"] [data-mail-card-field="avatar"] > div {
+  width: var(--mail-avatar-size);
+  height: var(--mail-avatar-size);
+}
+
+/* Icons moved into the other rail zones sit as badges on the avatar's corners. */
+#mail-list-scroll[data-view-mode="cards"] .mail-list-card:not(.mail-card-layout-preview-card) .mail-list-card-zone-rail-middle,
+#mail-list-scroll[data-view-mode="cards"] .mail-list-card:not(.mail-card-layout-preview-card) .mail-list-card-zone-rail-bottom {
+  grid-area: railTop;
+  width: auto;
+  min-width: 0;
+  align-self: end;
+  z-index: 1;
+}
+
+#mail-list-scroll[data-view-mode="cards"] .mail-list-card:not(.mail-card-layout-preview-card) .mail-list-card-zone-rail-middle {
+  justify-self: start;
+}
+
+#mail-list-scroll[data-view-mode="cards"] .mail-list-card:not(.mail-card-layout-preview-card) .mail-list-card-zone-rail-bottom {
+  justify-self: end;
+  margin-right: 12px;
+}
+
+#mail-list-scroll[data-view-mode="cards"] .mail-list-card:not(.mail-card-layout-preview-card) .mail-list-card-zone-header {
+  grid-area: header;
+}
+
+#mail-list-scroll[data-view-mode="cards"] .mail-list-card:not(.mail-card-layout-preview-card)[data-mail-card-empty-right-rows~="meta"] .mail-list-card-zone-header {
+  grid-area: header;
+  grid-column: 2 / -1;
+}
+
+/* Line 2 (calm): the body zone is one box, so "subject · preview" truncates as a
+   single line: the subject always comes first, the preview gives way first. */
+#mail-list-scroll[data-view-mode="cards"] .mail-list-card:not(.mail-card-layout-preview-card) .mail-list-card-zone-body {
+  grid-area: body;
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  margin-top: var(--mail-card-line-gap);
+}
+
+#mail-list-scroll[data-view-mode="cards"] .mail-list-card-zone-body > [data-mail-card-field] {
+  display: inline;
+}
+
+#mail-list-scroll[data-view-mode="cards"] .mail-list-card-zone-body > [data-mail-card-field="preview"] {
+  font-size: 13px;
+  line-height: 18px;
+}
+
+#mail-list-scroll[data-view-mode="cards"] .mail-list-card-zone-body > [data-mail-card-field]:not(:first-child):not(:empty)::before {
+  content: "\00b7";
+  margin-inline: 0.5em;
+  color: var(--color-muted-foreground);
+}
+
+/* Airy: subject and preview stack. */
+:root[data-mail-density="airy"] #mail-list-scroll[data-view-mode="cards"] .mail-list-card:not(.mail-card-layout-preview-card) .mail-list-card-zone-body {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: var(--mail-card-line-gap);
+}
+
+:root[data-mail-density="airy"] #mail-list-scroll[data-view-mode="cards"] .mail-list-card-zone-body > [data-mail-card-field] {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+:root[data-mail-density="airy"] #mail-list-scroll[data-view-mode="cards"] .mail-list-card-zone-body > [data-mail-card-field="preview"] {
+  font-size: 12px;
+  line-height: 16px;
+}
+
+:root[data-mail-density="airy"] #mail-list-scroll[data-view-mode="cards"] .mail-list-card-zone-body > [data-mail-card-field]:not(:first-child):not(:empty)::before {
+  content: none;
+}
+
+#mail-list-scroll[data-view-mode="cards"] .mail-list-card:not(.mail-card-layout-preview-card) .mail-list-card-zone-footer {
+  grid-area: footer;
+  margin-left: 8px;
+  margin-top: var(--mail-card-line-gap);
+}
+
+#mail-list-scroll[data-view-mode="cards"] .mail-list-card:not(.mail-card-layout-preview-card) .mail-list-card-zone-status {
+  grid-area: status;
+  margin-left: 8px;
+  margin-top: var(--mail-card-line-gap);
+}
+
+#mail-list-scroll[data-view-mode="cards"] .mail-list-card:not(.mail-card-layout-preview-card) .mail-list-card-zone-meta {
+  grid-area: meta;
+  margin-left: 8px;
+}
+
+#mail-list-scroll[data-view-mode="cards"] .mail-list-card:not(.mail-card-layout-preview-card) .mail-list-card-zone-corner {
+  grid-area: corner;
+  align-self: center;
+  margin-left: 8px;
+  margin-top: var(--mail-card-line-gap);
+}
+
+/* Airy: the subject uses the full width and the corner icons sit on the preview's
+   line, which stops short of them. A row with labels or status icons keeps the
+   body to its own column instead. */
+:root[data-mail-density="airy"] #mail-list-scroll[data-view-mode="cards"] .mail-list-card:not(.mail-card-layout-preview-card):not(:has(.mail-list-card-zone-footer:not(:empty), .mail-list-card-zone-status:not(:empty))) .mail-list-card-zone-body {
+  grid-column: 2 / -1;
+}
+
+:root[data-mail-density="airy"] #mail-list-scroll[data-view-mode="cards"] .mail-list-card:not(.mail-card-layout-preview-card):not(:has(.mail-list-card-zone-footer:not(:empty), .mail-list-card-zone-status:not(:empty))) .mail-list-card-zone-body > [data-mail-card-field="preview"] {
+  padding-right: 56px;
+}
+
+:root[data-mail-density="airy"] #mail-list-scroll[data-view-mode="cards"] .mail-list-card:not(.mail-card-layout-preview-card) .mail-list-card-zone-corner {
+  justify-self: end;
+}
+
+/* Airy: the body is two lines tall, so the right-hand zones sit on its last line. */
+:root[data-mail-density="airy"] #mail-list-scroll[data-view-mode="cards"] .mail-list-card:not(.mail-card-layout-preview-card) :is(.mail-list-card-zone-footer, .mail-list-card-zone-status, .mail-list-card-zone-corner) {
+  align-self: end;
+}
+
+/* Fixed slots in the meta and corner zones, so a row without an attachment
+   icon, unread dot or thread pill keeps the same width and the dates (and
+   corner icons) right-align identically on every row. */
+#mail-list-scroll[data-view-mode="cards"] .mail-list-card-zone-meta .mail-list-card-empty-icon-slot,
+#mail-list-scroll[data-view-mode="cards"] .mail-list-card-zone-corner .mail-list-card-empty-icon-slot {
+  display: inline-flex;
+}
+
+#mail-list-scroll[data-view-mode="cards"] .mail-list-card-zone-meta [data-mail-card-field="attachment"],
+#mail-list-scroll[data-view-mode="cards"] .mail-list-card-zone-meta [data-mail-card-field="unread"],
+#mail-list-scroll[data-view-mode="cards"] .mail-list-card-zone-corner [data-mail-card-field="starred"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 1rem;
+  width: 1rem;
+  height: 1rem;
+}
+
+#mail-list-scroll[data-view-mode="cards"] .mail-list-card-zone-corner [data-mail-card-field="thread"] {
+  flex: 0 0 1.5rem;
+  min-width: 1.5rem;
+  width: 1.5rem;
+}
+
+/* Sidebar rows. */
+aside[data-app-sidebar] nav a.h-8 {
+  height: 36px;
+}
+
+aside[data-app-sidebar] nav a.py-1\.5 {
+  min-height: 36px;
+}
+
+@media (min-width: 1024px) {
+  /* Wider list pane beside the reader. A min-width, so a pane the user dragged wider still wins. */
+  #main-content[data-mail-pane-layout="side"] > #mail-list:not([data-contact-list-shell]) {
+    min-width: clamp(380px, 36%, 520px);
+    max-width: 520px;
+  }
+
+  :root[data-mail-density="airy"] #main-content[data-mail-pane-layout="side"] > #mail-list:not([data-contact-list-shell]) {
+    min-width: clamp(340px, 36%, 520px);
+  }
+
+  :root[data-mail-density="airy"] aside[data-app-sidebar] {
+    min-width: 256px;
+  }
+
+  /* Airy reader: a narrower column with more air above it. */
+  :root[data-mail-density="airy"] .mail-view-content {
+    max-width: 680px;
+    padding-top: 48px;
+    padding-bottom: 40px;
+  }
+
+  :root[data-mail-density="airy"] .mail-view-toolbar {
+    padding-block: 14px;
   }
 }
 
