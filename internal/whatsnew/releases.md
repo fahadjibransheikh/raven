@@ -7,6 +7,29 @@ Then an optional hero line, then "### New", "### Improved", "### Fixed" or
 replaces it with the real version number. GitHub release notes use the same text.
 -->
 
+## 0.2.1 | 2026-10-06 | Calmer inbox, newest-first conversations
+A calmer, roomier message list, conversations that open on the latest email, and a sturdier desktop app.
+
+### New
+- A calmer message list: two lines per message, with subject and preview on one line. Prefer more space? Choose Airy under Settings → Appearance → List density.
+- Conversations now show the newest email at the top. Prefer the classic order? Switch it under Settings → Compose and display → Conversation order.
+- Raven can open email links (mailto:) and start a new message.
+- Closing the window keeps Raven running in the tray, so new mail still arrives. Quit from the tray or with Cmd+Q.
+
+### Improved
+- Raven now checks for updates every few hours while it runs, and Linux .deb and .rpm installs can update themselves.
+- Faster everyday actions: marking read, starring, archiving and moving are many times quicker in large folders, and pages load lighter.
+- A cleaner list: archive, delete and mark-as-read appear only when you select messages, dates line up, and stray quotes around sender names are gone.
+
+### Fixed
+- After an update, Raven could sit on "Starting Raven…" while it upgraded your mailbox. It now waits and shows what it is doing, or explains what went wrong.
+- The Security and Advanced tabs in Settings were blank when Raven runs without a login. They now show their content.
+- Leaving an unsaved draft for another folder, message or Settings now asks whether to keep it.
+
+### Security
+- In the desktop app, other programs on your computer can no longer read or send your mail through Raven.
+- Stronger protection against malicious mail, tighter sign-in limits, and safer handling of contacts and avatar lookups.
+
 ## 0.2.0 | 2026-10-06 | A fresh look, Undo, and a safer email viewer
 
 A redesigned Raven, an Undo for your mail actions, and a long list of fixes.
