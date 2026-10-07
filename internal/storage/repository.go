@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"html"
 	"html/template"
+	"io"
 	"log"
 	"math"
 	"os"
@@ -54,22 +55,69 @@ func truncatePreview(s string) string {
 	return s
 }
 
+// Preview inputs are capped: a preview is 200 characters, so reading a whole
+// multi-megabyte body (or parsing all of its HTML) per list row is waste.
+const (
+	previewMaxTextBytes = 64 << 10
+	previewMaxHTMLBytes = 256 << 10
+)
+
+func readFilePrefix(path string, max int64) []byte {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil
+	}
+	defer f.Close()
+	data, _ := io.ReadAll(io.LimitReader(f, max))
+	return data
+}
+
 func previewFromBodyPaths(textPath, htmlPath string) string {
 	if textPath != "" {
-		if data, err := os.ReadFile(textPath); err == nil && len(data) > 0 {
+		if data := readFilePrefix(textPath, previewMaxTextBytes); len(data) > 0 {
 			if preview := mailmessage.PreviewFromText(string(data)); preview != "" {
 				return preview
 			}
 		}
 	}
 	if htmlPath != "" {
-		if data, err := os.ReadFile(htmlPath); err == nil && len(data) > 0 {
+		if data := readFilePrefix(htmlPath, previewMaxHTMLBytes); len(data) > 0 {
 			if preview := mailmessage.PreviewFromHTML(data); preview != "" {
 				return preview
 			}
 		}
 	}
 	return ""
+}
+
+// computedPreview is a preview read from a body file because the stored
+// snippet was empty or just the subject. old is the stored value it replaces.
+type computedPreview struct {
+	msgID int64
+	text  string
+	old   string
+}
+
+// persistPreviews stores previews computed from body files in
+// messages.preview_text so later list renders skip the file read. The WHERE
+// clause only replaces the exact value that was read, so a snippet written by
+// a concurrent sync or body fetch wins.
+func (db *DB) persistPreviews(ctx context.Context, previews []computedPreview) {
+	if len(previews) == 0 {
+		return
+	}
+	tx, err := db.Write().BeginTx(ctx, nil)
+	if err != nil {
+		return
+	}
+	defer tx.Rollback()
+	for _, p := range previews {
+		if _, err := tx.ExecContext(ctx, `UPDATE messages SET preview_text = ?
+			WHERE id = ? AND COALESCE(NULLIF(preview_text, ''), snippet) = ?`, p.text, p.msgID, p.old); err != nil {
+			return
+		}
+	}
+	_ = tx.Commit()
 }
 
 func initials(name string) string {
@@ -5892,7 +5940,7 @@ func (db *DB) listEmailsFromFolderThreadStateUnion(ctx context.Context, folderID
 		args = append(args, id, offset+limit)
 	}
 	query := `SELECT m.id, m.account_id, a.color AS account_color, m.subject, m.from_name, m.from_email,
-		       m.date_received, m.snippet, m.has_attachments, m.body_text_path, m.body_html_path,
+		       m.date_received, COALESCE(NULLIF(m.preview_text, ''), m.snippet) AS snippet, m.has_attachments, m.body_text_path, m.body_html_path,
 		       fts.thread_has_attachments, fts.folder_id, fts.thread_is_read, fts.thread_is_starred,
 		       m.thread_id, fts.thread_count
 		FROM (` + strings.Join(branches, " UNION ALL ") + `) fts
@@ -5911,7 +5959,7 @@ func (db *DB) listEmailsFromFolderThreadStateUnion(ctx context.Context, folderID
 
 func (db *DB) listEmailsFromFolderThreadState(ctx context.Context, where string, args []any, offset, limit int) ([]models.Email, error) {
 	query := `SELECT m.id, m.account_id, a.color AS account_color, m.subject, m.from_name, m.from_email,
-		       m.date_received, m.snippet, m.has_attachments, m.body_text_path, m.body_html_path,
+		       m.date_received, COALESCE(NULLIF(m.preview_text, ''), m.snippet) AS snippet, m.has_attachments, m.body_text_path, m.body_html_path,
 		       fts.thread_has_attachments, fts.folder_id, fts.thread_is_read, fts.thread_is_starred,
 		       m.thread_id, fts.thread_count
 		FROM folder_thread_state fts
@@ -5932,7 +5980,7 @@ func (db *DB) listEmailsFromFolderThreadState(ctx context.Context, where string,
 func (db *DB) listEmailsUnfilteredFrom(ctx context.Context, fromWhere string, args []any, offset, limit int) ([]models.Email, error) {
 	query := `WITH base AS (
 			SELECT m.id, m.account_id, a.color AS account_color, m.subject, m.from_name, m.from_email,
-			       m.date_received, m.snippet, m.has_attachments, m.body_text_path, m.body_html_path,
+			       m.date_received, COALESCE(NULLIF(m.preview_text, ''), m.snippet) AS snippet, m.has_attachments, m.body_text_path, m.body_html_path,
 			       mfs.folder_id, mfs.is_read, mfs.is_starred, m.thread_id,
 			       COALESCE(NULLIF(m.thread_id, ''), printf('msg:%d', m.id)) AS thread_key,
 			       COALESCE(m.date_received, '') || ':' || printf('%020d', m.id) || ':' || mfs.folder_id AS row_key
@@ -5996,7 +6044,7 @@ func (db *DB) listEmailsFilteredForUser(ctx context.Context, userID, folderID st
 
 	query := `WITH ` + filterSQL.withClause + `visible AS (
 			  SELECT m.id, m.account_id, a.color AS account_color, m.subject, m.from_name, m.from_email,
-			         m.date_received, m.snippet, m.has_attachments, m.body_text_path, m.body_html_path,
+			         m.date_received, COALESCE(NULLIF(m.preview_text, ''), m.snippet) AS snippet, m.has_attachments, m.body_text_path, m.body_html_path,
 			         mfs.folder_id, mfs.is_read, mfs.is_starred, m.thread_id,
 			         ROW_NUMBER() OVER (PARTITION BY COALESCE(NULLIF(m.thread_id, ''), printf('msg:%d', m.id)) ORDER BY m.date_received DESC, m.id DESC) AS rn,
 			         COUNT(*) OVER (PARTITION BY COALESCE(NULLIF(m.thread_id, ''), printf('msg:%d', m.id))) AS thread_count,
@@ -6029,7 +6077,7 @@ func (db *DB) listEmailsFiltered(ctx context.Context, folderID string, offset, l
 	filterSQL := emailFilterSQL(filters)
 	query := `WITH ` + filterSQL.withClause + `visible AS (
 			  SELECT m.id, m.account_id, a.color AS account_color, m.subject, m.from_name, m.from_email,
-			         m.date_received, m.snippet, m.has_attachments, m.body_text_path, m.body_html_path,
+			         m.date_received, COALESCE(NULLIF(m.preview_text, ''), m.snippet) AS snippet, m.has_attachments, m.body_text_path, m.body_html_path,
 			         mfs.folder_id, mfs.is_read, mfs.is_starred, m.thread_id,
 			         ROW_NUMBER() OVER (PARTITION BY COALESCE(NULLIF(m.thread_id, ''), printf('msg:%d', m.id)) ORDER BY m.date_received DESC, m.id DESC) AS rn,
 			         COUNT(*) OVER (PARTITION BY COALESCE(NULLIF(m.thread_id, ''), printf('msg:%d', m.id))) AS thread_count,
@@ -6052,7 +6100,7 @@ func (db *DB) listEmailsFiltered(ctx context.Context, folderID string, offset, l
 	if isStarredFolder(folderID) {
 		query = `WITH ` + filterSQL.withClause + `visible AS (
 			 SELECT m.id, m.account_id, a.color AS account_color, m.subject, m.from_name, m.from_email,
-			        m.date_received, m.snippet, m.has_attachments, m.body_text_path, m.body_html_path,
+			        m.date_received, COALESCE(NULLIF(m.preview_text, ''), m.snippet) AS snippet, m.has_attachments, m.body_text_path, m.body_html_path,
 				        mfs.folder_id, mfs.is_read, mfs.is_starred, m.thread_id,
 				        ROW_NUMBER() OVER (PARTITION BY COALESCE(NULLIF(m.thread_id, ''), printf('msg:%d', m.id)) ORDER BY m.date_received DESC, m.id DESC) AS rn,
 				        COUNT(*) OVER (PARTITION BY COALESCE(NULLIF(m.thread_id, ''), printf('msg:%d', m.id))) AS thread_count,
@@ -6091,6 +6139,7 @@ func (db *DB) scanEmailRows(ctx context.Context, rows *sql.Rows) ([]models.Email
 	}
 
 	var items []emailRow
+	var computed []computedPreview
 	now := time.Now()
 	loc := timezoneLocationFromContext(ctx)
 
@@ -6119,6 +6168,7 @@ func (db *DB) scanEmailRows(ctx context.Context, rows *sql.Rows) ([]models.Email
 		if r.email.Preview == "" || r.email.Preview == subject {
 			if preview := previewFromBodyPaths(nullStringValue(textPath), nullStringValue(htmlPath)); preview != "" {
 				r.email.Preview = preview
+				computed = append(computed, computedPreview{msgID: r.msgID, text: preview, old: snippet})
 			}
 		}
 		r.email.IsRead = isRead == 1
@@ -6136,6 +6186,7 @@ func (db *DB) scanEmailRows(ctx context.Context, rows *sql.Rows) ([]models.Email
 		items = append(items, r)
 	}
 
+	db.persistPreviews(ctx, computed)
 	if len(items) > 0 {
 		// One avatar query for the page instead of one (blob-selecting) query per row.
 		froms := make([]models.Contact, len(items))
@@ -6391,7 +6442,7 @@ func (db *DB) SearchMessages(ctx context.Context, userID string, query string, l
 
 	rows, err := db.Read().QueryContext(ctx,
 		`SELECT DISTINCT m.id, m.account_id, a.color, m.subject, m.from_name, m.from_email,
-		        m.date_received, m.snippet, m.has_attachments, m.body_text_path, m.body_html_path,
+		        m.date_received, COALESCE(NULLIF(m.preview_text, ''), m.snippet) AS snippet, m.has_attachments, m.body_text_path, m.body_html_path,
 		        mfs.folder_id, mfs.is_read, mfs.is_starred
 		 FROM message_search
 		 JOIN messages m ON message_search.rowid = m.id
@@ -6411,6 +6462,7 @@ func (db *DB) SearchMessages(ctx context.Context, userID string, query string, l
 	}
 
 	var items []emailRow
+	var computed []computedPreview
 	now := time.Now()
 	loc := timezoneLocationFromContext(ctx)
 
@@ -6436,6 +6488,7 @@ func (db *DB) SearchMessages(ctx context.Context, userID string, query string, l
 		if r.email.Preview == "" || r.email.Preview == subject {
 			if preview := previewFromBodyPaths(nullStringValue(textPath), nullStringValue(htmlPath)); preview != "" {
 				r.email.Preview = preview
+				computed = append(computed, computedPreview{msgID: r.msgID, text: preview, old: snippet})
 			}
 		}
 		r.email.IsRead = isRead == 1
@@ -6447,6 +6500,7 @@ func (db *DB) SearchMessages(ctx context.Context, userID string, query string, l
 		items = append(items, r)
 	}
 
+	db.persistPreviews(ctx, computed)
 	if len(items) > 0 {
 		froms := make([]models.Contact, len(items))
 		for i := range items {

@@ -22,8 +22,10 @@ func TestBatchAvatarHydrationMatchesPerContact(t *testing.T) {
 		"expired@example.com": func(h, e string) error {
 			return db.SaveSenderAvatarFound(ctx, h, e, "bimi", "image/png", "", []byte{1}, past, "found", "")
 		},
-		"missing@example.com": func(h, e string) error { return db.SaveSenderAvatarMissing(ctx, h, e, "gravatar", future, "missing", "") },
-		"error@example.com":   func(h, e string) error { return db.SaveSenderAvatarError(ctx, h, e, "x", "boom", future, "error", "") },
+		"missing@example.com": func(h, e string) error {
+			return db.SaveSenderAvatarMissing(ctx, h, e, "gravatar", future, "missing", "")
+		},
+		"error@example.com": func(h, e string) error { return db.SaveSenderAvatarError(ctx, h, e, "x", "boom", future, "error", "") },
 	}
 	var contacts []models.Contact
 	for email, save := range senders {
