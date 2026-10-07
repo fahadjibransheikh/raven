@@ -10118,13 +10118,14 @@ function _activeComposeCanBeReplaced() {
 }
 
 // Every way of leaving a dirty inline compose routes through here: sidebar
-// folder / app-switch clicks (capture listener below) and any htmx request that
+// folder / app-switch / Settings clicks (capture listener below; Settings is a
+// full page load, so htmx:confirm never sees it) and any htmx request that
 // targets #mail-view or #main-content (htmx:confirm). setMailViewEmpty refuses
 // to wipe a dirty pane on its own, so search / auto-close paths cannot lose it.
 function _guardComposeNavigation() {
   document.addEventListener("click", function (e) {
     if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
-    var el = e.target.closest && e.target.closest('aside a[hx-get^="/folder/"], [data-sidebar-contacts-link], [data-sidebar-app-button]')
+    var el = e.target.closest && e.target.closest('aside a[hx-get^="/folder/"], [data-sidebar-contacts-link], [data-sidebar-app-button], a[href^="/settings/"]')
     if (!el || !document.querySelector("[data-compose-pane]") || !_dirtyComposeForm()) return
     e.preventDefault()
     e.stopImmediatePropagation()

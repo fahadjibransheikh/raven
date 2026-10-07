@@ -85,3 +85,44 @@ test("folder click on a dirty pane is held until the user decides", async () => 
   assert.equal(t2.choices.length, 1)
   assert.equal(hasPane(t2), false)
 })
+
+test("Settings link on a dirty pane is held, and keep saves the draft before the page load", async () => {
+  const addSettings = function (t) {
+    const a = t.w.document.createElement("a")
+    a.id = "settings"
+    a.href = "/settings/accounts"
+    t.w.document.querySelector("aside").appendChild(a)
+    const clicks = []
+    // The page load is a default action; record it instead of navigating.
+    a.addEventListener("click", function (e) { clicks.push(e.defaultPrevented); e.preventDefault() })
+    return { a: a, clicks: clicks }
+  }
+
+  const t = await setup("cancel")
+  const s = addSettings(t)
+  s.a.click()
+  await tick()
+  assert.equal(t.choices.length, 1)
+  assert.equal(s.clicks.length, 0, "cancel must not let the click through")
+
+  const t2 = await setup("discard")
+  const s2 = addSettings(t2)
+  s2.a.click()
+  await tick()
+  assert.equal(t2.choices.length, 1)
+  assert.equal(s2.clicks.length, 1, "discard replays the click once, without a second prompt")
+
+  const t3 = await setup("keep")
+  const saved = []
+  t3.w.fetch = function (url, opts) {
+    saved.push(String(url))
+    return Promise.resolve({ ok: true, json: function () { return Promise.resolve({}) } })
+  }
+  const s3 = addSettings(t3)
+  s3.a.click()
+  await tick()
+  await tick()
+  assert.equal(t3.choices.length, 1)
+  assert.ok(saved.some(function (u) { return /draft/.test(u) }), "keep saves the draft: " + saved.join(","))
+  assert.equal(s3.clicks.length, 1)
+})
