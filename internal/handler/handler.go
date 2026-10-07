@@ -3233,7 +3233,7 @@ func (h *Handler) handleSettingsTab(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	if tab == "security" {
+	if tab == "security" && h.auth != nil && h.auth.IsEnabled() {
 		h.renderPasswordSecurityTab(w, r, http.StatusOK, nil)
 		return
 	}
