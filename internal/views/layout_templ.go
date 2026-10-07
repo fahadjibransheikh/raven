@@ -2027,7 +2027,7 @@ func FolderPartial(accounts []models.Account, emails []models.Email, activeFolde
 			return templ_7745c5c3_Err
 		}
 		if selectedEmail != nil {
-			templ_7745c5c3_Err = MailViewContent(selectedEmail, selectedThread).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = MailViewContent(selectedEmail, selectedThread, ThreadNewestFirst(uiSettings)).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

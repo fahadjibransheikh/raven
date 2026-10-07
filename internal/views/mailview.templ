@@ -24,6 +24,44 @@ func contactDisplay(c models.Contact) string {
 	return c.Email
 }
 
+// ThreadNewestFirst reports the reading order for conversations: newest message on
+// top (the default) or, with thread_order=oldest_first, oldest on top.
+func ThreadNewestFirst(settings map[string]string) bool {
+	return uiSettingGet(settings, "thread_order", "newest_first") != "oldest_first"
+}
+
+// ThreadTargetID is the message an oldest-first thread scrolls to, as Gmail does: the
+// oldest unread message, or the newest when everything is read. thread is oldest-first.
+func ThreadTargetID(thread []models.ThreadItem) string {
+	for _, item := range thread {
+		if !item.IsRead {
+			return item.ID
+		}
+	}
+	if len(thread) == 0 {
+		return ""
+	}
+	return thread[len(thread)-1].ID
+}
+
+// threadItemOpen says whether a thread message starts expanded. thread is in display
+// order. Newest-first expands the newest message and every unread one; oldest-first
+// expands only the scroll target.
+func threadItemOpen(thread []models.ThreadItem, i int, newestFirst bool) bool {
+	if newestFirst {
+		return i == 0 || !thread[i].IsRead
+	}
+	return thread[i].ID == ThreadTargetID(thread)
+}
+
+// threadItemIsNewest is true for the message reply, reply-all and forward act on.
+func threadItemIsNewest(thread []models.ThreadItem, i int, newestFirst bool) bool {
+	if newestFirst {
+		return i == 0
+	}
+	return i == len(thread)-1
+}
+
 templ MailViewAvatar(contact models.Contact, messageID string, class string, fallbackClass string) {
 	if strings.TrimSpace(contact.AvatarURL) != "" {
 		{{ dialogID := "mail-avatar-preview-" + messageID }}
@@ -87,7 +125,7 @@ func shouldShowAttachment(att models.Attachment) bool {
 templ MailView(email *models.Email, thread []models.ThreadItem) {
 	<div id="mail-view" class="hidden lg:flex flex-1 flex-col min-w-0 bg-background">
 		if email != nil {
-			@MailViewContent(email, thread)
+			@MailViewContent(email, thread, true)
 		} else {
 			@MailViewEmpty()
 		}
@@ -133,7 +171,9 @@ templ MailViewLoading() {
 	</div>
 }
 
-templ MailViewContent(email *models.Email, thread []models.ThreadItem) {
+// MailViewContent renders a message or conversation. thread must already be in display
+// order: newest first when newestFirst, else oldest first.
+templ MailViewContent(email *models.Email, thread []models.ThreadItem, newestFirst bool) {
 	<div class="mail-view-frame flex flex-col h-full p-2">
 		<div class="bg-paper text-ink rounded-md flex flex-col h-full overflow-hidden">
 			@MailViewHeader(email)
@@ -149,13 +189,13 @@ templ MailViewContent(email *models.Email, thread []models.ThreadItem) {
 							@icon.MessagesSquare(icon.Props{Class: "size-3.5 text-subtle-foreground"})
 							<span class="text-xs font-medium text-subtle-foreground">{ fmt.Sprintf("%d messages in this thread", len(thread)) }</span>
 						</div>
-						for _, item := range thread {
-							@MailViewThreadItemSender(email, &item)
+						for i, item := range thread {
+							@MailViewThreadItemSender(email, &item, !newestFirst && threadItemOpen(thread, i, false))
 							@MailViewThreadItemMiniHeader(&item)
 							if len(item.Attachments) > 0 {
 								@MailViewThreadItemAttachments(&item)
 							}
-							<details open?={ item.ID == email.ID } data-thread-details class="mt-4 group">
+							<details open?={ threadItemOpen(thread, i, newestFirst) } data-thread-details class="mt-4 group">
 								<summary class="flex items-center gap-3 cursor-pointer list-none marker:hidden text-xs text-subtle-foreground transition-colors select-none">
 									<span class="flex items-center gap-1.5 hover:text-foreground transition-colors">
 										@icon.ChevronsDown(icon.Props{Class: "size-3.5 transition-transform group-open:rotate-180"})
@@ -173,7 +213,7 @@ templ MailViewContent(email *models.Email, thread []models.ThreadItem) {
 								</summary>
 								<div class="thread-details-content mt-3">
 									@MailViewBodyByID(item.ID)
-									@MailViewThreadItemActions(&item)
+									@MailViewThreadItemActions(&item, threadItemIsNewest(thread, i, newestFirst))
 								</div>
 							</details>
 							<div class="h-px bg-ink/25 my-6"></div>
@@ -196,8 +236,8 @@ templ MailViewContent(email *models.Email, thread []models.ThreadItem) {
 	</div>
 }
 
-templ MailViewThreadItemSender(email *models.Email, item *models.ThreadItem) {
-	<div class="mail-view-thread-sender flex items-start gap-4">
+templ MailViewThreadItemSender(email *models.Email, item *models.ThreadItem, isTarget bool) {
+	<div class="mail-view-thread-sender flex items-start gap-4" data-thread-target?={ isTarget }>
 		@MailViewAvatar(item.From, item.ID, "mail-view-avatar size-10 rounded-full text-sm font-medium shrink-0", contactAvatarThreadFallback(item.ID == email.ID))
 		<div class="flex-1 min-w-0">
 			<div class="flex items-center gap-2 flex-wrap">
@@ -421,9 +461,10 @@ templ EmailBodyStyleTabs(emailID string, global bool, listHeight string, trigger
 	}
 }
 
-templ MailViewThreadItemActions(item *models.ThreadItem) {
+templ MailViewThreadItemActions(item *models.ThreadItem, isNewest bool) {
 	<div class="mt-4 pt-3 border-t border-ink/6"
 		data-thread-reply-data
+		data-thread-newest?={ isNewest }
 		data-message-id={ item.InternetMessageID }
 		data-references={ item.References }
 		data-subject={ item.Subject }

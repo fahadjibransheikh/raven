@@ -467,7 +467,7 @@ templ FolderPartial(accounts []models.Account, emails []models.Email, activeFold
 	@MailList(accounts, emails, activeFolder, selectedEmail, totalCount, scrollCount, 0, uiSettingGet(uiSettings, "mail_list_width", "30%"), uiSettingGet(uiSettings, "sender_display", "name"), uiSettingGet(uiSettings, "mail_list_view", "cards"), uiSettingGet(uiSettings, "mail_list_navigation", "infinite"), filters)
 	<div id="mail-view" class="hidden lg:flex flex-1 flex-col min-w-0 bg-background" hx-swap-oob="true">
 		if selectedEmail != nil {
-			@MailViewContent(selectedEmail, selectedThread)
+			@MailViewContent(selectedEmail, selectedThread, ThreadNewestFirst(uiSettings))
 		} else {
 			@MailViewEmpty()
 		}

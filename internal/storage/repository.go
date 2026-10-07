@@ -8101,6 +8101,7 @@ func defaultUISettings() map[string]string {
 		"compose_autosave_min_chars":        "30",
 		"compose_autosave_debounce":         "5",
 		"sender_display":                    "name",
+		"thread_order":                      "newest_first",
 		"mail_pane_layout":                  "side",
 		"mail_list_width":                   "30%",
 		"mail_list_height":                  "360",
