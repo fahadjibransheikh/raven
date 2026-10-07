@@ -220,6 +220,9 @@ type Config struct {
 	OIDCLoginName        string
 	BaseURL              string
 	SecureCookies        bool
+	// DesktopToken (GOFER_DESKTOP_TOKEN) turns on the per-launch desktop gate in
+	// open mode. See desktop.go.
+	DesktopToken string
 }
 
 func LoadConfig(baseURL string) *Config {
@@ -230,10 +233,11 @@ func LoadConfig(baseURL string) *Config {
 	}
 
 	cfg := &Config{
-		Enabled:    enabled,
-		Mode:       Mode(strings.ToLower(strings.TrimSpace(os.Getenv("GOFER_AUTH_MODE")))),
-		SetupToken: os.Getenv("GOFER_SETUP_TOKEN"),
-		BaseURL:    baseURL,
+		Enabled:      enabled,
+		Mode:         Mode(strings.ToLower(strings.TrimSpace(os.Getenv("GOFER_AUTH_MODE")))),
+		SetupToken:   os.Getenv("GOFER_SETUP_TOKEN"),
+		BaseURL:      baseURL,
+		DesktopToken: strings.TrimSpace(os.Getenv("GOFER_DESKTOP_TOKEN")),
 	}
 
 	if cfg.Mode != "" {

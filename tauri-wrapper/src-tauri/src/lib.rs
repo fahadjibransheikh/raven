@@ -19,6 +19,7 @@
 //! before the navigate() call below replaces it.
 
 use std::collections::VecDeque;
+use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::sync::atomic::{AtomicBool, AtomicU16, AtomicU64, Ordering};
 use std::sync::Mutex;
@@ -111,6 +112,10 @@ struct SidecarState {
     /// Latest migration/boot progress line from the sidecar's log.
     progress: Mutex<String>,
     view: Mutex<StartupView>,
+    /// Random per-launch secret. Passed to the sidecar as GOFER_DESKTOP_TOKEN
+    /// and traded for a cookie at /desktop-auth, so only this app's webview can
+    /// use the server. Never written to disk or logged.
+    token: String,
 }
 
 impl SidecarState {
@@ -124,16 +129,49 @@ impl SidecarState {
             tail: Mutex::new(VecDeque::new()),
             progress: Mutex::new(String::new()),
             view: Mutex::new(StartupView::starting()),
+            token: new_token(),
         }
     }
 }
 
-fn port_is_open(port: u16) -> bool {
-    TcpStream::connect_timeout(
-        &std::net::SocketAddr::from(([127, 0, 0, 1], port)),
-        Duration::from_millis(500),
-    )
-    .is_ok()
+fn new_token() -> String {
+    let mut bytes = [0u8; 32];
+    getrandom::fill(&mut bytes).expect("the OS random number generator is unavailable");
+    bytes.iter().map(|b| format!("{b:02x}")).collect()
+}
+
+/// True once the server on `port` answers as Gofer's desktop gate: an
+/// unauthenticated GET /desktop-auth gets 403 with an X-Raven-Desktop header.
+/// Checked before the token is ever sent, so a listener that merely accepts
+/// TCP connections is not enough to receive it.
+fn gofer_answers(port: u16) -> bool {
+    let addr = std::net::SocketAddr::from(([127, 0, 0, 1], port));
+    let Ok(mut stream) = TcpStream::connect_timeout(&addr, Duration::from_millis(500)) else {
+        return false;
+    };
+    let timeout = Some(Duration::from_secs(2));
+    let _ = stream.set_read_timeout(timeout);
+    let _ = stream.set_write_timeout(timeout);
+    let request =
+        format!("GET /desktop-auth HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nConnection: close\r\n\r\n");
+    if stream.write_all(request.as_bytes()).is_err() {
+        return false;
+    }
+    let mut response = String::new();
+    // Headers are all that is needed; a read error after them is fine.
+    let _ = stream.take(8192).read_to_string(&mut response);
+    let mut lines = response.lines();
+    lines.next().is_some_and(|status| status.contains(" 403"))
+        && lines.any(|line| line.eq_ignore_ascii_case("x-raven-desktop: 1"))
+}
+
+/// The URL that logs the webview in and lands on `next` (a same-origin path).
+fn login_url(port: u16, token: &str, next: &str) -> tauri::Url {
+    let mut url: tauri::Url = format!("http://127.0.0.1:{port}/desktop-auth")
+        .parse()
+        .expect("valid URL");
+    url.query_pairs_mut().append_pair("t", token).append_pair("next", next);
+    url
 }
 
 /// Picks the port for this launch: 8090 if it can be bound, otherwise any free
@@ -253,6 +291,7 @@ fn start_sidecar(app: &AppHandle) {
             .envs(SIDECAR_ENV)
             .env("GOFER_ADDR", format!("127.0.0.1:{port}"))
             .env("GOFER_BASE_URL", format!("http://localhost:{port}"))
+            .env("GOFER_DESKTOP_TOKEN", &state.token)
             .spawn() {
             Ok(spawned) => spawned,
             Err(err) => {
@@ -313,7 +352,7 @@ fn start_sidecar(app: &AppHandle) {
                 set_view(&app, StartupView { state: "error", detail: reason, tail });
                 return;
             }
-            if port_is_open(port) {
+            if gofer_answers(port) {
                 break;
             }
             if started.elapsed() >= SLOW_START_AFTER {
@@ -329,7 +368,7 @@ fn start_sidecar(app: &AppHandle) {
 
         state.ready.store(true, Ordering::SeqCst);
         if let Some(window) = app.get_webview_window("main") {
-            if let Err(err) = window.navigate(format!("http://127.0.0.1:{port}").parse().expect("valid URL")) {
+            if let Err(err) = window.navigate(login_url(port, &state.token, "/")) {
                 eprintln!("failed to navigate main window to Gofer: {err}");
             }
         } else {
@@ -545,6 +584,33 @@ pub fn run() {
                         }
                     }
                     tauri::webview::NewWindowResponse::Deny
+                })
+                .on_navigation({
+                    let app_handle = app_handle.clone();
+                    move |url| {
+                        // GOFER_BASE_URL says localhost (that is what the OAuth
+                        // redirect URIs are registered for), so a mailbox
+                        // sign-in comes back to localhost:<port>. The desktop
+                        // cookie belongs to 127.0.0.1, so replay that
+                        // navigation there instead of landing cookieless.
+                        let port = app_handle.state::<SidecarState>().port.load(Ordering::SeqCst);
+                        if url.scheme() == "http"
+                            && url.host_str() == Some("localhost")
+                            && url.port() == Some(port)
+                        {
+                            let mut local = url.clone();
+                            if local.set_host(Some("127.0.0.1")).is_ok() {
+                                let app_handle = app_handle.clone();
+                                std::thread::spawn(move || {
+                                    if let Some(window) = app_handle.get_webview_window("main") {
+                                        let _ = window.navigate(local);
+                                    }
+                                });
+                                return false;
+                            }
+                        }
+                        true
+                    }
                 })
                 .initialization_script(UNREAD_BADGE_SCRIPT)
                 .on_document_title_changed(|window, title| {

@@ -68,6 +68,9 @@ func runServer() {
 	if err := authConfig.ValidateMode(); err != nil {
 		log.Fatalf("invalid authentication configuration: %v", err)
 	}
+	if err := authConfig.ValidateDesktopToken(); err != nil {
+		log.Fatalf("invalid authentication configuration: %v", err)
+	}
 	authConfig.SecureCookies = httpConfig.SecureCookies()
 	mailboxOAuthConfig := mailauth.LoadConfig(httpConfig.BaseURL, authConfig.Enabled)
 	if err := httpConfig.ValidateExposure(authConfig.Enabled); err != nil {
