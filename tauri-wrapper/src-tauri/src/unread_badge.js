@@ -2,10 +2,11 @@
 // "(N) " prefix, so the Rust side (on_document_title_changed in lib.rs) can
 // parse it back out and set the Dock/taskbar badge. Only ever runs against
 // the real Gofer origin -- this init script also runs on the placeholder
-// frontend/index.html page (file://) before navigate() fires, so the origin
-// check is not optional.
+// frontend/index.html page and on OAuth provider pages, so the origin check is
+// not optional. The port varies per launch (lib.rs pick_port), so it is not
+// part of the check; only the wrapper ever points this window at 127.0.0.1.
 (function () {
-  if (window.location.origin !== "http://127.0.0.1:8090") {
+  if (window.location.protocol !== "http:" || window.location.hostname !== "127.0.0.1") {
     return;
   }
 

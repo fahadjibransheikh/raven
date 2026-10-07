@@ -3,10 +3,10 @@
 //! This crate is deliberately NOT a UI. It exists only to:
 //!   1. Launch the compiled Gofer Go binary (bundled as a Tauri "sidecar",
 //!      see https://v2.tauri.app/develop/sidecar/) as a background process.
-//!   2. Wait for it to start listening on 127.0.0.1:8090, for as long as the
-//!      process is alive (migrations can take minutes); if it exits first,
+//!   2. Wait for it to start listening on 127.0.0.1:<port> (8090 unless something
+//!      else holds it), for as long as the process is alive (migrations can take minutes); if it exits first,
 //!      show its last output and a "Try again" button instead.
-//!   3. Point the one native window at http://127.0.0.1:8090, so the user
+//!   3. Point the one native window at http://127.0.0.1:<port>, so the user
 //!      gets Gofer's existing server-rendered UI inside a real macOS app
 //!      window (Dock icon, Cmd+Q, its own process) instead of a browser tab.
 //!   4. Kill the Gofer process when the window closes / the app quits, so
@@ -20,7 +20,7 @@
 
 use std::collections::VecDeque;
 use std::net::TcpStream;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU16, AtomicU64, Ordering};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
@@ -37,19 +37,18 @@ use tauri_plugin_updater::UpdaterExt;
 /// below parses back out into the Dock/taskbar badge.
 const UNREAD_BADGE_SCRIPT: &str = include_str!("unread_badge.js");
 
-/// Port Gofer listens on (its default GOFER_ADDR is 127.0.0.1:8090).
-const GOFER_PORT: u16 = 8090;
-const GOFER_URL: &str = "http://127.0.0.1:8090";
+/// The port Gofer is started on when it is free. The Microsoft app's redirect
+/// URIs are registered for http://localhost:8090, so every other port breaks
+/// the "Add Outlook account" sign-in (see pick_port).
+const PREFERRED_PORT: u16 = 8090;
 
-/// Microsoft settings the desktop app always runs Gofer with, so Outlook works
-/// on every install without editing a .env. The client ID is Raven's Azure app,
+/// Settings the desktop app always runs Gofer with, so Outlook works on every
+/// install without editing a .env. The client ID is Raven's Azure app,
 /// registered as a public client (no secret; PKCE protects the code exchange),
-/// so it is safe to ship. Its redirect URIs are registered for
-/// http://localhost:8090, hence the fixed base URL. Gofer's .env loader never
-/// overrides variables that are already set, so these win over any stale
-/// values in a user's .env.
-const SIDECAR_ENV: [(&str, &str); 4] = [
-    ("GOFER_BASE_URL", "http://localhost:8090"),
+/// so it is safe to ship. Gofer's .env loader never overrides variables that
+/// are already set, so these win over any stale values in a user's .env.
+/// GOFER_ADDR and GOFER_BASE_URL are added per launch, from the chosen port.
+const SIDECAR_ENV: [(&str, &str); 3] = [
     ("MICROSOFT_OAUTH_CLIENT_ID", "57979fc5-6850-4d3d-8e8b-ab3122e4dc0c"),
     ("MICROSOFT_OAUTH_CLIENT_SECRET", ""),
     ("MICROSOFT_OAUTH_TENANT", "common"),
@@ -96,12 +95,11 @@ impl StartupView {
 }
 
 /// Managed app state for the sidecar this app instance spawned. `child` is
-/// `None` before the first spawn, after a kill, or when Gofer was already
-/// running on the port at launch (a previous copy of this app, or the user
-/// running `task dev` by hand): then we never spawned our own and have
-/// nothing to kill on exit.
+/// `None` before the first spawn and after a kill.
 struct SidecarState {
     child: Mutex<Option<CommandChild>>,
+    /// The port the current sidecar was told to listen on.
+    port: AtomicU16,
     /// Bumped on every (re)start so a superseded startup thread stops itself.
     attempt: AtomicU64,
     /// Set once the window has been pointed at Gofer; "Try again" is a no-op after.
@@ -119,6 +117,7 @@ impl SidecarState {
     fn new() -> Self {
         Self {
             child: Mutex::new(None),
+            port: AtomicU16::new(PREFERRED_PORT),
             attempt: AtomicU64::new(0),
             ready: AtomicBool::new(false),
             exit: Mutex::new(None),
@@ -129,12 +128,31 @@ impl SidecarState {
     }
 }
 
-fn port_is_open() -> bool {
+fn port_is_open(port: u16) -> bool {
     TcpStream::connect_timeout(
-        &std::net::SocketAddr::from(([127, 0, 0, 1], GOFER_PORT)),
+        &std::net::SocketAddr::from(([127, 0, 0, 1], port)),
         Duration::from_millis(500),
     )
     .is_ok()
+}
+
+/// Picks the port for this launch: 8090 if it can be bound, otherwise any free
+/// port. OAuth implication of the fallback: GOFER_BASE_URL (and so the
+/// redirect URI sent to Microsoft/Google) follows the port, and redirect URIs
+/// registered for localhost:8090 will not match, so adding a mailbox through
+/// OAuth can fail until 8090 is free again. Everything else keeps working.
+/// The port is released before the sidecar binds it; if someone grabs it in
+/// that gap the sidecar exits with a bind error, which the error page shows.
+fn pick_port() -> u16 {
+    use std::net::TcpListener;
+    for candidate in [PREFERRED_PORT, 0] {
+        if let Ok(listener) = TcpListener::bind(("127.0.0.1", candidate)) {
+            if let Ok(addr) = listener.local_addr() {
+                return addr.port();
+            }
+        }
+    }
+    PREFERRED_PORT
 }
 
 fn kill_sidecar(app_handle: &tauri::AppHandle) {
@@ -207,10 +225,12 @@ fn start_sidecar(app: &AppHandle) {
         set_view(app, StartupView { state: "error", detail, tail });
     };
 
-    // If Gofer is already listening (previous run, or started by hand), don't
-    // spawn a second copy -- just adopt it.
-    let adopted = port_is_open();
-    if !adopted {
+    // Never adopt a server that is already listening: it cannot be told apart
+    // from an impostor, and a Raven started elsewhere does not know this
+    // launch's secret. If 8090 is taken we simply use another port.
+    let port = pick_port();
+    state.port.store(port, Ordering::SeqCst);
+    {
         let command = match app.shell().sidecar("gofer") {
             Ok(command) => command,
             Err(err) => {
@@ -228,7 +248,12 @@ fn start_sidecar(app: &AppHandle) {
                 return;
             }
         };
-        let (mut rx, child) = match command.current_dir(working_dir).envs(SIDECAR_ENV).spawn() {
+        let (mut rx, child) = match command
+            .current_dir(working_dir)
+            .envs(SIDECAR_ENV)
+            .env("GOFER_ADDR", format!("127.0.0.1:{port}"))
+            .env("GOFER_BASE_URL", format!("http://localhost:{port}"))
+            .spawn() {
             Ok(spawned) => spawned,
             Err(err) => {
                 fail(format!("The server could not be started: {err}"));
@@ -288,7 +313,7 @@ fn start_sidecar(app: &AppHandle) {
                 set_view(&app, StartupView { state: "error", detail: reason, tail });
                 return;
             }
-            if port_is_open() {
+            if port_is_open(port) {
                 break;
             }
             if started.elapsed() >= SLOW_START_AFTER {
@@ -304,7 +329,7 @@ fn start_sidecar(app: &AppHandle) {
 
         state.ready.store(true, Ordering::SeqCst);
         if let Some(window) = app.get_webview_window("main") {
-            if let Err(err) = window.navigate(GOFER_URL.parse().expect("valid URL")) {
+            if let Err(err) = window.navigate(format!("http://127.0.0.1:{port}").parse().expect("valid URL")) {
                 eprintln!("failed to navigate main window to Gofer: {err}");
             }
         } else {
