@@ -100,6 +100,7 @@ const (
 	composeAttachmentMaxBytes     int64 = 25 << 20
 	composeMessageMaxBytes        int64 = 35 << 20
 	contactImportMaxBytes         int64 = 5 << 20
+	multipartOverheadBytes        int64 = 1 << 20 // boundaries and part headers on top of the file
 	contactAvatarMaxBytes         int64 = 2 << 20
 	composeStagedAttachmentMaxAge       = 24 * time.Hour
 	outgoingSendTimeout                 = 5 * time.Minute
@@ -1245,6 +1246,8 @@ func serveVCard(w http.ResponseWriter, filename string, contacts []models.Contac
 
 func (h *Handler) handleImportContacts(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	// Cap the whole body: ParseMultipartForm spills oversized parts to temp files.
+	r.Body = http.MaxBytesReader(w, r.Body, contactImportMaxBytes+multipartOverheadBytes)
 	if err := r.ParseMultipartForm(contactImportMaxBytes); err != nil {
 		http.Error(w, "invalid vCard import", http.StatusBadRequest)
 		return
@@ -3992,10 +3995,17 @@ func (h *Handler) handleAttachmentPreview(w http.ResponseWriter, r *http.Request
 
 func (h *Handler) handleComposeAttachmentUpload(w http.ResponseWriter, r *http.Request) {
 	h.cleanupUnreferencedComposeAttachments(r.Context())
+	// Cap the whole body: ParseMultipartForm spills oversized parts to temp files.
+	r.Body = http.MaxBytesReader(w, r.Body, composeAttachmentMaxBytes+multipartOverheadBytes)
 	if err := r.ParseMultipartForm(composeAttachmentMaxBytes); err != nil {
+		message := "invalid attachment upload"
+		var tooLarge *http.MaxBytesError
+		if errors.As(err, &tooLarge) {
+			message = "attachment is too large"
+		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "invalid attachment upload"})
+		json.NewEncoder(w).Encode(map[string]string{"error": message})
 		return
 	}
 	file, header, err := r.FormFile("attachment")
