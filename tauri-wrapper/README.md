@@ -5,7 +5,9 @@ icon and its own window pointed at `http://127.0.0.1:8090`, instead of a
 browser tab. **It reimplements none of Gofer's UI.** On launch it:
 
 1. Spawns the compiled Gofer binary as a background "sidecar" process.
-2. Polls `127.0.0.1:8090` until it accepts connections (15s timeout).
+2. Waits for `127.0.0.1:8090` to accept connections for as long as the sidecar
+   process is alive (a schema migration can take minutes). If the sidecar exits
+   first, the window shows its last output and a "Try again" button.
 3. Points the one native window at that URL.
 4. Kills the Gofer process when you close the window / quit the app.
 

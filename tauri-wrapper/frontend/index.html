@@ -15,17 +15,34 @@
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         font-size: 15px;
       }
+      main { max-width: 560px; padding: 0 24px; text-align: center; }
+      p { margin: 8px 0 0; color: #8b8e97; }
+      pre {
+        margin: 16px 0 0; padding: 12px; max-height: 220px; overflow: auto;
+        text-align: left; font-size: 12px; white-space: pre-wrap; word-break: break-word;
+        background: #141416; border: 1px solid #26272b; border-radius: 6px; color: #b4b7bf;
+      }
+      button {
+        margin-top: 16px; padding: 8px 18px; font: inherit; color: #0a0a0b;
+        background: #d7d9de; border: 0; border-radius: 6px; cursor: pointer;
+      }
+      [hidden] { display: none; }
     </style>
   </head>
   <body>
     <!--
-      This placeholder is shown only for the first moment or two while the
-      Rust side (src-tauri/src/lib.rs) spawns the Gofer sidecar and polls
-      127.0.0.1:8090. Once that port answers, Rust calls
+      Shown while the Rust side (src-tauri/src/lib.rs) starts the Gofer sidecar
+      and waits for it to listen. Once it does, Rust calls
       WebviewWindow::navigate() to replace this page with the real Gofer UI.
-      There is no JS redirect/poll here on purpose -- navigation is driven
-      from Rust so nothing needs to run in this page at all.
+      Rust pushes state into window.ravenStatus.render() (see status.js) and the
+      page also pulls it on load, so nothing here polls.
     -->
-    Starting Raven…
+    <main>
+      <div id="title">Starting Raven…</div>
+      <p id="detail" hidden></p>
+      <pre id="tail" hidden></pre>
+      <button id="retry" type="button" hidden>Try again</button>
+    </main>
+    <script src="status.js"></script>
   </body>
 </html>

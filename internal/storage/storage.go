@@ -260,6 +260,11 @@ func (db *DB) migrate() error {
 		return nil
 	}
 
+	if currentVersion > 0 {
+		// The desktop wrapper shows this line while a long migration runs.
+		log.Printf("storage: migrating database from schema version %d to %d", currentVersion, targetSchemaVersion)
+	}
+
 	if currentVersion == 0 {
 		if _, err := tx.Exec(string(schema)); err != nil {
 			return fmt.Errorf("apply schema: %w", err)
