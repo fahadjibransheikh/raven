@@ -1177,7 +1177,7 @@ func (db *DB) SaveDraftMessage(ctx context.Context, draft DraftMessageInput) (in
 		return 0, err
 	}
 	db.UpsertObservedContactsForMessage(ctx, draft.AccountID, draft.FromName, draft.FromEmail, draft.ToRecipients, draft.CCRecipients, draft.BCCRecipients, draft.Date)
-	db.RefreshFolderUnreadCount(ctx, draft.FolderID)
+	db.refreshFolderForMessages(ctx, draft.FolderID, []int64{msgID})
 	return msgID, nil
 }
 
@@ -1316,6 +1316,11 @@ func (db *DB) DeleteDraftMessage(ctx context.Context, accountID, internetMessage
 		return "", err
 	}
 
+	var threadKey string
+	if err := tx.QueryRowContext(ctx, `SELECT COALESCE(NULLIF(thread_id, ''), printf('msg:%d', id)) FROM messages WHERE id = ?`, msgID).Scan(&threadKey); err != nil {
+		return "", err
+	}
+
 	if _, err := tx.ExecContext(ctx, `DELETE FROM message_folder_state WHERE message_id = ?`, msgID); err != nil {
 		return "", err
 	}
@@ -1337,7 +1342,8 @@ func (db *DB) DeleteDraftMessage(ctx context.Context, accountID, internetMessage
 	if err := db.deleteMessageSearch(ctx, msgID); err != nil {
 		return "", err
 	}
-	db.RefreshFolderUnreadCount(ctx, folderID)
+	_, _ = db.UpdateFolderUnreadCount(ctx, folderID)
+	_ = db.refreshFolderThreadKeys(ctx, folderID, []string{threadKey})
 	return folderID, nil
 }
 
@@ -4164,7 +4170,21 @@ func (db *DB) GetFolderRole(ctx context.Context, folderID string) (string, error
 	return role, nil
 }
 
+// RefreshFolderUnreadCount recomputes the stored unread count and rebuilds the
+// whole folder's thread state. Hot paths that know which messages changed use
+// refreshFolderForMessages instead.
 func (db *DB) RefreshFolderUnreadCount(ctx context.Context, folderID string) (int, error) {
+	count, err := db.UpdateFolderUnreadCount(ctx, folderID)
+	if err != nil {
+		return count, err
+	}
+	return count, db.RefreshFolderThreadState(ctx, folderID)
+}
+
+// UpdateFolderUnreadCount recomputes folders.unread_count only. For an Outlook
+// folder that is only partially downloaded the provider count stays
+// authoritative and nothing is written.
+func (db *DB) UpdateFolderUnreadCount(ctx context.Context, folderID string) (int, error) {
 	var count, localTotal, storedUnread, providerTotal int
 	var accountProvider, providerRemoteID string
 	err := db.Read().QueryRowContext(ctx,
@@ -4184,21 +4204,24 @@ func (db *DB) RefreshFolderUnreadCount(ctx context.Context, folderID string) (in
 		return 0, err
 	}
 	if strings.TrimSpace(accountProvider) == "outlook" && strings.TrimSpace(providerRemoteID) != "" && providerTotal > 0 && localTotal < providerTotal {
-		if err := db.RefreshFolderThreadState(ctx, folderID); err != nil {
-			return storedUnread, err
-		}
 		return storedUnread, nil
 	}
-	_, err = db.Write().ExecContext(ctx,
-		`UPDATE folders SET unread_count = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-		count, folderID)
-	if err != nil {
-		return 0, err
+	if count != storedUnread {
+		if _, err = db.Write().ExecContext(ctx,
+			`UPDATE folders SET unread_count = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+			count, folderID); err != nil {
+			return 0, err
+		}
 	}
-	if err := db.RefreshFolderThreadState(ctx, folderID); err != nil {
-		return count, err
-	}
-	return count, err
+	return count, nil
+}
+
+// refreshFolderForMessages is the incremental counterpart of
+// RefreshFolderUnreadCount for mutations that touched known messages without
+// changing their thread_id: only those messages' threads are recomputed.
+func (db *DB) refreshFolderForMessages(ctx context.Context, folderID string, messageIDs []int64) {
+	_, _ = db.UpdateFolderUnreadCount(ctx, folderID)
+	_ = db.RefreshFolderThreadsForMessages(ctx, folderID, messageIDs)
 }
 
 func (db *DB) RefreshFolderThreadState(ctx context.Context, folderID string) error {
@@ -4258,6 +4281,13 @@ func (db *DB) RefreshFolderThreadsForMessages(ctx context.Context, folderID stri
 		return err
 	}
 	rows.Close()
+	return db.refreshFolderThreadKeys(ctx, folderID, threadKeys)
+}
+
+// refreshFolderThreadKeys recomputes the given threads of one folder from
+// message_folder_state. Callers that delete messages must collect the keys
+// before the delete, since the keys come from messages.thread_id.
+func (db *DB) refreshFolderThreadKeys(ctx context.Context, folderID string, threadKeys []string) error {
 	if len(threadKeys) == 0 {
 		return nil
 	}
@@ -4274,7 +4304,29 @@ func (db *DB) RefreshFolderThreadsForMessages(ctx context.Context, folderID stri
 		`DELETE FROM folder_thread_state WHERE folder_id = ? AND thread_key IN (`+threadPlaceholders+`)`, deleteArgs...); err != nil {
 		return err
 	}
-	insertArgs := append([]any{folderID}, threadArgs...)
+	// Thread keys are thread_id, or "msg:<id>" for messages without one. Match
+	// them with sargable predicates (idx_messages_thread on account_id,
+	// thread_id and the primary key) instead of the key expression, which
+	// would scan the whole folder.
+	var realKeys []string
+	var soloIDs []int64
+	for _, key := range threadKeys {
+		if id, ok := strings.CutPrefix(key, "msg:"); ok {
+			if n, err := strconv.ParseInt(id, 10, 64); err == nil {
+				soloIDs = append(soloIDs, n)
+				continue
+			}
+		}
+		realKeys = append(realKeys, key)
+	}
+	// "IN ()" is valid SQLite and matches nothing, so empty lists are fine.
+	keyPlaceholders := sqlPlaceholders(len(realKeys))
+	soloPlaceholders := sqlPlaceholders(len(soloIDs))
+	insertArgs := []any{folderID, folderID}
+	insertArgs = append(insertArgs, stringsToAny(realKeys)...)
+	for _, id := range soloIDs {
+		insertArgs = append(insertArgs, id)
+	}
 	insertArgs = append(insertArgs, folderID)
 	_, err = tx.ExecContext(ctx, `WITH base AS (
 			SELECT m.id, m.account_id, m.date_received, m.has_attachments,
@@ -4284,7 +4336,13 @@ func (db *DB) RefreshFolderThreadsForMessages(ctx context.Context, folderID stri
 			FROM message_folder_state mfs
 			JOIN messages m ON mfs.message_id = m.id
 			WHERE mfs.folder_id = ? AND mfs.is_deleted = 0
-			  AND COALESCE(NULLIF(m.thread_id, ''), printf('msg:%d', m.id)) IN (`+threadPlaceholders+`)
+			  AND m.id IN (
+				SELECT m2.id FROM messages m2
+				WHERE m2.account_id = (SELECT account_id FROM folders WHERE id = ?)
+				  AND m2.thread_id IN (`+keyPlaceholders+`)
+				UNION
+				SELECT m3.id FROM messages m3
+				WHERE COALESCE(m3.thread_id, '') = '' AND m3.id IN (`+soloPlaceholders+`))
 		), grouped AS (
 			SELECT thread_key, MAX(row_key) AS row_key, COUNT(*) AS thread_count,
 			       MIN(is_read) AS thread_is_read, MAX(is_starred) AS thread_is_starred,
@@ -8118,6 +8176,26 @@ func (db *DB) RemoveExpungedUIDs(ctx context.Context, folderID string, expungedU
 		placeholders[i] = "?"
 		args[i+1] = uid
 	}
+	// Thread keys of the rows about to go, read before messages can be deleted.
+	var threadKeys []string
+	keyRows, err := tx.QueryContext(ctx, fmt.Sprintf(`
+		SELECT DISTINCT COALESCE(NULLIF(m.thread_id, ''), printf('msg:%%d', m.id))
+		FROM message_folder_state mfs JOIN messages m ON m.id = mfs.message_id
+		WHERE mfs.folder_id = ? AND mfs.remote_uid IN (%s)`, strings.Join(placeholders, ",")), args...)
+	if err != nil {
+		return 0, fmt.Errorf("collect expunged threads: %w", err)
+	}
+	for keyRows.Next() {
+		var key string
+		if err := keyRows.Scan(&key); err != nil {
+			keyRows.Close()
+			return 0, err
+		}
+		threadKeys = append(threadKeys, key)
+	}
+	if err := keyRows.Close(); err != nil {
+		return 0, err
+	}
 	confirmQuery := fmt.Sprintf(`
 		DELETE FROM message_mutations
 		WHERE kind = 'delete' AND status = 'applied' AND EXISTS (
@@ -8155,7 +8233,8 @@ func (db *DB) RemoveExpungedUIDs(ctx context.Context, folderID string, expungedU
 		return 0, fmt.Errorf("commit: %w", err)
 	}
 	if removed > 0 {
-		db.RefreshFolderUnreadCount(ctx, folderID)
+		_, _ = db.UpdateFolderUnreadCount(ctx, folderID)
+		_ = db.refreshFolderThreadKeys(ctx, folderID, threadKeys)
 	}
 
 	return int(removed), nil
@@ -8253,6 +8332,7 @@ func (db *DB) applyIMAPFlagUpdates(ctx context.Context, folderID string, expecte
 	defer stmt.Close()
 
 	changed := 0
+	var changedIDs []int64
 	for _, u := range updates {
 		var messageID int64
 		var isRead, isStarred int
@@ -8290,6 +8370,7 @@ func (db *DB) applyIMAPFlagUpdates(ctx context.Context, folderID string, expecte
 				continue
 			}
 			changed++
+			changedIDs = append(changedIDs, messageID)
 		}
 		if u.LabelsKnown && strings.TrimSpace(u.LabelProvider) != "" {
 			var accountID string
@@ -8324,7 +8405,7 @@ func (db *DB) applyIMAPFlagUpdates(ctx context.Context, folderID string, expecte
 		return 0, fmt.Errorf("commit: %w", err)
 	}
 	if changed > 0 {
-		db.RefreshFolderUnreadCount(ctx, folderID)
+		db.refreshFolderForMessages(ctx, folderID, changedIDs)
 	}
 
 	return changed, nil

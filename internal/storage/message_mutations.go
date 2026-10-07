@@ -157,8 +157,7 @@ func (db *DB) permanentlyDeleteMessagesAndQueue(ctx context.Context, messageIDs 
 		return err
 	}
 	for affectedFolderID := range refreshFolders {
-		_, _ = db.RefreshFolderUnreadCount(ctx, affectedFolderID)
-		_ = db.RefreshFolderThreadState(ctx, affectedFolderID)
+		db.refreshFolderForMessages(ctx, affectedFolderID, messageIDs)
 	}
 	return nil
 }
@@ -303,8 +302,7 @@ func (db *DB) moveMessagesAndQueue(ctx context.Context, messageIDs []int64, sour
 		return err
 	}
 	for folderID := range refreshFolders {
-		_, _ = db.RefreshFolderUnreadCount(ctx, folderID)
-		_ = db.RefreshFolderThreadState(ctx, folderID)
+		db.refreshFolderForMessages(ctx, folderID, messageIDs)
 	}
 	return nil
 }
@@ -436,9 +434,9 @@ func (db *DB) setMessageStateAndQueue(ctx context.Context, messageIDs []int64, k
 	}
 	for folderID := range folderSet {
 		if kind == MessageMutationRead {
-			_, _ = db.RefreshFolderUnreadCount(ctx, folderID)
+			db.refreshFolderForMessages(ctx, folderID, messageIDs)
 		} else {
-			_ = db.RefreshFolderThreadState(ctx, folderID)
+			_ = db.RefreshFolderThreadsForMessages(ctx, folderID, messageIDs)
 		}
 	}
 	return nil

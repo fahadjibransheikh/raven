@@ -1398,10 +1398,14 @@ func (o *SyncOrchestrator) fullFolderSync(ctx context.Context, client *imap.Clie
 		}
 	}
 
+	// Reconcile and flag refresh update counts and thread state themselves when
+	// they change something; only newly upserted mail needs a refresh here.
+	upserted := false
 	if highestUID > 0 {
 		var summary newMailSummary
 		result, err := client.SyncFolderIncremental(ctx, folder.ID, folder.RemoteID, highestUID, expectedUIDValidity, func(msgs []storage.SyncMessage) error {
 			summary.Add(msgs)
+			upserted = upserted || len(msgs) > 0
 			return o.db.UpsertSyncMessages(ctx, withFolderLabels(msgs, accountProvider, folder.RemoteID, folder.Role))
 		})
 		if err != nil {
@@ -1433,8 +1437,10 @@ func (o *SyncOrchestrator) fullFolderSync(ctx context.Context, client *imap.Clie
 		return o.resetFolderUIDStateAndSync(ctx, client, accountID, accountProvider, folder, expectedUIDValidity, currentValidity)
 	}
 
-	if _, err := o.db.RefreshFolderUnreadCount(ctx, folder.ID); err != nil {
-		return fmt.Errorf("refresh unread count %s/%s: %w", accountID, folder.RemoteID, err)
+	if upserted {
+		if _, err := o.db.RefreshFolderUnreadCount(ctx, folder.ID); err != nil {
+			return fmt.Errorf("refresh unread count %s/%s: %w", accountID, folder.RemoteID, err)
+		}
 	}
 
 	return nil
@@ -1512,9 +1518,6 @@ func (o *SyncOrchestrator) refreshFlags(ctx context.Context, client *imap.Client
 		return result.UIDValidity, false, fmt.Errorf("flags %s/%s: update: %w", accountID, folder.RemoteID, err)
 	} else if changedCount > 0 {
 		log.Printf("flags %s/%s: %d changed", accountID, folder.RemoteID, changedCount)
-		if _, err := o.db.RefreshFolderUnreadCount(ctx, folder.ID); err != nil {
-			return result.UIDValidity, false, fmt.Errorf("flags %s/%s: refresh unread count: %w", accountID, folder.RemoteID, err)
-		}
 	}
 	if result.UsedCondStore {
 		log.Printf("flags %s/%s: CONDSTORE advanced to %d", accountID, folder.RemoteID, result.HighestModSeq)
