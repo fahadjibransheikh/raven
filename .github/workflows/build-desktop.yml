@@ -6,10 +6,10 @@ on:
     tags:
       - "v*"
 
-# contents: write lets create-release/publish manage the release and push the
-# Homebrew cask bump, and lets tauri-action upload assets with GITHUB_TOKEN.
+# Read-only by default. Only the jobs that create/upload/publish the release or
+# push the Homebrew cask bump ask for contents: write themselves.
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   # Nothing is drafted or built until the Go and JS tests pass.
@@ -23,11 +23,15 @@ jobs:
     needs: test
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-22.04
+    permissions:
+      contents: write # creates the draft release
     outputs:
       release_id: ${{ steps.create.outputs.release_id }}
       version: ${{ steps.create.outputs.version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Create the draft release
         id: create
@@ -96,9 +100,13 @@ jobs:
             bundles: msi,nsis
 
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write # tauri-action uploads bundles and latest.json into the draft release
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Install Linux system dependencies
         if: runner.os == 'Linux'
@@ -113,8 +121,12 @@ jobs:
         with:
           go-version-file: go.mod
 
+      # rustup is preinstalled on every runner image; no third-party action needed.
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@89b12181fb390509a0842a86cc55eeb8eb928c1d # stable branch, no version tags
+        shell: bash
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
 
       - name: Cache Cargo
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
@@ -176,6 +188,9 @@ jobs:
         working-directory: tauri-wrapper/src-tauri
         run: cargo tauri icon icons/icon.png
 
+      # The signing key is exposed only to the two tauri-action steps below (step
+      # env, never job env), and no other third-party action in this job runs
+      # with it. tauri-action is the one third-party action that must see it.
       # On a tag: builds, signs the updater artifacts, uploads bundles + .sig
       # files into the draft release and merges this platform into latest.json.
       # On workflow_dispatch releaseId is empty, so it only builds. `app` in the
@@ -236,6 +251,8 @@ jobs:
     needs: [create-release, build]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-22.04
+    permissions:
+      contents: write # un-drafts the release and pushes the cask bump to master
     env:
       GH_TOKEN: ${{ github.token }}
       TAG: ${{ github.ref_name }}
