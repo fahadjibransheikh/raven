@@ -400,11 +400,26 @@ static UPDATE_DECLINED: Mutex<Option<(String, Instant)>> = Mutex::new(None);
 
 const RELEASES_URL: &str = "https://github.com/fahadjibransheikh/raven/releases/latest";
 
-/// Tauri's updater can only replace an AppImage on Linux (it swaps the file
-/// `$APPIMAGE` points at). A .deb/.rpm install is owned by the package
-/// manager, so there the user has to install the new package themselves.
+/// On Linux the updater can replace an AppImage (the file `$APPIMAGE` points
+/// at) or install the matching .deb/.rpm through the package manager, which
+/// asks for an admin password via pkexec. latest.json carries a
+/// `linux-x86_64-deb` and `-rpm` entry for each. Anything else (a bare binary,
+/// an unknown bundle) falls back to opening the releases page.
 fn can_self_update() -> bool {
-    !cfg!(target_os = "linux") || std::env::var_os("APPIMAGE").is_some()
+    if !cfg!(target_os = "linux") || std::env::var_os("APPIMAGE").is_some() {
+        return true;
+    }
+    use tauri::utils::config::BundleType;
+    matches!(
+        tauri::utils::platform::bundle_type(),
+        Some(BundleType::Deb) | Some(BundleType::Rpm)
+    )
+}
+
+/// A .deb/.rpm update goes through the package manager, which asks for an
+/// admin password; say so up front so the prompt isn't a surprise.
+fn update_needs_password() -> bool {
+    cfg!(target_os = "linux") && std::env::var_os("APPIMAGE").is_none()
 }
 
 /// Shows a message dialog without blocking the caller's thread: the blocking
@@ -500,8 +515,14 @@ async fn check_for_update_inner(app: AppHandle, user_initiated: bool) {
         &app,
         MessageDialogKind::Info,
         format!(
-            "Raven {} is available (you have {}). Install and restart now?",
-            update.version, update.current_version
+            "Raven {} is available (you have {}). Install and restart now?{}",
+            update.version,
+            update.current_version,
+            if update_needs_password() {
+                "\n\nYour system will ask for your password to install the package."
+            } else {
+                ""
+            }
         ),
         MessageDialogButtons::OkCancelCustom("Install and Restart".into(), "Later".into()),
     )
