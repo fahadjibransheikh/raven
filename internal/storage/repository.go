@@ -5428,7 +5428,6 @@ func (db *DB) getThreadMessages(ctx context.Context, accountID, threadID, userID
 		}
 		item.Preview = mailmessage.PreviewFromText(item.Preview)
 		item.From = contactFromSender(fromName, fromEmail)
-		db.hydrateContactAvatar(ctx, &item.From)
 		item.IsRead = isRead == 1
 		item.IsStarred = isStarred == 1
 		item.HasAttachment = hasAttach == 1
@@ -5454,6 +5453,14 @@ func (db *DB) getThreadMessages(ctx context.Context, accountID, threadID, userID
 		items = append(items, item)
 	}
 	if len(items) > 0 {
+		froms := make([]models.Contact, len(items))
+		for i := range items {
+			froms[i] = items[i].From
+		}
+		db.hydrateContactAvatars(ctx, froms)
+		for i := range items {
+			items[i].From = froms[i]
+		}
 		msgIDs := make([]int64, 0, len(items))
 		index := make(map[string]int, len(items))
 		for i, item := range items {
@@ -5469,13 +5476,15 @@ func (db *DB) getThreadMessages(ctx context.Context, accountID, threadID, userID
 				items[i].Labels = labels
 			}
 		}
+		toMap, _ := db.batchGetRecipients(ctx, msgIDs, "to")
+		ccMap, _ := db.batchGetRecipients(ctx, msgIDs, "cc")
 		for i, item := range items {
 			id, err := strconv.ParseInt(item.ID, 10, 64)
 			if err != nil {
 				continue
 			}
-			items[i].To, _ = db.getRecipients(ctx, id, "to")
-			items[i].CC, _ = db.getRecipients(ctx, id, "cc")
+			items[i].To = toMap[id]
+			items[i].CC = ccMap[id]
 			if item.HasAttachment {
 				items[i].Attachments, _ = db.GetAttachmentsInternal(ctx, id)
 			}
@@ -6317,7 +6326,8 @@ func (db *DB) batchGetRecipients(ctx context.Context, msgIDs []int64, kind strin
 	}
 	defer rows.Close()
 
-	result := make(map[int64][]models.Contact)
+	var owners []int64
+	var contacts []models.Contact
 	for rows.Next() {
 		var msgID int64
 		var c models.Contact
@@ -6326,8 +6336,16 @@ func (db *DB) batchGetRecipients(ctx context.Context, msgIDs []int64, kind strin
 		}
 		c.Initials = initials(c.Name)
 		c.AvatarHash = avatarresolver.GravatarHash(c.Email)
-		db.hydrateContactAvatar(ctx, &c)
-		result[msgID] = append(result[msgID], c)
+		owners = append(owners, msgID)
+		contacts = append(contacts, c)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	db.hydrateContactAvatars(ctx, contacts)
+	result := make(map[int64][]models.Contact)
+	for i, c := range contacts {
+		result[owners[i]] = append(result[owners[i]], c)
 	}
 	return result, nil
 }
@@ -6414,7 +6432,6 @@ func (db *DB) SearchMessages(ctx context.Context, userID string, query string, l
 		r.email.AccountColor = accountColor
 		r.email.Subject = subject
 		r.email.From = contactFromSender(fromName, fromEmail)
-		db.hydrateContactAvatar(ctx, &r.email.From)
 		r.email.Preview = mailmessage.PreviewFromText(snippet)
 		if r.email.Preview == "" || r.email.Preview == subject {
 			if preview := previewFromBodyPaths(nullStringValue(textPath), nullStringValue(htmlPath)); preview != "" {
@@ -6431,6 +6448,14 @@ func (db *DB) SearchMessages(ctx context.Context, userID string, query string, l
 	}
 
 	if len(items) > 0 {
+		froms := make([]models.Contact, len(items))
+		for i := range items {
+			froms[i] = items[i].email.From
+		}
+		db.hydrateContactAvatars(ctx, froms)
+		for i := range items {
+			items[i].email.From = froms[i]
+		}
 		msgIDs := make([]int64, len(items))
 		for i, r := range items {
 			msgIDs[i] = r.msgID
