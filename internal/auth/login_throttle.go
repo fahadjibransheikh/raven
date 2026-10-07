@@ -21,6 +21,7 @@ const (
 	totpManagementThrottleAction       = "local_totp_management"
 	recoveryCodeThrottleAction         = "local_recovery_code_login"
 	passwordResetRequestThrottleAction = "password_reset_request"
+	passwordChangeThrottleAction       = "local_password_change"
 	loginThrottleCleanupBatchSize      = 500
 	minimumBucketHashKeyBytes          = 32
 )
@@ -213,6 +214,10 @@ func (m *Manager) passkeyStepUpThrottleBuckets(userID, source string) ([]loginTh
 
 func (m *Manager) totpManagementThrottleBuckets(userID, source string) ([]loginThrottleBucket, error) {
 	return m.authenticationThrottleBuckets(totpManagementThrottleAction, strings.TrimSpace(userID), source)
+}
+
+func (m *Manager) passwordChangeThrottleBuckets(userID, source string) ([]loginThrottleBucket, error) {
+	return m.authenticationThrottleBuckets(passwordChangeThrottleAction, strings.TrimSpace(userID), source)
 }
 
 func (m *Manager) recoveryCodeThrottleBuckets(userID, source string) ([]loginThrottleBucket, error) {

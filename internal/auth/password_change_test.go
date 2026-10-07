@@ -2,6 +2,8 @@ package auth
 
 import (
 	"errors"
+	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -327,5 +329,45 @@ func TestChangePasswordRequiresActiveSessionWithLocalCredential(t *testing.T) {
 	})
 	if result != nil || !errors.Is(err, ErrCurrentPasswordInvalid) {
 		t.Fatalf("ChangePassword() = %#v, %v", result, err)
+	}
+}
+
+func TestChangePasswordThrottlesWrongCurrentPassword(t *testing.T) {
+	now := time.Date(2026, time.August, 5, 20, 0, 0, 0, time.UTC)
+	clock := &fixedClock{now: now}
+	ids := make([]string, 0, 64)
+	for i := 0; i < 64; i++ {
+		ids = append(ids, fmt.Sprintf("id-%d", i))
+	}
+	manager := newDeterministicManager(t, clock, &deterministicTokenGenerator{
+		ids: ids, tokens: []string{"current-session-token", "changed-session-token", "extra-token"},
+	})
+	insertPasswordLoginUser(t, manager, "person", "Person.Name", UserStatusActive, false, false, true, currentPasswordLoginHash(t), now.Add(-time.Hour))
+	current, err := manager.CreateAuthenticatedSession(t.Context(), "person", "browser", AuthenticationMethodPassword, AssuranceLevelSingleFactor)
+	if err != nil {
+		t.Fatal(err)
+	}
+	clock.now = now.Add(10 * time.Minute)
+	try := func(password string) error {
+		_, err := manager.ChangePassword(t.Context(), PasswordChangeOptions{
+			SessionToken: current.Token, CurrentPassword: password, NewPassword: changedPasswordTestValue, Source: "198.51.100.1",
+		})
+		return err
+	}
+	// Guesses below the threshold are plain invalid-password errors.
+	threshold := int(loginThrottlePolicies[loginThrottleBucketIdentifier].delayStartsAt)
+	for i := 0; i < threshold; i++ {
+		if err := try("wrong guess " + strconv.Itoa(i)); !errors.Is(err, ErrCurrentPasswordInvalid) {
+			t.Fatalf("guess %d error = %v, want ErrCurrentPasswordInvalid", i, err)
+		}
+	}
+	// Past it, even the correct password is refused until the delay passes.
+	var throttle *LoginThrottleError
+	if err := try(passwordLoginTestPassword); !errors.As(err, &throttle) {
+		t.Fatalf("correct password during throttle error = %v, want LoginThrottleError", err)
+	}
+	clock.now = clock.now.Add(throttle.RetryAfter + time.Second)
+	if err := try(passwordLoginTestPassword); err != nil {
+		t.Fatalf("correct password after delay error = %v", err)
 	}
 }

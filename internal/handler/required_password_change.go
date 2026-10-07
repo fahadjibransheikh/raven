@@ -57,10 +57,14 @@ func (h *Handler) handleRequiredPasswordChangeSubmit(w http.ResponseWriter, r *h
 	}
 	result, err := h.auth.ChangePassword(r.Context(), auth.PasswordChangeOptions{
 		SessionToken: auth.GetSessionToken(r), CurrentPassword: r.PostFormValue("current_password"),
-		NewPassword: r.PostFormValue("new_password"), UserAgent: r.UserAgent(),
+		NewPassword: r.PostFormValue("new_password"), UserAgent: r.UserAgent(), Source: loginSource(r),
 	})
 	if err != nil {
+		var throttleError *auth.LoginThrottleError
 		switch {
+		case errors.As(err, &throttleError):
+			setRetryAfter(w, throttleError.RetryAfter)
+			h.renderRequiredPasswordChange(w, r, http.StatusTooManyRequests, "Too many attempts. Please wait a moment and try again.")
 		case errors.Is(err, auth.ErrCurrentPasswordInvalid), errors.Is(err, auth.ErrPasswordUnchanged),
 			errors.Is(err, auth.ErrPasswordInvalid), errors.Is(err, auth.ErrPasswordTooShort),
 			errors.Is(err, auth.ErrPasswordTooLong), errors.Is(err, auth.ErrPasswordCommon):
