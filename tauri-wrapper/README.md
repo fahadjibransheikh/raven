@@ -9,7 +9,9 @@ browser tab. **It reimplements none of Gofer's UI.** On launch it:
    process is alive (a schema migration can take minutes). If the sidecar exits
    first, the window shows its last output and a "Try again" button.
 3. Points the one native window at that URL.
-4. Kills the Gofer process when you close the window / quit the app.
+4. Kills the Gofer process when you quit the app (tray Quit or Cmd+Q).
+   Closing the window only hides it to the tray; the Dock icon or the tray's
+   Show Raven brings it back.
 
 Gofer's port is read from this repo's `gofer/.env` (`GOFER_ADDR=127.0.0.1:8090`)
 at the time this was scaffolded. If you ever change `GOFER_ADDR`, update the

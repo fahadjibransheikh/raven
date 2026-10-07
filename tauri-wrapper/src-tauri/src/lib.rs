@@ -9,8 +9,9 @@
 //!   3. Point the one native window at http://127.0.0.1:<port>, so the user
 //!      gets Gofer's existing server-rendered UI inside a real macOS app
 //!      window (Dock icon, Cmd+Q, its own process) instead of a browser tab.
-//!   4. Kill the Gofer process when the window closes / the app quits, so
-//!      nothing is left running in the background.
+//!   4. Kill the Gofer process when the app quits (tray Quit or Cmd+Q), so
+//!      nothing is left running in the background. Closing the window only
+//!      hides it to the tray.
 //!
 //! Gofer's own HTML/HTMX frontend is loaded as plain remote content -- it
 //! never calls any Tauri API -- so there is intentionally no IPC/frontend
@@ -670,18 +671,26 @@ pub fn run() {
 
             Ok(())
         })
-        // Belt-and-suspenders: kill the sidecar as soon as the window is
-        // asked to close, in addition to the RunEvent::Exit handler below.
+        // Closing the window hides it; the tray icon (always built in setup)
+        // is how it comes back. Quit from the tray menu or Cmd+Q ends the app,
+        // and RunEvent::Exit below stops the sidecar.
         .on_window_event(|window, event| {
-            if let WindowEvent::CloseRequested { .. } = event {
-                kill_sidecar(window.app_handle());
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
+                let _ = window.hide();
             }
         })
         .build(tauri::generate_context!())
         .expect("error while building the Tauri application")
         .run(|app_handle, event| {
-            if let RunEvent::Exit = event {
-                kill_sidecar(app_handle);
+            match event {
+                RunEvent::Exit => kill_sidecar(app_handle),
+                // Dock icon clicked while the window is hidden.
+                #[cfg(target_os = "macos")]
+                RunEvent::Reopen { has_visible_windows, .. } if !has_visible_windows => {
+                    show_main_window(app_handle, false)
+                }
+                _ => {}
             }
         });
 }
