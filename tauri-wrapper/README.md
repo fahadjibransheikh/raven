@@ -9,9 +9,9 @@ browser tab. **It reimplements none of Gofer's UI.** On launch it:
    process is alive (a schema migration can take minutes). If the sidecar exits
    first, the window shows its last output and a "Try again" button.
 3. Points the one native window at that URL.
-4. Kills the Gofer process when you quit the app (tray Quit or Cmd+Q).
-   Closing the window only hides it to the tray; the Dock icon or the tray's
-   Show Raven brings it back.
+4. Kills the Gofer process when you quit the app (Quit or Cmd+Q).
+   Closing the window only hides it; the Dock icon (macOS) or the tray's
+   Show Raven (Windows, Linux) brings it back.
 
 Gofer's port is read from this repo's `gofer/.env` (`GOFER_ADDR=127.0.0.1:8090`)
 at the time this was scaffolded. If you ever change `GOFER_ADDR`, update the
@@ -125,12 +125,15 @@ a browser tab can't give you:
   `lib.rs` reads that prefix back out and calls `set_badge_count` on the
   window, so the count shows up on the Dock icon (macOS) / taskbar (Windows,
   Linux). Clears itself when the count is 0.
-- **Tray icon.** A menu bar / system tray icon with "Show Raven", "Compose",
-  "Check for Updates...", and "Quit". "Show" brings the window to the front; "Compose" does the same
-  and then calls Gofer's own `openNewCompose()` JS function; "Quit" exits the
-  app (which also kills the Gofer sidecar, same as closing the window).
+- **Menus.** On macOS there is no menu bar icon: "Check for Updates..." sits in
+  the Raven app menu and "Compose" in the File menu. On Windows and Linux,
+  which have no Dock to bring a hidden window back, a system tray icon offers
+  "Show Raven", "Compose", "Check for Updates...", and "Quit". "Show" brings
+  the window to the front; "Compose" does the same and then calls Gofer's own
+  `openNewCompose()` JS function; "Quit" exits the app (which also kills the
+  Gofer sidecar).
 - **Global shortcut.** `Cmd/Ctrl+Shift+M` opens the composer from anywhere,
-  even when Raven isn't focused -- same behavior as the tray's "Compose".
+  even when Raven isn't focused -- same behavior as the "Compose" menu item.
 
 ## Releasing
 
@@ -155,11 +158,11 @@ into every build.
 ## Updates
 
 Raven checks GitHub Releases (`releases/latest/download/latest.json`) on launch
-and offers to install a newer version; the tray item "Check for Updates..."
+and offers to install a newer version; the "Check for Updates..." menu item
 does the same on demand and also reports "up to date" or errors. Installing
 stops the bundled Gofer, replaces the app, and relaunches. On Linux only the
 AppImage can update itself; for .deb/.rpm the launch check is skipped and the
-tray item opens the releases page instead.
+menu item opens the releases page instead.
 
 ## Homebrew
 

@@ -18,8 +18,8 @@ It's built with Go, templ views, HTMX-style interactions, and SQLite storage. It
 ## what Raven adds
 
 - **Raven branding:** name, logo, and app manifest.
-- **Desktop app:** a Tauri wrapper in [`tauri-wrapper/`](./tauri-wrapper) that runs the server in its own native window on macOS, Windows, and Linux. It adds an unread count on the Dock/taskbar icon, a tray menu, a global compose shortcut (`Cmd/Ctrl+Shift+M`), links that open in your browser, and a window that reopens at the size and position you left it.
-- **Automatic updates:** the desktop app checks for new versions on launch and from the tray menu (**Check for Updates…**), and installs them after asking.
+- **Desktop app:** a Tauri wrapper in [`tauri-wrapper/`](./tauri-wrapper) that runs the server in its own native window on macOS, Windows, and Linux. It adds an unread count on the Dock/taskbar icon, Compose and Check for Updates in the macOS menu bar (a tray menu on Windows and Linux), a global compose shortcut (`Cmd/Ctrl+Shift+M`), links that open in your browser, and a window that reopens at the size and position you left it.
+- **Automatic updates:** the desktop app checks for new versions on launch and from **Check for Updates…** (in the Raven menu on macOS, the tray menu on Windows and Linux), and installs them after asking.
 - **Releases and Homebrew:** pushing a version tag builds and publishes a GitHub release for all three platforms and updates the Homebrew cask.
 
 ## features

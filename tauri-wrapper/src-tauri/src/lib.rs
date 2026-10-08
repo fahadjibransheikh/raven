@@ -9,9 +9,9 @@
 //!   3. Point the one native window at http://127.0.0.1:<port>, so the user
 //!      gets Gofer's existing server-rendered UI inside a real macOS app
 //!      window (Dock icon, Cmd+Q, its own process) instead of a browser tab.
-//!   4. Kill the Gofer process when the app quits (tray Quit or Cmd+Q), so
-//!      nothing is left running in the background. Closing the window only
-//!      hides it to the tray.
+//!   4. Kill the Gofer process when the app quits (Quit menu item or Cmd+Q),
+//!      so nothing is left running in the background. Closing the window only
+//!      hides it (to the Dock on macOS, the tray elsewhere).
 //!
 //! Gofer's own HTML/HTMX frontend is loaded as plain remote content -- it
 //! never calls any Tauri API -- so there is intentionally no IPC/frontend
@@ -27,7 +27,6 @@ use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
-use tauri::tray::TrayIconBuilder;
 use tauri::{AppHandle, Manager, RunEvent, WindowEvent};
 use tauri_plugin_deep_link::DeepLinkExt;
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
@@ -450,7 +449,7 @@ async fn check_latest(
 
 /// Checks GitHub Releases for a newer Raven and, if the user agrees,
 /// downloads it, stops the sidecar, installs, and relaunches. `user_initiated`
-/// is true for the tray item (report every outcome) and false for the launch
+/// is true for the menu item (report every outcome) and false for the launch
 /// check (stay silent unless there is an update, so offline launches are quiet).
 async fn check_for_update(app: AppHandle, user_initiated: bool) {
     if UPDATE_CHECK_RUNNING.swap(true, Ordering::SeqCst) {
@@ -596,7 +595,7 @@ fn open_mailto(app: &AppHandle, urls: Vec<tauri::Url>) {
     }
 }
 
-/// Shared by the tray "Show"/"Compose" items and the global shortcut: bring
+/// Shared by the "Show"/"Compose" menu items and the global shortcut: bring
 /// the main window to the front, and optionally trigger Gofer's own compose
 /// UI via its existing top-level `openNewCompose()` JS function (the page
 /// never calls Tauri IPC, so this is the only way in from the native side).
@@ -610,6 +609,19 @@ fn show_main_window(app_handle: &AppHandle, open_compose: bool) {
     let _ = window.set_focus();
     if open_compose {
         let _ = window.eval("typeof openNewCompose==='function'&&openNewCompose()");
+    }
+}
+
+/// Shared by the macOS menu bar menus and the Windows/Linux tray menu.
+fn handle_menu_event(app: &AppHandle, id: &str) {
+    match id {
+        "show" => show_main_window(app, false),
+        "compose" => show_main_window(app, true),
+        "check_updates" => {
+            tauri::async_runtime::spawn(check_for_update(app.clone(), true));
+        }
+        "quit" => app.exit(0),
+        _ => {}
     }
 }
 
@@ -726,41 +738,73 @@ pub fn run() {
                 })
                 .build()?;
 
-            let show_item = MenuItem::with_id(app, "show", "Show Raven", true, None::<&str>)?;
-            let compose_item = MenuItem::with_id(app, "compose", "Compose", true, None::<&str>)?;
-            let updates_item = MenuItem::with_id(
-                app,
-                "check_updates",
-                "Check for Updates\u{2026}",
-                true,
-                None::<&str>,
-            )?;
-            let quit_item = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-            let tray_menu = Menu::with_items(
-                app,
-                &[
-                    &show_item,
-                    &compose_item,
-                    &updates_item,
-                    &PredefinedMenuItem::separator(app)?,
-                    &quit_item,
-                ],
-            )?;
-            TrayIconBuilder::new()
-                .icon(app.default_window_icon().cloned().expect(
-                    "default window icon missing -- check tauri.conf.json bundle.icon",
-                ))
-                .menu(&tray_menu)
-                .on_menu_event(|app, event| match event.id.as_ref() {
-                    "show" => show_main_window(app, false),
-                    "compose" => show_main_window(app, true),
-                    "check_updates" => {
-                        tauri::async_runtime::spawn(check_for_update(app.clone(), true));
-                    }
-                    "quit" => app.exit(0),
-                    _ => {}
-                })
-                .build(app)?;
+            // macOS: no menu bar icon. Compose and Check for Updates live in
+            // the app's own menu bar menus; the Dock icon brings the window
+            // back (RunEvent::Reopen below) and Quit is already in the app menu.
+            #[cfg(target_os = "macos")]
+            {
+                let menu = Menu::default(&app_handle)?;
+                let items = menu.items()?;
+                if let Some(app_menu) = items.first().and_then(|item| item.as_submenu()) {
+                    app_menu.insert_items(
+                        &[
+                            &MenuItem::with_id(
+                                app,
+                                "check_updates",
+                                "Check for Updates\u{2026}",
+                                true,
+                                None::<&str>,
+                            )?,
+                            &PredefinedMenuItem::separator(app)?,
+                        ],
+                        2, // after About and its separator
+                    )?;
+                }
+                if let Some(file_menu) = items.get(1).and_then(|item| item.as_submenu()) {
+                    file_menu.insert_items(
+                        &[
+                            &MenuItem::with_id(app, "compose", "Compose", true, None::<&str>)?,
+                            &PredefinedMenuItem::separator(app)?,
+                        ],
+                        0,
+                    )?;
+                }
+                app.set_menu(menu)?;
+                app.on_menu_event(|app, event| handle_menu_event(app, event.id.as_ref()));
+            }
+
+            // Windows/Linux have no Dock, so the tray is how a hidden window
+            // comes back.
+            #[cfg(not(target_os = "macos"))]
+            {
+                let show_item = MenuItem::with_id(app, "show", "Show Raven", true, None::<&str>)?;
+                let compose_item = MenuItem::with_id(app, "compose", "Compose", true, None::<&str>)?;
+                let updates_item = MenuItem::with_id(
+                    app,
+                    "check_updates",
+                    "Check for Updates\u{2026}",
+                    true,
+                    None::<&str>,
+                )?;
+                let quit_item = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+                let tray_menu = Menu::with_items(
+                    app,
+                    &[
+                        &show_item,
+                        &compose_item,
+                        &updates_item,
+                        &PredefinedMenuItem::separator(app)?,
+                        &quit_item,
+                    ],
+                )?;
+                tauri::tray::TrayIconBuilder::new()
+                    .icon(app.default_window_icon().cloned().expect(
+                        "default window icon missing -- check tauri.conf.json bundle.icon",
+                    ))
+                    .menu(&tray_menu)
+                    .on_menu_event(|app, event| handle_menu_event(app, event.id.as_ref()))
+                    .build(app)?;
+            }
 
             let app_for_updates = app_handle.clone();
             tauri::async_runtime::spawn(check_for_update(app_handle.clone(), false));
@@ -782,8 +826,8 @@ pub fn run() {
 
             Ok(())
         })
-        // Closing the window hides it; the tray icon (always built in setup)
-        // is how it comes back. Quit from the tray menu or Cmd+Q ends the app,
+        // Closing the window hides it; the Dock icon (macOS) or the tray icon
+        // (Windows/Linux) brings it back. Quit from the menu or Cmd+Q ends the app,
         // and RunEvent::Exit below stops the sidecar.
         .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { api, .. } = event {

@@ -63,7 +63,7 @@ jobs:
 
           The macOS app is not signed or notarized yet. If macOS says it can't verify Raven, open System Settings → Privacy & Security and click **Open Anyway**. (The Homebrew install doesn't need this.)
 
-          Installed copies update themselves: Raven checks for new versions on launch, and the tray menu has **Check for Updates…**. On Linux this applies to the AppImage; for .deb/.rpm, install the new package.
+          Installed copies update themselves: Raven checks for new versions on launch, and **Check for Updates…** is in the Raven menu on macOS and the tray menu on Windows and Linux. On Linux this applies to the AppImage; for .deb/.rpm, install the new package.
 
           ## Changes
 
