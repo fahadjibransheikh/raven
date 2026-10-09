@@ -35,12 +35,12 @@ for target in "${targets[@]}"; do
     archive_ext="zip"
   fi
 
-  name="gofer-${VERSION}-${goos}-${goarch}"
+  name="raven-server-${VERSION}-${goos}-${goarch}"
   package_dir="$DIST/$name"
   mkdir -p "$package_dir"
 
   echo "==> Building $goos/$goarch"
-  GOOS="$goos" GOARCH="$goarch" go build -tags embedded_assets -trimpath -o "$package_dir/gofer$ext" .
+  GOOS="$goos" GOARCH="$goarch" go build -tags embedded_assets -trimpath -o "$package_dir/raven-server$ext" .
   cp README.md LICENSE "$package_dir/"
 
   echo "==> Packaging $name.$archive_ext"

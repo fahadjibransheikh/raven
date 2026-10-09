@@ -135,7 +135,7 @@ func TestCLIHelpAndUsageDoNotOpenOrCreateDatabase(t *testing.T) {
 			if code := Run(t.Context(), test.args, missingPath, &stdout, &stderr); code != test.wantCode {
 				t.Fatalf("Run(%v) code = %d, want %d", test.args, code, test.wantCode)
 			}
-			if test.wantStdout != (stdout.Len() > 0) || !strings.Contains(stdout.String()+stderr.String(), "gofer auth status") {
+			if test.wantStdout != (stdout.Len() > 0) || !strings.Contains(stdout.String()+stderr.String(), "raven-server auth status") {
 				t.Fatalf("Run(%v) output = stdout:%q stderr:%q", test.args, stdout.String(), stderr.String())
 			}
 		})
@@ -174,7 +174,7 @@ func TestRecoverRequiresExactConfirmationBeforeOpeningDatabase(t *testing.T) {
 		if code := Run(t.Context(), args, databasePath, &stdout, &stderr); code != 2 {
 			t.Fatalf("Run(%v) code = %d, stderr=%q", args, code, stderr.String())
 		}
-		if stdout.Len() != 0 || !strings.Contains(stderr.String(), "gofer auth recover") {
+		if stdout.Len() != 0 || !strings.Contains(stderr.String(), "raven-server auth recover") {
 			t.Fatalf("Run(%v) output = stdout:%q stderr:%q", args, stdout.String(), stderr.String())
 		}
 	}
@@ -304,7 +304,7 @@ func TestSessionRevocationRequiresExactConfirmationBeforeOpeningDatabase(t *test
 		if code := Run(t.Context(), args, databasePath, &stdout, &stderr); code != 2 {
 			t.Fatalf("Run(%v) code = %d, stderr=%q", args, code, stderr.String())
 		}
-		if stdout.Len() != 0 || !strings.Contains(stderr.String(), "gofer auth sessions revoke") {
+		if stdout.Len() != 0 || !strings.Contains(stderr.String(), "raven-server auth sessions revoke") {
 			t.Fatalf("Run(%v) output = stdout:%q stderr:%q", args, stdout.String(), stderr.String())
 		}
 	}

@@ -13,11 +13,11 @@ import (
 )
 
 const usage = `Usage:
-  gofer auth status
-  gofer auth users list
-  gofer auth setup-token rotate
-  gofer auth recover --user <user-id> --confirm <user-id>
-  gofer auth sessions revoke --user <user-id> --confirm <user-id>
+  raven-server auth status
+  raven-server auth users list
+  raven-server auth setup-token rotate
+  raven-server auth recover --user <user-id> --confirm <user-id>
+  raven-server auth sessions revoke --user <user-id> --confirm <user-id>
 `
 
 func Run(ctx context.Context, args []string, databasePath string, stdout, stderr io.Writer) int {

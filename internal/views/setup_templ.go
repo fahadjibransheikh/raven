@@ -306,7 +306,7 @@ func SetupOwnerPage(data SetupOwnerData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</p><p class=\"mt-3 text-sm text-muted-foreground\">Stop Raven, run <code class=\"font-mono\">gofer auth users list</code> locally, and resolve duplicate or excessive user records before rotating the setup token and trying again. Raven will not guess an owner or merge records.</p></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</p><p class=\"mt-3 text-sm text-muted-foreground\">Stop Raven, run <code class=\"font-mono\">raven-server auth users list</code> locally, and resolve duplicate or excessive user records before rotating the setup token and trying again. Raven will not guess an owner or merge records.</p></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
