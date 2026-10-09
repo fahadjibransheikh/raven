@@ -28,9 +28,9 @@
     if (!reg) return []
     var inPlay = reg.hasMailInPlay()
     return reg.list().filter(function (sc) {
-      return sc.palette && (!sc.needsMessage || inPlay)
+      return sc.palette && (!sc.needsMessage || inPlay) && (!sc.when || sc.when())
     }).map(function (sc) {
-      var k = sc.keys[0]
+      var k = sc.keys[0] || ""
       return { group: sc.group === "Message" ? "Message actions" : "App", label: sc.label, hint: k.length === 1 ? k.toUpperCase() : k, run: sc.run }
     })
   }

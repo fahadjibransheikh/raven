@@ -1818,7 +1818,11 @@ document.addEventListener("DOMContentLoaded", function () {
       { id: "delete", label: "Delete", group: "Message", palette: true, needsMessage: true, match: ["delete", "#"], keys: ["#", "Del"], run: function () { if (requireKeyboardMailSelection()) performMailSelectionAction("delete") } },
       { id: "star", label: "Star / unstar", group: "Message", palette: true, needsMessage: true, match: ["s"], keys: ["s"], run: function () { if (requireKeyboardMailSelection()) performMailSelectionAction("star") } },
       { id: "move", label: "Move to\u2026", group: "Message", palette: true, needsMessage: true, match: ["v"], keys: ["v"], run: function () { if (requireKeyboardMailSelection()) performMailSelectionAction("move") } },
+      { id: "label", label: "Label\u2026", group: "Message", palette: true, needsMessage: true, match: ["l"], keys: ["l"], run: labelKeyboardSelectedMail },
       { id: "read", label: "Mark read / unread", group: "Message", palette: true, needsMessage: true, match: ["u"], keys: ["u"], run: toggleKeyboardSelectedRead },
+      { id: "unsubscribe", label: "Unsubscribe", group: "Message", palette: true, match: [], keys: [],
+        when: function () { return !!document.querySelector("[data-unsubscribe-id]") },
+        run: function () { if (typeof unsubscribeFromMessage === "function") unsubscribeFromMessage() } },
       { id: "clear", label: "Clear selection", group: "Navigation", match: ["escape"], keys: ["Esc"],
         when: function () { return !!document.getElementById("mail-shortcut-help") || selectedMailIds.size > 0 || !!selectedMailIdForKeyboard() },
         run: function () { if (!closeShortcutHelp()) clearKeyboardMailSelection() } },
@@ -2009,6 +2013,14 @@ document.addEventListener("DOMContentLoaded", function () {
       if (typeof input.select === "function") input.select()
     }
 
+    function labelKeyboardSelectedMail() {
+      if (!requireKeyboardMailSelection()) return
+      var id = selectedMailIdForKeyboard()
+      if (!id) return
+      var row = mailRowById(id)
+      promptLabelMessage(id, !!(row && row.dataset.hasThread === "true"))
+    }
+
     function toggleKeyboardSelectedRead() {
       if (!requireKeyboardMailSelection()) return
       var id = selectedMailIdForKeyboard()
@@ -2030,7 +2042,7 @@ document.addEventListener("DOMContentLoaded", function () {
     function shortcutHelpHTML() {
       var groups = ["Navigation", "Message", "Compose", "App"]
       var rows = groups.map(function (group) {
-        return MAIL_SHORTCUTS.filter(function (s) { return s.group === group }).map(function (s) {
+        return MAIL_SHORTCUTS.filter(function (s) { return s.group === group && s.keys.length }).map(function (s) {
           return shortcutHelpRow(s.keys, s.label)
         }).join('')
       }).join('')
@@ -11615,6 +11627,37 @@ function promptLabelMessage(emailId, thread) {
   goferPrompt("Add label", "Label name", { placeholder: "Label name", confirmLabel: "Add label" }).then(function (labelName) {
     labelName = String(labelName == null ? "" : labelName).trim()
     if (labelName) addLabelToMessage(emailId, labelName, thread)
+  })
+}
+
+// Unsubscribe button in the reader reply bar (data-unsubscribe-* set by MailViewReplyBar).
+// One-click and mailto are done by the server; a plain link comes back as action "open".
+function unsubscribeFromMessage(btn) {
+  btn = btn || document.querySelector("[data-unsubscribe-id]")
+  if (!btn || btn.disabled) return
+  var id = btn.dataset.unsubscribeId
+  var sender = btn.dataset.unsubscribeSender || "this sender"
+  var method = btn.dataset.unsubscribeMethod
+  var detail = method === "one-click" ? "Raven will send the unsubscribe request."
+    : method === "mailto" ? "Raven will email " + (btn.dataset.unsubscribeTarget || "the sender") + " to unsubscribe."
+    : "Opens the sender's unsubscribe page in your browser."
+  goferConfirm("Unsubscribe from " + sender + "?", detail, "Unsubscribe").then(function (ok) {
+    if (!ok) return
+    btn.disabled = true
+    fetch("/api/messages/" + encodeURIComponent(id) + "/unsubscribe", { method: "POST" })
+      .then(function (response) {
+        if (!response.ok) return response.text().then(function (text) { throw new Error(text.trim() || "HTTP " + response.status) })
+        return response.json()
+      })
+      .then(function (result) {
+        if (result.action === "open") {
+          window.open(result.url, "_blank", "noopener,noreferrer")
+          return
+        }
+        showGoferToast({ id: "mail-unsubscribe", title: "Unsubscribed from " + sender, variant: "success", icon: "success", position: "bottom-right", duration: 5000, dismissible: true })
+      })
+      .catch(function (err) { showMailActionError("Could not unsubscribe", err && err.message) })
+      .then(function () { btn.disabled = false })
   })
 }
 

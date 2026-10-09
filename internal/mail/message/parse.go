@@ -25,22 +25,25 @@ var (
 )
 
 type ParsedMessage struct {
-	MessageID   string
-	InReplyTo   string
-	References  string
-	Subject     string
-	FromName    string
-	FromEmail   string
-	To          []Recipient
-	CC          []Recipient
-	DateSent    time.Time
-	TextBody    string
-	HTMLBody    []byte
-	Snippet     string
-	Attachments []AttachmentMeta
-	Size        int64
-	ParseError  error
-	RawPath     string
+	MessageID  string
+	InReplyTo  string
+	References string
+	// Raw List-Unsubscribe / List-Unsubscribe-Post values (parsed by ParseListUnsubscribe).
+	ListUnsubscribe     string
+	ListUnsubscribePost string
+	Subject             string
+	FromName            string
+	FromEmail           string
+	To                  []Recipient
+	CC                  []Recipient
+	DateSent            time.Time
+	TextBody            string
+	HTMLBody            []byte
+	Snippet             string
+	Attachments         []AttachmentMeta
+	Size                int64
+	ParseError          error
+	RawPath             string
 }
 
 type Recipient struct {
@@ -93,6 +96,10 @@ func ParseMessage(ctx context.Context, r io.Reader, blobStore *store.BlobStore, 
 		parsed.InReplyTo = ids[0]
 	}
 	parsed.References = header.Get("References")
+	if v := header.Get("List-Unsubscribe"); len(v) <= 4096 {
+		parsed.ListUnsubscribe = v
+		parsed.ListUnsubscribePost = header.Get("List-Unsubscribe-Post")
+	}
 
 	if date, err := header.Date(); err == nil {
 		parsed.DateSent = date

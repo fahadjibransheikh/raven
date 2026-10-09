@@ -5578,11 +5578,14 @@ func (db *DB) getEmailByID(ctx context.Context, id, userID string) (*models.Emai
 		threadID             sql.NullString
 		inReplyTo            string
 		references           string
+		listUnsubscribe      string
+		listUnsubscribePost  string
 	)
 
 	query := `SELECT m.id, m.account_id, a.color, m.subject, m.from_name, m.from_email,
 		        m.date_received, m.snippet, m.has_attachments,
-		        m.body_text_path, m.body_html_path, m.body_html_original_path, m.internet_message_id, m.thread_id, m.in_reply_to, m."references"
+		        m.body_text_path, m.body_html_path, m.body_html_original_path, m.internet_message_id, m.thread_id, m.in_reply_to, m."references",
+		        m.list_unsubscribe, m.list_unsubscribe_post
 		 FROM messages m
 		 JOIN accounts a ON m.account_id = a.id
 		 WHERE m.id = ?`
@@ -5592,7 +5595,7 @@ func (db *DB) getEmailByID(ctx context.Context, id, userID string) (*models.Emai
 		args = append(args, userID)
 	}
 	err = db.Read().QueryRowContext(ctx, query, args...).
-		Scan(&msgID, &accountID, &accountColor, &subject, &fromName, &fromEmail, &dateReceived, &snippet, &hasAttach, &bodyTextPath, &bodyHTMLPath, &bodyHTMLOriginalPath, &internetMessageID, &threadID, &inReplyTo, &references)
+		Scan(&msgID, &accountID, &accountColor, &subject, &fromName, &fromEmail, &dateReceived, &snippet, &hasAttach, &bodyTextPath, &bodyHTMLPath, &bodyHTMLOriginalPath, &internetMessageID, &threadID, &inReplyTo, &references, &listUnsubscribe, &listUnsubscribePost)
 
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -5617,6 +5620,8 @@ func (db *DB) getEmailByID(ctx context.Context, id, userID string) (*models.Emai
 	}
 	email.InReplyTo = inReplyTo
 	email.References = references
+	email.ListUnsubscribe = listUnsubscribe
+	email.ListUnsubscribePost = listUnsubscribePost
 
 	if bodyHTMLPath.Valid && bodyHTMLPath.String != "" {
 		if data, err := os.ReadFile(bodyHTMLPath.String); err == nil {
@@ -6813,6 +6818,15 @@ func (db *DB) UpdateMessageHeaders(ctx context.Context, messageID int64, subject
 		return err
 	}
 	return db.ReindexMessageSearch(ctx, messageID)
+}
+
+// UpdateMessageListUnsubscribeInternal stores the raw List-Unsubscribe headers captured
+// when the body was parsed.
+func (db *DB) UpdateMessageListUnsubscribeInternal(ctx context.Context, messageID int64, listUnsubscribe, post string) error {
+	_, err := db.Write().ExecContext(ctx,
+		`UPDATE messages SET list_unsubscribe = ?, list_unsubscribe_post = ? WHERE id = ?`,
+		listUnsubscribe, post, messageID)
+	return err
 }
 
 func (db *DB) UpdateMessageThreadHeadersInternal(ctx context.Context, messageID int64, accountID, inReplyTo, refs, subject string) error {

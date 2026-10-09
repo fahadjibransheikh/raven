@@ -119,8 +119,8 @@ func TestMigrateV101ToV102ResetsOnlyTheV101DefaultMailCardLayout(t *testing.T) {
 	}
 	var version int
 	_ = db.Read().QueryRowContext(ctx, `SELECT MAX(version) FROM schema_version`).Scan(&version)
-	if version != 104 {
-		t.Errorf("version = %d, want 104", version)
+	if version != 105 {
+		t.Errorf("version = %d, want 105", version)
 	}
 }
 

@@ -8,6 +8,7 @@ var shortcutKeys = map[string]string{
 	"delete":    "#",
 	"star":      "S",
 	"move":      "V",
+	"label":     "L",
 	"read":      "U",
 	"reply":     "R",
 	"reply-all": "A",

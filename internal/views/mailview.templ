@@ -3,6 +3,7 @@ package views
 import (
 	"fmt"
 	"strings"
+	mailmessage "github.com/cristianadrielbraun/gofer/internal/mail/message"
 	"github.com/cristianadrielbraun/gofer/internal/models"
 
 	"github.com/cristianadrielbraun/gofer/components/button"
@@ -710,6 +711,9 @@ templ MailViewHeader(email *models.Email) {
 						<span class="flex items-center gap-2">
 							@icon.Tag(icon.Props{Class: "size-4"})
 							Add label
+							<span class="ml-auto pl-4">
+								@ShortcutKbd("label")
+							</span>
 						</span>
 					}
 					@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"onclick": fmt.Sprintf("performMailAction('move', ['%s'], { keepSelection: true })", email.ID)}}) {
@@ -970,6 +974,22 @@ templ MailViewReplyBar(email *models.Email) {
 			<button type="button" class="mail-view-reply-input" onclick={ templ.JSFuncCall("handleReply", templ.JSExpression("this"), replyBarInputMode(email)) }>
 				{ replyBarInputLabel(email) }
 			</button>
+			if method, target := unsubscribeAction(email); method != "" {
+				@button.Button(button.Props{
+					Variant: button.VariantOutline,
+					Class:   "h-9 shrink-0 gap-1.5 px-3 border-input bg-background text-foreground hover:bg-row-hover",
+					Attributes: templ.Attributes{
+						"onclick":                 "unsubscribeFromMessage(this)",
+						"data-unsubscribe-id":     email.ID,
+						"data-unsubscribe-method": method,
+						"data-unsubscribe-target": target,
+						"data-unsubscribe-sender": contactDisplay(email.From),
+					},
+				}) {
+					@icon.MailX(icon.Props{Class: "size-4"})
+					<span class="text-sm">Unsubscribe</span>
+				}
+			}
 			@button.Button(button.Props{
 				Variant:    button.VariantOutline,
 				Class:      "h-9 shrink-0 gap-1.5 px-3 border-input bg-background text-foreground hover:bg-row-hover",
@@ -1025,6 +1045,24 @@ templ MailViewReplyBar(email *models.Email) {
 			<span>All commands <kbd class="kbd hint-mac">&#8984;K</kbd><kbd class="kbd hint-other">Ctrl K</kbd></span>
 		</div>
 	</div>
+}
+
+// unsubscribeAction is how the reply bar's Unsubscribe button works for this message
+// ("" = no button) and, for mailto, the address the request goes to.
+func unsubscribeAction(email *models.Email) (method, target string) {
+	u := mailmessage.ParseListUnsubscribe(email.ListUnsubscribe, email.ListUnsubscribePost)
+	method = u.Method()
+	if method == mailmessage.UnsubscribeMailto {
+		if to, _, _, ok := mailmessage.MailtoRequest(u.Mailto); ok {
+			target = to.Address
+		} else {
+			method = "" // unusable mailto: nothing to offer unless https exists
+			if u.HTTPS != "" {
+				method = mailmessage.UnsubscribeBrowser
+			}
+		}
+	}
+	return method, target
 }
 
 // replyBarInputMode is the action behind the wide "Reply..." field: reply-all when

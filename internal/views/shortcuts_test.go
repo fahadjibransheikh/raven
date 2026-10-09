@@ -23,7 +23,7 @@ func TestReaderToolbarShowsKeyChipsAndKeyedTooltips(t *testing.T) {
 	for _, m := range chipRE.FindAllStringSubmatch(out, -1) {
 		chips[m[1]] = m[2]
 	}
-	for _, id := range []string{"archive", "move"} {
+	for _, id := range []string{"archive", "move", "label"} {
 		if chips[id] != shortcutKeys[id] || chips[id] == "" {
 			t.Errorf("chip %q = %q, want %q", id, chips[id], shortcutKeys[id])
 		}

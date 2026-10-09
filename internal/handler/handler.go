@@ -89,6 +89,7 @@ type Handler struct {
 	messageMutationIMAPFactory messageMutationIMAPClientFactory
 	folderReadIMAPFactory      func(context.Context, *models.AccountConfig, string) (folderReadIMAPClient, error)
 	remoteResourceDownloader   func(string) ([]byte, error)
+	unsubscribeClient          *http.Client // nil = SSRF-guarded production client; tests inject
 	providerAvatarHTTPClient   *http.Client
 	retentionMu                sync.RWMutex
 	retentionState             models.MailRetentionDiagnostics
@@ -576,6 +577,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/messages/{id}/unlabel", h.handleUnlabelMessage)
 	mux.HandleFunc("POST /api/messages/{id}/move", h.handleMoveMessage)
 	mux.HandleFunc("POST /api/messages/{id}/refetch", h.handleRefetchBody)
+	mux.HandleFunc("POST /api/messages/{id}/unsubscribe", h.handleUnsubscribeMessage)
 	mux.HandleFunc("POST /api/messages/{id}/translate", h.handleTranslateMessage)
 	mux.HandleFunc("POST /api/remote-content/{id}/allow", h.handleAllowRemoteContent)
 	mux.HandleFunc("GET /api/remote-assets/{messageID}/{filename}", h.handleRemoteAsset)
@@ -1224,7 +1226,7 @@ func (h *Handler) handleExportContacts(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "failed to export contacts", http.StatusInternalServerError)
 		return
 	}
-	serveVCard(w, "gofer-contacts.vcf", contacts)
+	serveVCard(w, "raven-contacts.vcf", contacts)
 }
 
 func (h *Handler) handleExportContact(w http.ResponseWriter, r *http.Request) {
@@ -1912,6 +1914,9 @@ func (h *Handler) storeParsedBody(ctx context.Context, parsed *message.ParsedMes
 
 	h.db.UpdateMessageHeaders(ctx, msgID, parsed.Subject, parsed.FromName, parsed.FromEmail, snippet)
 	h.db.UpdateMessageThreadHeadersInternal(ctx, msgID, accountID, parsed.InReplyTo, parsed.References, parsed.Subject)
+	if parsed.ListUnsubscribe != "" {
+		_ = h.db.UpdateMessageListUnsubscribeInternal(ctx, msgID, parsed.ListUnsubscribe, parsed.ListUnsubscribePost)
+	}
 }
 
 func (h *Handler) ensureBodyFetched(ctx context.Context, msgID int64, accountID string) {

@@ -87,7 +87,7 @@ test("message actions are hidden with no message in play and shown once one is s
   t.w.document.querySelector("#mail-list-scroll a").click()
   t.w.document.dispatchEvent(new t.w.KeyboardEvent("keydown", { key: "k", metaKey: true, bubbles: true, cancelable: true }))
   assert.deepEqual(groups(t.w), ["Message actions", "Go to", "App"])
-  for (const l of ["Reply", "Reply all", "Forward", "Archive", "Delete", "Star / unstar", "Mark read / unread", "Move to…"]) assert.ok(labels(t.w).includes(l), l)
+  for (const l of ["Reply", "Reply all", "Forward", "Archive", "Delete", "Star / unstar", "Mark read / unread", "Move to…", "Label…"]) assert.ok(labels(t.w).includes(l), l)
   const chips = Array.from(t.w.document.querySelectorAll(".raven-palette kbd.kbd"), (k) => k.textContent)
   assert.ok(chips.includes("E") && chips.includes("#") && chips.includes("R"))
 })
@@ -127,4 +127,86 @@ test("arrow keys move the highlight and Esc is left to the dialog", async () => 
   assert.notEqual(active(), first)
   key(input, "ArrowUp")
   assert.equal(active(), first)
+})
+
+test("Label… (l) prompts and labels the selected message", async () => {
+  const t = await setup()
+  let asked = null
+  t.w.goferPrompt = function (title) { asked = title; return Promise.resolve("Work") }
+  t.w.document.querySelector("#mail-list-scroll a").click()
+  t.w.document.dispatchEvent(new t.w.KeyboardEvent("keydown", { key: "l", bubbles: true, cancelable: true }))
+  await tick()
+  assert.equal(asked, "Add label")
+  assert.equal(t.calls.find((c) => /\/m1\/label$/.test(c.url)).body.label, "Work")
+})
+
+function addUnsubscribeButton(t, method, target) {
+  const b = t.w.document.createElement("button")
+  b.setAttribute("data-unsubscribe-id", "m1")
+  b.setAttribute("data-unsubscribe-method", method)
+  b.setAttribute("data-unsubscribe-target", target || "")
+  b.setAttribute("data-unsubscribe-sender", "Acme News")
+  t.w.document.body.appendChild(b)
+  return b
+}
+
+test("Unsubscribe is a keyless palette entry shown only when the open message has one", async () => {
+  const t = await setup({ open: true })
+  t.w.RavenPalette.open()
+  assert.ok(!labels(t.w).includes("Unsubscribe"))
+  t.w.document.querySelector(".raven-palette").close()
+  addUnsubscribeButton(t, "one-click")
+  t.w.RavenPalette.open()
+  assert.ok(labels(t.w).includes("Unsubscribe"))
+  assert.ok(labels(t.w).includes("Label…"))
+  const sc = t.w.RavenShortcuts.get("unsubscribe")
+  assert.deepEqual(Array.from(sc.keys), [])
+  // keyless entries stay out of the ? overlay
+  t.w.RavenShortcuts.run("help")
+  assert.ok(!t.w.document.getElementById("mail-shortcut-help").textContent.includes("Unsubscribe"))
+})
+
+test("Unsubscribe confirms with the method's wording, posts, then toasts or opens the page", async () => {
+  const cases = [
+    { method: "one-click", target: "", reply: { action: "done" }, wording: "Raven will send the unsubscribe request." },
+    { method: "mailto", target: "unsub@x.invalid", reply: { action: "done" }, wording: "Raven will email unsub@x.invalid to unsubscribe." },
+    { method: "browser", target: "", reply: { action: "open", url: "https://x.invalid/u" }, wording: "Opens the sender's unsubscribe page in your browser." },
+  ]
+  for (const c of cases) {
+    const t = await setup({ open: true })
+    const asked = []
+    t.w.goferConfirm = function (title, text) { asked.push([title, text]); return Promise.resolve(true) }
+    const opened = []
+    t.w.open = function (url, target, features) { opened.push([url, target, features]) }
+    t.w.fetch = function (url, o) {
+      t.calls.push({ url: url, method: o && o.method })
+      return Promise.resolve({ ok: true, json: function () { return Promise.resolve(c.reply) } })
+    }
+    const btn = addUnsubscribeButton(t, c.method, c.target)
+    t.w.RavenShortcuts.run("unsubscribe")
+    await tick()
+    assert.deepEqual(asked, [["Unsubscribe from Acme News?", c.wording]], c.method)
+    assert.deepEqual(t.calls.filter((x) => /unsubscribe/.test(x.url)).map((x) => [x.url, x.method]), [["/api/messages/m1/unsubscribe", "POST"]], c.method)
+    if (c.reply.action === "open") assert.deepEqual(opened, [["https://x.invalid/u", "_blank", "noopener,noreferrer"]])
+    else {
+      assert.deepEqual(opened, [])
+      assert.ok(t.w.document.body.textContent.includes("Unsubscribed from Acme News"), c.method)
+    }
+    assert.equal(btn.disabled, false)
+  }
+})
+
+test("Unsubscribe does nothing when the confirmation is declined, and surfaces a server error", async () => {
+  const t = await setup({ open: true })
+  addUnsubscribeButton(t, "one-click")
+  t.w.goferConfirm = function () { return Promise.resolve(false) }
+  t.w.RavenShortcuts.run("unsubscribe")
+  await tick()
+  assert.equal(t.calls.filter((x) => /unsubscribe/.test(x.url)).length, 0)
+
+  t.w.goferConfirm = function () { return Promise.resolve(true) }
+  t.w.fetch = function () { return Promise.resolve({ ok: false, status: 502, text: function () { return Promise.resolve("Could not unsubscribe: the sender answered 403 Forbidden") } }) }
+  t.w.RavenShortcuts.run("unsubscribe")
+  await tick()
+  assert.ok(t.w.document.body.textContent.includes("the sender answered 403"))
 })
