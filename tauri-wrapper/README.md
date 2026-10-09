@@ -73,8 +73,8 @@ rustc --print host-tuple
 Then copy it in (replace the triple below if yours differs):
 
 ```sh
-cp dist/gofer tauri-wrapper/src-tauri/binaries/gofer-aarch64-apple-darwin
-chmod +x tauri-wrapper/src-tauri/binaries/gofer-aarch64-apple-darwin
+cp dist/gofer tauri-wrapper/src-tauri/binaries/raven-server-aarch64-apple-darwin
+chmod +x tauri-wrapper/src-tauri/binaries/raven-server-aarch64-apple-darwin
 ```
 
 Re-run these two commands (`task release` + `cp`) any time you ship a new
@@ -188,14 +188,14 @@ folder as `.env`.
 - **Window opens but stays blank / stuck on "Starting Gofer...":** almost
   always means the sidecar never started or never reached port 8090.
   - Check `src-tauri/binaries/` actually contains a file named
-    `gofer-<your-exact-target-triple>` and that it's executable
+    `raven-server-<your-exact-target-triple>` and that it's executable
     (`chmod +x`). This is the #1 likely mistake for a Tauri beginner --
     the filename must match `rustc --print host-tuple` exactly, including
     on an M-series Mac running an Intel-built Gofer binary under Rosetta
     (in which case use `x86_64-apple-darwin`, matching however you built
     the Go binary, not the CLI's own host triple).
   - Try running that binary directly from a terminal
-    (`./src-tauri/binaries/gofer-aarch64-apple-darwin`) to see Gofer's own
+    (`./src-tauri/binaries/raven-server-aarch64-apple-darwin`) to see Gofer's own
     startup errors (e.g. a port already in use by something unrelated, or a
     missing `.env`).
   - Run `tauri dev` (not `build`) and watch the terminal -- `lib.rs` prints
@@ -217,7 +217,7 @@ folder as `.env`.
 - **App quits but Gofer keeps running (orphaned process):** shouldn't
   happen -- `lib.rs` kills the sidecar on both `WindowEvent::CloseRequested`
   and `RunEvent::Exit` -- but if you ever see it, check
-  `ps aux | grep gofer` and `kill` it manually, then tell Claude so the
+  `ps aux | grep raven-server` and `kill` it manually, then tell Claude so the
   lifecycle handling can be tightened.
 - **`task release` isn't found / fails:** that's Gofer's own build, unrelated
   to this wrapper -- see the main `gofer/Taskfile.yml` and `gofer/README.md`.
@@ -248,7 +248,7 @@ tauri-wrapper/
     capabilities/default.json      <- permissions for the main window
     icons/icon.png                 <- copy of ../../assets/logo.png (source
                                         for `tauri icon`)
-    binaries/                      <- put gofer-<target-triple> here (gitignored,
+    binaries/                      <- put raven-server-<target-triple> here (gitignored,
                                         build output -- see .gitkeep)
     src/
       main.rs                     <- thin entry point

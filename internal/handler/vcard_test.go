@@ -24,7 +24,7 @@ func TestRenderVCard4(t *testing.T) {
 		"EMAIL;TYPE=INTERNET:jane@example.com",
 		"FN:Jane Doe",
 		"N:Doe;Jane;;;",
-		"PRODID:-//Gofer//Contacts//EN",
+		"PRODID:-//Raven//Contacts//EN",
 		"UID:urn:uuid:6d2b5072-a9b3-4cad-bfa5-2e7912d80b8c",
 		"END:VCARD",
 		"",

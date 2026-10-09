@@ -426,7 +426,7 @@ func fetchXMLWithPolicy(ctx context.Context, client HTTPClient, rawURL string, p
 		return nil, err
 	}
 	req.Header.Set("Accept", "application/xml,text/xml;q=0.9,*/*;q=0.1")
-	req.Header.Set("User-Agent", "Gofer Mail Autodiscovery")
+	req.Header.Set("User-Agent", "Raven Mail Autodiscovery")
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -1208,7 +1208,7 @@ func probeSMTP(ctx context.Context, conn net.Conn, host string, requireStartTLS 
 	if _, err := readSMTPResponse(reader, 8); err != nil {
 		return protocolProbe{}
 	}
-	if _, err := conn.Write([]byte("EHLO gofer.local\r\n")); err != nil {
+	if _, err := conn.Write([]byte("EHLO raven.local\r\n")); err != nil {
 		return protocolProbe{}
 	}
 	ehlo, err := readSMTPResponse(reader, 16)
@@ -1233,7 +1233,7 @@ func probeSMTP(ctx context.Context, conn net.Conn, host string, requireStartTLS 
 		}
 		conn = tlsConn
 		reader = bufio.NewReader(conn)
-		if _, err := conn.Write([]byte("EHLO gofer.local\r\n")); err != nil {
+		if _, err := conn.Write([]byte("EHLO raven.local\r\n")); err != nil {
 			return protocolProbe{}
 		}
 		ehlo, err = readSMTPResponse(reader, 16)
