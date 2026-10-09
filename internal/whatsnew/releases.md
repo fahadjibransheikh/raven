@@ -7,6 +7,27 @@ Then an optional hero line, then "### New", "### Improved", "### Fixed" or
 replaces it with the real version number. GitHub release notes use the same text.
 -->
 
+## 0.2.2 | 2026-10-09 | A quieter inbox, keyboard-first
+A cleaner, quieter look, a command bar for everything, and one-click unsubscribe.
+
+### New
+- Press Cmd+K (Ctrl+K on Windows and Linux) to open the command bar: archive, reply, move, label, unsubscribe, or jump to any folder, by typing a few letters.
+- Keyboard shortcuts now show where you work: key hints sit on the reader's buttons and below the reply box. Press L to label a message.
+- Unsubscribe from mailing lists with one button. Raven sends the request for you, or emails the list from the address it was sent to.
+- Download any email as an .eml file, or print it, from the reader's More menu.
+
+### Improved
+- A quieter design: the message list and reader float as panels, pink is kept for unread mail, Compose is a small button beside the logo, and Mail, Contacts and Calendar sit at the bottom of the sidebar.
+- The message list drops avatars and bold text. A thin colour bar shows which account each email came from, and today's times use 24-hour format. Want avatars back? Drag them in under the list's card layout.
+- Account folders start collapsed under All accounts, so the sidebar stays short.
+- The message list can now be made much narrower by dragging its edge.
+- Replies to mail you received as Bcc or through a forwarding address now suggest the right "from" address.
+- The app is called Raven everywhere, including the macOS menu and Activity Monitor. On macOS, Compose and Check for Updates moved from the menu bar icon to the app menu.
+
+### Fixed
+- Email times were wrong after you changed time zones, such as when travelling. Raven now follows your device's current time zone. If you had picked a time zone in Settings, choose it again.
+- The Reply and Forward items in the reader's More menu did nothing. They now work.
+
 ## 0.2.1 | 2026-10-06 | Calmer inbox, newest-first conversations
 A calmer, roomier message list, conversations that open on the latest email, and a sturdier desktop app.
 

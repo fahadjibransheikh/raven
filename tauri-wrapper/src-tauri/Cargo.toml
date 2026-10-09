@@ -1,6 +1,6 @@
 [package]
 name = "gofer-desktop"
-version = "0.2.1"
+version = "0.2.2"
 description = "Native desktop wrapper for the Raven email client"
 edition = "2021"
 rust-version = "1.90"
