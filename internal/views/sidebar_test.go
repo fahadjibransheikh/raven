@@ -26,7 +26,7 @@ func TestSidebarFolderTreeCanHideUnifiedFolders(t *testing.T) {
 	if err := SidebarFolderTree(accounts, "acc-inbox", nil, 0, models.EmailFilters{}).Render(context.Background(), &visible); err != nil {
 		t.Fatalf("SidebarFolderTree.Render() visible error = %v", err)
 	}
-	if !strings.Contains(visible.String(), "Unified folders") {
+	if !strings.Contains(visible.String(), "All accounts") {
 		t.Fatalf("default sidebar missing unified folders: %s", visible.String())
 	}
 
@@ -36,7 +36,7 @@ func TestSidebarFolderTreeCanHideUnifiedFolders(t *testing.T) {
 		t.Fatalf("SidebarFolderTree.Render() hidden error = %v", err)
 	}
 	html := hidden.String()
-	if strings.Contains(html, "Unified folders") {
+	if strings.Contains(html, "All accounts") {
 		t.Fatalf("disabled sidebar still rendered unified folders: %s", html)
 	}
 	if !strings.Contains(html, "Personal") {
@@ -95,7 +95,7 @@ func TestSidebarFolderTreeCanHideIndividualUnifiedFolders(t *testing.T) {
 		t.Fatalf("SidebarFolderTree.Render() all disabled error = %v", err)
 	}
 	html = emptyUnified.String()
-	if strings.Contains(html, "Unified folders") {
+	if strings.Contains(html, "All accounts") {
 		t.Fatalf("all disabled unified section still rendered: %s", html)
 	}
 	if !strings.Contains(html, "Personal") {
@@ -188,7 +188,7 @@ func TestSidebarFolderTreeShowsScheduledOnlyWithPendingCount(t *testing.T) {
 			t.Fatalf("scheduled sidebar item missing %q: %s", want, html)
 		}
 	}
-	if strings.Contains(html, "Unified folders") {
+	if strings.Contains(html, "All accounts") {
 		t.Fatalf("scheduled folder should not depend on unified folders being enabled: %s", html)
 	}
 }
@@ -538,5 +538,64 @@ func TestSidebarFolderMenuOffersMarkAllReadForEveryRealFolder(t *testing.T) {
 	// The trigger is a sibling of the folder link, never nested inside the anchor.
 	if strings.Contains(html, `<a href="/folder/acc-inbox"`) && strings.Index(html, `data-folder-menu-trigger="acc-inbox"`) < 0 {
 		t.Fatalf("menu trigger missing")
+	}
+}
+
+func TestSidebarAppSwitcherLivesInFooterWithCurrentApp(t *testing.T) {
+	var buf bytes.Buffer
+	if err := SidebarFooter("contacts").Render(context.Background(), &buf); err != nil {
+		t.Fatalf("SidebarFooter.Render() error = %v", err)
+	}
+	html := buf.String()
+	for _, want := range []string{
+		`data-sidebar-app-button="mail"`, `hx-get="/"`,
+		`data-sidebar-app-button="contacts" aria-current`, `hx-get="/contacts"`,
+		`data-sidebar-app-button="calendar"`, `hx-get="/calendar"`,
+	} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("footer missing %q: %s", want, html)
+		}
+	}
+	if strings.Count(html, "aria-current") != 1 {
+		t.Fatalf("exactly one app link should be current: %s", html)
+	}
+}
+
+func TestSidebarHeaderHasQuietComposeAndNoAppTabs(t *testing.T) {
+	var buf bytes.Buffer
+	if err := SidebarHeader(nil, "mail").Render(context.Background(), &buf); err != nil {
+		t.Fatalf("SidebarHeader.Render() error = %v", err)
+	}
+	html := buf.String()
+	if !strings.Contains(html, `id="sidebar-compose-btn"`) || !strings.Contains(html, `aria-label="Compose (C)"`) || !strings.Contains(html, `onclick="openNewCompose()"`) {
+		t.Fatalf("header missing compose icon button: %s", html)
+	}
+	if strings.Contains(html, "bg-primary") || strings.Contains(html, "data-sidebar-app-nav") {
+		t.Fatalf("header should have neutral compose and no app tab strip: %s", html)
+	}
+}
+
+func TestSidebarAccountSectionsStartCollapsedUnlessExpanded(t *testing.T) {
+	accounts := []models.Account{{
+		ID:               "acc",
+		Name:             "Personal",
+		EmailSyncEnabled: true,
+		Folders:          []models.Folder{{ID: "acc-inbox", Name: "Inbox", Icon: "inbox", Role: "inbox"}},
+	}}
+	render := func(settings map[string]string, active string) string {
+		var buf bytes.Buffer
+		if err := SidebarFolderTree(accounts, active, settings, 0, models.EmailFilters{}).Render(context.Background(), &buf); err != nil {
+			t.Fatalf("SidebarFolderTree.Render() error = %v", err)
+		}
+		return buf.String()
+	}
+	if html := render(nil, "inbox"); !strings.Contains(html, `data-sidebar-account-collapsed="true" data-sidebar-account-default-collapsed`) {
+		t.Fatalf("account section should default to collapsed: %s", html)
+	}
+	if html := render(map[string]string{"sidebar_account_collapsed": `{"acc":false}`}, "inbox"); strings.Contains(html, `data-sidebar-account-collapsed="true" data-sidebar-account-default-collapsed`) {
+		t.Fatalf("explicitly expanded account must stay expanded: %s", html)
+	}
+	if html := render(nil, "acc-inbox"); strings.Contains(html, `data-sidebar-account-collapsed="true" data-sidebar-account-default-collapsed`) {
+		t.Fatalf("account with the active folder must stay expanded: %s", html)
 	}
 }

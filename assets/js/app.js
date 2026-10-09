@@ -1115,7 +1115,9 @@ document.addEventListener("DOMContentLoaded", function () {
       for (var i = 0; i < sections.length; i++) {
         var section = sections[i]
         var accountId = section.getAttribute("data-sidebar-account")
-        var collapsed = state[accountId] === true && !sectionHasActiveFolder(section)
+        var stored = state[accountId]
+        if (stored === undefined) stored = section.hasAttribute("data-sidebar-account-default-collapsed")
+        var collapsed = stored === true && !sectionHasActiveFolder(section)
         setCollapsed(section, collapsed)
       }
       var tagState = readTagState()
@@ -5117,19 +5119,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function sidebarPendingHTML(mode) {
     var rows = mode === "contacts" ? 5 : 7
-    var html = '<div class="px-4 pb-4">'
+    var html = ""
     if (mode === "contacts") {
+      html += '<div class="px-4 pb-4">'
       html += '<div class="inline-flex w-full items-stretch rounded-lg shadow-sm">'
-      html += '<div class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors flex h-9 min-w-0 flex-1 items-center justify-center gap-2 rounded-l-md rounded-r-none text-sm font-medium text-sidebar-primary-foreground opacity-75">'
+      html += '<div class="bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent/70 disabled:cursor-not-allowed disabled:opacity-60 transition-colors flex h-9 min-w-0 flex-1 items-center justify-center gap-2 rounded-l-md rounded-r-none text-sm font-medium text-sidebar-primary-foreground opacity-75">'
       html += pendingSidebarIcon("user-plus", "size-4") + '<span>New contact</span></div>'
-      html += '<div class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-l-none rounded-r-md border-l border-sidebar-border/70 text-sidebar-primary-foreground opacity-75">'
+      html += '<div class="bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent/70 disabled:cursor-not-allowed disabled:opacity-60 transition-colors inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-l-none rounded-r-md border-l border-sidebar-border/70 text-sidebar-primary-foreground opacity-75">'
       html += pendingSidebarIcon("ellipsis-vertical", "size-4") + '</div></div>'
-    } else {
-      html += '<div class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors flex h-9 w-full items-center justify-center gap-2 rounded-md text-sm font-medium text-sidebar-primary-foreground opacity-75">'
-      html += pendingSidebarIcon("pen", "size-4") + '<span>Compose</span></div>'
+      html += '</div><hr class="divider-etched mx-4">'
     }
-    html += '</div>'
-    html += '<hr class="divider-etched mx-4"><nav class="flex-1 overflow-y-auto px-3 pt-2 pb-3">'
+    html += '<nav class="flex-1 overflow-y-auto px-3 pt-2 pb-3">'
     for (var i = 0; i < rows; i++) {
       html += '<div class="mb-1 flex items-center gap-2.5 rounded-md px-2.5 py-1.5"><span class="size-5 rounded bg-sidebar-accent"></span><span class="h-3 flex-1 rounded bg-sidebar-accent"></span></div>'
     }

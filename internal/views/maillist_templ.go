@@ -821,7 +821,7 @@ func MailListToolbar(accounts []models.Account, activeFolder string, viewMode st
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "</div><button type=\"submit\" class=\"inline-flex h-8 w-full items-center justify-center rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90\">Apply sort</button></form>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "</div><button type=\"submit\" class=\"inline-flex h-8 w-full items-center justify-center rounded-md bg-secondary px-3 text-xs font-semibold text-secondary-foreground border border-border hover:bg-accent\">Apply sort</button></form>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -1499,7 +1499,7 @@ func MailFiltersPopover(accounts []models.Account) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 84, "<span data-mail-filter-count class=\"hidden min-w-4 rounded-full bg-primary px-1 text-center text-xs leading-4 text-primary-foreground\"></span></button>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 84, "<span data-mail-filter-count class=\"hidden min-w-4 rounded-full bg-foreground px-1 text-center text-xs leading-4 text-background\"></span></button>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -2296,7 +2296,7 @@ func MailFiltersPopover(accounts []models.Account) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 137, "</div></div></section></div></div><div class=\"mt-auto flex items-center justify-between gap-2 border-t border-border pt-3\"><button type=\"button\" data-mail-advanced-filter-clear class=\"h-8 rounded-md px-2 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground\">Clear all</button><div class=\"flex items-center gap-2\"><button type=\"button\" data-mail-filters-close class=\"h-8 rounded-md border border-border px-3 text-xs font-medium hover:bg-accent\">Cancel</button> <button type=\"submit\" class=\"inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90\"><span>Apply</span> <span data-mail-advanced-filter-count class=\"hidden min-w-4 rounded-full bg-primary-foreground/15 px-1.5 py-0.5 text-center text-xs leading-none\">0</span></button></div></div></form></div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 137, "</div></div></section></div></div><div class=\"mt-auto flex items-center justify-between gap-2 border-t border-border pt-3\"><button type=\"button\" data-mail-advanced-filter-clear class=\"h-8 rounded-md px-2 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground\">Clear all</button><div class=\"flex items-center gap-2\"><button type=\"button\" data-mail-filters-close class=\"h-8 rounded-md border border-border px-3 text-xs font-medium hover:bg-accent\">Cancel</button> <button type=\"submit\" class=\"inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-secondary px-3 text-xs font-semibold text-secondary-foreground hover:bg-accent\"><span>Apply</span> <span data-mail-advanced-filter-count class=\"hidden min-w-4 rounded-full bg-foreground/10 px-1.5 py-0.5 text-center text-xs leading-none\">0</span></button></div></div></form></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

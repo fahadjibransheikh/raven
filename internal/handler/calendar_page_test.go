@@ -34,18 +34,15 @@ func TestCalendarPageRendersFullDocumentForOwner(t *testing.T) {
 			t.Errorf("page missing %q", want)
 		}
 	}
-	// Sidebar tab is a live link with the same swap wiring as Mail and Contacts, not the old disabled button.
+	// Sidebar footer link is a live link with the same swap wiring as Mail and Contacts, not the old disabled button.
 	if !strings.Contains(body, `href="/calendar"`) || !strings.Contains(body, `hx-get="/calendar"`) {
 		t.Errorf("Calendar tab is not an enabled link")
 	}
 	if strings.Contains(body, "Calendar is coming later") || strings.Contains(body, "disabled data-sidebar-app-button") {
 		t.Errorf("Calendar tab is still disabled")
 	}
-	if !strings.Contains(body, `aria-current`) {
-		t.Errorf("active Calendar tab not marked aria-current")
-	}
-	if !strings.Contains(body, "translateX(calc(200% + 4px))") {
-		t.Errorf("sliding indicator not on the Calendar tab")
+	if !strings.Contains(body, `data-sidebar-app-button="calendar" aria-current`) {
+		t.Errorf("active Calendar footer link not marked aria-current")
 	}
 }
 

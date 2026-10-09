@@ -1025,6 +1025,46 @@ input[role="switch"] + .gofer-switch-track::after {
   border-radius: var(--radius);
 }
 
+/* Active sidebar row: raised neutral pill (bg-sidebar-accent, set by templates
+   and JS) plus a 2px accent bar on its left edge. */
+[data-app-sidebar] nav a.bg-sidebar-accent {
+  position: relative;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sidebar-border) 70%, transparent);
+}
+
+[data-app-sidebar] nav a.bg-sidebar-accent::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--primary);
+}
+
+/* Footer app switcher (Mail / Contacts / Calendar): quiet icons, current one raised. */
+.sidebar-footer-app-link {
+  display: inline-flex;
+  width: 1.75rem;
+  height: 1.75rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius);
+  color: var(--subtle-foreground);
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.sidebar-footer-app-link:hover {
+  background: color-mix(in srgb, var(--sidebar-accent) 60%, transparent);
+  color: var(--sidebar-accent-foreground);
+}
+
+.sidebar-footer-app-link[aria-current] {
+  background: var(--sidebar-accent);
+  color: var(--sidebar-accent-foreground);
+}
+
 .sidebar-account-folders {
   display: grid;
   grid-template-rows: 1fr;
@@ -2860,14 +2900,16 @@ aside[data-app-sidebar] nav a.py-1\.5 {
 
 /* === RESIZE HANDLE === */
 
+/* The handle IS the gap between the floating panes: invisible at rest, a thin
+   accent line on hover/drag. resize.js measures the panel before it, so the
+   handle's own width never enters its math. */
 .resize-handle {
-  width: 5px;
+  width: 8px;
   cursor: col-resize;
   background: transparent;
   position: relative;
   z-index: 10;
   flex-shrink: 0;
-  transition: background 0.15s ease;
 }
 
 .resize-handle::after {
@@ -2876,36 +2918,60 @@ aside[data-app-sidebar] nav a.py-1\.5 {
   top: 0;
   bottom: 0;
   left: 50%;
-  width: 1px;
-  background: var(--border);
+  width: 2px;
+  background: transparent;
+  border-radius: 2px;
   transform: translateX(-50%);
-  transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease, filter 0.12s ease;
+  transition: background-color 0.12s ease;
 }
 
 .resize-handle:hover::after,
 .resize-handle.active::after {
-  width: 3px;
-  background: var(--primary);
-  border-radius: 2px;
+  background: color-mix(in srgb, var(--primary) 70%, transparent);
+}
+
+/* === FLOATING PANES ===
+   Mail/contacts/calendar: the list and reader are rounded cards on --app-bg
+   with an 8px gap (the resize handles are the gap between them and the
+   sidebar). Vertical/right spacing is margin, not padding on #main-content, so
+   resize.js's percent-of-parent width math stays exact. */
+#app-shell:has(> #main-content > #mail-list) {
+  background: var(--app-bg);
+}
+
+#app-shell > #main-content:has(> #mail-list) {
+  background: transparent;
+}
+
+#main-content > #mail-list,
+#main-content > #mail-view {
+  margin-block: 8px;
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+#main-content > #mail-view {
+  margin-right: 8px;
 }
 
 #main-content[data-mail-pane-layout="stacked"] #mail-list {
-  width: 100% !important;
+  width: calc(100% - 8px) !important;
   max-width: none;
   height: min(42vh, 30rem);
   min-height: 12rem;
-  border-right: 0;
-  border-bottom: 1px solid var(--border);
+  margin: 8px 8px 0 0;
   flex: none;
 }
 
 #main-content[data-mail-pane-layout="stacked"] #mail-view {
   min-height: 0;
+  margin-top: 0;
 }
 
 #main-content[data-mail-pane-layout="stacked"] > .resize-handle[data-panel="maillist"] {
   width: 100%;
-  height: 5px;
+  height: 8px;
   cursor: row-resize;
 }
 
@@ -2913,15 +2979,9 @@ aside[data-app-sidebar] nav a.py-1\.5 {
   top: 50%;
   bottom: auto;
   left: 0;
-  width: 100%;
-  height: 1px;
+  width: calc(100% - 8px);
+  height: 2px;
   transform: translateY(-50%);
-}
-
-#main-content[data-mail-pane-layout="stacked"] > .resize-handle[data-panel="maillist"]:hover::after,
-#main-content[data-mail-pane-layout="stacked"] > .resize-handle[data-panel="maillist"].active::after {
-  width: 100%;
-  height: 3px;
 }
 
 #main-content[data-mail-pane-layout="stacked"] .compose-pane-size-icon {
@@ -3229,6 +3289,14 @@ aside[data-app-sidebar] nav a.py-1\.5 {
 
   .resize-handle {
     display: none !important;
+  }
+
+  /* One full-bleed pane at a time: no floating cards. */
+  #main-content > #mail-list,
+  #main-content > #mail-view {
+    margin: 0;
+    border: 0;
+    border-radius: 0;
   }
 
   html[data-phone] #mail-list {
