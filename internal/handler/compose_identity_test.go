@@ -268,20 +268,24 @@ func TestPickReplyIdentity(t *testing.T) {
 		name, role, want string
 		from             string
 		to, cc           []models.Contact
+		delivered        string
 	}{
-		{"To alias", "inbox", "sales@example.com", "x@y.com", c("Other@y.com", "Sales@Example.com"), nil},
-		{"To beats Cc", "inbox", "support@example.com", "x@y.com", c("support@example.com"), c("sales@example.com")},
-		{"Cc alias", "inbox", "sales@example.com", "x@y.com", c("list@y.com"), c("sales@example.com")},
-		{"no match uses default", "inbox", "me@example.com", "x@y.com", c("list@y.com"), nil},
-		{"sent uses From", "sent", "support@example.com", "support@example.com", c("sales@example.com"), nil},
-		{"sent without match uses default", "sent", "me@example.com", "gone@example.com", c("sales@example.com"), nil},
+		{"To alias", "inbox", "sales@example.com", "x@y.com", c("Other@y.com", "Sales@Example.com"), nil, ""},
+		{"To beats Cc", "inbox", "support@example.com", "x@y.com", c("support@example.com"), c("sales@example.com"), ""},
+		{"Cc alias", "inbox", "sales@example.com", "x@y.com", c("list@y.com"), c("sales@example.com"), ""},
+		{"no match uses default", "inbox", "me@example.com", "x@y.com", c("list@y.com"), nil, ""},
+		{"sent uses From", "sent", "support@example.com", "support@example.com", c("sales@example.com"), nil, ""},
+		{"sent without match uses default", "sent", "me@example.com", "gone@example.com", c("sales@example.com"), nil, ""},
+		{"Delivered-To alias (Bcc)", "inbox", "sales@example.com", "x@y.com", c("list@y.com"), nil, "other@elsewhere.com,Sales@Example.com"},
+		{"To and Cc beat Delivered-To", "inbox", "support@example.com", "x@y.com", c("support@example.com"), nil, "sales@example.com"},
+		{"Delivered-To unknown uses default", "inbox", "me@example.com", "x@y.com", c("list@y.com"), nil, "nobody@elsewhere.com"},
 	} {
-		got := pickReplyIdentity(ids, tc.role, models.Contact{Email: tc.from}, tc.to, tc.cc)
+		got := pickReplyIdentity(ids, tc.role, models.Contact{Email: tc.from}, tc.to, tc.cc, tc.delivered)
 		if got != tc.want {
 			t.Errorf("%s: got %q, want %q", tc.name, got, tc.want)
 		}
 	}
-	if got := pickReplyIdentity(nil, "inbox", models.Contact{}, c("a@b.c"), nil); got != "" {
+	if got := pickReplyIdentity(nil, "inbox", models.Contact{}, c("a@b.c"), nil, ""); got != "" {
 		t.Errorf("no identities: got %q, want empty", got)
 	}
 }

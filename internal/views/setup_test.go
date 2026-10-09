@@ -327,7 +327,7 @@ func TestSetupOwnerBlockedPageHasLocalRepairGuidanceAndNoForm(t *testing.T) {
 		t.Fatal(err)
 	}
 	html := output.String()
-	if !strings.Contains(html, "Owner setup needs local repair") || !strings.Contains(html, "gofer auth users list") ||
+	if !strings.Contains(html, "Owner setup needs local repair") || !strings.Contains(html, "raven-server auth users list") ||
 		strings.Contains(html, `action="/setup/owner"`) {
 		t.Fatalf("blocked setup owner page = %q", html)
 	}

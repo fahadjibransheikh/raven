@@ -35,7 +35,7 @@ tasks:
       - generate
     cmds:
       - mkdir -p ./dist
-      - go build -tags embedded_assets -trimpath -o ./dist/gofer .
+      - go build -tags embedded_assets -trimpath -o ./dist/raven-server .
 
   release:all:
     desc: Build cross-platform release archives with embedded assets

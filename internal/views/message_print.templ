@@ -1,0 +1,45 @@
+package views
+
+import (
+	"strings"
+
+	"github.com/cristianadrielbraun/gofer/internal/models"
+)
+
+// MessagePrintHeader is the subject/sender block above the body on the standalone print page.
+templ MessagePrintHeader(email *models.Email) {
+	<header class="print-header">
+		<h1>{ email.Subject }</h1>
+		<dl>
+			<dt>From</dt>
+			<dd>{ printContact(email.From) }</dd>
+			if len(email.To) > 0 {
+				<dt>To</dt>
+				<dd>{ printContacts(email.To) }</dd>
+			}
+			if len(email.CC) > 0 {
+				<dt>Cc</dt>
+				<dd>{ printContacts(email.CC) }</dd>
+			}
+			if email.DateFull != "" {
+				<dt>Date</dt>
+				<dd>{ email.DateFull }</dd>
+			}
+		</dl>
+	</header>
+}
+
+func printContact(c models.Contact) string {
+	if c.Name == "" || c.Name == c.Email {
+		return c.Email
+	}
+	return c.Name + " <" + c.Email + ">"
+}
+
+func printContacts(contacts []models.Contact) string {
+	parts := make([]string, len(contacts))
+	for i, c := range contacts {
+		parts[i] = printContact(c)
+	}
+	return strings.Join(parts, ", ")
+}

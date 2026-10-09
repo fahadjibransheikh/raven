@@ -46,7 +46,7 @@ func TestSyncCapturesListUnsubscribeHeaders(t *testing.T) {
 	}
 	defer client.Close()
 
-	raw := []byte("From: news@example.com\r\nTo: user@example.com\r\nMessage-ID: <lu@example.com>\r\nSubject: News\r\n" +
+	raw := []byte("From: news@example.com\r\nTo: user@example.com\r\nMessage-ID: <lu@example.com>\r\nSubject: News\r\nDelivered-To: me@example.com\r\nDelivered-To: Alias <alias@example.com>\r\nX-Original-To: alias@example.com\r\n" +
 		"List-Unsubscribe: <mailto:unsub@example.com>,\r\n <https://example.com/u/1>\r\nList-Unsubscribe-Post: List-Unsubscribe=One-Click\r\n\r\nBody")
 	if _, err := client.AppendMessage(context.Background(), "INBOX", raw, nil, time.Now()); err != nil {
 		t.Fatal(err)
@@ -62,6 +62,10 @@ func TestSyncCapturesListUnsubscribeHeaders(t *testing.T) {
 		}
 		if got := msgs[0].ListUnsubscribePost; got != "List-Unsubscribe=One-Click" {
 			t.Errorf("%s: ListUnsubscribePost = %q", name, got)
+		}
+		// Every Delivered-To occurrence plus X-Original-To, de-duplicated, comma-joined.
+		if got := msgs[0].DeliveredTo; got != "alias@example.com,me@example.com" {
+			t.Errorf("%s: DeliveredTo = %q", name, got)
 		}
 	}
 	var full []storage.SyncMessage

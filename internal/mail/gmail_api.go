@@ -37,6 +37,8 @@ var gmailAPIMessageMetadataWaitBeforeRetry = gmailAPIWaitBeforeRetry
 var gmailAPIMessageMetadataHeaders = []string{
 	"List-Unsubscribe",
 	"List-Unsubscribe-Post",
+	"Delivered-To",
+	"X-Original-To",
 	"Message-ID",
 	"Subject",
 	"From",
@@ -1429,6 +1431,7 @@ func gmailAPIMessageToProviderSyncs(accountID string, msg gmailAPIMessage, label
 		BCCRecipients:     recipients("bcc"),
 	}
 	base.ListUnsubscribe, base.ListUnsubscribePost = message.CaptureListUnsubscribe(header["list-unsubscribe"], header["list-unsubscribe-post"])
+	base.DeliveredTo = message.CaptureDeliveredTo(append(gmailAPIHeaderValues(msg.Payload.Headers, "X-Original-To"), gmailAPIHeaderValues(msg.Payload.Headers, "Delivered-To")...)...)
 	if base.Subject == "" {
 		base.Subject = "(no subject)"
 	}
@@ -1640,6 +1643,17 @@ func gmailAPIHeaders(headers []gmailAPIHeader) map[string]string {
 			continue
 		}
 		out[name] = strings.TrimSpace(header.Value)
+	}
+	return out
+}
+
+// gmailAPIHeaderValues returns every occurrence of a header (Delivered-To repeats).
+func gmailAPIHeaderValues(headers []gmailAPIHeader, name string) []string {
+	var out []string
+	for _, header := range headers {
+		if strings.EqualFold(strings.TrimSpace(header.Name), name) {
+			out = append(out, header.Value)
+		}
 	}
 	return out
 }

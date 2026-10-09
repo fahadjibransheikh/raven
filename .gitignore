@@ -2,7 +2,7 @@ tmp/
 dist/
 .env
 internal_notes/
-gofer
+raven-server
 *.png
 !assets/logo.png
 !screenshots/

@@ -63,13 +63,25 @@ func TestMailtoRequest(t *testing.T) {
 }
 
 func TestParseMessageCapturesListUnsubscribeHeaders(t *testing.T) {
-	raw := "From: n@example.invalid\r\nSubject: hi\r\nList-Unsubscribe: <mailto:u@example.invalid>,\r\n <https://example.invalid/u>\r\nList-Unsubscribe-Post: List-Unsubscribe=One-Click\r\nContent-Type: text/plain\r\n\r\nbody\r\n"
+	raw := "From: n@example.invalid\r\nSubject: hi\r\nDelivered-To: me@example.invalid\r\nX-Original-To: alias@example.invalid\r\nList-Unsubscribe: <mailto:u@example.invalid>,\r\n <https://example.invalid/u>\r\nList-Unsubscribe-Post: List-Unsubscribe=One-Click\r\nContent-Type: text/plain\r\n\r\nbody\r\n"
 	parsed, err := ParseMessage(context.Background(), strings.NewReader(raw), store.NewBlobStore(t.TempDir()), "acc", 1)
 	if err != nil {
 		t.Fatal(err)
 	}
+	if parsed.DeliveredTo != "alias@example.invalid,me@example.invalid" {
+		t.Errorf("DeliveredTo = %q", parsed.DeliveredTo)
+	}
 	u := ParseListUnsubscribe(parsed.ListUnsubscribe, parsed.ListUnsubscribePost)
 	if !u.OneClick || u.Mailto != "mailto:u@example.invalid" || u.HTTPS != "https://example.invalid/u" {
 		t.Errorf("got %+v from %q / %q", u, parsed.ListUnsubscribe, parsed.ListUnsubscribePost)
+	}
+}
+
+func TestCaptureDeliveredTo(t *testing.T) {
+	if got := CaptureDeliveredTo(" a@x.com ", "Alias <B@x.com>", "A@X.com", "", "bad addr"); got != "a@x.com,B@x.com" {
+		t.Errorf("got %q", got)
+	}
+	if got := CaptureDeliveredTo(); got != "" {
+		t.Errorf("empty = %q", got)
 	}
 }

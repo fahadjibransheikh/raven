@@ -115,7 +115,7 @@ func (c *Client) SyncFolder(ctx context.Context, folderID, remoteName string, op
 		RFC822Size:   true,
 		BodySection: []*imap.FetchItemBodySection{{
 			Specifier:    imap.PartSpecifierHeader,
-			HeaderFields: []string{"References", "In-Reply-To", "List-Unsubscribe", "List-Unsubscribe-Post"},
+			HeaderFields: []string{"References", "In-Reply-To", "List-Unsubscribe", "List-Unsubscribe-Post", "Delivered-To", "X-Original-To"},
 			Peek:         true,
 		}},
 	}
@@ -157,7 +157,7 @@ func (c *Client) SyncFolder(ctx context.Context, folderID, remoteName string, op
 						}
 						syncMsg.References = references
 						syncMsg.ListUnsubscribe, syncMsg.ListUnsubscribePost = message.ParseListUnsubscribeHeaders(body)
-						syncMsg.ListUnsubscribe, syncMsg.ListUnsubscribePost = message.ParseListUnsubscribeHeaders(body)
+						syncMsg.DeliveredTo = message.ParseDeliveredToHeaders(body)
 					}
 				case imapclient.FetchItemDataEnvelope:
 					if item.Envelope != nil {
@@ -281,7 +281,7 @@ func (c *Client) SyncFolderIncremental(ctx context.Context, folderID, remoteName
 		RFC822Size:   true,
 		BodySection: []*imap.FetchItemBodySection{{
 			Specifier:    imap.PartSpecifierHeader,
-			HeaderFields: []string{"References", "In-Reply-To", "List-Unsubscribe", "List-Unsubscribe-Post"},
+			HeaderFields: []string{"References", "In-Reply-To", "List-Unsubscribe", "List-Unsubscribe-Post", "Delivered-To", "X-Original-To"},
 			Peek:         true,
 		}},
 	}
@@ -319,6 +319,7 @@ func (c *Client) SyncFolderIncremental(ctx context.Context, folderID, remoteName
 					}
 					syncMsg.References = references
 					syncMsg.ListUnsubscribe, syncMsg.ListUnsubscribePost = message.ParseListUnsubscribeHeaders(body)
+					syncMsg.DeliveredTo = message.ParseDeliveredToHeaders(body)
 				}
 			case imapclient.FetchItemDataEnvelope:
 				if item.Envelope != nil {

@@ -58,7 +58,7 @@ level above this folder):
 
 ```sh
 cd gofer               # the actual repo root (contains Taskfile.yml, main.go)
-task release           # produces ./dist/gofer
+task release           # produces ./dist/raven-server
 ```
 
 Tauri's sidecar mechanism expects the binary's filename to end in your
@@ -73,7 +73,7 @@ rustc --print host-tuple
 Then copy it in (replace the triple below if yours differs):
 
 ```sh
-cp dist/gofer tauri-wrapper/src-tauri/binaries/raven-server-aarch64-apple-darwin
+cp dist/raven-server tauri-wrapper/src-tauri/binaries/raven-server-aarch64-apple-darwin
 chmod +x tauri-wrapper/src-tauri/binaries/raven-server-aarch64-apple-darwin
 ```
 

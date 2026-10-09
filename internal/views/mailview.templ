@@ -175,6 +175,7 @@ templ MailViewLoading() {
 // MailViewContent renders a message or conversation. thread must already be in display
 // order: newest first when newestFirst, else oldest first.
 templ MailViewContent(email *models.Email, thread []models.ThreadItem, newestFirst bool) {
+	{{ unsubID := ThreadUnsubscribeID(thread, newestFirst) }}
 	<div class="mail-view-frame flex flex-col h-full p-2">
 		<div class="bg-paper text-ink rounded-md flex flex-col h-full overflow-hidden">
 			@MailViewHeader(email)
@@ -214,7 +215,7 @@ templ MailViewContent(email *models.Email, thread []models.ThreadItem, newestFir
 								</summary>
 								<div class="thread-details-content mt-3">
 									@MailViewBodyByID(item.ID)
-									@MailViewThreadItemActions(&item, threadItemIsNewest(thread, i, newestFirst))
+									@MailViewThreadItemActions(&item, threadItemIsNewest(thread, i, newestFirst), item.ID == unsubID)
 								</div>
 							</details>
 							<div class="h-px bg-ink/25 my-6"></div>
@@ -462,7 +463,7 @@ templ EmailBodyStyleTabs(emailID string, global bool, listHeight string, trigger
 	}
 }
 
-templ MailViewThreadItemActions(item *models.ThreadItem, isNewest bool) {
+templ MailViewThreadItemActions(item *models.ThreadItem, isNewest bool, showUnsubscribe bool) {
 	<div class="mt-4 pt-3 border-t border-ink/6"
 		data-thread-reply-data
 		data-thread-newest?={ isNewest }
@@ -496,6 +497,27 @@ templ MailViewThreadItemActions(item *models.ThreadItem, isNewest bool) {
 					@icon.ReplyAll(icon.Props{Class: "size-3.5"})
 					Reply All
 				</span>
+			}
+			if showUnsubscribe {
+				// Hidden when the headers are not stored yet; app.js reveals it once the body is fetched.
+				if method, target := UnsubscribeAction(threadItemEmail(item)); method != "" || item.ListUnsubscribe == "" {
+					@button.Button(button.Props{
+						Variant: button.VariantOutline,
+						Class:   threadUnsubscribeButtonClass(method),
+						Attributes: templ.Attributes{
+							"onclick":                 "unsubscribeFromMessage(this)",
+							"data-unsubscribe-id":     item.ID,
+							"data-unsubscribe-method": method,
+							"data-unsubscribe-target": target,
+							"data-unsubscribe-sender": contactDisplay(item.From),
+						},
+					}) {
+						<span class="flex items-center gap-1.5 text-xs">
+							@icon.MailX(icon.Props{Class: "size-3.5"})
+							Unsubscribe
+						</span>
+					}
+				}
 			}
 			@button.Button(button.Props{
 				Variant:    button.VariantOutline,
@@ -693,13 +715,13 @@ templ MailViewHeader(email *models.Email) {
 						}
 						@dropdown.Separator()
 					} else {
-						@dropdown.Item() {
+						@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"onclick": "handleReply(null, 'reply')"}}) {
 							<span class="flex items-center gap-2">
 								@icon.Reply(icon.Props{Class: "size-4"})
 								Reply
 							</span>
 						}
-						@dropdown.Item() {
+						@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"onclick": "handleReply(null, 'forward')"}}) {
 							<span class="flex items-center gap-2">
 								@icon.Forward(icon.Props{Class: "size-4"})
 								Forward
@@ -726,13 +748,13 @@ templ MailViewHeader(email *models.Email) {
 						</span>
 					}
 					@dropdown.Separator()
-					@dropdown.Item() {
+					@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"onclick": fmt.Sprintf("downloadMessageRaw('%s')", email.ID)}}) {
 						<span class="flex items-center gap-2">
 							@icon.Download(icon.Props{Class: "size-4"})
 							Download
 						</span>
 					}
-					@dropdown.Item() {
+					@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"onclick": fmt.Sprintf("printMessage('%s')", email.ID)}}) {
 						<span class="flex items-center gap-2">
 							@icon.Printer(icon.Props{Class: "size-4"})
 							Print
@@ -1047,6 +1069,42 @@ templ MailViewReplyBar(email *models.Email) {
 			<span>All commands <kbd class="kbd hint-mac">&#8984;K</kbd><kbd class="kbd hint-other">Ctrl K</kbd></span>
 		</div>
 	</div>
+}
+
+// ThreadUnsubscribeID picks the message whose Unsubscribe button a conversation shows:
+// the newest with a usable List-Unsubscribe, else the newest when its headers are not
+// stored yet (rendered hidden, revealed once the body loads), else "". thread is in display order.
+func ThreadUnsubscribeID(thread []models.ThreadItem, newestFirst bool) string {
+	if len(thread) < 2 {
+		return ""
+	}
+	at := func(n int) *models.ThreadItem { // n-th newest
+		if newestFirst {
+			return &thread[n]
+		}
+		return &thread[len(thread)-1-n]
+	}
+	for n := range thread {
+		if m, _ := UnsubscribeAction(threadItemEmail(at(n))); m != "" {
+			return at(n).ID
+		}
+	}
+	if newest := at(0); newest.ListUnsubscribe == "" {
+		return newest.ID
+	}
+	return ""
+}
+
+func threadItemEmail(item *models.ThreadItem) *models.Email {
+	return &models.Email{ID: item.ID, ListUnsubscribe: item.ListUnsubscribe, ListUnsubscribePost: item.ListUnsubscribePost}
+}
+
+func threadUnsubscribeButtonClass(method string) string {
+	class := "h-8 shrink-0 border-ink/10 text-subtle-foreground hover:text-ink hover:border-ink/20"
+	if method == "" {
+		class += " hidden"
+	}
+	return class
 }
 
 // UnsubscribeAction is how the reply bar's Unsubscribe button works for this message

@@ -104,3 +104,40 @@ func MailtoRequest(uri string) (to *mail.Address, subject, body string, ok bool)
 	}
 	return list[0], subject, q.Get("body"), true
 }
+
+// CaptureDeliveredTo reduces raw Delivered-To / X-Original-To header values (the first
+// is usually a bare address, but display forms occur) to one comma-joined, de-duplicated
+// string of bare addresses, in the order given. Stored as messages.delivered_to.
+func CaptureDeliveredTo(values ...string) string {
+	var out []string
+	seen := map[string]bool{}
+	for _, v := range values {
+		v = strings.TrimSpace(v)
+		if v == "" {
+			continue
+		}
+		if a, err := mail.ParseAddress(v); err == nil {
+			v = a.Address
+		}
+		key := strings.ToLower(v)
+		if v == "" || seen[key] || strings.ContainsAny(v, ", \r\n") {
+			continue
+		}
+		seen[key] = true
+		out = append(out, v)
+	}
+	s := strings.Join(out, ",")
+	if len(s) > 1024 {
+		return ""
+	}
+	return s
+}
+
+// ParseDeliveredToHeaders extracts every Delivered-To and X-Original-To value from a header block.
+func ParseDeliveredToHeaders(raw []byte) string {
+	h, err := textproto.NewReader(bufio.NewReader(bytes.NewReader(raw))).ReadMIMEHeader()
+	if err != nil && len(h) == 0 {
+		return ""
+	}
+	return CaptureDeliveredTo(append(h.Values("X-Original-To"), h.Values("Delivered-To")...)...)
+}

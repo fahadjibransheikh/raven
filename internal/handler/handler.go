@@ -578,6 +578,8 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/messages/{id}/move", h.handleMoveMessage)
 	mux.HandleFunc("POST /api/messages/{id}/refetch", h.handleRefetchBody)
 	mux.HandleFunc("GET /api/messages/{id}/unsubscribe", h.handleUnsubscribeInfo)
+	mux.HandleFunc("GET /api/messages/{id}/raw", h.handleMessageRaw)
+	mux.HandleFunc("GET /api/messages/{id}/print", h.handlePrintMessage)
 	mux.HandleFunc("POST /api/messages/{id}/unsubscribe", h.handleUnsubscribeMessage)
 	mux.HandleFunc("POST /api/messages/{id}/translate", h.handleTranslateMessage)
 	mux.HandleFunc("POST /api/remote-content/{id}/allow", h.handleAllowRemoteContent)
@@ -732,6 +734,7 @@ func (h *Handler) handleEmailPartial(w http.ResponseWriter, r *http.Request) {
 	var thread []models.ThreadItem
 	if r.URL.Query().Get("single") != "1" {
 		thread, _ = h.db.GetThreadMessagesForUser(ctx, email.AccountID, email.ThreadID, userID)
+		_ = h.db.FillThreadListUnsubscribe(ctx, thread)
 	}
 	newestFirst := views.ThreadNewestFirst(h.db.GetUISettings(ctx, userID))
 	if newestFirst {
@@ -1494,7 +1497,29 @@ func (h *Handler) handleEmailBody(w http.ResponseWriter, r *http.Request) {
 	link := r.URL.Query().Get("link")
 	original := r.URL.Query().Get("mode") == "original"
 	loadRemote := r.URL.Query().Get("remote") == "true"
-	var body []byte
+	body, ok := h.emailBodyHTML(ctx, emailID, msgID, userID, original)
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+
+	if !loadRemote {
+		loadRemote = h.remoteImagesAllowed(ctx, userID, msgID)
+	}
+
+	if loadRemote {
+		body = message.RestoreRemoteImages(body)
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	body = h.withImageGrants(ctx, msgID, body)
+	w.Write(emailBodyDocument(w, emailID, body, theme, bg, fg, link, original, loadRemote, !loadRemote))
+}
+
+// emailBodyHTML returns the sanitized body of an owned message (fetching and storing it first if
+// needed): what the body iframe route and the print page both render. ok is false when there is none.
+func (h *Handler) emailBodyHTML(ctx context.Context, emailID string, msgID int64, userID string, original bool) (body []byte, ok bool) {
 	if msgID > 0 && !h.db.IsBodyFetchedInternal(ctx, msgID) {
 		info, err := h.db.GetMessageFetchInfoForUser(ctx, msgID, userID)
 		if err == nil && info != nil {
@@ -1507,6 +1532,9 @@ func (h *Handler) handleEmailBody(w http.ResponseWriter, r *http.Request) {
 				// Stored now, not in the async persist, so the reader's follow-up GET /unsubscribe sees them.
 				if parsed.ListUnsubscribe != "" {
 					_ = h.db.UpdateMessageListUnsubscribeInternal(ctx, msgID, parsed.ListUnsubscribe, parsed.ListUnsubscribePost)
+				}
+				if parsed.DeliveredTo != "" {
+					_ = h.db.UpdateMessageDeliveredToInternal(ctx, msgID, parsed.DeliveredTo)
 				}
 				h.persistParsedBodyAsync(msgID, info.AccountID, parsed)
 			}
@@ -1528,23 +1556,10 @@ func (h *Handler) handleEmailBody(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if err != nil || body == nil {
-			http.NotFound(w, r)
-			return
+			return nil, false
 		}
 	}
-
-	if !loadRemote {
-		loadRemote = h.remoteImagesAllowed(ctx, userID, msgID)
-	}
-
-	if loadRemote {
-		body = message.RestoreRemoteImages(body)
-	}
-
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-store")
-	body = h.withImageGrants(ctx, msgID, body)
-	w.Write(emailBodyDocument(w, emailID, body, theme, bg, fg, link, original, loadRemote, !loadRemote))
+	return body, true
 }
 
 // remoteImagesAllowed reports whether a message body should load its remote
@@ -1921,6 +1936,9 @@ func (h *Handler) storeParsedBody(ctx context.Context, parsed *message.ParsedMes
 	h.db.UpdateMessageThreadHeadersInternal(ctx, msgID, accountID, parsed.InReplyTo, parsed.References, parsed.Subject)
 	if parsed.ListUnsubscribe != "" {
 		_ = h.db.UpdateMessageListUnsubscribeInternal(ctx, msgID, parsed.ListUnsubscribe, parsed.ListUnsubscribePost)
+	}
+	if parsed.DeliveredTo != "" {
+		_ = h.db.UpdateMessageDeliveredToInternal(ctx, msgID, parsed.DeliveredTo)
 	}
 }
 
@@ -5244,7 +5262,7 @@ func (h *Handler) handleComposeSource(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]any{
 		"reply_to":             replyTo,
 		"account_id":           email.AccountID,
-		"suggested_from_email": pickReplyIdentity(identities, email.FolderRole, email.From, email.To, email.CC),
+		"suggested_from_email": pickReplyIdentity(identities, email.FolderRole, email.From, email.To, email.CC, email.DeliveredTo),
 		"message_id":           email.InternetMessageID,
 		"references":           email.References,
 		"subject":              email.Subject,

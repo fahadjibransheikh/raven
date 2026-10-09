@@ -472,15 +472,20 @@ func mailSyncErrorCount(accounts []models.Account) int {
 
 templ SidebarMailSyncErrorSummaryTooltip(accounts []models.Account) {
 	@tooltip.Tooltip() {
-		@tooltip.Trigger(tooltip.TriggerProps{Class: "absolute left-[17px] top-[2px] z-10 inline-flex"}) {
+		// While an error exists this button covers the whole sync button (so hovering anywhere on it
+		// shows the summary) and forwards its click to it. The wrapper ignores the pointer so a hidden
+		// indicator leaves the sync button's own tooltip alone.
+		@tooltip.Trigger(tooltip.TriggerProps{Class: "pointer-events-none absolute left-0 top-0 z-10 inline-flex"}) {
 			<button
 				type="button"
+				tabindex="-1"
 				data-mail-sync-error-indicator
 				hidden?={ mailSyncErrorCount(accounts) == 0 }
-				class="inline-flex size-3.5 items-center justify-center rounded-full"
+				onclick="document.querySelector('[data-mail-sidebar-sync-button]')?.click()"
+				class="pointer-events-auto relative inline-flex h-8 w-8 items-center justify-center"
 				aria-label={ fmt.Sprintf("%d mail sync issue(s)", mailSyncErrorCount(accounts)) }
 			>
-				<span class="size-2 rounded-full bg-destructive ring-2 ring-sidebar"></span>
+				<span class="absolute left-5 top-[5px] size-2 rounded-full bg-destructive ring-2 ring-sidebar"></span>
 			</button>
 		}
 		@tooltip.Content(tooltip.ContentProps{Position: tooltip.PositionBottom, ShowArrow: true, Class: "sidebar-account-error-tooltip w-80 border-sidebar-border bg-sidebar px-3 py-2 text-left text-xs leading-relaxed text-sidebar-foreground shadow-menu [&_[data-tui-popover-arrow]]:!bg-sidebar"}) {

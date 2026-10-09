@@ -12095,6 +12095,43 @@ new MutationObserver(function () {
   }
 }).observe(document.body, { childList: true, subtree: true })
 
+// More menu > Download: a HEAD first so a message whose source cannot be fetched reports an error
+// instead of navigating the app to a bare 404; the saved file then comes from a plain download link,
+// like attachments.
+function downloadMessageRaw(emailId) {
+  var url = "/api/messages/" + encodeURIComponent(emailId) + "/raw"
+  fetch(url, { method: "HEAD" })
+    .then(function (r) {
+      if (!r.ok) throw new Error("not available")
+      var a = document.createElement("a")
+      a.href = url
+      a.download = ""
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+    })
+    .catch(function () {
+      showGoferToast({ id: "message-download-error", title: "Couldn't download message", description: "The original message isn't available yet. Open it and try again.", variant: "error", icon: "error", position: "bottom-right", duration: 6000, dismissible: true })
+    })
+}
+
+// More menu > Print: the print page loads in a hidden same-origin frame and prints itself (its own
+// nonce'd script). window.open would go to the system browser in the desktop app, which has no session.
+function printMessage(emailId) {
+  var old = document.getElementById("message-print-frame")
+  if (old) old.remove()
+  var frame = document.createElement("iframe")
+  frame.id = "message-print-frame"
+  frame.setAttribute("aria-hidden", "true")
+  // The page prints itself, so it never needs our origin: a CSP slip in the
+  // email HTML still can't reach the app's cookies or DOM.
+  frame.setAttribute("sandbox", "allow-scripts allow-modals")
+  frame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0"
+  frame.src = "/api/messages/" + encodeURIComponent(emailId) + "/print"
+  document.body.appendChild(frame)
+  setTimeout(function () { if (frame.isConnected) frame.remove() }, 120000)
+}
+
 function refetchBody(emailId) {
   fetch("/api/messages/" + emailId + "/refetch", { method: "POST" })
     .then(function (r) { return r.json() })

@@ -65,3 +65,42 @@ func TestSyncUpsertsKeepStoredListUnsubscribeWhenHeadersAbsent(t *testing.T) {
 		t.Errorf("changed headers not stored: %q / %q", lu, post)
 	}
 }
+
+func TestSyncUpsertsKeepStoredDeliveredToWhenAbsent(t *testing.T) {
+	ctx := context.Background()
+	db := newContactsTestDB(t)
+	if _, err := db.Write().ExecContext(ctx, `INSERT INTO accounts (id, user_id, provider, email_address) VALUES ('acc', 'default', 'imap', 'u@example.com')`); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.UpsertFolders(ctx, []UpsertFolderInput{{ID: "inbox", AccountID: "acc", RemoteID: "INBOX", ProviderRemoteID: "INBOX", Name: "Inbox", Role: "inbox", Selectable: true}}); err != nil {
+		t.Fatal(err)
+	}
+	read := func(internetID string) string {
+		t.Helper()
+		var d string
+		if err := db.Read().QueryRowContext(ctx, `SELECT delivered_to FROM messages WHERE internet_message_id = ?`, internetID).Scan(&d); err != nil {
+			t.Fatal(err)
+		}
+		return d
+	}
+	imap := SyncMessage{AccountID: "acc", FolderID: "inbox", RemoteUID: 1, MessageID: "<imap@x>", Subject: "s", FromEmail: "f@x.com", DateSent: time.Now(), DeliveredTo: "a@x"}
+	prov := ProviderSyncMessage{AccountID: "acc", FolderID: "inbox", ProviderMessageID: "p1", InternetMessageID: "<prov@x>", Subject: "s", FromEmail: "f@x.com",
+		DateSent: time.Now(), DateReceived: time.Now(), DeliveredTo: "b@x"}
+	for round := 0; round < 2; round++ {
+		if err := db.UpsertSyncMessages(ctx, []SyncMessage{imap}); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := db.UpsertProviderSyncMessages(ctx, []ProviderSyncMessage{prov}); err != nil {
+			t.Fatal(err)
+		}
+		if round == 0 {
+			if read("<imap@x>") != "a@x" || read("<prov@x>") != "b@x" {
+				t.Fatalf("insert stored %q / %q", read("<imap@x>"), read("<prov@x>"))
+			}
+			imap.DeliveredTo, prov.DeliveredTo = "", ""
+		}
+	}
+	if read("<imap@x>") != "a@x" || read("<prov@x>") != "b@x" {
+		t.Errorf("empty upsert wiped stored: %q / %q", read("<imap@x>"), read("<prov@x>"))
+	}
+}

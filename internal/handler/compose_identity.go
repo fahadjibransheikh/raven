@@ -60,10 +60,11 @@ func (h *Handler) resolveComposeIdentity(ctx context.Context, account *models.Ac
 
 // pickReplyIdentity chooses which identity a reply/forward should be sent
 // from. For a message in Sent (we wrote it) it is the identity matching the
-// source's From; otherwise the identity addressed in To, then Cc. Delivered-To
-// and X-Original-To are not stored, so they cannot be consulted. Falls back to
-// the account's default identity, or "" if the account has none.
-func pickReplyIdentity(identities []models.AccountIdentity, folderRole string, from models.Contact, to, cc []models.Contact) string {
+// source's From; otherwise the identity addressed in To, then Cc, then one named
+// in Delivered-To / X-Original-To (comma-joined, as stored; this catches Bcc'd list
+// mail and mail forwarded to an alias). Falls back to the account's default
+// identity, or "" if the account has none.
+func pickReplyIdentity(identities []models.AccountIdentity, folderRole string, from models.Contact, to, cc []models.Contact, deliveredTo string) string {
 	byEmail := make(map[string]string, len(identities))
 	fallback := ""
 	for _, id := range identities {
@@ -90,6 +91,13 @@ func pickReplyIdentity(identities []models.AccountIdentity, folderRole string, f
 		return email
 	}
 	if email := match(cc...); email != "" {
+		return email
+	}
+	var delivered []models.Contact
+	for _, a := range strings.Split(deliveredTo, ",") {
+		delivered = append(delivered, models.Contact{Email: a})
+	}
+	if email := match(delivered...); email != "" {
 		return email
 	}
 	return fallback

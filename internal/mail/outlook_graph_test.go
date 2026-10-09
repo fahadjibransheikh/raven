@@ -175,6 +175,21 @@ func TestOutlookGraphMessageToProviderSyncFallsBackToInternetHeaders(t *testing.
 	}
 }
 
+func TestOutlookGraphMessageToProviderSyncCapturesDeliveredTo(t *testing.T) {
+	msg := outlookGraphMessage{
+		ID: "graph-message-1", InternetMessageID: "<message@example.com>",
+		InternetMessageHeaders: []outlookGraphHeader{
+			{Name: "Delivered-To", Value: "me@example.com"},
+			{Name: "X-Original-To", Value: "alias@example.com"},
+			{Name: "delivered-to", Value: "other@example.com"},
+		},
+	}
+	got := outlookGraphMessageToProviderSync("acc", "acc_inbox", msg, nil)
+	if got.DeliveredTo != "alias@example.com,me@example.com,other@example.com" {
+		t.Fatalf("DeliveredTo = %q", got.DeliveredTo)
+	}
+}
+
 func TestOutlookGraphMessageToProviderSyncCapturesListUnsubscribe(t *testing.T) {
 	msg := outlookGraphMessage{
 		ID: "graph-message-1", InternetMessageID: "<message@example.com>",

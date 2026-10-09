@@ -50,7 +50,7 @@ type ThreadingState struct {
 	Total      int  `json:"total"`
 }
 
-const CurrentSchemaVersion = 105
+const CurrentSchemaVersion = 106
 
 // restrictDatabaseFiles makes the database (message metadata, credential
 // ciphertext, session hashes) and its WAL/SHM readable by the owner only. SQLite
@@ -996,6 +996,11 @@ func (db *DB) migrate() error {
 	if currentVersion <= 104 {
 		if err := db.migrateV104ToV105(context.Background()); err != nil {
 			return fmt.Errorf("migrate v104 to v105: %w", err)
+		}
+	}
+	if currentVersion <= 105 {
+		if err := db.migrateV105ToV106(context.Background()); err != nil {
+			return fmt.Errorf("migrate v105 to v106: %w", err)
 		}
 	}
 
