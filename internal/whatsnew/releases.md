@@ -7,7 +7,7 @@ Then an optional hero line, then "### New", "### Improved", "### Fixed" or
 replaces it with the real version number. GitHub release notes use the same text.
 -->
 
-## 0.2.2 | 2026-10-09 | A quieter inbox, keyboard-first
+## 0.3.0 | 2026-10-09 | A quieter inbox, keyboard-first
 A cleaner, quieter look, a command bar for everything, and one-click unsubscribe.
 
 ### New
