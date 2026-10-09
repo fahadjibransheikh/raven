@@ -173,7 +173,7 @@ func formatFullDateTime(t time.Time, loc *time.Location) string {
 	if loc == nil {
 		loc = time.Local
 	}
-	return t.In(loc).Format("Mon, Jan 2, 2006 at 3:04 PM")
+	return t.In(loc).Format("Mon, Jan 2, 2006 at 15:04")
 }
 
 func isStarredFolder(folderID string) bool {

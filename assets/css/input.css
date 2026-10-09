@@ -2808,6 +2808,91 @@ aside[data-app-sidebar] nav a.py-1\.5 {
   flex-wrap: nowrap;
 }
 
+/* Key chip: the one <kbd> style for toolbar, reply bar and hints. */
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.3rem;
+  border: 1px solid var(--border);
+  border-radius: 0.25rem;
+  background: color-mix(in srgb, var(--muted) 60%, transparent);
+  color: var(--subtle-foreground);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1;
+}
+
+/* Marco-style reply bar: wide field on the left, actions on the right. */
+.mail-view-reply-form {
+  flex-wrap: nowrap;
+}
+
+.mail-view-reply-input {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 2.25rem;
+  padding: 0 0.75rem;
+  border: 1px solid var(--input);
+  border-radius: 0.375rem;
+  background: var(--background);
+  color: var(--subtle-foreground);
+  font-size: 0.875rem;
+  text-align: left;
+  cursor: text;
+}
+
+.mail-view-reply-input:hover {
+  border-color: var(--muted-foreground);
+}
+
+.mail-view-reply-input:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+
+.mail-view-hints {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 0.5rem;
+  font-size: 0.6875rem;
+  color: var(--subtle-foreground);
+}
+
+.mail-view-hints .kbd {
+  height: 1rem;
+  margin-inline: 0.125rem;
+  font-size: 0.625rem;
+}
+
+.mail-view-hints i {
+  margin-inline: 0.25rem;
+  font-style: normal;
+}
+
+.hint-other {
+  display: none;
+}
+
+html[data-platform="other"] .hint-mac {
+  display: none;
+}
+
+html[data-platform="other"] .hint-other {
+  display: inline-flex;
+}
+
+/* Hints are for keyboards; phones and touch-only devices skip them. */
+@media (hover: none), (max-width: 1023.98px) {
+  .mail-view-hints {
+    display: none;
+  }
+}
+
 .mail-view-meta {
   justify-content: flex-end;
   min-width: 0;
@@ -2868,6 +2953,19 @@ aside[data-app-sidebar] nav a.py-1\.5 {
   }
 
   .mail-view-attachment {
+    flex-wrap: wrap;
+  }
+
+  .mail-view-action-label,
+  .mail-view-actions .kbd {
+    display: none;
+  }
+
+  .mail-view-reply-form .mail-view-reply-input {
+    flex-basis: 100%;
+  }
+
+  .mail-view-reply-form {
     flex-wrap: wrap;
   }
 

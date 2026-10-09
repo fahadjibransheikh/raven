@@ -5,6 +5,10 @@
 
   var dialog, input, list, items = [], filtered = [], active = 0
 
+  // Key hints read Cmd on Mac and Ctrl elsewhere; CSS swaps them off this attribute.
+  var platform = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || ""
+  document.documentElement.setAttribute("data-platform", /mac|iphone|ipad/i.test(platform) ? "mac" : "other")
+
   function sidebarLink(selector) {
     return document.querySelector(selector)
   }
@@ -15,22 +19,33 @@
     else window.location.href = href
   }
 
+  var GROUP_ORDER = ["Message actions", "Go to", "App"]
+
+  // Rows for registry entries (window.RavenShortcuts, app.js). Each row runs the registry's own
+  // run(), the same function its key calls. Selection-only entries appear only with a message in play.
+  function shortcutItems() {
+    var reg = window.RavenShortcuts
+    if (!reg) return []
+    var inPlay = reg.hasMailInPlay()
+    return reg.list().filter(function (sc) {
+      return sc.palette && (!sc.needsMessage || inPlay)
+    }).map(function (sc) {
+      var k = sc.keys[0]
+      return { group: sc.group === "Message" ? "Message actions" : "App", label: sc.label, hint: k.length === 1 ? k.toUpperCase() : k, run: sc.run }
+    })
+  }
+
   function collectItems() {
-    var out = [
-      { label: "Compose new email", hint: "C", run: function () { if (typeof openNewCompose === "function") openNewCompose(); else window.location.href = "/" } },
-      { label: "Search mail", hint: "/", run: function () {
-        var search = document.querySelector("[data-mail-search-input]")
-        if (search) { search.focus(); search.select() } else window.location.href = "/"
-      } },
-      { label: "Contacts", run: function () { go('aside a[href="/contacts"]', "/contacts") } },
-      { label: "Settings", run: function () { go('a[href="/settings/accounts"]', "/settings/accounts") } },
-      { label: "Toggle light / dark", run: toggleMode },
-      { label: "What's new", run: function () { if (window.RavenWhatsNew) window.RavenWhatsNew.open() } },
-      { label: "Keyboard shortcuts", hint: "?", run: function () {
-        document.dispatchEvent(new KeyboardEvent("keydown", { key: "?", bubbles: true }))
-      } }
-    ]
-    out.forEach(function (item) { item.group = "Actions" })
+    var out = shortcutItems()
+    out.push(
+      { group: "Go to", label: "Mail", run: function () { go('a[data-sidebar-app-button="mail"]', "/") } },
+      { group: "Go to", label: "Contacts", run: function () { go('a[data-sidebar-app-button="contacts"]', "/contacts") } },
+      { group: "Go to", label: "Calendar", run: function () { go('a[data-sidebar-app-button="calendar"]', "/calendar") } },
+      { group: "Go to", label: "Settings", run: function () { go('a[href="/settings/accounts"]', "/settings/accounts") } },
+      { group: "App", label: "Toggle light / dark", run: toggleMode },
+      { group: "App", label: "What's new", run: function () { if (window.RavenWhatsNew) window.RavenWhatsNew.open() } }
+    )
+    // Folder links stay in the DOM when their account section is collapsed, so this finds them all.
     var seen = {}
     var links = document.querySelectorAll('aside a[hx-get^="/folder/"]')
     for (var i = 0; i < links.length; i++) {
@@ -39,13 +54,42 @@
       if (!name) continue
       var group = link.closest("[data-sidebar-account]")
       var groupLabel = group && group.querySelector("[data-sidebar-account-toggle] span.truncate")
-      var label = name.textContent.trim() + (groupLabel ? " — " + groupLabel.textContent.trim() : "")
+      var label = name.textContent.trim() + (groupLabel ? " \u2014 " + groupLabel.textContent.trim() : "")
       var key = link.getAttribute("hx-get")
       if (seen[key]) continue
       seen[key] = true
-      out.push({ group: "Folders", label: label, run: (function (el) { return function () { el.click() } })(link) })
+      out.push({ group: "Go to", label: label, run: (function (el) { return function () { el.click() } })(link) })
     }
     return out
+  }
+
+  // Case-insensitive subsequence match. Lower is better: 0 prefix, 1 word start,
+  // 2 substring, 3 scattered letters (tighter spans first); -1 no match.
+  function matchScore(label, q) {
+    label = label.toLowerCase()
+    if (label.indexOf(q) === 0) return 0
+    var at = label.indexOf(q)
+    while (at > 0 && /[a-z0-9]/.test(label.charAt(at - 1))) at = label.indexOf(q, at + 1)
+    if (at > 0) return 1 + at / 1000
+    if (label.indexOf(q) !== -1) return 2
+    var pos = -1, first = -1
+    for (var i = 0; i < q.length; i++) {
+      pos = label.indexOf(q.charAt(i), pos + 1)
+      if (pos === -1) return -1
+      if (first === -1) first = pos
+    }
+    return 3 + (pos - first) / 1000
+  }
+
+  function filterItems(all, q) {
+    q = q.trim().toLowerCase().replace(/\s+/g, " ")
+    var rows = []
+    all.forEach(function (item, i) {
+      var s = q ? matchScore(item.label, q) : 0
+      if (s >= 0) rows.push({ item: item, s: s, i: i, g: GROUP_ORDER.indexOf(item.group) })
+    })
+    rows.sort(function (a, b) { return (a.g - b.g) || (a.s - b.s) || (a.i - b.i) })
+    return rows.map(function (r) { return r.item })
   }
 
   function toggleMode() {
@@ -82,10 +126,7 @@
   }
 
   function render() {
-    var q = input.value.trim().toLowerCase()
-    filtered = items.filter(function (item) {
-      return !q || item.label.toLowerCase().indexOf(q) !== -1
-    })
+    filtered = filterItems(items, input.value)
     active = 0
     list.innerHTML = ""
     if (!filtered.length) {
@@ -113,6 +154,7 @@
       li.appendChild(label)
       if (item.hint) {
         var hint = document.createElement("kbd")
+        hint.className = "kbd"
         hint.textContent = item.hint
         li.appendChild(hint)
       }
@@ -166,7 +208,7 @@
     else open()
   })
 
-  window.RavenPalette = { open: open, pick: function (label, pickItems) { open({ label: label, items: pickItems }) } }
+  window.RavenPalette = { open: open, filter: filterItems, items: collectItems, pick: function (label, pickItems) { open({ label: label, items: pickItems }) } }
 })();
 
 // Confirm prompts: window.confirm returns false without showing anything in the
