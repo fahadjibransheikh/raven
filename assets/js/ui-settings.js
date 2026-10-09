@@ -43,6 +43,14 @@ var GoferSettings;
     }
   }
 
+  // "local" stays "local" in settings; the server resolves it per request from
+  // this cookie, so a device timezone change (travel) takes effect immediately.
+  function publishBrowserTimezone() {
+    try {
+      document.cookie = "raven_tz=" + encodeURIComponent(browserTimezone()) + "; path=/; max-age=31536000; SameSite=Lax";
+    } catch (_) {}
+  }
+
   function persistSettingsNow() {
     return fetch("/api/settings/ui", {
       method: "PATCH",
@@ -76,13 +84,13 @@ var GoferSettings;
     { id: "starred" },
     { id: "unread" },
   ];
-  var DEFAULT_MAIL_CARD_FIELDS = "avatar,thread,from,attachment,date,unread,subject,preview,labels,starred";
+  var DEFAULT_MAIL_CARD_FIELDS = "thread,from,accountMarker,attachment,date,unread,subject,preview,labels,starred";
   var MAIL_CARD_LAYOUT_ZONES = ["railTop", "header", "meta", "railMiddle", "body", "status", "railBottom", "footer", "corner", "hidden"];
   var MAIL_CARD_VISIBLE_LAYOUT_ZONES = ["railTop", "header", "meta", "railMiddle", "body", "status", "railBottom", "footer", "corner"];
   // Subject and preview share the body zone: the "calm" density renders them as one
 // truncating line, "airy" stacks them. Keep in sync with defaultMailCardLayout in
 // internal/storage/mail_card_layout_migration.go.
-  var DEFAULT_MAIL_CARD_LAYOUT = "railTop:avatar|header:from,date|meta:attachment,unread|railMiddle:|body:subject,preview|status:|railBottom:|footer:labels|corner:thread,starred|hidden:account,accountMarker,to";
+  var DEFAULT_MAIL_CARD_LAYOUT = "railTop:|header:from,date|meta:attachment,unread|railMiddle:accountMarker|body:subject,preview|status:|railBottom:|footer:labels|corner:thread,starred|hidden:avatar,account,to";
   var LEGACY_DEFAULT_MAIL_CARD_LAYOUTS = [
     "rail:avatar,thread|header:from,account|meta:attachment,date|body:subject,to,preview|footer:labels,starred|status:unread|hidden:",
     "rail:avatar,thread|header:from|meta:attachment,date|body:subject,preview|footer:labels,starred|status:unread|hidden:account,to",
@@ -614,10 +622,7 @@ var GoferSettings;
         } catch (_) {}
         readCache();
         _cache = Object.assign({}, _cache, serverSettings);
-        if (!_cache.timezone || _cache.timezone === "local") {
-          _cache.timezone = browserTimezone();
-          persistSettingsNow();
-        }
+        publishBrowserTimezone();
         for (var k in _cache) {
           applySetting(k, _cache[k]);
         }
@@ -632,10 +637,7 @@ var GoferSettings;
           })
           .then(function (serverSettings) {
             _cache = serverSettings;
-            if (!_cache.timezone || _cache.timezone === "local") {
-              _cache.timezone = browserTimezone();
-              persistSettingsNow();
-            }
+            publishBrowserTimezone();
             writeCache();
             for (var k in _cache) {
               applySetting(k, _cache[k]);

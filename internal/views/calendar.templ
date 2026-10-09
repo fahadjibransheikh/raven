@@ -41,7 +41,7 @@ templ CalendarSidebar(accounts []models.Account, width string, uiSettings map[st
 	<aside class="hidden lg:flex flex-col bg-sidebar text-sidebar-foreground h-full overflow-hidden" style={ "width:" + width } data-app-sidebar data-phone-drawer>
 		@SidebarHeader(accounts, "calendar")
 		@CalendarSidebarBody()
-		@SidebarFooter()
+		@SidebarFooter("calendar")
 	</aside>
 }
 

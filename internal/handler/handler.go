@@ -89,6 +89,7 @@ type Handler struct {
 	messageMutationIMAPFactory messageMutationIMAPClientFactory
 	folderReadIMAPFactory      func(context.Context, *models.AccountConfig, string) (folderReadIMAPClient, error)
 	remoteResourceDownloader   func(string) ([]byte, error)
+	unsubscribeClient          *http.Client // nil = SSRF-guarded production client; tests inject
 	providerAvatarHTTPClient   *http.Client
 	retentionMu                sync.RWMutex
 	retentionState             models.MailRetentionDiagnostics
@@ -576,6 +577,8 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/messages/{id}/unlabel", h.handleUnlabelMessage)
 	mux.HandleFunc("POST /api/messages/{id}/move", h.handleMoveMessage)
 	mux.HandleFunc("POST /api/messages/{id}/refetch", h.handleRefetchBody)
+	mux.HandleFunc("GET /api/messages/{id}/unsubscribe", h.handleUnsubscribeInfo)
+	mux.HandleFunc("POST /api/messages/{id}/unsubscribe", h.handleUnsubscribeMessage)
 	mux.HandleFunc("POST /api/messages/{id}/translate", h.handleTranslateMessage)
 	mux.HandleFunc("POST /api/remote-content/{id}/allow", h.handleAllowRemoteContent)
 	mux.HandleFunc("GET /api/remote-assets/{messageID}/{filename}", h.handleRemoteAsset)
@@ -660,7 +663,7 @@ func (h *Handler) handleIndex(w http.ResponseWriter, r *http.Request) {
 	scheduledCount := h.scheduledSidebarCount(ctx, userID)
 	filters := applyEmailSortDefaults(parseEmailFilters(r), r, uiSettings)
 	if r.Header.Get("HX-Request") == "true" && r.Header.Get("HX-Target") == "mail-list" {
-		ctx = h.contextWithUserTimezone(ctx, userID)
+		ctx = h.contextWithUserTimezone(ctx, r, userID)
 		window := h.loadMailWindow(ctx, userID, folderID, filters, emailID, 50)
 		w.Header().Set("Content-Type", "text/html")
 		views.MailAppPartial(accounts, folderID, window.emails, window.selectedEmail, window.totalCount, window.scrollCount, uiSettings, nil, emailID, window.windowStart, scheduledCount, filters).Render(ctx, w)
@@ -708,7 +711,7 @@ func (h *Handler) handleEmailPartial(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 	userID := h.userID(ctx)
-	ctx = h.contextWithUserTimezone(ctx, userID)
+	ctx = h.contextWithUserTimezone(ctx, r, userID)
 
 	folderID := r.URL.Query().Get("folder_id")
 	if folderID != "" {
@@ -806,7 +809,7 @@ func (h *Handler) handleContacts(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	h.ensureContactsBackfilled(ctx)
 	userID := h.userID(ctx)
-	ctx = h.contextWithUserTimezone(ctx, userID)
+	ctx = h.contextWithUserTimezone(ctx, r, userID)
 	switch r.URL.Query().Get("partial") {
 	case "activity":
 		selected, err := h.db.GetContact(ctx, userID, strings.TrimSpace(r.URL.Query().Get("contact")))
@@ -906,7 +909,7 @@ func (h *Handler) handleContactItems(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	h.ensureContactsBackfilled(ctx)
 	userID := h.userID(ctx)
-	ctx = h.contextWithUserTimezone(ctx, userID)
+	ctx = h.contextWithUserTimezone(ctx, r, userID)
 	filters := applyContactSortDefaults(h.parseContactFilters(r), r, h.db.GetUISettings(ctx, userID))
 	if filters.View == "" {
 		filters.View = "cards"
@@ -1224,7 +1227,7 @@ func (h *Handler) handleExportContacts(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "failed to export contacts", http.StatusInternalServerError)
 		return
 	}
-	serveVCard(w, "gofer-contacts.vcf", contacts)
+	serveVCard(w, "raven-contacts.vcf", contacts)
 }
 
 func (h *Handler) handleExportContact(w http.ResponseWriter, r *http.Request) {
@@ -1500,6 +1503,10 @@ func (h *Handler) handleEmailBody(w http.ResponseWriter, r *http.Request) {
 					body = originalBodyFromParsedMessage(parsed, msgID)
 				} else {
 					body = bodyFromParsedMessage(parsed, msgID)
+				}
+				// Stored now, not in the async persist, so the reader's follow-up GET /unsubscribe sees them.
+				if parsed.ListUnsubscribe != "" {
+					_ = h.db.UpdateMessageListUnsubscribeInternal(ctx, msgID, parsed.ListUnsubscribe, parsed.ListUnsubscribePost)
 				}
 				h.persistParsedBodyAsync(msgID, info.AccountID, parsed)
 			}
@@ -1912,6 +1919,9 @@ func (h *Handler) storeParsedBody(ctx context.Context, parsed *message.ParsedMes
 
 	h.db.UpdateMessageHeaders(ctx, msgID, parsed.Subject, parsed.FromName, parsed.FromEmail, snippet)
 	h.db.UpdateMessageThreadHeadersInternal(ctx, msgID, accountID, parsed.InReplyTo, parsed.References, parsed.Subject)
+	if parsed.ListUnsubscribe != "" {
+		_ = h.db.UpdateMessageListUnsubscribeInternal(ctx, msgID, parsed.ListUnsubscribe, parsed.ListUnsubscribePost)
+	}
 }
 
 func (h *Handler) ensureBodyFetched(ctx context.Context, msgID int64, accountID string) {
@@ -2133,7 +2143,7 @@ func (h *Handler) handleFolderPartial(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	ctx = h.contextWithUserTimezone(ctx, userID)
+	ctx = h.contextWithUserTimezone(ctx, r, userID)
 	accounts, _ := h.db.GetAccounts(ctx, userID)
 	uiSettings := h.db.GetUISettings(ctx, userID)
 	filters := applyEmailSortDefaults(parseEmailFilters(r), r, uiSettings)
@@ -2174,7 +2184,7 @@ func (h *Handler) handleFolderFull(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	ctx = h.contextWithUserTimezone(ctx, userID)
+	ctx = h.contextWithUserTimezone(ctx, r, userID)
 	accounts, _ := h.db.GetAccounts(ctx, userID)
 	uiSettings := h.db.GetUISettings(ctx, userID)
 	filters := applyEmailSortDefaults(parseEmailFilters(r), r, uiSettings)
@@ -2280,7 +2290,7 @@ func (h *Handler) handleMailItems(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	uiSettings := h.db.GetUISettings(ctx, userID)
-	ctx = storage.WithTimezone(ctx, uiSettings["timezone"])
+	ctx = storage.WithTimezone(ctx, effectiveTimezone(r, uiSettings["timezone"]))
 	filters := applyEmailSortDefaults(parseEmailFilters(r), r, uiSettings)
 
 	var page *models.EmailPage
@@ -2477,7 +2487,7 @@ func (h *Handler) handleThreadSubItems(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 	userID := h.userID(ctx)
-	ctx = h.contextWithUserTimezone(ctx, userID)
+	ctx = h.contextWithUserTimezone(ctx, r, userID)
 
 	accountID, err := h.db.GetThreadAccountIDForUser(ctx, threadID, userID)
 	if err != nil || accountID == "" {
@@ -2498,7 +2508,7 @@ func (h *Handler) handleThreadSubItems(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) handleSearch(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query().Get("q")
-	ctx := h.contextWithUserTimezone(r.Context(), h.userID(r.Context()))
+	ctx := h.contextWithUserTimezone(r.Context(), r, h.userID(r.Context()))
 	if q == "" {
 		w.Header().Set("Content-Type", "text/html")
 		uiSettings := h.db.GetUISettings(ctx, h.userID(ctx))
@@ -3800,9 +3810,28 @@ func (h *Handler) handleWhatsNew(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resp)
 }
 
-func (h *Handler) contextWithUserTimezone(ctx context.Context, userID string) context.Context {
+func (h *Handler) contextWithUserTimezone(ctx context.Context, r *http.Request, userID string) context.Context {
 	settings := h.db.GetUISettings(ctx, userID)
-	return storage.WithTimezone(ctx, settings["timezone"])
+	return storage.WithTimezone(ctx, effectiveTimezone(r, settings["timezone"]))
+}
+
+// effectiveTimezone returns the stored zone, or, while the setting is unset or
+// "local", the zone the browser reported in its raven_tz cookie. The server may
+// run in a different zone than the device (headless host serving a PWA), and
+// the device zone changes when the user travels. An unloadable cookie is ignored.
+func effectiveTimezone(r *http.Request, setting string) string {
+	setting = strings.TrimSpace(setting)
+	if setting != "" && setting != "local" {
+		return setting
+	}
+	if c, err := r.Cookie("raven_tz"); err == nil {
+		if tz, err := url.PathUnescape(c.Value); err == nil {
+			if _, err := time.LoadLocation(tz); err == nil && tz != "" && tz != "Local" {
+				return tz
+			}
+		}
+	}
+	return "local"
 }
 
 type pushSubscriptionRequest struct {

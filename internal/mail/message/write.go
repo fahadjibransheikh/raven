@@ -42,7 +42,7 @@ type OutgoingAttachment struct {
 }
 
 func NewMessageID() string {
-	return fmt.Sprintf("<%s@gofer>", uuid.New().String())
+	return fmt.Sprintf("<%s@raven>", uuid.New().String())
 }
 
 func BuildMIMEMessage(msg *OutgoingMessage) ([]byte, error) {

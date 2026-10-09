@@ -93,8 +93,8 @@ func TestMigrateV98ToV99ResetsOnlyTheOldDefaultMailListWidth(t *testing.T) {
 		}
 		var version int
 		_ = db.Read().QueryRowContext(ctx, `SELECT MAX(version) FROM schema_version`).Scan(&version)
-		if version != 102 {
-			t.Errorf("version = %d, want 102", version)
+		if version != 105 {
+			t.Errorf("version = %d, want 105", version)
 		}
 	}
 }

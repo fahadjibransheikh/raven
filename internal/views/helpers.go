@@ -386,6 +386,23 @@ func sidebarAccountCollapsed(settings map[string]string, accountID string, activ
 	return state[accountID]
 }
 
+// sidebarAccountCollapsedByDefault is sidebarAccountCollapsed for mail account
+// sections: with no stored choice the section starts collapsed, an explicit
+// expand (stored false) is respected, and the active account stays open.
+func sidebarAccountCollapsedByDefault(settings map[string]string, accountID string, active bool) bool {
+	if active {
+		return false
+	}
+	var state map[string]bool
+	if err := json.Unmarshal([]byte(uiSettingGet(settings, "sidebar_account_collapsed", "{}")), &state); err != nil {
+		return true
+	}
+	if collapsed, ok := state[accountID]; ok {
+		return collapsed
+	}
+	return true
+}
+
 func sidebarTagGroupID(accountID string) string {
 	if strings.TrimSpace(accountID) == "" {
 		return "__unified__"

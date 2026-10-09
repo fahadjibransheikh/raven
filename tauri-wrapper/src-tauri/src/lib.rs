@@ -274,7 +274,7 @@ fn start_sidecar(app: &AppHandle) {
     let port = pick_port();
     state.port.store(port, Ordering::SeqCst);
     {
-        let command = match app.shell().sidecar("gofer") {
+        let command = match app.shell().sidecar("raven-server") {
             Ok(command) => command,
             Err(err) => {
                 fail(format!(
@@ -378,10 +378,10 @@ fn start_sidecar(app: &AppHandle) {
         };
         if let Some(window) = app.get_webview_window("main") {
             if let Err(err) = window.navigate(login_url(port, &state.token, &next)) {
-                eprintln!("failed to navigate main window to Gofer: {err}");
+                eprintln!("failed to navigate main window to Raven: {err}");
             }
         } else {
-            eprintln!("main window not found; could not navigate to Gofer");
+            eprintln!("main window not found; could not navigate to Raven");
         }
     });
 }

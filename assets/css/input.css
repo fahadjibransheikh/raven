@@ -896,6 +896,12 @@
   border-radius: 9999px;
 }
 
+/* The account colour bar leading a mail card row (the accountMarker field). */
+.mail-list-account-bar {
+  width: 2px;
+  height: 12px;
+}
+
 .account-color-swatch {
   border: 2px solid color-mix(in srgb, var(--border) 60%, transparent);
   box-shadow: 0 1px 2px rgba(0,0,0,0.16);
@@ -1017,6 +1023,46 @@ input[role="switch"] + .gofer-switch-track::after {
 
 .sidebar-account-toggle {
   border-radius: var(--radius);
+}
+
+/* Active sidebar row: raised neutral pill (bg-sidebar-accent, set by templates
+   and JS) plus a 2px accent bar on its left edge. */
+[data-app-sidebar] nav a.bg-sidebar-accent {
+  position: relative;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sidebar-border) 70%, transparent);
+}
+
+[data-app-sidebar] nav a.bg-sidebar-accent::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--primary);
+}
+
+/* Footer app switcher (Mail / Contacts / Calendar): quiet icons, current one raised. */
+.sidebar-footer-app-link {
+  display: inline-flex;
+  width: 1.75rem;
+  height: 1.75rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius);
+  color: var(--subtle-foreground);
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.sidebar-footer-app-link:hover {
+  background: color-mix(in srgb, var(--sidebar-accent) 60%, transparent);
+  color: var(--sidebar-accent-foreground);
+}
+
+.sidebar-footer-app-link[aria-current] {
+  background: var(--sidebar-accent);
+  color: var(--sidebar-accent-foreground);
 }
 
 .sidebar-account-folders {
@@ -1441,7 +1487,9 @@ input[role="switch"] + .gofer-switch-track::after {
 }
 
 .mail-list-item[data-mail-read-optimistic] [data-mail-card-field="subject"],
-.mail-list-item > a[data-mail-read-optimistic] [data-mail-card-field="subject"] {
+.mail-list-item > a[data-mail-read-optimistic] [data-mail-card-field="subject"],
+.mail-list-item[data-mail-read-optimistic] [data-mail-card-field="from"],
+.mail-list-item > a[data-mail-read-optimistic] [data-mail-card-field="from"] {
   color: var(--color-muted-foreground);
 }
 
@@ -2466,6 +2514,19 @@ body.mail-list-column-resizing {
   margin-right: 12px;
 }
 
+/* No avatar in the rail: the account bar leads the row, level with the sender
+   line. Shrink the rail to the bar so a hidden marker costs no width. */
+#mail-list-scroll[data-view-mode="cards"] .mail-list-card:not(.mail-card-layout-preview-card):not(:has([data-mail-card-zone="railTop"] > [data-mail-card-field])) .mail-list-card-zone-rail-middle {
+  width: auto;
+  min-width: 0;
+  align-self: start;
+}
+
+#mail-list-scroll[data-view-mode="cards"] .mail-list-card:not(.mail-card-layout-preview-card):not(:has([data-mail-card-zone="railTop"] > [data-mail-card-field])) .mail-list-account-bar {
+  margin-top: 4px;
+  margin-right: 8px;
+}
+
 #mail-list-scroll[data-view-mode="cards"] .mail-list-card:not(.mail-card-layout-preview-card) .mail-list-card-zone-header {
   grid-area: header;
 }
@@ -2747,6 +2808,91 @@ aside[data-app-sidebar] nav a.py-1\.5 {
   flex-wrap: nowrap;
 }
 
+/* Key chip: the one <kbd> style for toolbar, reply bar and hints. */
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.3rem;
+  border: 1px solid var(--border);
+  border-radius: 0.25rem;
+  background: color-mix(in srgb, var(--muted) 60%, transparent);
+  color: var(--subtle-foreground);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1;
+}
+
+/* Marco-style reply bar: wide field on the left, actions on the right. */
+.mail-view-reply-form {
+  flex-wrap: nowrap;
+}
+
+.mail-view-reply-input {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 2.25rem;
+  padding: 0 0.75rem;
+  border: 1px solid var(--input);
+  border-radius: 0.375rem;
+  background: var(--background);
+  color: var(--subtle-foreground);
+  font-size: 0.875rem;
+  text-align: left;
+  cursor: text;
+}
+
+.mail-view-reply-input:hover {
+  border-color: var(--muted-foreground);
+}
+
+.mail-view-reply-input:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+
+.mail-view-hints {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 0.5rem;
+  font-size: 0.6875rem;
+  color: var(--subtle-foreground);
+}
+
+.mail-view-hints .kbd {
+  height: 1rem;
+  margin-inline: 0.125rem;
+  font-size: 0.625rem;
+}
+
+.mail-view-hints i {
+  margin-inline: 0.25rem;
+  font-style: normal;
+}
+
+.hint-other {
+  display: none;
+}
+
+html[data-platform="other"] .hint-mac {
+  display: none;
+}
+
+html[data-platform="other"] .hint-other {
+  display: inline-flex;
+}
+
+/* Hints are for keyboards; phones and touch-only devices skip them. */
+@media (hover: none), (max-width: 1023.98px) {
+  .mail-view-hints {
+    display: none;
+  }
+}
+
 .mail-view-meta {
   justify-content: flex-end;
   min-width: 0;
@@ -2810,6 +2956,19 @@ aside[data-app-sidebar] nav a.py-1\.5 {
     flex-wrap: wrap;
   }
 
+  .mail-view-action-label,
+  .mail-view-actions .kbd {
+    display: none;
+  }
+
+  .mail-view-reply-form .mail-view-reply-input {
+    flex-basis: 100%;
+  }
+
+  .mail-view-reply-form {
+    flex-wrap: wrap;
+  }
+
   .mail-view-reply-actions > * {
     flex: 1 1 0;
     min-width: 0;
@@ -2839,14 +2998,16 @@ aside[data-app-sidebar] nav a.py-1\.5 {
 
 /* === RESIZE HANDLE === */
 
+/* The handle IS the gap between the floating panes: invisible at rest, a thin
+   accent line on hover/drag. resize.js measures the panel before it, so the
+   handle's own width never enters its math. */
 .resize-handle {
-  width: 5px;
+  width: 8px;
   cursor: col-resize;
   background: transparent;
   position: relative;
   z-index: 10;
   flex-shrink: 0;
-  transition: background 0.15s ease;
 }
 
 .resize-handle::after {
@@ -2855,36 +3016,60 @@ aside[data-app-sidebar] nav a.py-1\.5 {
   top: 0;
   bottom: 0;
   left: 50%;
-  width: 1px;
-  background: var(--border);
+  width: 2px;
+  background: transparent;
+  border-radius: 2px;
   transform: translateX(-50%);
-  transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease, filter 0.12s ease;
+  transition: background-color 0.12s ease;
 }
 
 .resize-handle:hover::after,
 .resize-handle.active::after {
-  width: 3px;
-  background: var(--primary);
-  border-radius: 2px;
+  background: color-mix(in srgb, var(--primary) 70%, transparent);
+}
+
+/* === FLOATING PANES ===
+   Mail/contacts/calendar: the list and reader are rounded cards on --app-bg
+   with an 8px gap (the resize handles are the gap between them and the
+   sidebar). Vertical/right spacing is margin, not padding on #main-content, so
+   resize.js's percent-of-parent width math stays exact. */
+#app-shell:has(> #main-content > #mail-list) {
+  background: var(--app-bg);
+}
+
+#app-shell > #main-content:has(> #mail-list) {
+  background: transparent;
+}
+
+#main-content > #mail-list,
+#main-content > #mail-view {
+  margin-block: 8px;
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+#main-content > #mail-view {
+  margin-right: 8px;
 }
 
 #main-content[data-mail-pane-layout="stacked"] #mail-list {
-  width: 100% !important;
+  width: calc(100% - 8px) !important;
   max-width: none;
   height: min(42vh, 30rem);
   min-height: 12rem;
-  border-right: 0;
-  border-bottom: 1px solid var(--border);
+  margin: 8px 8px 0 0;
   flex: none;
 }
 
 #main-content[data-mail-pane-layout="stacked"] #mail-view {
   min-height: 0;
+  margin-top: 0;
 }
 
 #main-content[data-mail-pane-layout="stacked"] > .resize-handle[data-panel="maillist"] {
   width: 100%;
-  height: 5px;
+  height: 8px;
   cursor: row-resize;
 }
 
@@ -2892,15 +3077,9 @@ aside[data-app-sidebar] nav a.py-1\.5 {
   top: 50%;
   bottom: auto;
   left: 0;
-  width: 100%;
-  height: 1px;
+  width: calc(100% - 8px);
+  height: 2px;
   transform: translateY(-50%);
-}
-
-#main-content[data-mail-pane-layout="stacked"] > .resize-handle[data-panel="maillist"]:hover::after,
-#main-content[data-mail-pane-layout="stacked"] > .resize-handle[data-panel="maillist"].active::after {
-  width: 100%;
-  height: 3px;
 }
 
 #main-content[data-mail-pane-layout="stacked"] .compose-pane-size-icon {
@@ -3208,6 +3387,14 @@ aside[data-app-sidebar] nav a.py-1\.5 {
 
   .resize-handle {
     display: none !important;
+  }
+
+  /* One full-bleed pane at a time: no floating cards. */
+  #main-content > #mail-list,
+  #main-content > #mail-view {
+    margin: 0;
+    border: 0;
+    border-radius: 0;
   }
 
   html[data-phone] #mail-list {

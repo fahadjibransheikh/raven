@@ -1115,7 +1115,9 @@ document.addEventListener("DOMContentLoaded", function () {
       for (var i = 0; i < sections.length; i++) {
         var section = sections[i]
         var accountId = section.getAttribute("data-sidebar-account")
-        var collapsed = state[accountId] === true && !sectionHasActiveFolder(section)
+        var stored = state[accountId]
+        if (stored === undefined) stored = section.hasAttribute("data-sidebar-account-default-collapsed")
+        var collapsed = stored === true && !sectionHasActiveFolder(section)
         setCollapsed(section, collapsed)
       }
       var tagState = readTagState()
@@ -1787,90 +1789,64 @@ document.addEventListener("DOMContentLoaded", function () {
 
       document.addEventListener("keydown", function (e) {
         if (isShortcutIgnored(e)) return
-
-        if (e.key === "?" || (e.key === "/" && e.shiftKey)) {
-          e.preventDefault()
-          toggleShortcutHelp()
-          return
-        }
-
-        if (e.key === "Escape" && closeShortcutHelp()) {
-          e.preventDefault()
-          return
-        }
-
-        if (e.key === "Escape" && (selectedMailIds.size > 0 || selectedMailIdForKeyboard())) {
-          e.preventDefault()
-          clearKeyboardMailSelection()
-          return
-        }
-
-        var key = String(e.key || "").toLowerCase()
-        if (key === "j" || key === "arrowdown") {
-          e.preventDefault()
-          moveKeyboardMailSelection(1)
-          return
-        }
-        if (key === "k" || key === "arrowup") {
-          e.preventDefault()
-          moveKeyboardMailSelection(-1)
-          return
-        }
-        if (key === "enter" || key === "o") {
-          e.preventDefault()
-          openKeyboardSelectedMail()
-          return
-        }
-        if (key === "/") {
-          e.preventDefault()
-          focusMailSearch()
-          return
-        }
-        if (key === "c") {
-          e.preventDefault()
-          if (typeof openNewCompose === "function") openNewCompose()
-          return
-        }
-        if (key === "r") {
-          e.preventDefault()
-          if (typeof handleReply === "function") handleReply(null, "reply")
-          return
-        }
-        if (key === "a") {
-          e.preventDefault()
-          if (typeof handleReply === "function") handleReply(null, "reply-all")
-          return
-        }
-        if (key === "f") {
-          e.preventDefault()
-          if (typeof handleReply === "function") handleReply(null, "forward")
-          return
-        }
-        if (key === "e") {
-          e.preventDefault()
-          if (requireKeyboardMailSelection()) performMailSelectionAction("archive")
-          return
-        }
-        if (key === "delete" || key === "#") {
-          e.preventDefault()
-          if (requireKeyboardMailSelection()) performMailSelectionAction("delete")
-          return
-        }
-        if (key === "s") {
-          e.preventDefault()
-          if (requireKeyboardMailSelection()) performMailSelectionAction("star")
-          return
-        }
-        if (key === "v") {
-          e.preventDefault()
-          if (requireKeyboardMailSelection()) performMailSelectionAction("move")
-          return
-        }
-        if (key === "u") {
-          e.preventDefault()
-          toggleKeyboardSelectedRead()
-        }
+        // Shift+/ is "?" on layouts that report the base key.
+        var key = e.key === "/" && e.shiftKey ? "?" : String(e.key || "").toLowerCase()
+        var entry = shortcutForKey(key)
+        if (!entry) return
+        e.preventDefault()
+        entry.run()
       })
+    }
+
+    // The one shortcut table. The keydown handler, the help overlay, the toolbar key chips
+    // (kept in step by tests/js/shortcut_chips.test.js) and the Cmd/Ctrl+K palette all read it,
+    // so a key and its palette row run the identical function.
+    //   match: lowercased KeyboardEvent.key values; keys: labels shown (first one is the chip)
+    //   needsMessage: acts on a selected or open message (palette hides it otherwise);
+    //   the guard itself stays inside run() so keys behave exactly as before.
+    //   when(): optional gate; a key whose gate is false falls through unhandled.
+    var MAIL_SHORTCUTS = [
+      { id: "next", label: "Next email", group: "Navigation", match: ["j", "arrowdown"], keys: ["j", "Down"], run: function () { moveKeyboardMailSelection(1) } },
+      { id: "prev", label: "Previous email", group: "Navigation", match: ["k", "arrowup"], keys: ["k", "Up"], run: function () { moveKeyboardMailSelection(-1) } },
+      { id: "open", label: "Open email", group: "Navigation", match: ["enter", "o"], keys: ["Enter", "o"], run: openKeyboardSelectedMail },
+      { id: "search", label: "Focus search", group: "Navigation", palette: true, match: ["/"], keys: ["/"], run: focusMailSearch },
+      { id: "compose", label: "Compose", group: "Compose", palette: true, match: ["c"], keys: ["c"], run: function () { if (typeof openNewCompose === "function") openNewCompose() } },
+      { id: "reply", label: "Reply", group: "Message", palette: true, needsMessage: true, match: ["r"], keys: ["r"], run: function () { if (typeof handleReply === "function") handleReply(null, "reply") } },
+      { id: "reply-all", label: "Reply all", group: "Message", palette: true, needsMessage: true, match: ["a"], keys: ["a"], run: function () { if (typeof handleReply === "function") handleReply(null, "reply-all") } },
+      { id: "forward", label: "Forward", group: "Message", palette: true, needsMessage: true, match: ["f"], keys: ["f"], run: function () { if (typeof handleReply === "function") handleReply(null, "forward") } },
+      { id: "archive", label: "Archive", group: "Message", palette: true, needsMessage: true, match: ["e"], keys: ["e"], run: function () { if (requireKeyboardMailSelection()) performMailSelectionAction("archive") } },
+      { id: "delete", label: "Delete", group: "Message", palette: true, needsMessage: true, match: ["delete", "#"], keys: ["#", "Del"], run: function () { if (requireKeyboardMailSelection()) performMailSelectionAction("delete") } },
+      { id: "star", label: "Star / unstar", group: "Message", palette: true, needsMessage: true, match: ["s"], keys: ["s"], run: function () { if (requireKeyboardMailSelection()) performMailSelectionAction("star") } },
+      { id: "move", label: "Move to\u2026", group: "Message", palette: true, needsMessage: true, match: ["v"], keys: ["v"], run: function () { if (requireKeyboardMailSelection()) performMailSelectionAction("move") } },
+      { id: "label", label: "Label\u2026", group: "Message", palette: true, needsMessage: true, match: ["l"], keys: ["l"], run: labelKeyboardSelectedMail },
+      { id: "read", label: "Mark read / unread", group: "Message", palette: true, needsMessage: true, match: ["u"], keys: ["u"], run: toggleKeyboardSelectedRead },
+      { id: "unsubscribe", label: "Unsubscribe", group: "Message", palette: true, match: [], keys: [],
+        when: function () { return !!document.querySelector("[data-unsubscribe-id]:not(.hidden)") },
+        run: function () { if (typeof unsubscribeFromMessage === "function") unsubscribeFromMessage() } },
+      { id: "clear", label: "Clear selection", group: "Navigation", match: ["escape"], keys: ["Esc"],
+        when: function () { return !!document.getElementById("mail-shortcut-help") || selectedMailIds.size > 0 || !!selectedMailIdForKeyboard() },
+        run: function () { if (!closeShortcutHelp()) clearKeyboardMailSelection() } },
+      { id: "help", label: "Keyboard shortcuts", group: "App", palette: true, match: ["?"], keys: ["?"], run: toggleShortcutHelp }
+    ]
+
+    function shortcutForKey(key) {
+      for (var i = 0; i < MAIL_SHORTCUTS.length; i++) {
+        var entry = MAIL_SHORTCUTS[i]
+        if (entry.match.indexOf(key) !== -1 && (!entry.when || entry.when())) return entry
+      }
+      return null
+    }
+
+    // A message is "in play" when a row is selected or one is open in the reader.
+    function hasMailInPlay() {
+      return selectedMailIds.size > 0 || !!selectedMailIdForKeyboard() || !!document.getElementById("reply-bar") || !!document.querySelector("[data-thread-newest]")
+    }
+
+    window.RavenShortcuts = {
+      list: function () { return MAIL_SHORTCUTS.slice() },
+      get: function (id) { return MAIL_SHORTCUTS.filter(function (s) { return s.id === id })[0] || null },
+      hasMailInPlay: hasMailInPlay,
+      run: function (id) { var s = this.get(id); if (s) s.run() }
     }
 
     function isShortcutIgnored(e) {
@@ -2037,6 +2013,14 @@ document.addEventListener("DOMContentLoaded", function () {
       if (typeof input.select === "function") input.select()
     }
 
+    function labelKeyboardSelectedMail() {
+      if (!requireKeyboardMailSelection()) return
+      var id = selectedMailIdForKeyboard()
+      if (!id) return
+      var row = mailRowById(id)
+      promptLabelMessage(id, !!(row && row.dataset.hasThread === "true"))
+    }
+
     function toggleKeyboardSelectedRead() {
       if (!requireKeyboardMailSelection()) return
       var id = selectedMailIdForKeyboard()
@@ -2056,28 +2040,19 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function shortcutHelpHTML() {
+      var groups = ["Navigation", "Message", "Compose", "App"]
+      var rows = groups.map(function (group) {
+        return MAIL_SHORTCUTS.filter(function (s) { return s.group === group && s.keys.length }).map(function (s) {
+          return shortcutHelpRow(s.keys, s.label)
+        }).join('')
+      }).join('')
       return '<div id="mail-shortcut-help" class="fixed inset-0 z-[1000] flex items-center justify-center bg-background/70 px-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">' +
         '<div class="w-full max-w-lg rounded-2xl border border-border bg-card p-5 shadow-menu animate-fade-in">' +
           '<div class="mb-4 flex items-start justify-between gap-3">' +
             '<div><h2 class="text-lg font-semibold tracking-tight">Keyboard shortcuts</h2><p class="mt-1 text-xs text-muted-foreground">Shortcuts are disabled while typing or composing.</p></div>' +
             '<button type="button" class="rounded-md border border-border px-2 py-1 text-xs font-semibold text-muted-foreground hover:bg-accent hover:text-foreground" data-mail-shortcut-help-close>Esc</button>' +
           '</div>' +
-          '<div class="grid gap-2 sm:grid-cols-2">' +
-            shortcutHelpRow(['j', 'Down'], 'Next email') +
-            shortcutHelpRow(['k', 'Up'], 'Previous email') +
-            shortcutHelpRow(['Enter', 'o'], 'Open email') +
-            shortcutHelpRow(['/'], 'Focus search') +
-            shortcutHelpRow(['c'], 'Compose') +
-            shortcutHelpRow(['r'], 'Reply') +
-            shortcutHelpRow(['a'], 'Reply all') +
-            shortcutHelpRow(['f'], 'Forward') +
-            shortcutHelpRow(['e'], 'Archive selected') +
-            shortcutHelpRow(['Del', '#'], 'Delete selected') +
-            shortcutHelpRow(['s'], 'Star selected') +
-            shortcutHelpRow(['v'], 'Move to folder') +
-            shortcutHelpRow(['u'], 'Toggle read') +
-            shortcutHelpRow(['Esc'], 'Clear selection') +
-          '</div>' +
+          '<div class="grid gap-2 sm:grid-cols-2">' + rows + '</div>' +
         '</div>' +
       '</div>'
     }
@@ -5117,19 +5092,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function sidebarPendingHTML(mode) {
     var rows = mode === "contacts" ? 5 : 7
-    var html = '<div class="px-4 pb-4">'
+    var html = ""
     if (mode === "contacts") {
+      html += '<div class="px-4 pb-4">'
       html += '<div class="inline-flex w-full items-stretch rounded-lg shadow-sm">'
-      html += '<div class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors flex h-9 min-w-0 flex-1 items-center justify-center gap-2 rounded-l-md rounded-r-none text-sm font-medium text-sidebar-primary-foreground opacity-75">'
+      html += '<div class="bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent/70 disabled:cursor-not-allowed disabled:opacity-60 transition-colors flex h-9 min-w-0 flex-1 items-center justify-center gap-2 rounded-l-md rounded-r-none text-sm font-medium text-sidebar-primary-foreground opacity-75">'
       html += pendingSidebarIcon("user-plus", "size-4") + '<span>New contact</span></div>'
-      html += '<div class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-l-none rounded-r-md border-l border-sidebar-border/70 text-sidebar-primary-foreground opacity-75">'
+      html += '<div class="bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent/70 disabled:cursor-not-allowed disabled:opacity-60 transition-colors inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-l-none rounded-r-md border-l border-sidebar-border/70 text-sidebar-primary-foreground opacity-75">'
       html += pendingSidebarIcon("ellipsis-vertical", "size-4") + '</div></div>'
-    } else {
-      html += '<div class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors flex h-9 w-full items-center justify-center gap-2 rounded-md text-sm font-medium text-sidebar-primary-foreground opacity-75">'
-      html += pendingSidebarIcon("pen", "size-4") + '<span>Compose</span></div>'
+      html += '</div><hr class="divider-etched mx-4">'
     }
-    html += '</div>'
-    html += '<hr class="divider-etched mx-4"><nav class="flex-1 overflow-y-auto px-3 pt-2 pb-3">'
+    html += '<nav class="flex-1 overflow-y-auto px-3 pt-2 pb-3">'
     for (var i = 0; i < rows; i++) {
       html += '<div class="mb-1 flex items-center gap-2.5 rounded-md px-2.5 py-1.5"><span class="size-5 rounded bg-sidebar-accent"></span><span class="h-3 flex-1 rounded bg-sidebar-accent"></span></div>'
     }
@@ -11657,6 +11630,54 @@ function promptLabelMessage(emailId, thread) {
   })
 }
 
+// Unsubscribe button in the reader reply bar (data-unsubscribe-* set by MailViewReplyBar).
+// One-click and mailto are done by the server; a plain link comes back as action "open".
+// A message synced before List-Unsubscribe was captured renders its button hidden. By the time its body
+// frame reports loaded, the server has stored the headers: ask once and un-hide the button.
+function revealUnsubscribeButton(emailId) {
+  var btn = emailId ? document.querySelector('[data-unsubscribe-id="' + _cssAttrEscape(emailId) + '"].hidden') : null
+  if (!btn || btn.dataset.unsubscribeChecked) return
+  btn.dataset.unsubscribeChecked = "1"
+  fetch("/api/messages/" + encodeURIComponent(emailId) + "/unsubscribe")
+    .then(function (r) { return r.ok ? r.json() : null })
+    .then(function (info) {
+      if (!info || !info.method) return
+      btn.dataset.unsubscribeMethod = info.method
+      btn.dataset.unsubscribeTarget = info.target || ""
+      btn.classList.remove("hidden")
+    })
+    .catch(function () {})
+}
+
+function unsubscribeFromMessage(btn) {
+  btn = btn || document.querySelector("[data-unsubscribe-id]:not(.hidden)")
+  if (!btn || btn.disabled) return
+  var id = btn.dataset.unsubscribeId
+  var sender = btn.dataset.unsubscribeSender || "this sender"
+  var method = btn.dataset.unsubscribeMethod
+  var detail = method === "one-click" ? "Raven will send the unsubscribe request."
+    : method === "mailto" ? "Raven will email " + (btn.dataset.unsubscribeTarget || "the sender") + " to unsubscribe."
+    : "Opens the sender's unsubscribe page in your browser."
+  goferConfirm("Unsubscribe from " + sender + "?", detail, "Unsubscribe").then(function (ok) {
+    if (!ok) return
+    btn.disabled = true
+    fetch("/api/messages/" + encodeURIComponent(id) + "/unsubscribe", { method: "POST" })
+      .then(function (response) {
+        if (!response.ok) return response.text().then(function (text) { throw new Error(text.trim() || "HTTP " + response.status) })
+        return response.json()
+      })
+      .then(function (result) {
+        if (result.action === "open") {
+          window.open(result.url, "_blank", "noopener,noreferrer")
+          return
+        }
+        showGoferToast({ id: "mail-unsubscribe", title: "Unsubscribed from " + sender, variant: "success", icon: "success", position: "bottom-right", duration: 5000, dismissible: true })
+      })
+      .catch(function (err) { showMailActionError("Could not unsubscribe", err && err.message) })
+      .then(function () { btn.disabled = false })
+  })
+}
+
 function addLabelToMessage(emailId, labelName, thread) {
   fetch("/api/messages/" + encodeURIComponent(emailId) + "/label", {
     method: "POST",
@@ -11812,6 +11833,7 @@ window.addEventListener("message", function (e) {
       if (threadContent && threadContent._threadRepin) threadContent._threadRepin()
       var loader = frameEmailId ? document.querySelector('[data-email-body-loading="' + _cssAttrEscape(frameEmailId) + '"]') : null
       if (loader) loader.remove()
+      revealUnsubscribeButton(frameEmailId)
       if (iframe.dataset.translationActive === "true" && typeof window.goferEmailTranslationFrameLoaded === "function") {
         window.goferEmailTranslationFrameLoaded(frameEmailId)
       }

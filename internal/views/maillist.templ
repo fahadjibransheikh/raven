@@ -189,7 +189,7 @@ templ MailListToolbar(accounts []models.Account, activeFolder string, viewMode s
 							}
 						}
 					</div>
-					<button type="submit" class="inline-flex h-8 w-full items-center justify-center rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90">Apply sort</button>
+					<button type="submit" class="inline-flex h-8 w-full items-center justify-center rounded-md bg-secondary px-3 text-xs font-semibold text-secondary-foreground border border-border hover:bg-accent">Apply sort</button>
 				</form>
 			}
 		}
@@ -330,7 +330,7 @@ templ MailFiltersPopover(accounts []models.Account) {
 			<button type="button" aria-label="Filters" data-mail-filter-button class="mail-list-advanced-filter-button relative inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border border-input bg-background px-2.5 text-xs font-medium text-foreground hover:bg-row-hover data-[active=true]:bg-row-selected data-[active=true]:text-foreground">
 				<span>Filters</span>
 				@icon.SlidersHorizontal(icon.Props{Class: "size-3.5"})
-				<span data-mail-filter-count class="hidden min-w-4 rounded-full bg-primary px-1 text-center text-xs leading-4 text-primary-foreground"></span>
+				<span data-mail-filter-count class="hidden min-w-4 rounded-full bg-foreground px-1 text-center text-xs leading-4 text-background"></span>
 			</button>
 		}
 		@popover.Content(popover.ContentProps{Placement: popover.PlacementBottomEnd, Offset: 8, Exclusive: true, Class: "z-[70] w-[min(36rem,calc(100vw-1.5rem))] max-w-none overflow-hidden p-0 [&::backdrop]:transition-colors [&::backdrop]:duration-150 data-[tui-popover-open=false]:[&::backdrop]:bg-black/0 data-[tui-popover-open=true]:[&::backdrop]:bg-black/25"}) {
@@ -550,9 +550,9 @@ templ MailFiltersPopover(accounts []models.Account) {
 						<button type="button" data-mail-advanced-filter-clear class="h-8 rounded-md px-2 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground">Clear all</button>
 						<div class="flex items-center gap-2">
 							<button type="button" data-mail-filters-close class="h-8 rounded-md border border-border px-3 text-xs font-medium hover:bg-accent">Cancel</button>
-							<button type="submit" class="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90">
+							<button type="submit" class="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-secondary px-3 text-xs font-semibold text-secondary-foreground hover:bg-accent">
 								<span>Apply</span>
-								<span data-mail-advanced-filter-count class="hidden min-w-4 rounded-full bg-primary-foreground/15 px-1.5 py-0.5 text-center text-xs leading-none">0</span>
+								<span data-mail-advanced-filter-count class="hidden min-w-4 rounded-full bg-foreground/10 px-1.5 py-0.5 text-center text-xs leading-none">0</span>
 							</button>
 						</div>
 					</div>
@@ -775,7 +775,7 @@ templ MailCardLayoutDialog() {
 							</div>
 							<div class="mail-list-card-zone mail-list-card-zone-rail-middle" data-mail-card-zone="railMiddle" data-mail-card-layout-zone-items="railMiddle" data-mail-card-layout-dropzone="railMiddle">
 								<span data-mail-card-field="accountMarker" class="inline-flex items-center justify-center shrink-0">
-									<span class="account-color-marker size-2.5 shrink-0 bg-primary"></span>
+									<span class="account-color-marker mail-list-account-bar shrink-0 bg-primary"></span>
 								</span>
 							</div>
 							<div class="mail-list-card-zone mail-list-card-zone-rail-bottom" data-mail-card-zone="railBottom" data-mail-card-layout-zone-items="railBottom" data-mail-card-layout-dropzone="railBottom">
@@ -906,29 +906,29 @@ templ MailListCardItem(accounts []models.Account, email models.Email, position i
 			}
 			data-mail-card-layout-scope
 		>
-			<div class="mail-list-card-zone mail-list-card-zone-rail-top" data-mail-card-zone="railTop">
-				<div data-mail-card-field="avatar">
-					@ContactAvatar(email.From, "size-8 rounded-full text-xs font-medium", contactAvatarListFallback(email.IsRead))
-				</div>
-			</div>
+			<div class="mail-list-card-zone mail-list-card-zone-rail-top" data-mail-card-zone="railTop"></div>
 			<div class="mail-list-card-zone mail-list-card-zone-rail-middle" data-mail-card-zone="railMiddle">
-				<span data-mail-card-field="accountMarker" class="inline-flex items-center justify-center shrink-0">
-					<span class="account-color-marker size-2.5 shrink-0" style={ accountColorStyle(email.AccountColor) }></span>
-				</span>
+				if len(accounts) > 1 {
+					<span data-mail-card-field="accountMarker" class="inline-flex items-center justify-center shrink-0">
+						<span class="account-color-marker mail-list-account-bar shrink-0" style={ accountColorStyle(email.AccountColor) }></span>
+					</span>
+				} else {
+					<span data-mail-card-field="accountMarker" hidden></span>
+				}
 			</div>
 			<div class="mail-list-card-zone mail-list-card-zone-rail-bottom" data-mail-card-zone="railBottom"></div>
 			<div class="mail-list-card-zone mail-list-card-zone-header" data-mail-card-zone="header">
 				<span
 					class={
 						"text-sm truncate",
-						templ.KV("font-semibold text-foreground", !email.IsRead),
-						templ.KV("font-medium text-muted-foreground", email.IsRead),
+						templ.KV("text-foreground", !email.IsRead),
+						templ.KV("text-muted-foreground", email.IsRead),
 					}
 					data-mail-card-field="from"
 				>@SenderLabel(email.From, senderDisplayMode)</span>
 				<span
 					class={
-						"text-xs tabular-nums",
+						"text-xs font-mono tabular-nums",
 						templ.KV("text-foreground", !email.IsRead),
 						templ.KV("text-subtle-foreground", email.IsRead),
 					}
@@ -959,7 +959,7 @@ templ MailListCardItem(accounts []models.Account, email models.Email, position i
 				<p
 					class={
 						"text-[13px] leading-[18px] truncate",
-						templ.KV("font-semibold text-foreground", !email.IsRead),
+						templ.KV("text-foreground", !email.IsRead),
 						templ.KV("text-muted-foreground", email.IsRead),
 					}
 					data-mail-card-field="subject"
@@ -1000,7 +1000,11 @@ templ MailListCardItem(accounts []models.Account, email models.Email, position i
 					</button>
 				}
 			</div>
-			<div class="hidden" data-mail-card-zone="hidden"></div>
+			<div class="hidden" data-mail-card-zone="hidden">
+				<div data-mail-card-field="avatar">
+					@ContactAvatar(email.From, "size-8 rounded-full text-xs font-medium", contactAvatarListFallback(email.IsRead))
+				</div>
+			</div>
 			@MailListRowActions(email)
 		</a>
 	</div>

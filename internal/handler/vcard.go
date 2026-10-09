@@ -32,7 +32,7 @@ func contactVCard(contact models.Contact) emersionvcard.Card {
 
 	card := emersionvcard.Card{}
 	card.SetValue(emersionvcard.FieldVersion, "4.0")
-	card.SetValue(emersionvcard.FieldProductID, "-//Gofer//Contacts//EN")
+	card.SetValue(emersionvcard.FieldProductID, "-//Raven//Contacts//EN")
 	if contact.ID != "" {
 		card.SetValue(emersionvcard.FieldUID, "urn:uuid:"+contact.ID)
 	}

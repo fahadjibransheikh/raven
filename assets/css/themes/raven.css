@@ -33,11 +33,13 @@
   --border: #e7e7e4;
   --input: #dcdcd8;
   --ring: var(--raven-pink);
-  --sidebar: #f7f7f5;
+  /* Darkest surface: sidebar and the canvas the list/reader cards float on. */
+  --app-bg: #f1f1ee;
+  --sidebar: var(--app-bg);
   --sidebar-foreground: #5f5e5b;
   --sidebar-primary: var(--sidebar-accent-foreground);
   --sidebar-primary-foreground: var(--primary-foreground);
-  --sidebar-accent: #e9e9e6;
+  --sidebar-accent: #fbfbfa;
   --sidebar-accent-foreground: #1d1b16;
   --sidebar-border: #e7e7e4;
   --sidebar-ring: var(--raven-pink);
@@ -75,7 +77,8 @@
   --warning: #f5b84a;
   --border: #2a2a2f;
   --input: #3a3a40;
-  --sidebar: #111113;
+  --app-bg: #111113;
+  --sidebar: var(--app-bg);
   --sidebar-foreground: #a3a6ad;
   --sidebar-accent: #1f1f24;
   --sidebar-accent-foreground: #ececee;

@@ -1,6 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Raven",
+  "mainBinaryName": "Raven",
   "identifier": "com.fahadsheikh.raven",
   "build": {
     "frontendDist": "../frontend"
@@ -51,7 +52,7 @@
       "icons/icon.ico"
     ],
     "externalBin": [
-      "binaries/gofer"
+      "binaries/raven-server"
     ],
     "resources": []
   },

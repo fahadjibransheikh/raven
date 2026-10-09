@@ -329,7 +329,7 @@ func (r *Resolver) fetchHashedAvatar(ctx context.Context, source, rawURL string)
 		return Image{}, false, err
 	}
 	req.Header.Set("Accept", "image/avif,image/webp,image/png,image/jpeg,image/gif;q=0.8,*/*;q=0.5")
-	req.Header.Set("User-Agent", "GoferMail/1.0")
+	req.Header.Set("User-Agent", "Raven/1.0")
 
 	resp, err := r.client.Do(req)
 	if err != nil {
@@ -392,7 +392,7 @@ func (r *Resolver) fetchBIMILogo(ctx context.Context, rawURL string) (Image, boo
 		return Image{}, false, err
 	}
 	req.Header.Set("Accept", "image/svg+xml")
-	req.Header.Set("User-Agent", "GoferMail/1.0")
+	req.Header.Set("User-Agent", "Raven/1.0")
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -546,7 +546,7 @@ func (r *Resolver) discoverDomainIconURLs(ctx context.Context, domain string) ([
 		return nil, err
 	}
 	req.Header.Set("Accept", "text/html,application/xhtml+xml;q=0.9,*/*;q=0.2")
-	req.Header.Set("User-Agent", "GoferMail/1.0")
+	req.Header.Set("User-Agent", "Raven/1.0")
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -592,7 +592,7 @@ func (r *Resolver) fetchRemoteAvatarImage(ctx context.Context, source, rawURL st
 		return Image{}, false, err
 	}
 	req.Header.Set("Accept", "image/avif,image/webp,image/png,image/jpeg,image/gif,image/svg+xml,image/x-icon,*/*;q=0.2")
-	req.Header.Set("User-Agent", "GoferMail/1.0")
+	req.Header.Set("User-Agent", "Raven/1.0")
 
 	resp, err := client.Do(req)
 	if err != nil {

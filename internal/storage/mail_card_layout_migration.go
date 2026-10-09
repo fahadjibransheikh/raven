@@ -15,10 +15,15 @@ const oldDefaultMailCardLayout = "railTop:avatar|header:from,date|meta:attachmen
 // an untouched layout from a customised one after the default moves on.
 const v101DefaultMailCardLayout = "railTop:avatar|header:from,date|meta:attachment,unread|railMiddle:|body:subject|status:|railBottom:|footer:preview,labels|corner:thread,starred|hidden:account,accountMarker,to"
 
+// v102DefaultMailCardLayout is the default of schema version 102, pinned so
+// migrateV103ToV104 can move an untouched layout to the text-only default.
+const v102DefaultMailCardLayout = "railTop:avatar|header:from,date|meta:attachment,unread|railMiddle:|body:subject,preview|status:|railBottom:|footer:labels|corner:thread,starred|hidden:account,accountMarker,to"
+
 // defaultMailCardLayout is the current default: subject and preview share one
 // truncating line (body zone), labels sit in the footer, thread count and star
-// in the corner.
-const defaultMailCardLayout = "railTop:avatar|header:from,date|meta:attachment,unread|railMiddle:|body:subject,preview|status:|railBottom:|footer:labels|corner:thread,starred|hidden:account,accountMarker,to"
+// in the corner. The avatar is hidden (text-only rows) and the account marker,
+// a thin colour bar, leads the row.
+const defaultMailCardLayout = "railTop:|header:from,date|meta:attachment,unread|railMiddle:accountMarker|body:subject,preview|status:|railBottom:|footer:labels|corner:thread,starred|hidden:avatar,account,to"
 
 // migrateV100ToV101 moves users whose stored mail_card_layout is exactly the old
 // default onto the v101 default. A stored old default is indistinguishable

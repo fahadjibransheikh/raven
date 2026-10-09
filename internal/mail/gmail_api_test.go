@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -145,6 +146,9 @@ func TestSyncGmailAPIAccountImportsLabelsMessagesAndCursor(t *testing.T) {
 			if got := r.URL.Query().Get("format"); got != "metadata" {
 				t.Fatalf("message format = %q, want metadata during baseline sync", got)
 			}
+			if got := r.URL.Query()["metadataHeaders"]; !slices.Contains(got, "List-Unsubscribe") || !slices.Contains(got, "List-Unsubscribe-Post") {
+				t.Fatalf("metadataHeaders = %v, want List-Unsubscribe and List-Unsubscribe-Post requested", got)
+			}
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"id":           "gmail-msg-1",
 				"threadId":     "thread-1",
@@ -160,6 +164,8 @@ func TestSyncGmailAPIAccountImportsLabelsMessagesAndCursor(t *testing.T) {
 						{"name": "From", "value": "Sender <sender@example.com>"},
 						{"name": "To", "value": "Recipient <recipient@example.com>"},
 						{"name": "Date", "value": "Fri, 26 Jun 2026 12:00:00 +0000"},
+						{"name": "List-Unsubscribe", "value": "<https://example.com/u/1>"},
+						{"name": "List-Unsubscribe-Post", "value": "List-Unsubscribe=One-Click"},
 					},
 					"parts": []map[string]any{{
 						"mimeType": "text/plain",
@@ -206,6 +212,13 @@ func TestSyncGmailAPIAccountImportsLabelsMessagesAndCursor(t *testing.T) {
 	}
 	if db.IsBodyFetchedInternal(ctx, msgID) {
 		t.Fatal("Gmail API baseline sync fetched the body; want metadata-only import")
+	}
+	var listUnsub, listUnsubPost string
+	if err := db.Read().QueryRowContext(ctx, `SELECT list_unsubscribe, list_unsubscribe_post FROM messages WHERE id = ?`, msgID).Scan(&listUnsub, &listUnsubPost); err != nil {
+		t.Fatalf("query list-unsubscribe: %v", err)
+	}
+	if listUnsub != "<https://example.com/u/1>" || listUnsubPost != "List-Unsubscribe=One-Click" {
+		t.Fatalf("list-unsubscribe = %q / %q, want captured at metadata sync", listUnsub, listUnsubPost)
 	}
 	body, err := db.GetEmailBody(ctx, strconv.FormatInt(msgID, 10))
 	if err != nil || body != nil {

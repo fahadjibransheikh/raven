@@ -131,7 +131,18 @@ test("the default card layout combines subject and preview in the body zone", ()
   assert.equal(z.body, "subject,preview")
   assert.equal(z.footer, "labels")
   assert.equal(z.corner, "thread,starred")
-  assert.equal(z.railTop, "avatar")
+  assert.equal(z.railTop, "", "text-only rows: no avatar in the rail")
+  assert.equal(z.railMiddle, "accountMarker")
+  assert.equal(z.hidden, "avatar,account,to")
+})
+
+test("the avatar can still be dragged back into the layout", () => {
+  const layout = "railTop:avatar|header:from,date|meta:attachment,unread|railMiddle:accountMarker|body:subject,preview|status:|railBottom:|footer:labels|corner:thread,starred|hidden:account,to"
+  const fields = "avatar,thread,from,accountMarker,attachment,date,unread,subject,preview,labels,starred"
+  const w = settingsWindow({ mail_card_layout: layout, mail_card_fields: fields })
+  w.document.body.insertAdjacentHTML("beforeend", CARD)
+  w.applyMailCardLayoutSettings(w.document.body)
+  assert.equal(zones(w, w.document.querySelector("[data-mail-card-layout-scope]")).railTop, "avatar")
 })
 
 test("a stored v101 default layout is read as the new default, custom layouts are kept", () => {
@@ -149,9 +160,12 @@ test("the layout customiser can express and round-trip the default", () => {
   const again = w.serializeMailCardLayout(layout)
   w.applyMailCardLayout(again)
   assert.equal(w.serializeMailCardLayout(w.getMailCardLayout()), again)
+  // The avatar is hidden by default, so these layouts pass the visible fields
+  // the way the layout dialog does.
+  const withAvatar = "avatar,thread,from,accountMarker,attachment,date,unread,subject,preview,labels,starred"
   // preview is a text field: it may live in body or footer, never a side zone
-  w.applyMailCardLayout("railTop:avatar|header:from,date|meta:attachment,unread|railMiddle:|body:subject|status:|railBottom:|footer:preview,labels|corner:starred,thread|hidden:account,accountMarker,to")
+  w.applyMailCardLayout("railTop:avatar|header:from,date|meta:attachment,unread|railMiddle:|body:subject|status:|railBottom:|footer:preview,labels|corner:starred,thread|hidden:account,accountMarker,to", withAvatar)
   assert.deepEqual(Array.from(w.getMailCardLayout().footer), ["preview", "labels"])
-  w.applyMailCardLayout("railTop:avatar,preview|header:from,date|meta:attachment,unread|railMiddle:|body:subject|status:|railBottom:|footer:labels|corner:thread,starred|hidden:account,accountMarker,to")
+  w.applyMailCardLayout("railTop:avatar,preview|header:from,date|meta:attachment,unread|railMiddle:|body:subject|status:|railBottom:|footer:labels|corner:thread,starred|hidden:account,accountMarker,to", withAvatar)
   assert.deepEqual(Array.from(w.getMailCardLayout().railTop), ["avatar"], "a text field cannot land in a rail zone")
 })

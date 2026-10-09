@@ -224,7 +224,7 @@ func (c *GoogleWebConnector) translateHTMLBatch(ctx context.Context, sourceLangu
 	}
 	req.Header.Set("Content-Type", "application/application/json+protobuf")
 	req.Header.Set("X-goog-api-key", apiKey)
-	req.Header.Set("User-Agent", "Gofer/1.0")
+	req.Header.Set("User-Agent", "Raven/1.0")
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -296,7 +296,7 @@ func (c *GoogleWebConnector) fetchGoogleAPIKey(ctx context.Context) string {
 	if err != nil {
 		return ""
 	}
-	req.Header.Set("User-Agent", "Gofer/1.0")
+	req.Header.Set("User-Agent", "Raven/1.0")
 	resp, err := c.client.Do(req)
 	if err != nil {
 		return ""

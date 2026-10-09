@@ -12,7 +12,7 @@ import (
 func (h *Handler) handleCalendar(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	userID := h.userID(ctx)
-	ctx = h.contextWithUserTimezone(ctx, userID)
+	ctx = h.contextWithUserTimezone(ctx, r, userID)
 	uiSettings := h.db.GetUISettings(ctx, userID)
 	accounts, _ := h.db.GetAccounts(ctx, userID)
 

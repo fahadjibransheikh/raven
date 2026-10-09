@@ -100,6 +100,9 @@ type Email struct {
 	InReplyTo         string
 	References        string
 	IsDraft           bool
+	// Raw List-Unsubscribe / List-Unsubscribe-Post headers; empty until the body was fetched.
+	ListUnsubscribe     string
+	ListUnsubscribePost string
 }
 
 type Contact struct {

@@ -3,6 +3,7 @@ package views
 import (
 	"fmt"
 	"strings"
+	mailmessage "github.com/cristianadrielbraun/gofer/internal/mail/message"
 	"github.com/cristianadrielbraun/gofer/internal/models"
 
 	"github.com/cristianadrielbraun/gofer/components/button"
@@ -510,6 +511,24 @@ templ MailViewThreadItemActions(item *models.ThreadItem, isNewest bool) {
 	</div>
 }
 
+templ ShortcutKbd(id string) {
+	<kbd class="kbd" data-shortcut={ id }>{ shortcutKeys[id] }</kbd>
+}
+
+func deleteLabel(email *models.Email) string {
+	if mailEmailIsTrash(email) {
+		return threadAwareLabel("Permanently delete", "Permanently delete thread", email)
+	}
+	return threadAwareLabel("Delete", "Delete thread", email)
+}
+
+func readLabel(email *models.Email) string {
+	if email.IsRead {
+		return threadAwareLabel("Mark as unread", "Mark thread as unread", email)
+	}
+	return threadAwareLabel("Mark as read", "Mark thread as read", email)
+}
+
 templ MailViewHeader(email *models.Email) {
 	<div class="mail-view-toolbar flex items-center justify-between px-6 py-2.5">
 		<div class="mail-view-actions flex items-center gap-1 min-w-0">
@@ -520,18 +539,19 @@ templ MailViewHeader(email *models.Email) {
 				@tooltip.Trigger() {
 					@button.Button(button.Props{
 						Variant:    button.VariantGhost,
-						Size:       button.SizeIcon,
-						Class:      "h-8 w-8 text-subtle-foreground hover:text-foreground hover:bg-row-hover",
-						Attributes: templ.Attributes{"onclick": fmt.Sprintf("archiveThread('%s')", email.ID)},
+						Class:      "h-8 gap-1.5 px-2 text-subtle-foreground hover:text-foreground hover:bg-row-hover",
+						Attributes: templ.Attributes{"onclick": fmt.Sprintf("archiveThread('%s')", email.ID), "aria-label": withShortcut(threadAwareLabel("Archive", "Archive thread", email), "archive"), "aria-keyshortcuts": shortcutKeys["archive"]},
 					}) {
 						@icon.Archive(icon.Props{Class: "size-4"})
+						<span class="mail-view-action-label text-sm">Archive</span>
+						@ShortcutKbd("archive")
 					}
 				}
 				@tooltip.Content(tooltip.ContentProps{
 					Position:  tooltip.PositionBottom,
 					ShowArrow: true,
 				}) {
-					{ threadAwareLabel("Archive", "Archive thread", email) }
+					{ withShortcut(threadAwareLabel("Archive", "Archive thread", email), "archive") }
 				}
 			}
 			@tooltip.Tooltip() {
@@ -540,7 +560,7 @@ templ MailViewHeader(email *models.Email) {
 						Variant:    button.VariantGhost,
 						Size:       button.SizeIcon,
 						Class:      mailDeleteActionClass("h-8 w-8", "text-subtle-foreground hover:text-foreground hover:bg-row-hover", mailEmailIsTrash(email)),
-						Attributes: templ.Attributes{"onclick": threadAwareAction("deleteMessage", "deleteThread", email)},
+						Attributes: templ.Attributes{"onclick": threadAwareAction("deleteMessage", "deleteThread", email), "aria-label": withShortcut(deleteLabel(email), "delete"), "aria-keyshortcuts": shortcutKeys["delete"]},
 					}) {
 						@icon.Trash2(icon.Props{Class: "size-4"})
 					}
@@ -549,11 +569,7 @@ templ MailViewHeader(email *models.Email) {
 					Position:  tooltip.PositionBottom,
 					ShowArrow: true,
 				}) {
-					if mailEmailIsTrash(email) {
-						{ threadAwareLabel("Permanently delete", "Permanently delete thread", email) }
-					} else {
-						{ threadAwareLabel("Delete", "Delete thread", email) }
-					}
+					{ withShortcut(deleteLabel(email), "delete") }
 				}
 				}
 				@tooltip.Tooltip() {
@@ -595,7 +611,7 @@ templ MailViewHeader(email *models.Email) {
 						Variant:    button.VariantGhost,
 						Size:       button.SizeIcon,
 						Class:      "h-8 w-8",
-						Attributes: templ.Attributes{"onclick": fmt.Sprintf("toggleStar('%s')", email.ID), "data-star-email": email.ID},
+						Attributes: templ.Attributes{"onclick": fmt.Sprintf("toggleStar('%s')", email.ID), "data-star-email": email.ID, "aria-label": withShortcut("Star", "star"), "aria-keyshortcuts": shortcutKeys["star"]},
 					}) {
 						if email.IsStarred {
 							@icon.Star(icon.Props{Class: "size-4 text-warning fill-warning drop-shadow-[0_1px_1px_rgba(180,120,0,0.3)]"})
@@ -608,7 +624,7 @@ templ MailViewHeader(email *models.Email) {
 					Position:  tooltip.PositionBottom,
 					ShowArrow: true,
 				}) {
-					Star
+					{ withShortcut("Star", "star") }
 				}
 			}
 			@tooltip.Tooltip() {
@@ -617,7 +633,7 @@ templ MailViewHeader(email *models.Email) {
 						Variant:    button.VariantGhost,
 						Size:       button.SizeIcon,
 						Class:      "h-8 w-8 text-subtle-foreground hover:text-foreground hover:bg-row-hover",
-						Attributes: templ.Attributes{"onclick": threadAwareAction("toggleRead", "toggleThreadRead", email), "data-read-email": email.ID},
+						Attributes: templ.Attributes{"onclick": threadAwareAction("toggleRead", "toggleThreadRead", email), "data-read-email": email.ID, "aria-label": withShortcut(readLabel(email), "read"), "aria-keyshortcuts": shortcutKeys["read"]},
 					}) {
 						if email.IsRead {
 							@icon.Mail(icon.Props{Class: "size-4"})
@@ -630,11 +646,7 @@ templ MailViewHeader(email *models.Email) {
 					Position:  tooltip.PositionBottom,
 					ShowArrow: true,
 				}) {
-					if email.IsRead {
-						{ threadAwareLabel("Mark as unread", "Mark thread as unread", email) }
-					} else {
-						{ threadAwareLabel("Mark as read", "Mark thread as read", email) }
-					}
+					{ withShortcut(readLabel(email), "read") }
 				}
 			}
 		</div>
@@ -699,12 +711,18 @@ templ MailViewHeader(email *models.Email) {
 						<span class="flex items-center gap-2">
 							@icon.Tag(icon.Props{Class: "size-4"})
 							Add label
+							<span class="ml-auto pl-4">
+								@ShortcutKbd("label")
+							</span>
 						</span>
 					}
 					@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"onclick": fmt.Sprintf("performMailAction('move', ['%s'], { keepSelection: true })", email.ID)}}) {
 						<span class="flex items-center gap-2">
 							@icon.FolderInput(icon.Props{Class: "size-4"})
 							Move to...
+							<span class="ml-auto pl-4">
+								@ShortcutKbd("move")
+							</span>
 						</span>
 					}
 					@dropdown.Separator()
@@ -952,39 +970,125 @@ templ MailViewBodyByID(emailID string) {
 
 templ MailViewReplyBar(email *models.Email) {
 	<div class="py-3 border-t border-border" id="reply-bar" data-message-id={ email.InternetMessageID } data-references={ email.References } data-subject={ email.Subject } data-from-email={ email.From.Email } data-from-name={ email.From.Name } data-account-id={ email.AccountID } data-date={ email.DateFull } data-to={ formatContacts(email.To) } data-cc={ formatContacts(email.CC) } data-body={ email.TextBody }>
-		<div class="mail-view-reply-actions mx-auto flex max-w-[720px] items-center gap-2 px-8">
+		<div class="mail-view-reply-form mx-auto flex max-w-[720px] items-center gap-2 px-8">
+			<button type="button" class="mail-view-reply-input" onclick={ templ.JSFuncCall("handleReply", templ.JSExpression("this"), replyBarInputMode(email)) }>
+				{ replyBarInputLabel(email) }
+			</button>
+			// Rendered hidden when the headers are not stored yet (message synced before they were
+			// captured); app.js reveals it once the body fetch has stored them.
+			if method, target := UnsubscribeAction(email); method != "" || email.ListUnsubscribe == "" {
+				@button.Button(button.Props{
+					Variant: button.VariantOutline,
+					Class:   unsubscribeButtonClass(method),
+					Attributes: templ.Attributes{
+						"onclick":                 "unsubscribeFromMessage(this)",
+						"data-unsubscribe-id":     email.ID,
+						"data-unsubscribe-method": method,
+						"data-unsubscribe-target": target,
+						"data-unsubscribe-sender": contactDisplay(email.From),
+					},
+				}) {
+					@icon.MailX(icon.Props{Class: "size-4"})
+					<span class="text-sm">Unsubscribe</span>
+				}
+			}
 			@button.Button(button.Props{
-				Variant:    button.VariantDefault,
-				Class:      "h-9 px-3",
-				Attributes: templ.Attributes{"onclick": "handleReply(this, 'reply')"},
+				Variant:    button.VariantOutline,
+				Class:      "h-9 shrink-0 gap-1.5 px-3 border-input bg-background text-foreground hover:bg-row-hover",
+				Attributes: templ.Attributes{"onclick": "handleReply(this, 'forward')", "aria-keyshortcuts": shortcutKeys["forward"]},
 			}) {
-				<span class="flex items-center gap-2 text-sm">
+				@icon.Forward(icon.Props{Class: "size-4"})
+				<span class="text-sm">Forward</span>
+			}
+			<div class="mail-view-reply-split inline-flex shrink-0 items-stretch">
+				@button.Button(button.Props{
+					Variant:    button.VariantDefault,
+					Class:      "h-9 gap-1.5 rounded-r-none px-3 bg-foreground text-background hover:bg-foreground/90",
+					Attributes: templ.Attributes{"onclick": "handleReply(this, 'reply')", "aria-keyshortcuts": shortcutKeys["reply"]},
+				}) {
 					@icon.Reply(icon.Props{Class: "size-4"})
-					Reply
-				</span>
-			}
-			@button.Button(button.Props{
-				Variant:    button.VariantOutline,
-				Class:      "h-9 px-3 border-input bg-background text-foreground hover:bg-row-hover",
-				Attributes: templ.Attributes{"onclick": "handleReply(this, 'reply-all')"},
-			}) {
-				<span class="flex items-center gap-2 text-sm">
-					@icon.ReplyAll(icon.Props{Class: "size-4"})
-					Reply All
-				</span>
-			}
-			@button.Button(button.Props{
-				Variant:    button.VariantOutline,
-				Class:      "h-9 px-3 border-input bg-background text-foreground hover:bg-row-hover",
-				Attributes: templ.Attributes{"onclick": "handleReply(this, 'forward')"},
-			}) {
-				<span class="flex items-center gap-2 text-sm">
-					@icon.Forward(icon.Props{Class: "size-4"})
-					Forward
-				</span>
-			}
+					<span class="text-sm">Reply</span>
+				}
+				@dropdown.Dropdown() {
+					@dropdown.Trigger() {
+						@button.Button(button.Props{
+							Variant:    button.VariantDefault,
+							Class:      "h-9 w-8 rounded-l-none border-l border-background/25 px-0 bg-foreground text-background hover:bg-foreground/90",
+							Attributes: templ.Attributes{"aria-label": "More reply options"},
+						}) {
+							@icon.ChevronDown(icon.Props{Class: "size-4"})
+						}
+					}
+					@dropdown.Content() {
+						@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"onclick": "handleReply(null, 'reply-all')"}}) {
+							<span class="flex w-full items-center gap-2">
+								@icon.ReplyAll(icon.Props{Class: "size-4"})
+								Reply all
+								<span class="ml-auto pl-4">
+									@ShortcutKbd("reply-all")
+								</span>
+							</span>
+						}
+					}
+				}
+			</div>
+		</div>
+		<div class="mail-view-hints mx-auto max-w-[720px] px-8" aria-hidden="true">
+			<span>
+				Reply
+				@ShortcutKbd("reply")
+				<i>&middot;</i>
+				Forward
+				@ShortcutKbd("forward")
+				<i>&middot;</i>
+				Archive
+				@ShortcutKbd("archive")
+			</span>
+			<span>All commands <kbd class="kbd hint-mac">&#8984;K</kbd><kbd class="kbd hint-other">Ctrl K</kbd></span>
 		</div>
 	</div>
+}
+
+// UnsubscribeAction is how the reply bar's Unsubscribe button works for this message
+// ("" = no button) and, for mailto, the address the request goes to.
+func UnsubscribeAction(email *models.Email) (method, target string) {
+	u := mailmessage.ParseListUnsubscribe(email.ListUnsubscribe, email.ListUnsubscribePost)
+	method = u.Method()
+	if method == mailmessage.UnsubscribeMailto {
+		if to, _, _, ok := mailmessage.MailtoRequest(u.Mailto); ok {
+			target = to.Address
+		} else {
+			method = "" // unusable mailto: nothing to offer unless https exists
+			if u.HTTPS != "" {
+				method = mailmessage.UnsubscribeBrowser
+			}
+		}
+	}
+	return method, target
+}
+
+func unsubscribeButtonClass(method string) string {
+	class := "h-9 shrink-0 gap-1.5 px-3 border-input bg-background text-foreground hover:bg-row-hover"
+	if method == "" {
+		class += " hidden"
+	}
+	return class
+}
+
+// replyBarInputMode is the action behind the wide "Reply..." field: reply-all when
+// there is anyone besides the sender to include.
+func replyBarInputMode(email *models.Email) string {
+	if len(email.To)+len(email.CC) > 1 {
+		return "reply-all"
+	}
+	return "reply"
+}
+
+func replyBarInputLabel(email *models.Email) string {
+	if replyBarInputMode(email) == "reply-all" {
+		return "Reply all\u2026"
+	}
+	return "Reply\u2026"
 }
 
 templ MailViewDraftBar(email *models.Email) {
