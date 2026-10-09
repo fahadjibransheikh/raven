@@ -18,7 +18,7 @@ import (
 )
 
 templ MailList(accounts []models.Account, emails []models.Email, activeFolder string, selectedEmail *models.Email, totalCount int, scrollCount int, windowStart int, width string, senderDisplayMode string, viewMode string, navigationMode string, filters models.EmailFilters) {
-	<div id="mail-list" class="w-full lg:flex flex-col border-r border-border bg-card h-full overflow-hidden" style={ "width:" + mailListWidthCSS(width) } data-mail-list-view={ mailListViewMode(viewMode) } data-mail-navigation-mode={ mailListNavigationMode(navigationMode) }>
+	<div id="mail-list" class="w-full lg:flex flex-col border-r border-border bg-card h-full overflow-hidden" style={ "width:" + mailListWidthCSS(width) } data-mail-list-default-width?={ mailListWidthIsDefault(width) } data-mail-list-view={ mailListViewMode(viewMode) } data-mail-navigation-mode={ mailListNavigationMode(navigationMode) }>
 		@MailListHeader(accounts, activeFolder, totalCount, filters)
 		@MailListToolbar(accounts, activeFolder, mailListViewMode(viewMode), filters)
 		@MailCardLayoutDialog()
@@ -1193,4 +1193,10 @@ templ SenderLabel(contact models.Contact, mode string) {
 	if addr := senderAddress(contact, mode); addr != "" {
 		<span class="ml-1.5 text-xs font-normal text-subtle-foreground">{ addr }</span>
 	}
+}
+
+// mailListWidthIsDefault reports a pane nobody has resized; only that one gets the wider
+// default floor in input.css. A dragged width (saved as a percentage) may go down to the drag minimum.
+func mailListWidthIsDefault(width string) bool {
+	return width == "" || strings.TrimSpace(width) == "30%"
 }

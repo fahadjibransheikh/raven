@@ -90,6 +90,8 @@ var initResizeHandles;
     var startX = e.clientX || (e.touches && e.touches[0].clientX) || 0;
     var startY = e.clientY || (e.touches && e.touches[0].clientY) || 0;
     var startSize = getSize(panel, axis);
+    // Drop the default-width floor (input.css) so the pane can go down to the drag minimum.
+    panel.removeAttribute("data-mail-list-default-width");
 
     document.body.style.cursor = axis === "y" ? "row-resize" : "col-resize";
     document.body.style.userSelect = "none";

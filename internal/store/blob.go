@@ -24,6 +24,20 @@ func NewBlobStore(basePath string) *BlobStore {
 	return &BlobStore{basePath: basePath}
 }
 
+// Contains reports whether p resolves (symlinks included) to a path inside the blob directory.
+func (s *BlobStore) Contains(p string) bool {
+	base, err := filepath.EvalSymlinks(s.basePath)
+	if err != nil {
+		return false
+	}
+	real, err := filepath.EvalSymlinks(p)
+	if err != nil {
+		return false
+	}
+	rel, err := filepath.Rel(base, real)
+	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) && !filepath.IsAbs(rel)
+}
+
 func (s *BlobStore) msgDir(accountID string, localID int64) string {
 	return filepath.Join(s.basePath, accountID, "messages", fmt.Sprintf("%d", localID))
 }

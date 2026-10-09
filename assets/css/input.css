@@ -2679,12 +2679,13 @@ aside[data-app-sidebar] nav a.py-1\.5 {
 }
 
 @media (min-width: 1024px) {
-  /* Wider list pane beside the reader. A min-width, so a pane the user dragged wider still wins. */
-  #main-content[data-mail-pane-layout="side"] > #mail-list:not([data-contact-list-shell]) {
+  /* Wider default list pane beside the reader. A min-width, so a pane the user dragged wider still wins;
+     once the user resizes (data-mail-list-default-width removed) the floor is the drag minimum. */
+  #main-content[data-mail-pane-layout="side"] > #mail-list[data-mail-list-default-width]:not([data-contact-list-shell]) {
     min-width: clamp(380px, 36%, 520px);
   }
 
-  :root[data-mail-density="airy"] #main-content[data-mail-pane-layout="side"] > #mail-list:not([data-contact-list-shell]) {
+  :root[data-mail-density="airy"] #main-content[data-mail-pane-layout="side"] > #mail-list[data-mail-list-default-width]:not([data-contact-list-shell]) {
     min-width: clamp(340px, 36%, 520px);
   }
 

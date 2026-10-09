@@ -203,6 +203,8 @@ func foreignMessageActionRequests(fixture messageActionOwnershipFixture) []messa
 		{name: "move message", method: http.MethodPost, path: "/api/messages/" + id + "/move", pathValues: map[string]string{"id": id}, body: url.Values{"folder_id": {"attacker-archive"}}.Encode(), contentType: "application/x-www-form-urlencoded", handle: fixture.handler.handleMoveMessage},
 		{name: "prefetch body", method: http.MethodPost, path: "/api/messages/" + id + "/prefetch-body", pathValues: map[string]string{"id": id}, handle: fixture.handler.handlePrefetchBody},
 		{name: "refetch body", method: http.MethodPost, path: "/api/messages/" + id + "/refetch", pathValues: map[string]string{"id": id}, handle: fixture.handler.handleRefetchBody},
+		{name: "download raw", method: http.MethodGet, path: "/api/messages/" + id + "/raw", pathValues: map[string]string{"id": id}, handle: fixture.handler.handleMessageRaw},
+		{name: "print", method: http.MethodGet, path: "/api/messages/" + id + "/print", pathValues: map[string]string{"id": id}, handle: fixture.handler.handlePrintMessage},
 		{name: "unsubscribe", method: http.MethodPost, path: "/api/messages/" + id + "/unsubscribe", pathValues: map[string]string{"id": id}, handle: fixture.handler.handleUnsubscribeMessage},
 		{name: "translate", method: http.MethodPost, path: "/api/messages/" + id + "/translate", pathValues: map[string]string{"id": id}, body: `{}`, contentType: "application/json", handle: fixture.handler.handleTranslateMessage},
 		{name: "allow remote content", method: http.MethodPost, path: "/api/remote-content/" + id + "/allow", pathValues: map[string]string{"id": id}, body: `{"mode":"sender"}`, contentType: "application/json", handle: fixture.handler.handleAllowRemoteContent},

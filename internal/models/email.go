@@ -268,6 +268,9 @@ type ThreadItem struct {
 	Attachments       []Attachment
 	InternetMessageID string
 	References        string
+	// Raw List-Unsubscribe headers; filled by storage.FillThreadListUnsubscribe.
+	ListUnsubscribe     string
+	ListUnsubscribePost string
 }
 
 type ComposeRequest struct {
