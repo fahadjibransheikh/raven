@@ -31,19 +31,21 @@ type ParsedMessage struct {
 	// Raw List-Unsubscribe / List-Unsubscribe-Post values (parsed by ParseListUnsubscribe).
 	ListUnsubscribe     string
 	ListUnsubscribePost string
-	Subject             string
-	FromName            string
-	FromEmail           string
-	To                  []Recipient
-	CC                  []Recipient
-	DateSent            time.Time
-	TextBody            string
-	HTMLBody            []byte
-	Snippet             string
-	Attachments         []AttachmentMeta
-	Size                int64
-	ParseError          error
-	RawPath             string
+	// Comma-joined Delivered-To / X-Original-To addresses (see CaptureDeliveredTo).
+	DeliveredTo string
+	Subject     string
+	FromName    string
+	FromEmail   string
+	To          []Recipient
+	CC          []Recipient
+	DateSent    time.Time
+	TextBody    string
+	HTMLBody    []byte
+	Snippet     string
+	Attachments []AttachmentMeta
+	Size        int64
+	ParseError  error
+	RawPath     string
 }
 
 type Recipient struct {
@@ -97,6 +99,7 @@ func ParseMessage(ctx context.Context, r io.Reader, blobStore *store.BlobStore, 
 	}
 	parsed.References = header.Get("References")
 	parsed.ListUnsubscribe, parsed.ListUnsubscribePost = CaptureListUnsubscribe(header.Get("List-Unsubscribe"), header.Get("List-Unsubscribe-Post"))
+	parsed.DeliveredTo = CaptureDeliveredTo(append(header.Header.Values("X-Original-To"), header.Header.Values("Delivered-To")...)...)
 
 	if date, err := header.Date(); err == nil {
 		parsed.DateSent = date

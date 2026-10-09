@@ -146,7 +146,7 @@ func TestSyncGmailAPIAccountImportsLabelsMessagesAndCursor(t *testing.T) {
 			if got := r.URL.Query().Get("format"); got != "metadata" {
 				t.Fatalf("message format = %q, want metadata during baseline sync", got)
 			}
-			if got := r.URL.Query()["metadataHeaders"]; !slices.Contains(got, "List-Unsubscribe") || !slices.Contains(got, "List-Unsubscribe-Post") {
+			if got := r.URL.Query()["metadataHeaders"]; !slices.Contains(got, "List-Unsubscribe") || !slices.Contains(got, "List-Unsubscribe-Post") || !slices.Contains(got, "Delivered-To") || !slices.Contains(got, "X-Original-To") {
 				t.Fatalf("metadataHeaders = %v, want List-Unsubscribe and List-Unsubscribe-Post requested", got)
 			}
 			_ = json.NewEncoder(w).Encode(map[string]any{
@@ -166,6 +166,8 @@ func TestSyncGmailAPIAccountImportsLabelsMessagesAndCursor(t *testing.T) {
 						{"name": "Date", "value": "Fri, 26 Jun 2026 12:00:00 +0000"},
 						{"name": "List-Unsubscribe", "value": "<https://example.com/u/1>"},
 						{"name": "List-Unsubscribe-Post", "value": "List-Unsubscribe=One-Click"},
+						{"name": "Delivered-To", "value": "me@example.com"},
+						{"name": "Delivered-To", "value": "alias@example.com"},
 					},
 					"parts": []map[string]any{{
 						"mimeType": "text/plain",
@@ -216,6 +218,10 @@ func TestSyncGmailAPIAccountImportsLabelsMessagesAndCursor(t *testing.T) {
 	var listUnsub, listUnsubPost string
 	if err := db.Read().QueryRowContext(ctx, `SELECT list_unsubscribe, list_unsubscribe_post FROM messages WHERE id = ?`, msgID).Scan(&listUnsub, &listUnsubPost); err != nil {
 		t.Fatalf("query list-unsubscribe: %v", err)
+	}
+	var deliveredTo string
+	if err := db.Read().QueryRowContext(ctx, `SELECT delivered_to FROM messages WHERE id = ?`, msgID).Scan(&deliveredTo); err != nil || deliveredTo != "me@example.com,alias@example.com" {
+		t.Fatalf("delivered_to = %q, %v; want both Delivered-To values captured", deliveredTo, err)
 	}
 	if listUnsub != "<https://example.com/u/1>" || listUnsubPost != "List-Unsubscribe=One-Click" {
 		t.Fatalf("list-unsubscribe = %q / %q, want captured at metadata sync", listUnsub, listUnsubPost)

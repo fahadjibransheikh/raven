@@ -914,6 +914,7 @@ func outlookGraphMessageToProviderSync(accountID, folderID string, msg outlookGr
 
 		ListUnsubscribe:     listUnsubscribe,
 		ListUnsubscribePost: listUnsubscribePost,
+		DeliveredTo:         message.CaptureDeliveredTo(append(outlookGraphHeaderValues(msg.InternetMessageHeaders, "X-Original-To"), outlookGraphHeaderValues(msg.InternetMessageHeaders, "Delivered-To")...)...),
 	}
 }
 
@@ -1128,6 +1129,16 @@ func outlookGraphHeaderValue(headers []outlookGraphHeader, name string) string {
 		}
 	}
 	return ""
+}
+
+func outlookGraphHeaderValues(headers []outlookGraphHeader, name string) []string {
+	var out []string
+	for _, header := range headers {
+		if strings.EqualFold(strings.TrimSpace(header.Name), name) {
+			out = append(out, header.Value)
+		}
+	}
+	return out
 }
 
 func outlookGraphAddressHeaderValue(headers []outlookGraphHeader, name string) outlookGraphEmailAddress {

@@ -157,7 +157,7 @@ func (h *Handler) handleUnsubscribeMessage(w http.ResponseWriter, r *http.Reques
 	case mailmessage.UnsubscribeMailto:
 		// Send from the address the list actually has: the identity this message was addressed to.
 		identities, _ := h.db.ListAccountIdentities(ctx, h.userID(ctx), info.AccountID)
-		from := pickReplyIdentity(identities, email.FolderRole, email.From, email.To, email.CC)
+		from := pickReplyIdentity(identities, email.FolderRole, email.From, email.To, email.CC, email.DeliveredTo)
 		if err := h.sendUnsubscribeEmail(ctx, info.AccountID, from, u.Mailto); err != nil {
 			log.Printf("unsubscribe message=%s: %v", idStr, err)
 			http.Error(w, "Could not send the unsubscribe email", http.StatusBadGateway)

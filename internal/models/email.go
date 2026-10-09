@@ -103,6 +103,8 @@ type Email struct {
 	// Raw List-Unsubscribe / List-Unsubscribe-Post headers; empty until the body was fetched.
 	ListUnsubscribe     string
 	ListUnsubscribePost string
+	// Comma-joined Delivered-To / X-Original-To addresses captured at sync; empty if unknown.
+	DeliveredTo string
 }
 
 type Contact struct {

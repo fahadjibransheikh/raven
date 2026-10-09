@@ -120,6 +120,7 @@ CREATE TABLE IF NOT EXISTS messages (
     has_attachments INTEGER NOT NULL DEFAULT 0,
     list_unsubscribe TEXT NOT NULL DEFAULT '',
     list_unsubscribe_post TEXT NOT NULL DEFAULT '',
+    delivered_to TEXT NOT NULL DEFAULT '',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -1451,4 +1452,4 @@ CREATE TABLE IF NOT EXISTS calendar_account_state (
     last_synced_at DATETIME
 );
 
-INSERT OR REPLACE INTO schema_version (version) VALUES (105);
+INSERT OR REPLACE INTO schema_version (version) VALUES (106);

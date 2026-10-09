@@ -213,6 +213,7 @@ func TestUnsubscribeMailtoSendsFromTheAddressedIdentity(t *testing.T) {
 	}{
 		{"alias in To", "alias@example.com", true, "to"},
 		{"alias in Cc", "Alias@Example.com", true, "cc"},
+		{"alias only in Delivered-To (Bcc)", "Alias@Example.com", true, "delivered"},
 		{"no identity matches", "list@elsewhere.invalid", false, "to"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -229,7 +230,12 @@ func TestUnsubscribeMailtoSendsFromTheAddressedIdentity(t *testing.T) {
 				`UPDATE messages SET list_unsubscribe = '<mailto:unsub@news.example.invalid>' WHERE id = ?`, fixture.victimMessageID); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := fixture.db.Write().ExecContext(ctx,
+			if tc.recipientK == "delivered" {
+				if _, err := fixture.db.Write().ExecContext(ctx,
+					`UPDATE messages SET delivered_to = ? WHERE id = ?`, "other@elsewhere.invalid,"+tc.recipient, fixture.victimMessageID); err != nil {
+					t.Fatal(err)
+				}
+			} else if _, err := fixture.db.Write().ExecContext(ctx,
 				`INSERT INTO message_recipients (message_id, kind, name, email) VALUES (?, ?, '', ?)`, fixture.victimMessageID, tc.recipientK, tc.recipient); err != nil {
 				t.Fatal(err)
 			}

@@ -1508,6 +1508,9 @@ func (h *Handler) handleEmailBody(w http.ResponseWriter, r *http.Request) {
 				if parsed.ListUnsubscribe != "" {
 					_ = h.db.UpdateMessageListUnsubscribeInternal(ctx, msgID, parsed.ListUnsubscribe, parsed.ListUnsubscribePost)
 				}
+				if parsed.DeliveredTo != "" {
+					_ = h.db.UpdateMessageDeliveredToInternal(ctx, msgID, parsed.DeliveredTo)
+				}
 				h.persistParsedBodyAsync(msgID, info.AccountID, parsed)
 			}
 		}
@@ -1921,6 +1924,9 @@ func (h *Handler) storeParsedBody(ctx context.Context, parsed *message.ParsedMes
 	h.db.UpdateMessageThreadHeadersInternal(ctx, msgID, accountID, parsed.InReplyTo, parsed.References, parsed.Subject)
 	if parsed.ListUnsubscribe != "" {
 		_ = h.db.UpdateMessageListUnsubscribeInternal(ctx, msgID, parsed.ListUnsubscribe, parsed.ListUnsubscribePost)
+	}
+	if parsed.DeliveredTo != "" {
+		_ = h.db.UpdateMessageDeliveredToInternal(ctx, msgID, parsed.DeliveredTo)
 	}
 }
 
@@ -5244,7 +5250,7 @@ func (h *Handler) handleComposeSource(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]any{
 		"reply_to":             replyTo,
 		"account_id":           email.AccountID,
-		"suggested_from_email": pickReplyIdentity(identities, email.FolderRole, email.From, email.To, email.CC),
+		"suggested_from_email": pickReplyIdentity(identities, email.FolderRole, email.From, email.To, email.CC, email.DeliveredTo),
 		"message_id":           email.InternetMessageID,
 		"references":           email.References,
 		"subject":              email.Subject,
