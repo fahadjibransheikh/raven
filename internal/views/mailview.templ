@@ -974,10 +974,12 @@ templ MailViewReplyBar(email *models.Email) {
 			<button type="button" class="mail-view-reply-input" onclick={ templ.JSFuncCall("handleReply", templ.JSExpression("this"), replyBarInputMode(email)) }>
 				{ replyBarInputLabel(email) }
 			</button>
-			if method, target := unsubscribeAction(email); method != "" {
+			// Rendered hidden when the headers are not stored yet (message synced before they were
+			// captured); app.js reveals it once the body fetch has stored them.
+			if method, target := UnsubscribeAction(email); method != "" || email.ListUnsubscribe == "" {
 				@button.Button(button.Props{
 					Variant: button.VariantOutline,
-					Class:   "h-9 shrink-0 gap-1.5 px-3 border-input bg-background text-foreground hover:bg-row-hover",
+					Class:   unsubscribeButtonClass(method),
 					Attributes: templ.Attributes{
 						"onclick":                 "unsubscribeFromMessage(this)",
 						"data-unsubscribe-id":     email.ID,
@@ -1047,9 +1049,9 @@ templ MailViewReplyBar(email *models.Email) {
 	</div>
 }
 
-// unsubscribeAction is how the reply bar's Unsubscribe button works for this message
+// UnsubscribeAction is how the reply bar's Unsubscribe button works for this message
 // ("" = no button) and, for mailto, the address the request goes to.
-func unsubscribeAction(email *models.Email) (method, target string) {
+func UnsubscribeAction(email *models.Email) (method, target string) {
 	u := mailmessage.ParseListUnsubscribe(email.ListUnsubscribe, email.ListUnsubscribePost)
 	method = u.Method()
 	if method == mailmessage.UnsubscribeMailto {
@@ -1063,6 +1065,14 @@ func unsubscribeAction(email *models.Email) (method, target string) {
 		}
 	}
 	return method, target
+}
+
+func unsubscribeButtonClass(method string) string {
+	class := "h-9 shrink-0 gap-1.5 px-3 border-input bg-background text-foreground hover:bg-row-hover"
+	if method == "" {
+		class += " hidden"
+	}
+	return class
 }
 
 // replyBarInputMode is the action behind the wide "Reply..." field: reply-all when

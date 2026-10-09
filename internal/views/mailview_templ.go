@@ -4243,11 +4243,11 @@ func MailViewReplyBar(email *models.Email) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 260, "</button> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 260, "</button>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if method, target := unsubscribeAction(email); method != "" {
+		if method, target := UnsubscribeAction(email); method != "" || email.ListUnsubscribe == "" {
 			templ_7745c5c3_Var181 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 				templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 				templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
@@ -4272,7 +4272,7 @@ func MailViewReplyBar(email *models.Email) templ.Component {
 			})
 			templ_7745c5c3_Err = button.Button(button.Props{
 				Variant: button.VariantOutline,
-				Class:   "h-9 shrink-0 gap-1.5 px-3 border-input bg-background text-foreground hover:bg-row-hover",
+				Class:   unsubscribeButtonClass(method),
 				Attributes: templ.Attributes{
 					"onclick":                 "unsubscribeFromMessage(this)",
 					"data-unsubscribe-id":     email.ID,
@@ -4503,9 +4503,9 @@ func MailViewReplyBar(email *models.Email) templ.Component {
 	})
 }
 
-// unsubscribeAction is how the reply bar's Unsubscribe button works for this message
+// UnsubscribeAction is how the reply bar's Unsubscribe button works for this message
 // ("" = no button) and, for mailto, the address the request goes to.
-func unsubscribeAction(email *models.Email) (method, target string) {
+func UnsubscribeAction(email *models.Email) (method, target string) {
 	u := mailmessage.ParseListUnsubscribe(email.ListUnsubscribe, email.ListUnsubscribePost)
 	method = u.Method()
 	if method == mailmessage.UnsubscribeMailto {
@@ -4519,6 +4519,14 @@ func unsubscribeAction(email *models.Email) (method, target string) {
 		}
 	}
 	return method, target
+}
+
+func unsubscribeButtonClass(method string) string {
+	class := "h-9 shrink-0 gap-1.5 px-3 border-input bg-background text-foreground hover:bg-row-hover"
+	if method == "" {
+		class += " hidden"
+	}
+	return class
 }
 
 // replyBarInputMode is the action behind the wide "Reply..." field: reply-all when

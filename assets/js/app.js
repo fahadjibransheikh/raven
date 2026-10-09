@@ -1821,7 +1821,7 @@ document.addEventListener("DOMContentLoaded", function () {
       { id: "label", label: "Label\u2026", group: "Message", palette: true, needsMessage: true, match: ["l"], keys: ["l"], run: labelKeyboardSelectedMail },
       { id: "read", label: "Mark read / unread", group: "Message", palette: true, needsMessage: true, match: ["u"], keys: ["u"], run: toggleKeyboardSelectedRead },
       { id: "unsubscribe", label: "Unsubscribe", group: "Message", palette: true, match: [], keys: [],
-        when: function () { return !!document.querySelector("[data-unsubscribe-id]") },
+        when: function () { return !!document.querySelector("[data-unsubscribe-id]:not(.hidden)") },
         run: function () { if (typeof unsubscribeFromMessage === "function") unsubscribeFromMessage() } },
       { id: "clear", label: "Clear selection", group: "Navigation", match: ["escape"], keys: ["Esc"],
         when: function () { return !!document.getElementById("mail-shortcut-help") || selectedMailIds.size > 0 || !!selectedMailIdForKeyboard() },
@@ -11632,8 +11632,25 @@ function promptLabelMessage(emailId, thread) {
 
 // Unsubscribe button in the reader reply bar (data-unsubscribe-* set by MailViewReplyBar).
 // One-click and mailto are done by the server; a plain link comes back as action "open".
+// A message synced before List-Unsubscribe was captured renders its button hidden. By the time its body
+// frame reports loaded, the server has stored the headers: ask once and un-hide the button.
+function revealUnsubscribeButton(emailId) {
+  var btn = emailId ? document.querySelector('[data-unsubscribe-id="' + _cssAttrEscape(emailId) + '"].hidden') : null
+  if (!btn || btn.dataset.unsubscribeChecked) return
+  btn.dataset.unsubscribeChecked = "1"
+  fetch("/api/messages/" + encodeURIComponent(emailId) + "/unsubscribe")
+    .then(function (r) { return r.ok ? r.json() : null })
+    .then(function (info) {
+      if (!info || !info.method) return
+      btn.dataset.unsubscribeMethod = info.method
+      btn.dataset.unsubscribeTarget = info.target || ""
+      btn.classList.remove("hidden")
+    })
+    .catch(function () {})
+}
+
 function unsubscribeFromMessage(btn) {
-  btn = btn || document.querySelector("[data-unsubscribe-id]")
+  btn = btn || document.querySelector("[data-unsubscribe-id]:not(.hidden)")
   if (!btn || btn.disabled) return
   var id = btn.dataset.unsubscribeId
   var sender = btn.dataset.unsubscribeSender || "this sender"
@@ -11816,6 +11833,7 @@ window.addEventListener("message", function (e) {
       if (threadContent && threadContent._threadRepin) threadContent._threadRepin()
       var loader = frameEmailId ? document.querySelector('[data-email-body-loading="' + _cssAttrEscape(frameEmailId) + '"]') : null
       if (loader) loader.remove()
+      revealUnsubscribeButton(frameEmailId)
       if (iframe.dataset.translationActive === "true" && typeof window.goferEmailTranslationFrameLoaded === "function") {
         window.goferEmailTranslationFrameLoaded(frameEmailId)
       }

@@ -20,6 +20,7 @@ import (
 	"github.com/google/uuid"
 
 	mailmessage "github.com/cristianadrielbraun/gofer/internal/mail/message"
+	"github.com/cristianadrielbraun/gofer/internal/views"
 )
 
 const (
@@ -103,6 +104,23 @@ func unsubscribeOneClick(ctx context.Context, client *http.Client, rawURL string
 		return fmt.Errorf("the sender answered %s", resp.Status)
 	}
 	return nil
+}
+
+// handleUnsubscribeInfo tells the reader whether (and how) this message can be unsubscribed,
+// for messages whose headers were only stored once the body was fetched.
+func (h *Handler) handleUnsubscribeInfo(w http.ResponseWriter, r *http.Request) {
+	if _, _, err := h.getMessageInfo(r.Context(), r.PathValue("id")); err != nil {
+		writeMessageTargetError(w, r, err)
+		return
+	}
+	email, err := h.db.GetEmailByIDForUser(r.Context(), r.PathValue("id"), h.userID(r.Context()))
+	if err != nil || email == nil {
+		http.NotFound(w, r)
+		return
+	}
+	method, target := views.UnsubscribeAction(email)
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]string{"method": method, "target": target})
 }
 
 // handleUnsubscribeMessage acts on the message's List-Unsubscribe headers: one-click POST,

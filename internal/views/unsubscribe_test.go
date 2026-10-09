@@ -20,8 +20,9 @@ func renderReplyBar(t *testing.T, email *models.Email) string {
 
 func TestReplyBarShowsUnsubscribeOnlyWhenTheMessageHasAMethod(t *testing.T) {
 	from := models.Contact{Name: "Acme News", Email: "news@example.invalid"}
-	if out := renderReplyBar(t, &models.Email{ID: "1", From: from}); strings.Contains(out, "Unsubscribe") || strings.Contains(out, "data-unsubscribe-id") {
-		t.Error("button rendered without List-Unsubscribe data")
+	// No stored headers (older message): rendered hidden for app.js to reveal once the body is fetched.
+	if out := renderReplyBar(t, &models.Email{ID: "1", From: from}); !strings.Contains(out, `data-unsubscribe-method=""`) || !strings.Contains(out, "hidden") {
+		t.Error("expected a hidden placeholder button when headers are not stored yet")
 	}
 	// http: only and a bare (unbracketed) URI are not usable.
 	if out := renderReplyBar(t, &models.Email{ID: "1", From: from, ListUnsubscribe: "<http://example.invalid/u>, https://example.invalid/v"}); strings.Contains(out, "data-unsubscribe-id") {
@@ -47,6 +48,9 @@ func TestReplyBarShowsUnsubscribeOnlyWhenTheMessageHasAMethod(t *testing.T) {
 		}
 		if strings.Index(out, "Unsubscribe</span>") > strings.Index(out, ">Forward</span>") {
 			t.Errorf("%s: Unsubscribe should sit before Forward", tc.name)
+		}
+		if strings.Contains(out[strings.Index(out, "data-unsubscribe-id")-300:strings.Index(out, "data-unsubscribe-id")], " hidden") {
+			t.Errorf("%s: usable button must not be hidden", tc.name)
 		}
 	}
 }

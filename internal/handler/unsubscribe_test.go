@@ -260,3 +260,25 @@ func TestUnsubscribeMailtoSendsFromTheAddressedIdentity(t *testing.T) {
 		})
 	}
 }
+
+func TestUnsubscribeInfoReportsMethodToOwnerOnly(t *testing.T) {
+	fixture := newMessageActionOwnershipFixture(t)
+	if _, err := fixture.db.Write().ExecContext(t.Context(),
+		`UPDATE messages SET list_unsubscribe = '<mailto:unsub@news.example.invalid>' WHERE id = ?`, fixture.victimMessageID); err != nil {
+		t.Fatal(err)
+	}
+	get := func(as func(*http.Request) *http.Request) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodGet, "/api/messages/"+strconv.FormatInt(fixture.victimMessageID, 10)+"/unsubscribe", nil)
+		req.SetPathValue("id", strconv.FormatInt(fixture.victimMessageID, 10))
+		rec := httptest.NewRecorder()
+		fixture.handler.handleUnsubscribeInfo(rec, as(req))
+		return rec
+	}
+	rec := get(ownerRequest)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"method":"mailto"`) || !strings.Contains(rec.Body.String(), `"target":"unsub@news.example.invalid"`) {
+		t.Errorf("owner: status=%d body=%q", rec.Code, rec.Body.String())
+	}
+	if rec := get(attackerRequest); rec.Code == http.StatusOK {
+		t.Errorf("foreign user got %d %q", rec.Code, rec.Body.String())
+	}
+}

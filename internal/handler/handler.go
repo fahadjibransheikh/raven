@@ -577,6 +577,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/messages/{id}/unlabel", h.handleUnlabelMessage)
 	mux.HandleFunc("POST /api/messages/{id}/move", h.handleMoveMessage)
 	mux.HandleFunc("POST /api/messages/{id}/refetch", h.handleRefetchBody)
+	mux.HandleFunc("GET /api/messages/{id}/unsubscribe", h.handleUnsubscribeInfo)
 	mux.HandleFunc("POST /api/messages/{id}/unsubscribe", h.handleUnsubscribeMessage)
 	mux.HandleFunc("POST /api/messages/{id}/translate", h.handleTranslateMessage)
 	mux.HandleFunc("POST /api/remote-content/{id}/allow", h.handleAllowRemoteContent)
@@ -1502,6 +1503,10 @@ func (h *Handler) handleEmailBody(w http.ResponseWriter, r *http.Request) {
 					body = originalBodyFromParsedMessage(parsed, msgID)
 				} else {
 					body = bodyFromParsedMessage(parsed, msgID)
+				}
+				// Stored now, not in the async persist, so the reader's follow-up GET /unsubscribe sees them.
+				if parsed.ListUnsubscribe != "" {
+					_ = h.db.UpdateMessageListUnsubscribeInternal(ctx, msgID, parsed.ListUnsubscribe, parsed.ListUnsubscribePost)
 				}
 				h.persistParsedBodyAsync(msgID, info.AccountID, parsed)
 			}
