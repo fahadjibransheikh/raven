@@ -43,6 +43,14 @@ var GoferSettings;
     }
   }
 
+  // "local" stays "local" in settings; the server resolves it per request from
+  // this cookie, so a device timezone change (travel) takes effect immediately.
+  function publishBrowserTimezone() {
+    try {
+      document.cookie = "raven_tz=" + encodeURIComponent(browserTimezone()) + "; path=/; max-age=31536000; SameSite=Lax";
+    } catch (_) {}
+  }
+
   function persistSettingsNow() {
     return fetch("/api/settings/ui", {
       method: "PATCH",
@@ -614,10 +622,7 @@ var GoferSettings;
         } catch (_) {}
         readCache();
         _cache = Object.assign({}, _cache, serverSettings);
-        if (!_cache.timezone || _cache.timezone === "local") {
-          _cache.timezone = browserTimezone();
-          persistSettingsNow();
-        }
+        publishBrowserTimezone();
         for (var k in _cache) {
           applySetting(k, _cache[k]);
         }
@@ -632,10 +637,7 @@ var GoferSettings;
           })
           .then(function (serverSettings) {
             _cache = serverSettings;
-            if (!_cache.timezone || _cache.timezone === "local") {
-              _cache.timezone = browserTimezone();
-              persistSettingsNow();
-            }
+            publishBrowserTimezone();
             writeCache();
             for (var k in _cache) {
               applySetting(k, _cache[k]);

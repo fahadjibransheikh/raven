@@ -52,7 +52,7 @@ func (h *Handler) handleEmailInvite(w http.ResponseWriter, r *http.Request) {
 	}
 
 	loc := time.UTC
-	if tz := h.db.GetUISettings(ctx, userID)["timezone"]; tz != "" && tz != "local" {
+	if tz := effectiveTimezone(r, h.db.GetUISettings(ctx, userID)["timezone"]); tz != "local" {
 		if l, lerr := time.LoadLocation(tz); lerr == nil {
 			loc = l
 		}
