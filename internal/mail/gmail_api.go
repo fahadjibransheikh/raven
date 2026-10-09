@@ -35,6 +35,8 @@ const gmailAPIUnresolvedMessageConfirmations = 3
 var gmailAPIMessageMetadataWaitBeforeRetry = gmailAPIWaitBeforeRetry
 
 var gmailAPIMessageMetadataHeaders = []string{
+	"List-Unsubscribe",
+	"List-Unsubscribe-Post",
 	"Message-ID",
 	"Subject",
 	"From",
@@ -1426,6 +1428,7 @@ func gmailAPIMessageToProviderSyncs(accountID string, msg gmailAPIMessage, label
 		CCRecipients:      recipients("cc"),
 		BCCRecipients:     recipients("bcc"),
 	}
+	base.ListUnsubscribe, base.ListUnsubscribePost = message.CaptureListUnsubscribe(header["list-unsubscribe"], header["list-unsubscribe-post"])
 	if base.Subject == "" {
 		base.Subject = "(no subject)"
 	}

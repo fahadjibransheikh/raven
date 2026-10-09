@@ -1,7 +1,10 @@
 package message
 
 import (
+	"bufio"
+	"bytes"
 	"net/mail"
+	"net/textproto"
 	"net/url"
 	"regexp"
 	"strings"
@@ -46,6 +49,24 @@ func ParseListUnsubscribe(header, post string) Unsubscribe {
 	}
 	u.OneClick = u.HTTPS != "" && strings.TrimSpace(post) == "List-Unsubscribe=One-Click"
 	return u
+}
+
+// CaptureListUnsubscribe applies the storage rule to raw header values: an oversized
+// List-Unsubscribe is dropped together with its List-Unsubscribe-Post companion.
+func CaptureListUnsubscribe(header, post string) (string, string) {
+	if header == "" || len(header) > 4096 {
+		return "", ""
+	}
+	return header, post
+}
+
+// ParseListUnsubscribeHeaders extracts the raw List-Unsubscribe pair from a header block.
+func ParseListUnsubscribeHeaders(raw []byte) (header, post string) {
+	h, err := textproto.NewReader(bufio.NewReader(bytes.NewReader(raw))).ReadMIMEHeader()
+	if err != nil && len(h) == 0 {
+		return "", ""
+	}
+	return CaptureListUnsubscribe(h.Get("List-Unsubscribe"), h.Get("List-Unsubscribe-Post"))
 }
 
 // Method is the best available way to unsubscribe, or "" when there is none.

@@ -883,6 +883,9 @@ func outlookGraphMessageToProviderSync(accountID, folderID string, msg outlookGr
 	if subject == "" {
 		subject = strings.TrimSpace(message.DecodeHeader(outlookGraphHeaderValue(msg.InternetMessageHeaders, "Subject")))
 	}
+	listUnsubscribe, listUnsubscribePost := message.CaptureListUnsubscribe(
+		outlookGraphHeaderValue(msg.InternetMessageHeaders, "List-Unsubscribe"),
+		outlookGraphHeaderValue(msg.InternetMessageHeaders, "List-Unsubscribe-Post"))
 	return storage.ProviderSyncMessage{
 		AccountID:         accountID,
 		FolderID:          folderID,
@@ -908,6 +911,9 @@ func outlookGraphMessageToProviderSync(accountID, folderID string, msg outlookGr
 		ToRecipients:      outlookGraphRecipientsWithHeaderFallback(msg.ToRecipients, msg.InternetMessageHeaders, "To"),
 		CCRecipients:      outlookGraphRecipientsWithHeaderFallback(msg.CCRecipients, msg.InternetMessageHeaders, "Cc"),
 		BCCRecipients:     outlookGraphRecipientsWithHeaderFallback(msg.BCCRecipients, msg.InternetMessageHeaders, "Bcc"),
+
+		ListUnsubscribe:     listUnsubscribe,
+		ListUnsubscribePost: listUnsubscribePost,
 	}
 }
 

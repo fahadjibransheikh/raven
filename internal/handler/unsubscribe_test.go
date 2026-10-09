@@ -1,10 +1,12 @@
 package handler
 
 import (
+	"bytes"
 	"crypto/tls"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/mail"
 	"net/netip"
 	"strconv"
 	"strings"
@@ -200,4 +202,61 @@ func TestHandleUnsubscribeMessageChoosesMethod(t *testing.T) {
 			t.Errorf("status = %d, want 404", rec.Code)
 		}
 	})
+}
+
+func TestUnsubscribeMailtoSendsFromTheAddressedIdentity(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		recipient  string // "" = message addressed to no known identity
+		wantAlias  bool
+		recipientK string
+	}{
+		{"alias in To", "alias@example.com", true, "to"},
+		{"alias in Cc", "Alias@Example.com", true, "cc"},
+		{"no identity matches", "list@elsewhere.invalid", false, "to"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fixture := newMessageActionOwnershipFixture(t)
+			ctx := t.Context()
+			if _, err := fixture.db.AddManualIdentity(ctx, "owner", "victim-account", "alias@example.com", ""); err != nil {
+				t.Fatal(err)
+			}
+			var accountEmail string
+			if err := fixture.db.Read().QueryRow(`SELECT email_address FROM accounts WHERE id = 'victim-account'`).Scan(&accountEmail); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := fixture.db.Write().ExecContext(ctx,
+				`UPDATE messages SET list_unsubscribe = '<mailto:unsub@news.example.invalid>' WHERE id = ?`, fixture.victimMessageID); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := fixture.db.Write().ExecContext(ctx,
+				`INSERT INTO message_recipients (message_id, kind, name, email) VALUES (?, ?, '', ?)`, fixture.victimMessageID, tc.recipientK, tc.recipient); err != nil {
+				t.Fatal(err)
+			}
+			if rec := unsubscribeRequest(fixture, ownerRequest); rec.Code != http.StatusOK {
+				t.Fatalf("status = %d body = %q", rec.Code, rec.Body.String())
+			}
+			// The SMTP envelope is always the account's own address; the From header carries the identity.
+			var mime []byte
+			if err := fixture.db.Read().QueryRow(`SELECT mime_data FROM outgoing_sends WHERE account_id = 'victim-account'`).Scan(&mime); err != nil {
+				t.Fatal(err)
+			}
+			parsed, err := mail.ReadMessage(bytes.NewReader(mime))
+			if err != nil {
+				t.Fatal(err)
+			}
+			fromAddr, err := mail.ParseAddress(parsed.Header.Get("From"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			from := fromAddr.Address
+			want := accountEmail
+			if tc.wantAlias {
+				want = "alias@example.com"
+			}
+			if !strings.EqualFold(from, want) {
+				t.Errorf("From = %q, want %q", from, want)
+			}
+		})
+	}
 }

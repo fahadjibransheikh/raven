@@ -96,10 +96,7 @@ func ParseMessage(ctx context.Context, r io.Reader, blobStore *store.BlobStore, 
 		parsed.InReplyTo = ids[0]
 	}
 	parsed.References = header.Get("References")
-	if v := header.Get("List-Unsubscribe"); len(v) <= 4096 {
-		parsed.ListUnsubscribe = v
-		parsed.ListUnsubscribePost = header.Get("List-Unsubscribe-Post")
-	}
+	parsed.ListUnsubscribe, parsed.ListUnsubscribePost = CaptureListUnsubscribe(header.Get("List-Unsubscribe"), header.Get("List-Unsubscribe-Post"))
 
 	if date, err := header.Date(); err == nil {
 		parsed.DateSent = date

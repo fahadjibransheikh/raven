@@ -869,6 +869,9 @@ type SyncMessage struct {
 	LabelProvider    string
 	ToRecipients     []Recipient
 	CCRecipients     []Recipient
+	// Raw List-Unsubscribe headers; empty means "not fetched", never clears stored values.
+	ListUnsubscribe     string
+	ListUnsubscribePost string
 }
 
 type ProviderSyncMessage struct {
@@ -896,6 +899,9 @@ type ProviderSyncMessage struct {
 	ToRecipients      []Recipient
 	CCRecipients      []Recipient
 	BCCRecipients     []Recipient
+	// Raw List-Unsubscribe headers; empty means "not fetched", never clears stored values.
+	ListUnsubscribe     string
+	ListUnsubscribePost string
 }
 
 const (
@@ -1404,14 +1410,16 @@ func (db *DB) UpsertSyncMessages(ctx context.Context, msgs []SyncMessage) error 
 
 	msgStmt, err := tx.PrepareContext(ctx, `
 		INSERT INTO messages (account_id, internet_message_id, message_id_normalized, in_reply_to, "references", normalized_subject, subject, from_name, from_email,
-			date_sent, date_received, snippet, preview_text)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			date_sent, date_received, snippet, preview_text, list_unsubscribe, list_unsubscribe_post)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(account_id, internet_message_id) DO UPDATE SET
 			message_id_normalized = excluded.message_id_normalized,
 			subject = excluded.subject,
 			normalized_subject = excluded.normalized_subject,
 			from_name = excluded.from_name,
 			from_email = excluded.from_email,
+			list_unsubscribe_post = CASE WHEN excluded.list_unsubscribe != '' THEN excluded.list_unsubscribe_post ELSE list_unsubscribe_post END,
+			list_unsubscribe = CASE WHEN excluded.list_unsubscribe != '' THEN excluded.list_unsubscribe ELSE list_unsubscribe END,
 			date_sent = CASE WHEN ? = 1 AND COALESCE(date_sent, '') != '' THEN date_sent ELSE excluded.date_sent END,
 			date_received = CASE WHEN ? = 1 AND COALESCE(date_received, '') != '' THEN date_received ELSE excluded.date_received END,
 			in_reply_to = excluded.in_reply_to,
@@ -1495,6 +1503,7 @@ func (db *DB) UpsertSyncMessages(ctx context.Context, msgs []SyncMessage) error 
 		if !preserveLocalDraft {
 			if _, err := msgStmt.ExecContext(ctx, m.AccountID, m.MessageID, messageIDNorm, inReplyTo, m.References, normalizedSubject, m.Subject,
 				m.FromName, m.FromEmail, messageDBDate, messageDBDate, m.Snippet, m.Snippet,
+				m.ListUnsubscribe, m.ListUnsubscribePost,
 				boolInt(m.DateSentFallback), boolInt(m.DateSentFallback)); err != nil {
 				return fmt.Errorf("upsert message: %w", err)
 			}
@@ -1599,8 +1608,8 @@ func (db *DB) UpsertProviderSyncMessages(ctx context.Context, msgs []ProviderSyn
 
 	insertStmt, err := tx.PrepareContext(ctx, `
 		INSERT INTO messages (account_id, remote_message_id, internet_message_id, message_id_normalized, in_reply_to, "references", normalized_subject, subject, from_name, from_email,
-			date_sent, date_received, snippet, preview_text, provider_thread_id, has_attachments)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+			date_sent, date_received, snippet, preview_text, provider_thread_id, has_attachments, list_unsubscribe, list_unsubscribe_post)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		return nil, fmt.Errorf("prepare provider msg insert: %w", err)
 	}
@@ -1644,6 +1653,8 @@ func (db *DB) UpsertProviderSyncMessages(ctx context.Context, msgs []ProviderSyn
 			preview_text = ?,
 			provider_thread_id = CASE WHEN ? != '' THEN ? ELSE provider_thread_id END,
 			has_attachments = ?,
+			list_unsubscribe_post = CASE WHEN ? != '' THEN ? ELSE list_unsubscribe_post END,
+			list_unsubscribe = CASE WHEN ? != '' THEN ? ELSE list_unsubscribe END,
 			updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?`)
 	if err != nil {
@@ -1762,7 +1773,7 @@ func (db *DB) UpsertProviderSyncMessages(ctx context.Context, msgs []ProviderSyn
 		if wasNew {
 			result, err := insertStmt.ExecContext(ctx,
 				m.AccountID, m.ProviderMessageID, m.InternetMessageID, messageIDNorm, inReplyTo, m.References, normalizedSubject, m.Subject,
-				m.FromName, m.FromEmail, dateSentDB, dateReceivedDB, snippet, snippet, m.ProviderThreadID, boolInt(m.HasAttachments))
+				m.FromName, m.FromEmail, dateSentDB, dateReceivedDB, snippet, snippet, m.ProviderThreadID, boolInt(m.HasAttachments), m.ListUnsubscribe, m.ListUnsubscribePost)
 			if err != nil {
 				return nil, fmt.Errorf("insert provider message: %w", err)
 			}
@@ -1781,7 +1792,8 @@ func (db *DB) UpsertProviderSyncMessages(ctx context.Context, msgs []ProviderSyn
 				boolInt(hasDateSent), dateSentDB, dateSentDB,
 				boolInt(hasDateReceived), dateReceivedDB, dateReceivedDB,
 				inReplyTo, m.References, snippet, snippet,
-				m.ProviderThreadID, m.ProviderThreadID, boolInt(m.HasAttachments), msgID); err != nil {
+				m.ProviderThreadID, m.ProviderThreadID, boolInt(m.HasAttachments),
+				m.ListUnsubscribe, m.ListUnsubscribePost, m.ListUnsubscribe, m.ListUnsubscribe, msgID); err != nil {
 				return nil, fmt.Errorf("update provider message: %w", err)
 			}
 		}

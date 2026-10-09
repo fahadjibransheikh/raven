@@ -137,7 +137,10 @@ func (h *Handler) handleUnsubscribeMessage(w http.ResponseWriter, r *http.Reques
 		}
 		reply["action"] = "done"
 	case mailmessage.UnsubscribeMailto:
-		if err := h.sendUnsubscribeEmail(ctx, info.AccountID, u.Mailto); err != nil {
+		// Send from the address the list actually has: the identity this message was addressed to.
+		identities, _ := h.db.ListAccountIdentities(ctx, h.userID(ctx), info.AccountID)
+		from := pickReplyIdentity(identities, email.FolderRole, email.From, email.To, email.CC)
+		if err := h.sendUnsubscribeEmail(ctx, info.AccountID, from, u.Mailto); err != nil {
 			log.Printf("unsubscribe message=%s: %v", idStr, err)
 			http.Error(w, "Could not send the unsubscribe email", http.StatusBadGateway)
 			return
@@ -155,7 +158,8 @@ func (h *Handler) handleUnsubscribeMessage(w http.ResponseWriter, r *http.Reques
 	_ = json.NewEncoder(w).Encode(reply)
 }
 
-func (h *Handler) sendUnsubscribeEmail(ctx context.Context, accountID, mailto string) error {
+// fromEmail "" means the account's default identity.
+func (h *Handler) sendUnsubscribeEmail(ctx context.Context, accountID, fromEmail, mailto string) error {
 	to, subject, body, ok := mailmessage.MailtoRequest(mailto)
 	if !ok {
 		return errors.New("invalid mailto address")
@@ -164,7 +168,7 @@ func (h *Handler) sendUnsubscribeEmail(ctx context.Context, accountID, mailto st
 	if err != nil || account == nil {
 		return errors.New("account not found")
 	}
-	fromName, fromEmail, cerr := h.resolveComposeIdentity(ctx, account, "")
+	fromName, fromEmail, cerr := h.resolveComposeIdentity(ctx, account, fromEmail)
 	if cerr != nil {
 		return errors.New(cerr.message)
 	}

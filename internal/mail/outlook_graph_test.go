@@ -161,6 +161,8 @@ func TestOutlookGraphMessageToProviderSyncFallsBackToInternetHeaders(t *testing.
 			{Name: "From", Value: "Loaded Sender <sender@example.com>"},
 			{Name: "To", Value: "Loaded Recipient <recipient@example.com>"},
 			{Name: "Cc", Value: "Loaded Carbon <carbon@example.com>"},
+			{Name: "List-Unsubscribe", Value: "<https://example.com/u/1>"},
+			{Name: "List-Unsubscribe-Post", Value: "List-Unsubscribe=One-Click"},
 		},
 	}
 
@@ -170,6 +172,20 @@ func TestOutlookGraphMessageToProviderSyncFallsBackToInternetHeaders(t *testing.
 	}
 	if len(syncMessage.ToRecipients) != 1 || syncMessage.ToRecipients[0].Email != "recipient@example.com" || len(syncMessage.CCRecipients) != 1 || syncMessage.CCRecipients[0].Email != "carbon@example.com" {
 		t.Fatalf("sync recipients to=%#v cc=%#v, want recipients from internet headers", syncMessage.ToRecipients, syncMessage.CCRecipients)
+	}
+}
+
+func TestOutlookGraphMessageToProviderSyncCapturesListUnsubscribe(t *testing.T) {
+	msg := outlookGraphMessage{
+		ID: "graph-message-1", InternetMessageID: "<message@example.com>",
+		InternetMessageHeaders: []outlookGraphHeader{
+			{Name: "List-Unsubscribe", Value: "<https://example.com/u/1>"},
+			{Name: "List-Unsubscribe-Post", Value: "List-Unsubscribe=One-Click"},
+		},
+	}
+	got := outlookGraphMessageToProviderSync("acc", "acc_inbox", msg, nil)
+	if got.ListUnsubscribe != "<https://example.com/u/1>" || got.ListUnsubscribePost != "List-Unsubscribe=One-Click" {
+		t.Fatalf("list-unsubscribe = %q / %q", got.ListUnsubscribe, got.ListUnsubscribePost)
 	}
 }
 
