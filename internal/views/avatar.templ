@@ -66,6 +66,7 @@ templ ContactAvatar(contact models.Contact, class string, fallbackClass string) 
 				src={ contactAvatarRenderURL(contact.AvatarURL) }
 				alt={ contactDisplay(contact) }
 				decoding="async"
+				loading="lazy"
 				data-avatar-image
 				data-avatar-source={ contact.AvatarSource }
 				class={ contactAvatarImageClass(contact) }

@@ -158,7 +158,7 @@ func formatRelativeDate(t, now time.Time, loc *time.Location) string {
 	yesterday := now.AddDate(0, 0, -1).Format("2006-01-02")
 
 	if tDay == nowDay {
-		return t.Format("3:04 PM")
+		return t.Format("15:04")
 	}
 	if tDay == yesterday {
 		return "Yesterday"
@@ -8126,7 +8126,7 @@ func defaultUISettings() map[string]string {
 		"translation_target_language":       "en",
 		"desktop_notifications":             "false",
 		"notification_mode":                 "auto",
-		"mail_card_fields":                  "avatar,thread,from,attachment,date,unread,subject,preview,labels,starred",
+		"mail_card_fields":                  "thread,from,accountMarker,attachment,date,unread,subject,preview,labels,starred",
 		"mail_card_layout":                  defaultMailCardLayout,
 		"mail_list_density":                 "calm",
 		"mail_table_columns":                "starred,attachment,from,subject,date",

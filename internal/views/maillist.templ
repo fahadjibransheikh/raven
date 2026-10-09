@@ -775,7 +775,7 @@ templ MailCardLayoutDialog() {
 							</div>
 							<div class="mail-list-card-zone mail-list-card-zone-rail-middle" data-mail-card-zone="railMiddle" data-mail-card-layout-zone-items="railMiddle" data-mail-card-layout-dropzone="railMiddle">
 								<span data-mail-card-field="accountMarker" class="inline-flex items-center justify-center shrink-0">
-									<span class="account-color-marker size-2.5 shrink-0 bg-primary"></span>
+									<span class="account-color-marker mail-list-account-bar shrink-0 bg-primary"></span>
 								</span>
 							</div>
 							<div class="mail-list-card-zone mail-list-card-zone-rail-bottom" data-mail-card-zone="railBottom" data-mail-card-layout-zone-items="railBottom" data-mail-card-layout-dropzone="railBottom">
@@ -906,29 +906,29 @@ templ MailListCardItem(accounts []models.Account, email models.Email, position i
 			}
 			data-mail-card-layout-scope
 		>
-			<div class="mail-list-card-zone mail-list-card-zone-rail-top" data-mail-card-zone="railTop">
-				<div data-mail-card-field="avatar">
-					@ContactAvatar(email.From, "size-8 rounded-full text-xs font-medium", contactAvatarListFallback(email.IsRead))
-				</div>
-			</div>
+			<div class="mail-list-card-zone mail-list-card-zone-rail-top" data-mail-card-zone="railTop"></div>
 			<div class="mail-list-card-zone mail-list-card-zone-rail-middle" data-mail-card-zone="railMiddle">
-				<span data-mail-card-field="accountMarker" class="inline-flex items-center justify-center shrink-0">
-					<span class="account-color-marker size-2.5 shrink-0" style={ accountColorStyle(email.AccountColor) }></span>
-				</span>
+				if len(accounts) > 1 {
+					<span data-mail-card-field="accountMarker" class="inline-flex items-center justify-center shrink-0">
+						<span class="account-color-marker mail-list-account-bar shrink-0" style={ accountColorStyle(email.AccountColor) }></span>
+					</span>
+				} else {
+					<span data-mail-card-field="accountMarker" hidden></span>
+				}
 			</div>
 			<div class="mail-list-card-zone mail-list-card-zone-rail-bottom" data-mail-card-zone="railBottom"></div>
 			<div class="mail-list-card-zone mail-list-card-zone-header" data-mail-card-zone="header">
 				<span
 					class={
 						"text-sm truncate",
-						templ.KV("font-semibold text-foreground", !email.IsRead),
-						templ.KV("font-medium text-muted-foreground", email.IsRead),
+						templ.KV("text-foreground", !email.IsRead),
+						templ.KV("text-muted-foreground", email.IsRead),
 					}
 					data-mail-card-field="from"
 				>@SenderLabel(email.From, senderDisplayMode)</span>
 				<span
 					class={
-						"text-xs tabular-nums",
+						"text-xs font-mono tabular-nums",
 						templ.KV("text-foreground", !email.IsRead),
 						templ.KV("text-subtle-foreground", email.IsRead),
 					}
@@ -959,7 +959,7 @@ templ MailListCardItem(accounts []models.Account, email models.Email, position i
 				<p
 					class={
 						"text-[13px] leading-[18px] truncate",
-						templ.KV("font-semibold text-foreground", !email.IsRead),
+						templ.KV("text-foreground", !email.IsRead),
 						templ.KV("text-muted-foreground", email.IsRead),
 					}
 					data-mail-card-field="subject"
@@ -1000,7 +1000,11 @@ templ MailListCardItem(accounts []models.Account, email models.Email, position i
 					</button>
 				}
 			</div>
-			<div class="hidden" data-mail-card-zone="hidden"></div>
+			<div class="hidden" data-mail-card-zone="hidden">
+				<div data-mail-card-field="avatar">
+					@ContactAvatar(email.From, "size-8 rounded-full text-xs font-medium", contactAvatarListFallback(email.IsRead))
+				</div>
+			</div>
 			@MailListRowActions(email)
 		</a>
 	</div>

@@ -896,6 +896,12 @@
   border-radius: 9999px;
 }
 
+/* The account colour bar leading a mail card row (the accountMarker field). */
+.mail-list-account-bar {
+  width: 2px;
+  height: 12px;
+}
+
 .account-color-swatch {
   border: 2px solid color-mix(in srgb, var(--border) 60%, transparent);
   box-shadow: 0 1px 2px rgba(0,0,0,0.16);
@@ -1441,7 +1447,9 @@ input[role="switch"] + .gofer-switch-track::after {
 }
 
 .mail-list-item[data-mail-read-optimistic] [data-mail-card-field="subject"],
-.mail-list-item > a[data-mail-read-optimistic] [data-mail-card-field="subject"] {
+.mail-list-item > a[data-mail-read-optimistic] [data-mail-card-field="subject"],
+.mail-list-item[data-mail-read-optimistic] [data-mail-card-field="from"],
+.mail-list-item > a[data-mail-read-optimistic] [data-mail-card-field="from"] {
   color: var(--color-muted-foreground);
 }
 
@@ -2464,6 +2472,19 @@ body.mail-list-column-resizing {
 #mail-list-scroll[data-view-mode="cards"] .mail-list-card:not(.mail-card-layout-preview-card) .mail-list-card-zone-rail-bottom {
   justify-self: end;
   margin-right: 12px;
+}
+
+/* No avatar in the rail: the account bar leads the row, level with the sender
+   line. Shrink the rail to the bar so a hidden marker costs no width. */
+#mail-list-scroll[data-view-mode="cards"] .mail-list-card:not(.mail-card-layout-preview-card):not(:has([data-mail-card-zone="railTop"] > [data-mail-card-field])) .mail-list-card-zone-rail-middle {
+  width: auto;
+  min-width: 0;
+  align-self: start;
+}
+
+#mail-list-scroll[data-view-mode="cards"] .mail-list-card:not(.mail-card-layout-preview-card):not(:has([data-mail-card-zone="railTop"] > [data-mail-card-field])) .mail-list-account-bar {
+  margin-top: 4px;
+  margin-right: 8px;
 }
 
 #mail-list-scroll[data-view-mode="cards"] .mail-list-card:not(.mail-card-layout-preview-card) .mail-list-card-zone-header {

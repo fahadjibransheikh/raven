@@ -23,7 +23,7 @@ func TestMigrateV100ToV101ResetsOnlyTheOldDefaultMailCardLayout(t *testing.T) {
 	custom := "railTop:avatar|header:from,date|meta:|railMiddle:|body:subject|status:|railBottom:thread|footer:|corner:|hidden:preview"
 	cases := map[string]struct{ stored, want string }{
 		"old":    {`{"mail_card_layout":"` + oldDefaultMailCardLayout + `","theme":"light"}`, newDefault},
-		"custom": {`{"mail_card_layout":"` + custom + `"}`, custom},
+		"custom": {`{"mail_card_layout":"` + custom + `"}`, hideAvatarInMailCardLayout(custom)},
 		"unset":  {`{"theme":"dark"}`, ""},
 	}
 	for id, tc := range cases {
@@ -84,7 +84,7 @@ func TestMigrateV101ToV102ResetsOnlyTheV101DefaultMailCardLayout(t *testing.T) {
 	custom := "railTop:avatar|header:from,date|meta:|railMiddle:|body:subject|status:|railBottom:thread|footer:preview|corner:|hidden:labels"
 	cases := map[string]struct{ stored, want string }{
 		"v101":   {`{"mail_card_layout":"` + v101DefaultMailCardLayout + `","theme":"light"}`, defaultMailCardLayout},
-		"custom": {`{"mail_card_layout":"` + custom + `"}`, custom},
+		"custom": {`{"mail_card_layout":"` + custom + `"}`, hideAvatarInMailCardLayout(custom)},
 		"unset":  {`{"theme":"dark"}`, ""},
 	}
 	for id, tc := range cases {
@@ -119,8 +119,8 @@ func TestMigrateV101ToV102ResetsOnlyTheV101DefaultMailCardLayout(t *testing.T) {
 	}
 	var version int
 	_ = db.Read().QueryRowContext(ctx, `SELECT MAX(version) FROM schema_version`).Scan(&version)
-	if version != 103 {
-		t.Errorf("version = %d, want 103", version)
+	if version != 104 {
+		t.Errorf("version = %d, want 104", version)
 	}
 }
 
