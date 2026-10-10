@@ -37,16 +37,22 @@ jobs:
           go-version-file: go.mod
 
       # The JS tests run app.js in jsdom and render the popover with go run.
+      # Deno installs deps and runs tasks; tests still need real Node.
       - name: Set up Node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
-          cache: npm
+
+      - name: Set up Deno
+        uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version: v2.x
+          cache: true
 
       - name: Go tests
         run: go test ./...
 
       - name: JS tests
         run: |
-          npm ci
-          npm test
+          deno install --frozen
+          deno task test
