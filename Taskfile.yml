@@ -51,4 +51,4 @@ tasks:
     desc: Run Go and JS tests
     cmds:
       - go test ./...
-      - npm test
+      - pnpm test
