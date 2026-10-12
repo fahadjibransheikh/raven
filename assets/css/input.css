@@ -3839,3 +3839,77 @@ html[data-desktop="macos"] body > div.h-screen {
     font-size: 16px !important;
   }
 }
+
+/* === MAIL ROW SWIPE (setupMailRowSwipe in assets/js/app.js) ===
+   pan-y leaves vertical scrolling to the browser and hands horizontal drags to the script.
+   The script sets --swipe-x and data-swiping on the row and adds the .mail-swipe-reveal
+   layer; the reveal is clipped to the strip the card has moved off, so the transparent
+   card needs no background. */
+@media (pointer: coarse), (max-width: 1023.98px) {
+  #mail-list-scroll .mail-list-item[data-email-id] {
+    touch-action: pan-y;
+  }
+
+  .mail-list-item[data-swiping] {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .mail-list-item[data-swiping] > a {
+    transform: translateX(var(--swipe-x, 0px));
+  }
+
+  .mail-swipe-reveal {
+    position: absolute;
+    inset: 2px 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-inline: 1.25rem;
+    border-radius: 10px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--primary-foreground);
+    background: var(--primary);
+    opacity: 0.6;
+    pointer-events: none;
+  }
+
+  .mail-swipe-reveal[data-armed="true"] {
+    opacity: 1;
+  }
+
+  .mail-swipe-reveal[data-side="right"] {
+    clip-path: inset(0 calc(100% - var(--swipe-x, 0px)) 0 0);
+  }
+
+  .mail-swipe-reveal[data-side="left"] {
+    justify-content: flex-end;
+    clip-path: inset(0 0 0 calc(100% + var(--swipe-x, 0px)));
+  }
+
+  .mail-swipe-reveal[data-kind="archive"],
+  .mail-swipe-reveal[data-kind="read-archive"] {
+    color: #fff;
+    background: var(--success);
+  }
+
+  .mail-swipe-reveal[data-kind="read-archive"] {
+    background: color-mix(in srgb, var(--success) 65%, #000);
+  }
+
+  .mail-list-item[data-swipe-settle] > a {
+    transition: transform 160ms ease-out;
+  }
+
+  .mail-list-item[data-swipe-settle] .mail-swipe-reveal {
+    transition: clip-path 160ms ease-out;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mail-list-item[data-swipe-settle] > a,
+  .mail-list-item[data-swipe-settle] .mail-swipe-reveal {
+    transition: none;
+  }
+}

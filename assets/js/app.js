@@ -51,6 +51,7 @@ document.addEventListener("DOMContentLoaded", function () {
   setupContactAvatarImages()
   setupAvatarWarmup()
   setupMailListActions()
+  setupMailRowSwipe()
   setupAccountDeletionTracking()
   setupAccountResultFeedback()
   setupSidebarAccountCollapse()
@@ -1205,6 +1206,174 @@ document.addEventListener("DOMContentLoaded", function () {
     })
 
     hydrate(document)
+  }
+
+  // Touch swipes on mail rows: right toggles read, left archives, a long left swipe marks read
+  // and archives. The actions are the hover quick-action path (performMailAction), so the
+  // optimistic UI, server calls and undo toast are shared. touch-action: pan-y on the rows
+  // (input.css) leaves vertical scrolling to the browser: if it takes the gesture we get
+  // pointercancel and snap back. Row styling lives in input.css under "Mail row swipe".
+  function setupMailRowSwipe() {
+    var LOCK_PX = 12
+    var LOCK_RATIO = 1.5
+    var ACTION_AT = 0.3
+    var LONG_AT = 0.65
+    var SETTLE_MS = 180
+    var svg = function (paths) {
+      return '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + paths + "</svg>"
+    }
+    var archiveIcon = svg('<rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/>')
+    var REVEAL = {
+      read: { label: "Read", icon: svg('<path d="M21.2 8.4c.5.38.8.97.8 1.6v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V10a2 2 0 0 1 .8-1.6l8-6a2 2 0 0 1 2.4 0l8 6Z"/><path d="m22 10-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 10"/>') },
+      unread: { label: "Unread", icon: svg('<path d="m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7"/><rect x="2" y="4" width="20" height="16" rx="2"/>') },
+      archive: { label: "Archive", icon: archiveIcon },
+      "read-archive": { label: "Read + Archive", icon: archiveIcon },
+    }
+    var drag = null
+
+    function enabled() {
+      return document.documentElement.hasAttribute("data-phone") || !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches)
+    }
+
+    function reducedMotion() {
+      return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches)
+    }
+
+    // Cards show an unread dot; the optimistic helpers swap it for an empty slot and set
+    // data-mail-read-optimistic. Table rows have no dot, only the hover action for their state.
+    function rowIsUnread(row) {
+      if (row.hasAttribute("data-mail-read-optimistic")) return false
+      return !!row.querySelector('[data-mail-card-field="unread"]:not(.mail-list-card-empty-icon-slot), [data-mail-row-action="read"]')
+    }
+
+    function clearSwipe(row) {
+      clearTimeout(row._swipeTimer)
+      row.removeAttribute("data-swiping")
+      row.removeAttribute("data-swipe-settle")
+      row.style.removeProperty("--swipe-x")
+      if (!row.getAttribute("style")) row.removeAttribute("style")
+      var reveal = row.querySelector(":scope > .mail-swipe-reveal")
+      if (reveal) reveal.remove()
+    }
+
+    function snapBack(row) {
+      if (reducedMotion()) {
+        clearSwipe(row)
+        return
+      }
+      row.setAttribute("data-swipe-settle", "")
+      row.style.setProperty("--swipe-x", "0px")
+      row._swipeTimer = setTimeout(function () { clearSwipe(row) }, SETTLE_MS)
+    }
+
+    // A swipe that ends on the row can still be followed by a click; a swipe must never open the message.
+    function swallowNextClick() {
+      var timer = setTimeout(stop, 400)
+      function stop() {
+        clearTimeout(timer)
+        window.removeEventListener("click", eat, true)
+      }
+      function eat(e) {
+        e.preventDefault()
+        e.stopImmediatePropagation()
+        stop()
+      }
+      window.addEventListener("click", eat, true)
+    }
+
+    function render(d) {
+      var fraction = Math.abs(d.dx) / d.width
+      var kind = d.dx > 0 ? (d.unread ? "read" : "unread") : (fraction >= LONG_AT ? "read-archive" : "archive")
+      d.kind = kind
+      d.armed = fraction >= ACTION_AT
+      d.row.style.setProperty("--swipe-x", d.dx + "px")
+      d.reveal.setAttribute("data-side", d.dx > 0 ? "right" : "left")
+      d.reveal.setAttribute("data-kind", kind)
+      d.reveal.setAttribute("data-armed", d.armed ? "true" : "false")
+      if (d.revealKind !== kind) {
+        d.revealKind = kind
+        d.reveal.innerHTML = REVEAL[kind].icon + "<span>" + REVEAL[kind].label + "</span>"
+      }
+    }
+
+    function lock(d, e) {
+      var width = d.row.getBoundingClientRect().width
+      if (!width) return false
+      clearSwipe(d.row)
+      d.width = width
+      d.unread = rowIsUnread(d.row)
+      d.reveal = document.createElement("div")
+      d.reveal.className = "mail-swipe-reveal"
+      d.reveal.setAttribute("aria-hidden", "true")
+      d.row.appendChild(d.reveal)
+      d.row.setAttribute("data-swiping", "")
+      d.locked = true
+      if (d.row.setPointerCapture && e.pointerId != null) {
+        try { d.row.setPointerCapture(e.pointerId) } catch (_) {}
+      }
+      return true
+    }
+
+    function run(d) {
+      var ids = [d.id]
+      var opts = { keepSelection: true }
+      if (d.kind === "read-archive") {
+        window.performMailAction("read", ids, opts)
+        window.performMailAction("archive", ids, opts)
+      } else {
+        window.performMailAction(d.kind, ids, opts)
+      }
+    }
+
+    document.addEventListener("pointerdown", function (e) {
+      if (drag || e.pointerType === "mouse" || e.button > 0) return
+      var row = e.target.closest && e.target.closest("#mail-list-scroll .mail-list-item[data-email-id]")
+      if (!row || !enabled()) return
+      // Rows are multi-selected through the toolbar; leave them alone while that is on.
+      if (document.querySelector("[data-mail-selection-clear]:not(.hidden)")) return
+      drag = { row: row, id: row.dataset.emailId, pointerId: e.pointerId, x: e.clientX, y: e.clientY, dx: 0, locked: false }
+    })
+
+    document.addEventListener("pointermove", function (e) {
+      var d = drag
+      if (!d || e.pointerId !== d.pointerId) return
+      var dx = e.clientX - d.x
+      var dy = e.clientY - d.y
+      if (!d.locked) {
+        if (Math.abs(dy) > LOCK_PX && Math.abs(dy) >= Math.abs(dx)) {
+          drag = null // vertical: let the list scroll
+          return
+        }
+        if (Math.abs(dx) <= LOCK_PX || Math.abs(dx) <= LOCK_RATIO * Math.abs(dy)) return
+        if (!lock(d, e)) {
+          drag = null
+          return
+        }
+      }
+      d.dx = Math.max(-d.width, Math.min(d.width, dx))
+      render(d)
+    })
+
+    document.addEventListener("pointerup", function (e) {
+      var d = drag
+      if (!d || e.pointerId !== d.pointerId) return
+      drag = null
+      if (!d.locked) return
+      if (d.armed) {
+        clearSwipe(d.row)
+        run(d)
+      } else {
+        snapBack(d.row)
+      }
+      swallowNextClick()
+    })
+
+    document.addEventListener("pointercancel", function (e) {
+      var d = drag
+      if (!d || e.pointerId !== d.pointerId) return
+      drag = null
+      if (d.locked) snapBack(d.row)
+    })
   }
 
   function setupMailListActions() {
