@@ -3738,6 +3738,17 @@ html[data-desktop="macos"] body {
   background: transparent;
 }
 
+/* Popovers and tooltips float over the opaque panes, not the window glass, so
+   the transparent --sidebar they paint with left their text on top of the mail
+   list. Give them their own frosted surface: a mostly opaque tint for contrast
+   plus a blur of whatever sits behind (Liquid Glass "regular", not "clear").
+   They render in the top layer, so the blur is not clipped by the sidebar. */
+html[data-desktop="macos"] [data-tui-popover-content] {
+  --sidebar: color-mix(in srgb, var(--popover) 85%, transparent);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+}
+
 html[data-desktop="macos"] [data-desktop-titlebar] {
   position: fixed;
   inset: 0 0 auto 0;
