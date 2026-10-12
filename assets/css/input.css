@@ -3393,6 +3393,25 @@ html[data-platform="other"] .hint-other {
     box-sizing: border-box;
   }
 
+  /* Mail shell: the bottom inset moves inside the scrollers (list, reader) so the panes
+     run to the screen edge and the last row or reply bar still clears the home indicator.
+     Settings, contacts and calendar keep the padding above. */
+  #app-shell:has(> #main-content > #mail-list) {
+    padding-bottom: 0;
+  }
+
+  #mail-list-scroll {
+    padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+  }
+
+  #reply-bar {
+    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+  }
+
+  .mail-view-content {
+    padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
+  }
+
   .resize-handle {
     display: none !important;
   }
