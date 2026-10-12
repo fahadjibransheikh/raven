@@ -723,6 +723,13 @@
   color: color-mix(in srgb, var(--ink) 70%, transparent);
 }
 
+/* Quoted and forwarded mail keeps the sender's inline colours so the recipient
+   sees them. In dark mode the editor shows it in theme colours instead, or
+   black text lands on the dark background. Display only: the HTML is unchanged. */
+.dark .compose-rich-editor :not(a)[style*="color"] { color: inherit !important; }
+.dark .compose-rich-editor [style*="background"],
+.dark .compose-rich-editor [bgcolor] { background: transparent !important; }
+
 .compose-rich-editor pre {
   margin: 0.5rem 0;
   padding: 0.75rem;
