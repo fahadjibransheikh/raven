@@ -1,8 +1,11 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
+	"net/url"
+	"strings"
 )
 
 // Raven shipped its own calendar cache at v97 (calendars, calendar_events,
@@ -56,4 +59,81 @@ func migrateV106ToV107(tx *sql.Tx) error {
 		}
 	}
 	return markSchemaVersion(tx, 107)
+}
+
+// ravenCalendarCarryoverTx returns the account's calendar selection from
+// Raven's old calendar, keyed by provider calendar ID. The first discovery
+// that finds calendars applies it to newly found sources, then clears it.
+func ravenCalendarCarryoverTx(ctx context.Context, tx *sql.Tx, accountID string) (map[string]bool, error) {
+	rows, err := tx.QueryContext(ctx, `SELECT remote_id, selected FROM raven_calendar_carryover WHERE account_id = ?`, accountID)
+	if err != nil {
+		return nil, fmt.Errorf("load Raven calendar selection: %w", err)
+	}
+	defer rows.Close()
+	selection := make(map[string]bool)
+	for rows.Next() {
+		var remoteID string
+		var selected int
+		if err := rows.Scan(&remoteID, &selected); err != nil {
+			return nil, fmt.Errorf("scan Raven calendar selection: %w", err)
+		}
+		selection[ravenCalendarCarryoverKey(remoteID)] = selected == 1
+	}
+	return selection, rows.Err()
+}
+
+// ravenCalendarCarryoverKey matches calendar IDs across Raven's old CalDAV
+// client and upstream's: CalDAV IDs are collection URLs, which may differ in
+// host case, an explicit default port or the trailing slash. Other providers'
+// IDs are opaque and compared as-is.
+func ravenCalendarCarryoverKey(remoteID string) string {
+	remoteID = strings.TrimSpace(remoteID)
+	parsed, err := url.Parse(remoteID)
+	if err != nil || (parsed.Scheme != "https" && parsed.Scheme != "http") || parsed.Host == "" {
+		return remoteID
+	}
+	host := strings.ToLower(parsed.Hostname())
+	if port := parsed.Port(); port != "" && !(parsed.Scheme == "https" && port == "443") && !(parsed.Scheme == "http" && port == "80") {
+		host += ":" + port
+	}
+	return strings.ToLower(parsed.Scheme) + "://" + host + strings.TrimSuffix(parsed.EscapedPath(), "/") + "/"
+}
+
+func clearRavenCalendarCarryoverTx(ctx context.Context, tx *sql.Tx, accountID string) error {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM raven_calendar_carryover WHERE account_id = ?`, accountID); err != nil {
+		return fmt.Errorf("clear Raven calendar selection: %w", err)
+	}
+	return nil
+}
+
+// RavenCalendarCarryoverAccount is an account whose calendar selection from
+// Raven's old calendar still waits for a calendar discovery.
+type RavenCalendarCarryoverAccount struct {
+	UserID    string
+	AccountID string
+	Provider  string
+}
+
+// RavenCalendarCarryoverAccounts lists every account that still has a
+// calendar selection from Raven's old calendar waiting for discovery.
+func (db *DB) RavenCalendarCarryoverAccounts(ctx context.Context) ([]RavenCalendarCarryoverAccount, error) {
+	rows, err := db.Read().QueryContext(ctx, `
+		SELECT DISTINCT a.user_id, a.id, a.provider
+		FROM raven_calendar_carryover c
+		JOIN accounts a ON a.id = c.account_id
+		WHERE COALESCE(a.is_deleting, 0) = 0
+		ORDER BY a.id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var accounts []RavenCalendarCarryoverAccount
+	for rows.Next() {
+		var account RavenCalendarCarryoverAccount
+		if err := rows.Scan(&account.UserID, &account.AccountID, &account.Provider); err != nil {
+			return nil, err
+		}
+		accounts = append(accounts, account)
+	}
+	return accounts, rows.Err()
 }

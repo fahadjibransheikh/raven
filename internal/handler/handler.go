@@ -109,6 +109,7 @@ type Handler struct {
 	contactSyncQueue           chan struct{}
 	userContactWorkers         *userContactWorkers
 	calendarWorkerOnce         sync.Once
+	ravenCarryoverNextAttempt  time.Time // only touched by the calendar worker goroutine
 	calendarSyncMu             sync.Mutex
 	calendarSyncRunning        map[string]*calendarSyncRun
 	calendarUserSyncRunning    map[string]*calendarSyncRun

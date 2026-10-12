@@ -127,6 +127,11 @@ func replaceCalendarSourcesTx(ctx context.Context, tx *sql.Tx, userID, accountID
 		return sql.ErrNoRows
 	}
 
+	carriedSelection, err := ravenCalendarCarryoverTx(ctx, tx, accountID)
+	if err != nil {
+		return err
+	}
+
 	remoteIDs := make([]string, 0, len(sources))
 	seen := make(map[string]struct{}, len(sources))
 	for _, source := range sources {
@@ -151,6 +156,8 @@ func replaceCalendarSourcesTx(ctx context.Context, tx *sql.Tx, userID, accountID
 			selected = existingSelected == 1
 		} else if err != sql.ErrNoRows {
 			return fmt.Errorf("load calendar source %q: %w", remoteID, err)
+		} else if carried, ok := carriedSelection[ravenCalendarCarryoverKey(remoteID)]; ok {
+			selected = carried
 		}
 		if sourceID == "" {
 			sourceID = uuid.NewString()
@@ -202,6 +209,11 @@ func replaceCalendarSourcesTx(ctx context.Context, tx *sql.Tx, userID, accountID
 	}
 	if _, err := tx.ExecContext(ctx, markMissingQuery, markMissingArgs...); err != nil {
 		return fmt.Errorf("mark missing calendar sources: %w", err)
+	}
+	if len(carriedSelection) > 0 && len(remoteIDs) > 0 {
+		if err := clearRavenCalendarCarryoverTx(ctx, tx, accountID); err != nil {
+			return err
+		}
 	}
 
 	return nil

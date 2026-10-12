@@ -28,6 +28,7 @@ type calendarSyncRun struct {
 func (h *Handler) StartCalendarSync(ctx context.Context) {
 	h.calendarWorkerOnce.Do(func() {
 		go func() {
+			h.runRavenCalendarCarryoverTick(ctx, time.Now())
 			h.runCalendarSyncTick(ctx, time.Now())
 			h.runCalendarIncomingTick(ctx)
 			h.runCalendarMeetDraftCleanupTick(ctx)
@@ -39,6 +40,7 @@ func (h *Handler) StartCalendarSync(ctx context.Context) {
 				case <-ctx.Done():
 					return
 				case now := <-ticker.C:
+					h.runRavenCalendarCarryoverTick(ctx, now)
 					h.runCalendarSyncTick(ctx, now)
 					h.runCalendarIncomingTick(ctx)
 					h.runCalendarMeetDraftCleanupTick(ctx)

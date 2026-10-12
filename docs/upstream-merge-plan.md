@@ -83,6 +83,12 @@ Each stage ends with: `templ generate`, `tailwindcss` build, `go build ./...`, `
     TMPDIR is a symlink (macOS `/var` -> `/private/var`); they also fail on
     pristine upstream v0.5.2. Run storage tests with
     `TMPDIR=/private/tmp/<dir>` on macOS.
+- [x] Calendar carryover (2026-10-12): first discovery per account applies the
+  saved Raven selection (CalDAV URLs matched loosely); the calendar worker runs
+  discovery for waiting accounts at startup and every 10 minutes until it
+  succeeds (iCloud via CalDAV autodiscovery with the mailbox login).
+  **Not yet verified against real providers** - check on the desktop app with
+  real accounts before release.
 - [ ] Stage 3
 - [ ] Stage 4
 - [ ] Stage 5
