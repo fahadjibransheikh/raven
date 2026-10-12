@@ -1264,6 +1264,150 @@ ON contact_conflicts(user_id, profile_id, status);
 CREATE INDEX IF NOT EXISTS idx_contact_conflicts_account
 ON contact_conflicts(account_id);
 
+-- Calendar sources and locally cached provider events
+CREATE TABLE IF NOT EXISTS calendar_sources (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    provider TEXT NOT NULL CHECK (provider IN ('gmail', 'outlook', 'caldav')),
+    remote_id TEXT NOT NULL,
+    name TEXT NOT NULL DEFAULT '',
+    description TEXT NOT NULL DEFAULT '',
+    timezone TEXT NOT NULL DEFAULT '',
+    color TEXT NOT NULL DEFAULT '',
+    access_role TEXT NOT NULL DEFAULT '',
+    is_primary INTEGER NOT NULL DEFAULT 0 CHECK (is_primary IN (0, 1)),
+    is_selected INTEGER NOT NULL DEFAULT 1 CHECK (is_selected IN (0, 1)),
+    is_hidden INTEGER NOT NULL DEFAULT 0 CHECK (is_hidden IN (0, 1)),
+    is_deleted INTEGER NOT NULL DEFAULT 0 CHECK (is_deleted IN (0, 1)),
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (account_id, remote_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_calendar_sources_user
+ON calendar_sources(user_id, is_deleted, name COLLATE NOCASE);
+
+CREATE INDEX IF NOT EXISTS idx_calendar_sources_account
+ON calendar_sources(account_id, is_deleted, name COLLATE NOCASE);
+
+CREATE TABLE IF NOT EXISTS calendar_events (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    source_id TEXT NOT NULL REFERENCES calendar_sources(id) ON DELETE CASCADE,
+    remote_id TEXT NOT NULL,
+    ical_uid TEXT NOT NULL DEFAULT '',
+    series_remote_id TEXT NOT NULL DEFAULT '',
+    etag TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'confirmed' CHECK (status IN ('confirmed', 'tentative', 'cancelled')),
+    summary TEXT NOT NULL DEFAULT '',
+    description TEXT NOT NULL DEFAULT '',
+    location TEXT NOT NULL DEFAULT '',
+    organizer_name TEXT NOT NULL DEFAULT '',
+    organizer_email TEXT NOT NULL DEFAULT '',
+    all_day INTEGER NOT NULL DEFAULT 0 CHECK (all_day IN (0, 1)),
+    start_date TEXT,
+    end_date TEXT,
+    start_at DATETIME,
+    end_at DATETIME,
+    start_timezone TEXT NOT NULL DEFAULT '',
+    end_timezone TEXT NOT NULL DEFAULT '',
+    recurrence_json TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(recurrence_json)),
+    attendees_json TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(attendees_json)),
+    response_status TEXT NOT NULL DEFAULT '',
+    online_meeting_json TEXT NOT NULL DEFAULT '{}' CHECK (json_valid(online_meeting_json)),
+    html_link TEXT NOT NULL DEFAULT '',
+    provider_created_at DATETIME,
+    provider_updated_at DATETIME,
+    is_deleted INTEGER NOT NULL DEFAULT 0 CHECK (is_deleted IN (0, 1)),
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (source_id, remote_id),
+    CHECK (
+        is_deleted = 1
+        OR (
+            all_day = 1
+            AND start_date IS NOT NULL
+            AND end_date IS NOT NULL
+            AND start_at IS NULL
+            AND end_at IS NULL
+        )
+        OR (
+            all_day = 0
+            AND start_date IS NULL
+            AND end_date IS NULL
+            AND start_at IS NOT NULL
+            AND end_at IS NOT NULL
+        )
+    )
+);
+
+CREATE INDEX IF NOT EXISTS idx_calendar_events_user_start
+ON calendar_events(user_id, is_deleted, start_at, start_date, id);
+
+CREATE INDEX IF NOT EXISTS idx_calendar_events_source_start
+ON calendar_events(source_id, is_deleted, start_at, start_date, id);
+
+CREATE INDEX IF NOT EXISTS idx_calendar_events_series
+ON calendar_events(source_id, series_remote_id, is_deleted);
+
+CREATE TABLE IF NOT EXISTS calendar_sync_state (
+    source_id TEXT PRIMARY KEY REFERENCES calendar_sources(id) ON DELETE CASCADE,
+    state TEXT NOT NULL DEFAULT 'pending' CHECK (state IN ('pending', 'syncing', 'ok', 'failed')),
+    cursor_kind TEXT NOT NULL DEFAULT '',
+    cursor_value TEXT NOT NULL DEFAULT '',
+    window_start DATETIME,
+    window_end DATETIME,
+    full_sync_required INTEGER NOT NULL DEFAULT 1 CHECK (full_sync_required IN (0, 1)),
+    attempt_count INTEGER NOT NULL DEFAULT 0,
+    last_started_at DATETIME,
+    last_success_at DATETIME,
+    next_attempt_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_error TEXT NOT NULL DEFAULT '',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_calendar_sync_state_due
+ON calendar_sync_state(state, next_attempt_at, updated_at);
+
+-- Durable idempotency keys for explicit single-event creation.
+CREATE TABLE IF NOT EXISTS calendar_create_requests (
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    request_id TEXT NOT NULL,
+    source_id TEXT NOT NULL REFERENCES calendar_sources(id) ON DELETE CASCADE,
+    request_hash TEXT NOT NULL,
+    event_id TEXT NOT NULL DEFAULT '',
+    remote_id TEXT NOT NULL DEFAULT '',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, request_id)
+);
+
+-- Reserve a provider event version before sending an RSVP. An uncertain result
+-- must never resend a response notification automatically.
+CREATE TABLE IF NOT EXISTS calendar_response_requests (
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    source_id TEXT NOT NULL REFERENCES calendar_sources(id) ON DELETE CASCADE,
+    remote_id TEXT NOT NULL,
+    version TEXT NOT NULL,
+    response TEXT NOT NULL CHECK (response IN ('accepted', 'tentative', 'declined')),
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, source_id, remote_id, version)
+);
+
+CREATE TABLE IF NOT EXISTS account_caldav_configs (
+    account_id TEXT PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    base_url TEXT NOT NULL CHECK (trim(base_url) <> ''),
+    username TEXT NOT NULL DEFAULT '',
+    encrypted_password BLOB,
+    use_account_credentials INTEGER NOT NULL DEFAULT 1 CHECK (use_account_credentials IN (0, 1)),
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_account_caldav_configs_user
+ON account_caldav_configs(user_id, account_id);
+
 CREATE TABLE IF NOT EXISTS web_push_subscriptions (
     endpoint TEXT PRIMARY KEY,
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -1376,6 +1520,68 @@ CREATE TABLE IF NOT EXISTS mail_security_exceptions (
 CREATE INDEX IF NOT EXISTS idx_mail_security_exceptions_lookup
 ON mail_security_exceptions(kind, protocol, host, port);
 
+CREATE TABLE IF NOT EXISTS calendar_reply_jobs (
+    id TEXT PRIMARY KEY REFERENCES outgoing_sends(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    source_id TEXT NOT NULL REFERENCES calendar_sources(id) ON DELETE CASCADE,
+    resource_id TEXT NOT NULL, remote_id TEXT NOT NULL, version TEXT NOT NULL,
+    response TEXT NOT NULL CHECK(response IN ('accepted','tentative','declined')),
+    payload TEXT NOT NULL,
+    state TEXT NOT NULL DEFAULT 'pending' CHECK(state IN ('pending','complete','conflict','canceled','dismissed')),
+    attempted_at DATETIME,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_calendar_reply_pending ON calendar_reply_jobs(user_id,source_id,resource_id) WHERE state='pending';
+
+CREATE TABLE IF NOT EXISTS calendar_incoming_messages (
+    message_id INTEGER PRIMARY KEY REFERENCES messages(id) ON DELETE CASCADE,
+    state TEXT NOT NULL CHECK(state IN ('complete','ignored','retry')),
+    next_attempt_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    last_error TEXT NOT NULL DEFAULT '',
+    event_id TEXT NOT NULL DEFAULT '',
+    ical_uid TEXT NOT NULL DEFAULT '',
+    attendee TEXT NOT NULL DEFAULT '',
+    reason_code TEXT NOT NULL DEFAULT '',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_messages_calendar_sender ON messages(account_id,lower(from_email),id);
+CREATE INDEX IF NOT EXISTS idx_calendar_incoming_event ON calendar_incoming_messages(event_id,attendee,message_id);
+CREATE TABLE IF NOT EXISTS calendar_incoming_responses (
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    source_id TEXT NOT NULL REFERENCES calendar_sources(id) ON DELETE CASCADE,
+    ical_uid TEXT NOT NULL, attendee TEXT NOT NULL,
+    sequence INTEGER NOT NULL, stamp TEXT NOT NULL,
+    response TEXT NOT NULL CHECK(response IN ('ACCEPTED','TENTATIVE','DECLINED')),
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(source_id,ical_uid,attendee)
+);
+
+-- Prepared Meet conferences are private temporary provider resources, never cached appointments.
+CREATE TABLE IF NOT EXISTS calendar_meet_drafts (
+ user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ source_id TEXT NOT NULL REFERENCES calendar_sources(id) ON DELETE CASCADE,
+ draft_id TEXT NOT NULL,
+ remote_id TEXT NOT NULL,
+ conference_json TEXT NOT NULL DEFAULT '',
+ used_by TEXT NOT NULL DEFAULT '',
+ cleanup_pending INTEGER NOT NULL DEFAULT 1,
+ created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ PRIMARY KEY(user_id,source_id,draft_id)
+);
+
+CREATE TABLE IF NOT EXISTS calendar_teams_drafts (
+ user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ source_id TEXT NOT NULL REFERENCES calendar_sources(id) ON DELETE CASCADE,
+ draft_id TEXT NOT NULL,
+ remote_id TEXT NOT NULL DEFAULT '',
+ meeting_json TEXT NOT NULL DEFAULT '',
+ used_by TEXT NOT NULL DEFAULT '',
+ state TEXT NOT NULL DEFAULT 'active' CHECK(state IN ('active','saving','saved','abandoned','cleaned')),
+ updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ PRIMARY KEY(user_id,source_id,draft_id)
+);
+
 -- Schema version marker for fresh installs
 CREATE TABLE IF NOT EXISTS account_identities (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1399,57 +1605,4 @@ CREATE TABLE IF NOT EXISTS account_identity_dismissals (
     PRIMARY KEY (account_id, email)
 );
 
-CREATE TABLE IF NOT EXISTS calendars (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-    provider_calendar_id TEXT NOT NULL,
-    name TEXT NOT NULL DEFAULT '',
-    color TEXT NOT NULL DEFAULT '',
-    time_zone TEXT NOT NULL DEFAULT '',
-    is_primary INTEGER NOT NULL DEFAULT 0,
-    access_role TEXT NOT NULL DEFAULT '',
-    selected INTEGER NOT NULL DEFAULT 0,
-    sync_token TEXT NOT NULL DEFAULT '',
-    window_start DATETIME,
-    window_end DATETIME,
-    synced_at DATETIME,
-    UNIQUE(account_id, provider_calendar_id)
-);
-
-CREATE TABLE IF NOT EXISTS calendar_events (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    calendar_id INTEGER NOT NULL REFERENCES calendars(id) ON DELETE CASCADE,
-    account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-    provider_event_id TEXT NOT NULL,
-    ical_uid TEXT NOT NULL DEFAULT '',
-    recurring_event_id TEXT NOT NULL DEFAULT '',
-    title TEXT NOT NULL DEFAULT '',
-    location TEXT NOT NULL DEFAULT '',
-    description TEXT NOT NULL DEFAULT '',
-    start_at DATETIME NOT NULL,
-    end_at DATETIME NOT NULL,
-    all_day INTEGER NOT NULL DEFAULT 0,
-    start_date TEXT NOT NULL DEFAULT '',
-    end_date TEXT NOT NULL DEFAULT '',
-    event_time_zone TEXT NOT NULL DEFAULT '',
-    status TEXT NOT NULL DEFAULT 'confirmed',
-    organizer_email TEXT NOT NULL DEFAULT '',
-    self_response TEXT NOT NULL DEFAULT '',
-    attendees TEXT NOT NULL DEFAULT '[]',
-    html_link TEXT NOT NULL DEFAULT '',
-    meeting_url TEXT NOT NULL DEFAULT '',
-    updated_at_provider DATETIME,
-    UNIQUE(calendar_id, provider_event_id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_calendar_events_account_start ON calendar_events(account_id, start_at);
-CREATE INDEX IF NOT EXISTS idx_calendar_events_calendar_start ON calendar_events(calendar_id, start_at);
-
-CREATE TABLE IF NOT EXISTS calendar_account_state (
-    account_id TEXT PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
-    needs_reconnect INTEGER NOT NULL DEFAULT 0,
-    last_error TEXT NOT NULL DEFAULT '',
-    last_synced_at DATETIME
-);
-
-INSERT OR REPLACE INTO schema_version (version) VALUES (106);
+INSERT OR REPLACE INTO schema_version (version) VALUES (119);

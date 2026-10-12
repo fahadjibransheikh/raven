@@ -18,14 +18,15 @@ import (
 )
 
 const (
+	GoogleCalendarReadOnlyScope        = "https://www.googleapis.com/auth/calendar.readonly"
+	GoogleCalendarEventsScope          = "https://www.googleapis.com/auth/calendar.events"
+	googleCalendarListReadOnlyScope    = "https://www.googleapis.com/auth/calendar.calendarlist.readonly"
 	microsoftGraphContactsScope        = "https://graph.microsoft.com/Contacts.ReadWrite"
+	microsoftGraphCalendarScope        = "https://graph.microsoft.com/Calendars.Read"
+	microsoftGraphCalendarWriteScope   = "https://graph.microsoft.com/Calendars.ReadWrite"
 	microsoftGraphMailScope            = "https://graph.microsoft.com/Mail.ReadWrite"
 	microsoftGraphMailSendScope        = "https://graph.microsoft.com/Mail.Send"
 	microsoftGraphMailboxSettingsScope = "https://graph.microsoft.com/MailboxSettings.ReadWrite"
-	// Calendars.ReadWrite covers list/read/create/update/delete/RSVP on the
-	// user's own calendars, personal and work accounts alike. The .Shared
-	// variants are not used: ReadWrite.Shared is not offered to personal accounts.
-	microsoftGraphCalendarScope = "https://graph.microsoft.com/Calendars.ReadWrite"
 	// microsoftSMTPSendScope authorizes SMTP AUTH (XOAUTH2) submission for
 	// Outlook.com and Microsoft 365 mailboxes. It belongs to the
 	// outlook.office.com resource, not Graph.
@@ -103,6 +104,60 @@ func (m *Manager) GetOAuthTokenForAccount(ctx context.Context, accountID string)
 		return m.GetMicrosoftGraphMailTokenForAccount(ctx, accountID)
 	}
 	return m.getOAuthTokenForAccount(ctx, accountID, oauthProvider)
+}
+
+// GetGoogleCalendarTokenForAccount returns a Google mailbox token only when
+// the account was authorized to read Calendar. Existing
+// mailbox grants must be reconnected once before Calendar discovery can use
+// them.
+func (m *Manager) GetGoogleCalendarTokenForAccount(ctx context.Context, accountID string) (string, error) {
+	record, err := m.oauthTokenForAccount(ctx, accountID, providers.OAuthGoogle)
+	if err != nil {
+		return "", err
+	}
+	// Raven grants calendarlist.readonly + calendar.events instead of calendar.readonly.
+	if !recordHasScopes(record.Scopes, GoogleCalendarReadOnlyScope) && !recordHasScopes(record.Scopes, "https://www.googleapis.com/auth/calendar") &&
+		!recordHasScopes(record.Scopes, googleCalendarListReadOnlyScope, GoogleCalendarEventsScope) {
+		return "", fmt.Errorf("Google Calendar access is not authorized for account %s; reconnect Google to grant Calendar access", accountID)
+	}
+	if record.AccessToken != "" && record.ExpiresAt.Valid && record.ExpiresAt.Time.After(time.Now().Add(5*time.Minute)) {
+		return record.AccessToken, nil
+	}
+	if record.RefreshToken == "" {
+		return "", fmt.Errorf("no refresh token available for account %s", accountID)
+	}
+	return m.refreshToken(ctx, providers.OAuthGoogle, record.ID, record.RefreshToken)
+}
+
+// CalendarWriteAuthorized is a grant check only: opening a dialog must not
+// refresh credentials or contact a provider. Read-only grants remain usable.
+func (m *Manager) CalendarWriteAuthorized(ctx context.Context, accountID, provider string) bool {
+	oauthProvider, err := oauthProviderForAccountProvider(provider)
+	if err != nil {
+		return false
+	}
+	record, err := m.oauthTokenForAccount(ctx, accountID, oauthProvider)
+	if err != nil {
+		return false
+	}
+	if provider == providers.ProviderGmail {
+		return recordHasScopes(record.Scopes, GoogleCalendarEventsScope) || recordHasScopes(record.Scopes, "https://www.googleapis.com/auth/calendar")
+	}
+	return recordHasScopes(record.Scopes, microsoftGraphCalendarWriteScope)
+}
+
+func (m *Manager) GetGoogleCalendarWriteTokenForAccount(ctx context.Context, accountID string) (string, error) {
+	if !m.CalendarWriteAuthorized(ctx, accountID, providers.ProviderGmail) {
+		return "", fmt.Errorf("Google Calendar event creation is not authorized; reconnect this account from Accounts to grant write access")
+	}
+	return m.getOAuthTokenForAccount(ctx, accountID, providers.OAuthGoogle)
+}
+
+func (m *Manager) GetMicrosoftGraphCalendarWriteTokenForAccount(ctx context.Context, accountID string) (string, error) {
+	if !m.CalendarWriteAuthorized(ctx, accountID, providers.ProviderOutlook) {
+		return "", fmt.Errorf("Microsoft Calendar event creation is not authorized; reconnect this account from Accounts to grant write access")
+	}
+	return m.getMicrosoftGraphTokenForAccount(ctx, accountID, "calendar write", microsoftGraphCalendarWriteScope)
 }
 
 func (m *Manager) RefreshOAuthTokenForAccount(ctx context.Context, accountID string) (string, error) {
@@ -227,6 +282,9 @@ func recordHasScopes(recordScopes string, expected ...string) bool {
 		seen[strings.ToLower(scope)] = true
 	}
 	for _, scope := range expected {
+		if strings.EqualFold(scope, microsoftGraphCalendarScope) && seen[strings.ToLower(microsoftGraphCalendarWriteScope)] {
+			continue
+		}
 		if !seen[strings.ToLower(scope)] {
 			return false
 		}
@@ -440,6 +498,18 @@ func (m *Manager) storeOAuthAccessToken(ctx context.Context, oauthAccountID stri
 	credential, err := m.loadOAuthCredentialContext(ctx, m.db.Read(), oauthAccountID)
 	if err != nil {
 		return err
+	}
+	if strings.TrimSpace(scopes) == "" {
+		var existingScopes string
+		err := m.db.Read().QueryRowContext(ctx,
+			`SELECT scopes FROM oauth_accounts WHERE id = ? AND account_id = ?`, oauthAccountID, credential.AccountID,
+		).Scan(&existingScopes)
+		if err != nil && err != sql.ErrNoRows {
+			return fmt.Errorf("load mailbox OAuth scopes: %w", err)
+		}
+		if err == nil {
+			scopes = existingScopes
+		}
 	}
 	accessCiphertext, err := m.encryptOAuthToken(credential, "access", token.AccessToken)
 	if err != nil {

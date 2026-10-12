@@ -8,6 +8,8 @@ import (
 	"github.com/cristianadrielbraun/gofer/components/dropdown"
 	"github.com/cristianadrielbraun/gofer/components/checkbox"
 	"github.com/cristianadrielbraun/gofer/components/calendar"
+	"github.com/cristianadrielbraun/gofer/components/datepicker"
+	"github.com/cristianadrielbraun/gofer/components/timepicker"
 	"github.com/cristianadrielbraun/gofer/components/input"
 	"github.com/cristianadrielbraun/gofer/components/popover"
 	"github.com/cristianadrielbraun/gofer/components/selectbox"
@@ -38,6 +40,8 @@ templ Layout(accounts []models.Account, activeFolder string, emails []models.Ema
 			@dropdown.Script()
 			@checkbox.Script()
 			@calendar.Script()
+			@datepicker.Script()
+			@timepicker.Script()
 			@input.Script()
 			@selectbox.Script()
 			@tabs.Script()
@@ -70,6 +74,7 @@ templ Layout(accounts []models.Account, activeFolder string, emails []models.Ema
 			<script src={ AssetURL("/assets/js/account-wizard.js") }></script>
 			@MailSyncProgressDialog()
 			<div id="edit-account-container"></div>
+			@CalendarLoadingTemplates(accounts, uiSettings)
 			<script src={ AssetURL("/assets/js/htmx.min.js") }></script>
 			<script src={ AssetURL("/assets/js/virtual-scroll.js") }></script>
 			<script src={ AssetURL("/assets/js/app.js") }></script>
@@ -78,8 +83,6 @@ templ Layout(accounts []models.Account, activeFolder string, emails []models.Ema
 			<script src={ AssetURL("/assets/js/raven.js") }></script>
 			<script src={ AssetURL("/assets/js/whats-new.js") }></script>
 			<script src={ AssetURL("/assets/js/phone-layout.js") }></script>
-			<script src={ AssetURL("/assets/js/calendar-app.js") }></script>
-			<script src={ AssetURL("/assets/js/invite-card.js") }></script>
 			@MailCardLayoutScript()
 			<script src={ AssetURL("/assets/js/resize.js") }></script>
 			<script>
@@ -98,10 +101,9 @@ templ Layout(accounts []models.Account, activeFolder string, emails []models.Ema
 						track.style.transform = 'translateX(0)';
 						if (typeof _editWizStep !== 'undefined') _editWizStep = 0;
 
-						document.querySelectorAll('#edit-account-dialog [data-account-wizard-step]').forEach(function(item) {
-							item.dataset.active = String(+item.dataset.accountWizardStep === 0);
-							if (+item.dataset.accountWizardStep === 4) item.disabled = true;
-						});
+                document.querySelectorAll('#edit-account-dialog [data-account-wizard-step]').forEach(function(item) {
+                    item.dataset.active = String(+item.dataset.accountWizardStep === 0);
+                });
 					});
 				}
 
@@ -174,6 +176,8 @@ templ SettingsComponentScripts() {
 	@dropdown.Script()
 	@checkbox.Script()
 	@calendar.Script()
+	@datepicker.Script()
+	@timepicker.Script()
 	@input.Script()
 	@selectbox.Script()
 	@tabs.Script()
@@ -218,10 +222,9 @@ templ SettingsRuntime(accounts []models.Account) {
 				track.style.transform = 'translateX(0)';
 				if (typeof _editWizStep !== 'undefined') _editWizStep = 0;
 
-				document.querySelectorAll('#edit-account-dialog [data-account-wizard-step]').forEach(function(item) {
-					item.dataset.active = String(+item.dataset.accountWizardStep === 0);
-					if (+item.dataset.accountWizardStep === 4) item.disabled = true;
-				});
+            document.querySelectorAll('#edit-account-dialog [data-account-wizard-step]').forEach(function(item) {
+                item.dataset.active = String(+item.dataset.accountWizardStep === 0);
+            });
 			});
 		}
 
@@ -291,6 +294,8 @@ templ ContactsLayout(accounts []models.Account, contacts []models.Contact, selec
 			@dropdown.Script()
 			@checkbox.Script()
 			@calendar.Script()
+			@datepicker.Script()
+			@timepicker.Script()
 			@input.Script()
 			@selectbox.Script()
 			@tabs.Script()
@@ -312,6 +317,7 @@ templ ContactsLayout(accounts []models.Account, contacts []models.Contact, selec
 			@AddAccountDialog()
 			<script src={ AssetURL("/assets/js/account-wizard.js") }></script>
 			<div id="edit-account-container"></div>
+			@CalendarLoadingTemplates(accounts, uiSettings)
 			<script src={ AssetURL("/assets/js/htmx.min.js") }></script>
 			<script src={ AssetURL("/assets/js/virtual-scroll.js") }></script>
 			<script src={ AssetURL("/assets/js/app.js") }></script>
@@ -320,8 +326,6 @@ templ ContactsLayout(accounts []models.Account, contacts []models.Contact, selec
 			<script src={ AssetURL("/assets/js/raven.js") }></script>
 			<script src={ AssetURL("/assets/js/whats-new.js") }></script>
 			<script src={ AssetURL("/assets/js/phone-layout.js") }></script>
-			<script src={ AssetURL("/assets/js/calendar-app.js") }></script>
-			<script src={ AssetURL("/assets/js/invite-card.js") }></script>
 			<script src={ AssetURL("/assets/js/resize.js") }></script>
 		</body>
 	</html>
@@ -359,6 +363,8 @@ templ AdminLayout(uiSettings map[string]string, userData AdminUsersData, avatarS
 			@dropdown.Script()
 			@checkbox.Script()
 			@calendar.Script()
+			@datepicker.Script()
+			@timepicker.Script()
 			@input.Script()
 			@selectbox.Script()
 			@tabs.Script()

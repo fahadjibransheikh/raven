@@ -20,7 +20,9 @@ type Account struct {
 	EmailSyncErrorAt    string
 	ContactSyncEnabled  bool
 	ContactSyncProvider string
+	CalendarSyncEnabled bool
 	ContactAddressBooks []ContactAddressBook
+	CalendarSources     []AccountCalendarSource
 	Folders             []Folder
 	Labels              []Label
 	Identities          []AccountIdentity
@@ -58,6 +60,19 @@ func (a Account) DisplayLabel() string {
 		}
 	}
 	return ""
+}
+
+// AccountCalendarSource is sidebar metadata, not account sync configuration.
+type AccountCalendarSource struct {
+	ID            string
+	Name          string
+	Color         string
+	IsHidden      bool
+	SyncState     string
+	SyncAttempt   int
+	SyncError     string
+	LastSyncedAt  string
+	NextAttemptAt string
 }
 
 type Folder struct {
@@ -159,6 +174,36 @@ type ContactSyncConfig struct {
 	LastError      string
 	LastSuccessAt  string
 	UpdatedAt      string
+}
+
+// CalendarSource describes one discovered provider calendar in account setup.
+type CalendarSource struct {
+	ID          string
+	RemoteID    string
+	Name        string
+	Description string
+	TimeZone    string
+	Color       string
+	AccessRole  string
+	IsPrimary   bool
+	IsSelected  bool
+}
+
+// CalendarSyncConfig describes the local Calendar source selection for one
+// mailbox account. Provider authorization and discovery create the sources;
+// this configuration controls whether selected sources appear in Calendar.
+type CalendarSyncConfig struct {
+	AccountID                   string
+	UserID                      string
+	Provider                    string
+	CalDAVBaseURL               string
+	CalDAVUsername              string
+	CalDAVHasPassword           bool
+	CalDAVUseAccountCredentials bool
+	Enabled                     bool
+	SourceCount                 int
+	SelectedSourceCount         int
+	Sources                     []CalendarSource
 }
 
 type ContactAddressBook struct {

@@ -50,7 +50,7 @@ type ThreadingState struct {
 	Total      int  `json:"total"`
 }
 
-const CurrentSchemaVersion = 106
+const CurrentSchemaVersion = 119
 
 // restrictDatabaseFiles makes the database (message metadata, credential
 // ciphertext, session hashes) and its WAL/SHM readable by the owner only. SQLite
@@ -1001,6 +1001,56 @@ func (db *DB) migrate() error {
 	if currentVersion <= 105 {
 		if err := db.migrateV105ToV106(context.Background()); err != nil {
 			return fmt.Errorf("migrate v105 to v106: %w", err)
+		}
+	}
+	// v107 onwards: Raven's calendar is replaced by upstream gofer's, whose
+	// migrations (upstream v93 to v105) are renumbered v107 to v119.
+	if currentVersion <= 106 {
+		calendarTx, err := db.write.Begin()
+		if err != nil {
+			return fmt.Errorf("begin v106 to v107 migration: %w", err)
+		}
+		if err := migrateV106ToV107(calendarTx); err != nil {
+			_ = calendarTx.Rollback()
+			return fmt.Errorf("migrate v106 to v107: %w", err)
+		}
+		if err := calendarTx.Commit(); err != nil {
+			return fmt.Errorf("commit v106 to v107 migration: %w", err)
+		}
+	}
+	if currentVersion <= 107 {
+		calendarTx, err := db.write.Begin()
+		if err != nil {
+			return fmt.Errorf("begin v107 to v108 migration: %w", err)
+		}
+		if err := migrateV107ToV108(calendarTx); err != nil {
+			_ = calendarTx.Rollback()
+			return fmt.Errorf("migrate v107 to v108: %w", err)
+		}
+		if err := calendarTx.Commit(); err != nil {
+			return fmt.Errorf("commit v107 to v108 migration: %w", err)
+		}
+	}
+	for _, step := range []struct {
+		from    int
+		migrate func(*sql.DB) error
+	}{
+		{108, migrateV108ToV109},
+		{109, migrateV109ToV110},
+		{110, migrateV110ToV111},
+		{111, migrateV111ToV112},
+		{112, migrateV112ToV113},
+		{113, migrateV113ToV114},
+		{114, migrateV114ToV115},
+		{115, migrateV115ToV116},
+		{116, migrateV116ToV117},
+		{117, migrateV117ToV118},
+		{118, migrateV118ToV119},
+	} {
+		if currentVersion <= step.from {
+			if err := step.migrate(db.write); err != nil {
+				return fmt.Errorf("migrate v%d to v%d: %w", step.from, step.from+1, err)
+			}
 		}
 	}
 

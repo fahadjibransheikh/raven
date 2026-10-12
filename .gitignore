@@ -1,4 +1,5 @@
-tmp/
+tmp/*
+!tmp/go.mod
 dist/
 .env
 internal_notes/
@@ -7,6 +8,7 @@ raven-server
 !assets/logo.png
 !screenshots/
 !screenshots/*.png
+!branding/**/*.png
 .air.toml
 data/
 

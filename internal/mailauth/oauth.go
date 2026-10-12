@@ -17,8 +17,8 @@ func googleAccountScopes() []string {
 		"https://www.googleapis.com/auth/contacts",
 		// Narrowest pair that lists calendars and reads/writes events; the full
 		// "calendar" scope would also allow editing calendar settings and sharing.
-		"https://www.googleapis.com/auth/calendar.calendarlist.readonly",
-		"https://www.googleapis.com/auth/calendar.events",
+		googleCalendarListReadOnlyScope,
+		GoogleCalendarEventsScope,
 	}
 }
 
@@ -63,7 +63,7 @@ func microsoftAccountTokenScopes() []string {
 }
 
 func microsoftAccountTokenExchangeScopes() []string {
-	return []string{"openid", "email", "profile", "offline_access", microsoftGraphContactsScope, microsoftGraphMailScope, microsoftGraphMailSendScope, microsoftGraphMailboxSettingsScope, microsoftGraphCalendarScope}
+	return []string{"openid", "email", "profile", "offline_access", microsoftGraphContactsScope, microsoftGraphCalendarWriteScope, microsoftGraphMailScope, microsoftGraphMailSendScope, microsoftGraphMailboxSettingsScope}
 }
 
 func (m *Service) accountOAuthConfig() *oauth2.Config {

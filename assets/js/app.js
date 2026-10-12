@@ -1,3 +1,48 @@
+function setupPageRequestOwnership() {
+  if (window._goferPageRequestOwnershipReady) return
+  window._goferPageRequestOwnershipReady = true
+  var generation = 0
+
+  // Register immediately: HTMX processes load triggers in its own
+  // DOMContentLoaded listener, before the rest of our app is initialized.
+  document.addEventListener("htmx:beforeRequest", function (event) {
+    var detail = event.detail
+    if (!detail || !detail.xhr) return
+    var trigger = detail.elt
+    var pageTarget = detail.target && /^(main-content|settings-content|app-shell)$/.test(detail.target.id)
+    var navigation = trigger && trigger.hasAttribute && (
+      trigger.hasAttribute("data-sidebar-app-button") ||
+      (pageTarget && detail.requestConfig && detail.requestConfig.verb === "get" &&
+        (trigger.hasAttribute("href") || detail.boosted)))
+    if (navigation) generation++
+    detail.xhr.goferPageGeneration = generation
+  }, true)
+
+  function rejectPreviousPageResponse(event) {
+    var xhr = event.detail && event.detail.xhr
+    if (!xhr || typeof xhr.goferPageGeneration !== "number" || xhr.goferPageGeneration === generation) return
+    event.detail.shouldSwap = false
+    // Cancelling the event also blocks response headers, history/title updates,
+    // and out-of-band swaps, rather than just hiding the primary swap.
+    event.preventDefault()
+  }
+  document.addEventListener("htmx:beforeOnLoad", rejectPreviousPageResponse, true)
+  // The original trigger may be detached, so also check the surviving target.
+  document.addEventListener("htmx:beforeSwap", rejectPreviousPageResponse, true)
+  window.addEventListener("popstate", function () { generation++ }, true)
+}
+
+setupPageRequestOwnership()
+
+function animateSectionContent(section) {
+  if (!section || typeof section.animate !== "function" ||
+      (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches)) return
+  section.animate([
+    { opacity: 0, transform: "translateY(5px)" },
+    { opacity: 1, transform: "translateY(0)" },
+  ], { duration: 180, easing: "ease-out" })
+}
+
 document.addEventListener("DOMContentLoaded", function () {
   if (!document.getElementById("mail-sync-indeterminate-style")) {
     var style = document.createElement("style")
@@ -36,11 +81,12 @@ document.addEventListener("DOMContentLoaded", function () {
     return String(value).replace(/[^a-zA-Z0-9_-]/g, "\\$&")
   }
 
+  // Register app/request ownership before Mail can start its initial fetch.
+  setupSidebarAppNavToggle()
   initVirtualScroll()
   setupFolderClickInterception()
   setupEmailSelectionTracking()
   setupMailListViewToggle()
-  setupSidebarAppNavToggle()
   _guardComposeNavigation()
   setupContactsList()
   setupMailFilters()
@@ -1962,7 +2008,7 @@ document.addEventListener("DOMContentLoaded", function () {
       if (document.body) document.body._goferMailKeyboardShortcutsBound = true
 
       document.addEventListener("keydown", function (e) {
-        if (isShortcutIgnored(e)) return
+        if (document.getElementById("calendar-main") || isShortcutIgnored(e)) return
         // Shift+/ is "?" on layouts that report the base key.
         var key = e.key === "/" && e.shiftKey ? "?" : String(e.key || "").toLowerCase()
         var entry = shortcutForKey(key)
@@ -2302,8 +2348,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function readFilters() {
       var filters = emptyFilters()
-      // The status tri-states now live in the advanced filter popover.
-      var form = document.querySelector("[data-mail-filter-form]") || document.querySelector("[data-mail-advanced-filter-form]")
+      // The status tri-states live in the advanced filter popover.
+      var form = document.querySelector("[data-mail-advanced-filter-form]") || document.querySelector("[data-mail-filter-form]")
       if (form) {
         var status = form.querySelector('[data-mail-tristate="status"]')
         var attachments = form.querySelector('[data-mail-tristate="attachments"]')
@@ -2487,12 +2533,7 @@ document.addEventListener("DOMContentLoaded", function () {
       box.style.overflow = "hidden"
       box.offsetHeight
       box.style.height = nextHeight + "px"
-      if (typeof nextSection.animate === "function") {
-        nextSection.animate([
-          { opacity: 0, transform: "translateY(5px)" },
-          { opacity: 1, transform: "translateY(0)" },
-        ], { duration: 180, easing: "ease-out" })
-      }
+      animateSectionContent(nextSection)
       box._mailFilterPanelTimer = window.setTimeout(function () {
         box._mailFilterPanelTimer = null
         box.style.height = ""
@@ -3782,6 +3823,16 @@ document.addEventListener("DOMContentLoaded", function () {
     // Events published while the stream was down are lost, so recount on every (re)connect.
     source.addEventListener("connected", function () { refreshSidebarUnread() })
 
+    source.addEventListener("calendar-sync", function (event) {
+      var data
+      try { data = JSON.parse(event.data) } catch (_) { return }
+      handleCalendarSyncEvent(data)
+    })
+
+    source.addEventListener("calendar-changed", function () {
+      scheduleCalendarCacheRefresh()
+    })
+
     source.addEventListener("new-mail", function (e) {
       var data
       try { data = JSON.parse(e.data) } catch (_) { return }
@@ -4918,7 +4969,7 @@ document.addEventListener("DOMContentLoaded", function () {
       var sidebarLinks = sidebar.querySelectorAll("a[hx-get^='/folder/']")
       for (var i = 0; i < sidebarLinks.length; i++) {
         sidebarLinks[i].classList.remove("bg-sidebar-accent", "text-sidebar-primary", "font-medium")
-        sidebarLinks[i].classList.add("text-sidebar-foreground")
+        sidebarLinks[i].classList.add("text-sidebar-foreground", "hover:bg-sidebar-accent/60", "hover:text-sidebar-accent-foreground")
         var badge = sidebarLinks[i].querySelector("[data-folder-unread]")
         if (badge) {
           badge.classList.remove("text-sidebar-accent-foreground")
@@ -5076,7 +5127,7 @@ document.addEventListener("DOMContentLoaded", function () {
         "text-sidebar-primary",
         "font-medium"
       )
-      link.classList.remove("text-sidebar-foreground")
+      link.classList.remove("text-sidebar-foreground", "hover:bg-sidebar-accent/60", "hover:text-sidebar-accent-foreground")
       var activeRow = link.closest("[data-sidebar-folder-row]")
       if (activeRow) {
         activeRow.classList.add("bg-sidebar-accent")
@@ -5225,53 +5276,146 @@ document.addEventListener("DOMContentLoaded", function () {
     })
   }
 
+  function setSidebarAppNavMode(mode) {
+    var group = document.querySelector("[data-sidebar-app-nav]")
+    if (group) {
+      var buttons = group.querySelectorAll("[data-sidebar-app-button]")
+      for (var i = 0; i < buttons.length; i++) {
+        var isActive = buttons[i].dataset.sidebarAppButton === mode
+        buttons[i].classList.toggle("text-sidebar-accent-foreground", isActive)
+        buttons[i].classList.toggle("text-sidebar-foreground", !isActive && !buttons[i].disabled)
+        buttons[i].classList.toggle("hover:text-sidebar-accent-foreground", !isActive && !buttons[i].disabled)
+        if (isActive) buttons[i].setAttribute("aria-current", "true")
+        else buttons[i].removeAttribute("aria-current")
+      }
+      var indicator = group.querySelector("[data-sidebar-app-indicator]")
+      if (indicator) {
+        if (mode === "contacts") indicator.style.transform = "translateX(calc(100% + 2px))"
+        else if (mode === "calendar") indicator.style.transform = "translateX(calc(200% + 4px))"
+        else indicator.style.transform = "translateX(0)"
+      }
+    }
+    if (mode === "contacts") document.title = "Contacts — Raven"
+    else if (mode === "calendar") document.title = "Calendar — Raven"
+    else if (mode === "mail") document.title = "Raven"
+  }
+
   function setupSidebarAppNavToggle() {
+    var request = null
+    var previous = null
+    function restore() {
+      if (!previous) return
+      previous.panes.forEach(function (saved) {
+        var root = document.getElementById(saved.id)
+        if (root) {
+          replaceAppPaneContents(root, saved, false)
+          // Reattach the actual old nodes, including their virtual-list and
+          // HTMX state, rather than recreating an inert copy of the last app.
+          root.replaceChildren.apply(root, saved.liveChildren)
+          saved.scrollPositions.forEach(function (scroll) { scroll.node.scrollTop = scroll.top; scroll.node.scrollLeft = scroll.left })
+        }
+      })
+      setMainContentAppMode(previous.mode)
+      setSidebarAppNavMode(previous.mode)
+      document.getElementById("app-shell").removeAttribute("data-hx-history")
+      previous = null
+      request = null
+      var mailScroll = document.getElementById("mail-list-scroll")
+      var contactsScroll = document.getElementById("contacts-list-scroll")
+      virtualMailList = mailScroll && mailScroll._virtualMailList
+      virtualContactsList = contactsScroll && contactsScroll._virtualContactsList
+      if (mailScroll && !virtualMailList) initVirtualScroll()
+      initializeCalendarDaySelection()
+    }
+    // Capture runs before HTMX's click handler: the indicator never waits for
+    // a request, a skeleton render, or a response to start moving.
     document.body.addEventListener("click", function (e) {
       var btn = e.target.closest && e.target.closest("[data-sidebar-app-button]")
       if (!btn || btn.disabled || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return
-
       var href = btn.getAttribute("href")
-      var mode = btn.getAttribute("data-sidebar-app-button")
-      var group = btn.closest("[data-sidebar-app-nav]")
-      if (group) {
-        var buttons = group.querySelectorAll("[data-sidebar-app-button]")
-        for (var i = 0; i < buttons.length; i++) {
-          var isActive = buttons[i] === btn
-          buttons[i].classList.toggle("text-sidebar-accent-foreground", isActive)
-          buttons[i].classList.toggle("text-sidebar-foreground", !isActive && !buttons[i].disabled)
-          buttons[i].classList.toggle("hover:text-sidebar-accent-foreground", !isActive && !buttons[i].disabled)
-          if (isActive) buttons[i].setAttribute("aria-current", "true")
-          else buttons[i].removeAttribute("aria-current")
-        }
-        var indicator = group.querySelector("[data-sidebar-app-indicator]")
-        if (indicator) {
-          if (mode === "contacts") indicator.style.transform = "translateX(calc(100% + 2px))"
-          else if (mode === "calendar") indicator.style.transform = "translateX(calc(200% + 4px))"
-          else indicator.style.transform = "translateX(0)"
-        }
+      var mode = btn.dataset.sidebarAppButton
+      var sidebar = document.getElementById("sidebar-app-body")
+      var samePath = href && new URL(href, window.location.href).pathname === window.location.pathname
+      if (sidebar && sidebar.dataset.sidebarAppBody === mode && (request || samePath)) {
+        e.preventDefault()
+        e.stopPropagation()
+        return
       }
-
-      if (mode === "contacts") document.title = "Contacts — Raven"
-      else if (mode === "calendar") document.title = "Calendar — Raven"
-      else if (mode === "mail") document.title = "Raven"
+      setSidebarAppNavMode(mode)
 
       if (!href) return
-      var hrefPath = href
-      try {
-        hrefPath = new URL(href, window.location.href).pathname
-      } catch (_) {}
-      if (btn.getAttribute("aria-current") === "true" && window.location.pathname === hrefPath) {
-        e.preventDefault()
-        return
-      }
-      if (btn.hasAttribute("hx-get") && typeof htmx !== "undefined") {
-        showAppSwitchPending(mode)
-        return
-      }
+      if (btn.hasAttribute("hx-get") && typeof htmx !== "undefined") return
       e.preventDefault()
       showAppSwitchPending(mode)
       window.location.href = href
+    }, true)
+    document.body.addEventListener("htmx:beforeRequest", function (event) {
+      var detail = event.detail
+      var trigger = detail && detail.elt
+      if (!trigger || !trigger.hasAttribute("data-sidebar-app-button")) {
+        var origin = document.getElementById("sidebar-app-body")
+        if (detail && detail.xhr && detail.target && origin &&
+            /^(mail-list|mail-view|main-content|sidebar-app-body)$/.test(detail.target.id)) {
+          detail.xhr.goferAppPaneMode = origin.dataset.sidebarAppBody
+        }
+        return
+      }
+      if (_calendarContentRequest) _calendarContentRequest.abort()
+      if (_calendarCacheRequest) {
+        var cache = _calendarCacheRequest
+        _calendarCacheRequest = null
+        cache.abort()
+      }
+      if (_calendarSyncRequest) {
+        var sync = _calendarSyncRequest
+        handleCalendarSyncAbort({ detail: { xhr: sync } })
+        sync.abort()
+      }
+      _calendarNavigationRequest = null
+      finishCalendarNavigationTransition()
+      if (!previous) {
+        var sidebar = document.getElementById("sidebar-app-body")
+        previous = { mode: sidebar ? sidebar.dataset.sidebarAppBody : "mail", panes: [] }
+        ;["sidebar-app-body", "sidebar-sync-controls", "mail-list", "mail-view"].forEach(function (id) {
+          var root = document.getElementById(id)
+          if (root) {
+            var saved = root.cloneNode(false)
+            saved.liveChildren = Array.from(root.childNodes)
+            saved.scrollPositions = Array.from(root.querySelectorAll("nav, [id$='-scroll'], [data-calendar-week-scroll], #calendar-agenda-list")).map(function (node) {
+              return { node: node, top: node.scrollTop, left: node.scrollLeft }
+            })
+            previous.panes.push(saved)
+          }
+        })
+      }
+      request = detail.xhr
+      request.goferAppSwitchMode = trigger.dataset.sidebarAppButton
+      setSidebarAppNavMode(request.goferAppSwitchMode)
+      document.getElementById("app-shell").setAttribute("data-hx-history", "false")
+      showAppSwitchPending(request.goferAppSwitchMode)
     })
+    document.body.addEventListener("htmx:beforeSwap", function (event) {
+      var xhr = event.detail && event.detail.xhr
+      if (xhr && xhr.goferAppSwitchMode && xhr !== request) event.detail.shouldSwap = false
+      var sidebar = document.getElementById("sidebar-app-body")
+      if (xhr && xhr.goferAppPaneMode && sidebar && xhr.goferAppPaneMode !== sidebar.dataset.sidebarAppBody) event.detail.shouldSwap = false
+      if (request && xhr !== request && event.detail.target &&
+          /^(mail-list|mail-view|main-content|sidebar-app-body)$/.test(event.detail.target.id)) event.detail.shouldSwap = false
+    })
+    document.body.addEventListener("htmx:afterSwap", function (event) {
+      if (!event.detail || event.detail.xhr !== request) return
+      previous = null
+      request = null
+      document.getElementById("app-shell").removeAttribute("data-hx-history")
+    })
+    function completed(event) {
+      if (!event.detail || event.detail.xhr !== request || event.detail.successful) return
+      var mode = request.goferAppSwitchMode
+      restore()
+      if (event.type !== "htmx:sendAbort") showGoferToast({ title: "Could not load " + mode, description: "Please try again.", variant: "error", icon: "error" })
+    }
+    document.body.addEventListener("htmx:afterRequest", completed)
+    document.body.addEventListener("htmx:sendAbort", completed)
   }
 
   function mailMainContentClass() {
@@ -5516,16 +5660,30 @@ document.addEventListener("DOMContentLoaded", function () {
     setMainContentAppMode(mode)
     virtualMailList = null
     virtualContactsList = null
-    // Calendar renders its own shell from the swapped #mail-list; no skeleton to paint.
-    if (mode === "calendar") return
+    if (mode === "calendar") {
+      var template = document.getElementById("calendar-loading-month")
+      if (!template) return
+      var content = template.content.cloneNode(true)
+      ;["sidebar-app-body", "sidebar-sync-controls", "mail-list", "mail-view"].forEach(function (id) {
+        var root = document.getElementById(id)
+        var loading = content.querySelector("#" + id)
+        if (root && loading) replaceAppPaneContents(root, loading, id === "mail-list")
+      })
+      initializeCalendarViewport()
+      return
+    }
     var viewMode = appSwitchListViewMode(mode)
     var sidebarBody = document.getElementById("sidebar-app-body")
     if (sidebarBody) {
+      sidebarBody.removeAttribute("inert")
+      sidebarBody.removeAttribute("aria-busy")
       sidebarBody.dataset.sidebarAppBody = mode
       sidebarBody.innerHTML = sidebarPendingHTML(mode)
     }
     var list = document.getElementById("mail-list")
     if (list) {
+      list.removeAttribute("inert")
+      list.removeAttribute("aria-busy")
       var rows = pendingRowCount(list, mode, viewMode)
       list.className = "w-full lg:flex flex-col border-r border-border bg-card h-full overflow-hidden"
       list.dataset.viewMode = viewMode
@@ -5548,6 +5706,9 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     var pane = document.getElementById("mail-view")
     if (pane) {
+      pane.removeAttribute("inert")
+      pane.removeAttribute("aria-busy")
+      pane.removeAttribute("data-calendar-agenda")
       pane.className = mode === "contacts" ? "hidden flex-1 min-w-0 bg-background xl:flex xl:flex-col" : "hidden lg:flex flex-1 flex-col min-w-0 bg-background"
       pane.innerHTML = readPanePendingHTML(mode)
     }
@@ -7899,6 +8060,2803 @@ function _contactSidebarSyncButtonLabel(button) {
   if (!button || !button.hasAttribute("data-contact-account-sync-button")) return ""
   var label = button.querySelector(".font-medium")
   return label && label.textContent ? label.textContent.trim() : ""
+}
+
+// Keep HTMX's target nodes alive while swapping only their presentation.
+function replaceAppPaneContents(root, source, preserveWidth) {
+  var width = preserveWidth && root.style.width
+  Array.from(root.attributes).forEach(function (attribute) { root.removeAttribute(attribute.name) })
+  Array.from(source.attributes).forEach(function (attribute) { root.setAttribute(attribute.name, attribute.value) })
+  root.replaceChildren.apply(root, Array.from(source.childNodes).map(function (child) { return child.cloneNode(true) }))
+  if (width) root.style.width = width
+}
+
+var _calendarContentRequest = null
+var _calendarContentPrevious = null
+
+function calendarLoadingWeekCount(month) {
+  var parts = /^(\d{4})-(\d{2})$/.exec(month || "")
+  if (!parts) return null
+  var year = Number(parts[1]), index = Number(parts[2]) - 1
+  if (index < 0 || index > 11) return null
+  var leading = (new Date(Date.UTC(year, index, 1)).getUTCDay() + 6) % 7
+  return Math.ceil((leading + new Date(Date.UTC(year, index + 1, 0)).getUTCDate()) / 7)
+}
+
+function calendarLoadingPeriodLabel(view, date) {
+  if (!/^\d{4}-\d{2}(?:-\d{2})?$/.test(date || "")) return ""
+  var at = new Date(date.length === 7 ? date + "-01T12:00:00Z" : date + "T12:00:00Z")
+  if (isNaN(at.getTime())) return ""
+  function label(day, year) {
+    return day.toLocaleDateString("en-US", { timeZone: "UTC", month: "short", day: "numeric", year: year ? "numeric" : undefined })
+  }
+  if (view !== "week") return at.toLocaleDateString("en-US", { timeZone: "UTC", month: "long", year: "numeric" })
+  at.setUTCDate(at.getUTCDate() - (at.getUTCDay() + 6) % 7)
+  var end = new Date(at.getTime())
+  end.setUTCDate(end.getUTCDate() + 6)
+  if (at.getUTCFullYear() !== end.getUTCFullYear()) return label(at, true) + " – " + label(end, true)
+  if (at.getUTCMonth() !== end.getUTCMonth()) return label(at, false) + " – " + label(end, true)
+  return label(at, false) + "–" + end.getUTCDate() + ", " + end.getUTCFullYear()
+}
+
+function showCalendarContentPending(event) {
+  var detail = event.detail
+  var trigger = detail && detail.elt
+  var calendar = document.getElementById("calendar-main")
+  if (!calendar || !trigger || !detail.target || detail.target.id !== "main-content" ||
+      trigger.hasAttribute("data-calendar-auto-sync") || trigger.hasAttribute("data-calendar-sync-button") || trigger.hasAttribute("data-calendar-cache-refresh")) return
+  // Keep the grid and agenda visible until the other view is ready. Briefly
+  // clearing them makes even a fast view switch flash.
+  if (trigger.hasAttribute("data-calendar-view-switch")) return
+  var href = trigger.getAttribute("hx-get")
+  if (!href || !href.startsWith("/calendar")) return
+  var url = new URL(href, window.location.href)
+  var view = url.searchParams.get("view") === "week" ? "week" : "month"
+  var template = document.getElementById("calendar-loading-" + view)
+  if (!template) return
+  var content = template.content.cloneNode(true)
+  var loading = content.querySelector("#calendar-main")
+  var agenda = document.getElementById("mail-view")
+  if (!_calendarContentPrevious) {
+    _calendarContentPrevious = { calendar: calendar.cloneNode(true), agenda: agenda.cloneNode(true) }
+    // Restoring a failed navigation must not retrigger an already-run load sync.
+    _calendarContentPrevious.calendar.querySelectorAll("[data-calendar-auto-sync]").forEach(function (node) { node.remove() })
+  }
+  _calendarContentRequest = detail.xhr
+  detail.xhr.goferCalendarContentPending = true
+  // Capture the real outgoing grid before installing the empty loading grid.
+  if (typeof detail.xhr.goferCalendarNavigationDirection === "number") {
+    prepareCalendarNavigation({ detail: { xhr: detail.xhr, target: detail.target, shouldSwap: true } })
+  }
+  var monthGrid = loading.querySelector("[data-calendar-month-grid]")
+  if (monthGrid) {
+    var month = url.searchParams.get("month") || (url.searchParams.get("date") || calendar.dataset.calendarTodayDate).slice(0, 7)
+    var count = calendarLoadingWeekCount(month)
+    if (count) {
+      var days = monthGrid.lastElementChild
+      var cell = days.firstElementChild.cloneNode(true)
+      days.replaceChildren.apply(days, Array.from({ length: count * 7 }, function () { return cell.cloneNode(true) }))
+      days.style.gridTemplateRows = "repeat(" + count + ",minmax(0,1fr))"
+    }
+  }
+  // Dates belong to the incoming response. Only known weekday labels stay
+  // readable here; the loading grid must not show stale dates or placeholders.
+  loading.querySelectorAll("[data-calendar-day]").forEach(function (day) {
+    day.setAttribute("aria-hidden", "true")
+    var number = day.querySelector("span.rounded-full")
+    if (number) {
+      number.className = "inline-flex size-6 items-center justify-center sm:size-7"
+      number.replaceChildren()
+    }
+    day.querySelectorAll("span").forEach(function (span) { if (span.textContent === "Today") span.remove() })
+  })
+  var timezone = loading.querySelector("[data-calendar-week-timezone]")
+  if (timezone) timezone.textContent = ""
+  // Keep the actual header node: the Month/Week indicator continues its slide
+  // even when the empty grid is installed synchronously in beforeRequest.
+  var header = calendar.querySelector("header")
+  var label = calendarLoadingPeriodLabel(view, url.searchParams.get("month") || url.searchParams.get("date") || calendar.dataset.calendarTodayDate)
+  if (label) header.querySelector("h1").textContent = label
+  loading.querySelector("header").remove()
+  // Even reinserting the same header through replaceChildren cancels its CSS
+  // transition. Leave it connected while replacing only the other children.
+  Array.from(calendar.childNodes).forEach(function (child) { if (child !== header) child.remove() })
+  calendar.append.apply(calendar, Array.from(loading.childNodes))
+  calendar.setAttribute("data-calendar-loading", "")
+  calendar.setAttribute("aria-busy", "true")
+  Array.from(calendar.children).forEach(function (child) { if (child !== header && child.tagName !== "FOOTER") child.inert = true })
+  replaceAppPaneContents(agenda, content.querySelector("#mail-view"), false)
+  if (label) agenda.querySelector("[data-calendar-agenda-context]").textContent = label
+  document.getElementById("app-shell").setAttribute("data-hx-history", "false")
+  initializeCalendarViewport()
+}
+
+function handleCalendarContentResult(event) {
+  var detail = event.detail
+  if (!detail || detail.xhr !== _calendarContentRequest) return
+  if (!detail.successful && _calendarContentPrevious) {
+    var calendar = document.getElementById("calendar-main")
+    if (calendar && calendar.hasAttribute("data-calendar-loading")) {
+      replaceAppPaneContents(calendar, _calendarContentPrevious.calendar, false)
+      replaceAppPaneContents(document.getElementById("mail-view"), _calendarContentPrevious.agenda, false)
+      if (window.htmx) window.htmx.process(calendar)
+      initializeCalendarDaySelection()
+      if (event.type !== "htmx:sendAbort") showGoferToast({ title: "Could not load calendar", description: "Please try again.", variant: "error", icon: "error" })
+    }
+  }
+  _calendarContentRequest = null
+  _calendarContentPrevious = null
+  document.getElementById("app-shell").removeAttribute("data-hx-history")
+}
+
+var _calendarSelectedDay = null
+var _calendarViewSwitchRequest = null
+var _calendarWeekScrollState = null
+var _calendarWeekZoom = 0
+var _calendarViewportObserver = null
+var _calendarViewportPane = null
+var _calendarLayoutFrame = null
+var _calendarNavigationRequest = null
+var _calendarNavigationTransition = null
+
+function setCalendarViewSwitch(view) {
+  var group = document.querySelector("[data-calendar-view-nav]")
+  if (!group) return
+  group.querySelectorAll("[data-calendar-view-switch]").forEach(function (link) {
+    var active = link.dataset.calendarViewSwitch === view
+    link.classList.toggle("text-foreground", active)
+    link.classList.toggle("text-muted-foreground", !active)
+    link.classList.toggle("hover:text-foreground", !active)
+    link.setAttribute("aria-current", active ? "page" : "false")
+  })
+  var indicator = group.querySelector("[data-calendar-view-indicator]")
+  if (indicator) indicator.style.transform = view === "week" ? "translateX(calc(100% + 2px))" : "translateX(0)"
+}
+
+document.body.addEventListener("htmx:beforeRequest", function (event) {
+  var trigger = event.detail && event.detail.elt
+  if (!trigger || !trigger.hasAttribute("data-calendar-view-switch")) return
+  _calendarViewSwitchRequest = event.detail.xhr
+  _calendarViewSwitchRequest.goferCalendarViewSwitch = trigger.dataset.calendarViewSwitch
+  setCalendarViewSwitch(trigger.dataset.calendarViewSwitch)
+})
+
+function handleCalendarViewSwitchResult(event) {
+  if (!event.detail || event.detail.xhr !== _calendarViewSwitchRequest) return
+  if (event.detail.successful) return
+  _calendarViewSwitchRequest = null
+  var calendar = document.getElementById("calendar-main")
+  if (calendar) setCalendarViewSwitch(calendar.dataset.calendarView)
+}
+
+document.body.addEventListener("htmx:afterRequest", handleCalendarViewSwitchResult)
+document.body.addEventListener("htmx:sendAbort", handleCalendarViewSwitchResult)
+document.body.addEventListener("htmx:beforeSwap", function (event) {
+  var xhr = event.detail && event.detail.xhr
+  if (!xhr || typeof xhr.goferCalendarViewSwitch !== "string") return
+  if (xhr !== _calendarViewSwitchRequest) {
+    event.detail.shouldSwap = false
+    return
+  }
+  var indicator = document.querySelector("[data-calendar-view-indicator]")
+  if (indicator) xhr.goferCalendarViewTransform = window.getComputedStyle(indicator).transform
+})
+document.body.addEventListener("htmx:afterSwap", function (event) {
+  var xhr = event.detail && event.detail.xhr
+  if (!xhr || xhr !== _calendarViewSwitchRequest) return
+  // Continue the slide on the new tabs even when the response is immediate.
+  var indicator = document.querySelector("[data-calendar-view-indicator]")
+  if (indicator && xhr.goferCalendarViewTransform) {
+    indicator.style.transition = "none"
+    indicator.style.transform = xhr.goferCalendarViewTransform
+    void indicator.offsetWidth
+    indicator.style.transition = ""
+  }
+  _calendarViewSwitchRequest = null
+  setCalendarViewSwitch(xhr.goferCalendarViewSwitch)
+})
+
+function _calendarAgendaEventMatchesDay(event, day) {
+  if (event.calendarEventAllDay === "true") {
+    return !!event.calendarEventStartDate && !!event.calendarEventEndDate &&
+      event.calendarEventStartDate <= day.calendarDay && event.calendarEventEndDate > day.calendarDay
+  }
+  var start = Date.parse(event.calendarEventStart)
+  var end = Date.parse(event.calendarEventEnd)
+  var dayStart = Date.parse(day.calendarDayStart)
+  var dayEnd = Date.parse(day.calendarDayEnd)
+  return start < dayEnd && (end > dayStart || (start === end && start >= dayStart))
+}
+
+function _calendarAgendaEventIsUpcoming(event, today) {
+  if (event.calendarEventAllDay === "true") {
+    return !event.calendarEventEndDate || event.calendarEventEndDate > today
+  }
+  var end = Date.parse(event.calendarEventEnd)
+  return isNaN(end) || end >= Date.now()
+}
+
+// Session overrides also protect optimistic choices from an older HTMX cache
+// response. Persistence is per source and independent of provider sync.
+var _calendarVisibility = new Map()
+
+function _calendarSourceIsVisible(node) {
+  var state = _calendarVisibility.get(node.dataset.calendarSourceId)
+  return state ? state.visible : node.dataset.calendarSourceHidden !== "true"
+}
+
+function initializeCalendarVisibility() {
+  document.querySelectorAll("[data-calendar-visibility]").forEach(function (input) {
+    var state = _calendarVisibility.get(input.dataset.calendarVisibility)
+    input.checked = _calendarSourceIsVisible(input)
+    input.setAttribute("aria-busy", state && state.saving ? "true" : "false")
+    var row = input.closest("[data-calendar-source-row]")
+    var label = row && row.querySelector("[data-calendar-source-name]")
+    if (label) label.classList.toggle("opacity-50", !input.checked)
+    var status = row && row.querySelector("[data-calendar-visibility-status]")
+    if (status) status.style.opacity = state && state.saving ? "1" : "0"
+    var sync = row && row.querySelector("[data-calendar-source-sync]")
+    if (sync) sync.style.visibility = state && state.saving ? "hidden" : ""
+  })
+  document.querySelectorAll("#calendar-main [data-calendar-week-all-day], #calendar-main [data-calendar-week-event]").forEach(function (node) {
+    if (node.dataset.calendarPillExit) return
+    node.hidden = !_calendarSourceIsVisible(node)
+  })
+}
+
+function saveCalendarVisibility(sourceID, state, force) {
+  if (state.saving || (!force && state.visible === state.confirmed)) return
+  var visible = state.visible
+  var revision = state.revision
+  state.saving = true
+  initializeCalendarVisibility()
+  fetch("/api/calendar/sources/" + encodeURIComponent(sourceID) + "/visibility", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Accept": "application/json" },
+    body: JSON.stringify({ visible: visible }),
+  }).then(function (response) {
+    if (!response.ok) throw new Error("Could not save calendar visibility")
+    state.confirmed = visible
+    state.saving = false
+    initializeCalendarVisibility()
+    saveCalendarVisibility(sourceID, state)
+  }).catch(function () {
+    state.saving = false
+    // A newer choice supersedes a failed earlier write. Send that choice even
+    // if it matches the old confirmed value (the lost response may have saved).
+    if (state.revision !== revision) {
+      saveCalendarVisibility(sourceID, state, true)
+      return
+    }
+    state.visible = state.confirmed
+    initializeCalendarDaySelection()
+    showGoferToast({ title: "Could not save calendar visibility", description: "Your previous choice has been restored. Please try again.", variant: "error", icon: "error", position: "bottom-right", duration: 6000, dismissible: true })
+  })
+}
+
+document.addEventListener("change", function (event) {
+  var input = event.target
+  if (!input.matches || !input.matches("[data-calendar-visibility]") || input.disabled) return
+  var sourceID = input.dataset.calendarVisibility
+  var state = _calendarVisibility.get(sourceID)
+  if (!state) {
+    state = { visible: input.dataset.calendarSourceHidden !== "true", confirmed: input.dataset.calendarSourceHidden !== "true", saving: false, revision: 0 }
+    _calendarVisibility.set(sourceID, state)
+  }
+  state.visible = input.checked
+  state.revision++
+  finishCalendarNavigationTransition()
+  initializeCalendarDaySelection()
+  saveCalendarVisibility(sourceID, state)
+})
+
+function initializeCalendarDaySelection() {
+  rememberCalendarPillGeometry(document.getElementById("calendar-main"))
+  initializeCalendarVisibility()
+  var calendar = document.getElementById("calendar-main")
+  var agenda = document.querySelector("[data-calendar-agenda]")
+  if (!calendar || !agenda) {
+    _calendarSelectedDay = null
+    _calendarViewSwitchRequest = null
+    return
+  }
+  if (calendar.hasAttribute("data-calendar-loading")) return
+  setCalendarViewSwitch(_calendarViewSwitchRequest ? _calendarViewSwitchRequest.goferCalendarViewSwitch : calendar.dataset.calendarView)
+  if (_calendarSelectedDay && _calendarSelectedDay.period !== calendar.dataset.calendarPeriod) _calendarSelectedDay = null
+  var selected = _calendarSelectedDay && calendar.querySelector('[data-calendar-day="' + _calendarSelectedDay.date + '"]')
+  if (!selected) _calendarSelectedDay = null
+  calendar.querySelectorAll("[data-calendar-day]").forEach(function (day) {
+    day.setAttribute("data-calendar-day-selected", day === selected ? "true" : "false")
+    day.querySelectorAll("[data-calendar-select-day]").forEach(function (button) {
+      button.setAttribute("aria-pressed", day === selected ? "true" : "false")
+    })
+  })
+  var visible = 0
+  agenda.querySelectorAll("[data-calendar-agenda-event]").forEach(function (event) {
+    var show = _calendarSourceIsVisible(event) && (selected ? _calendarAgendaEventMatchesDay(event.dataset, selected.dataset) :
+      _calendarAgendaEventIsUpcoming(event.dataset, calendar.dataset.calendarTodayDate))
+    event.hidden = !show
+    if (show) visible++
+  })
+  agenda.querySelector("#calendar-agenda-heading").textContent = selected ? selected.dataset.calendarDayTitle : "Upcoming"
+  agenda.querySelector("[data-calendar-agenda-context]").textContent = selected ?
+    visible + (visible === 1 ? " event" : " events") : calendar.dataset.calendarMonthLabel
+  agenda.querySelector("[data-calendar-agenda-clear]").hidden = !selected
+  agenda.querySelector("#calendar-agenda-list").hidden = visible === 0
+  agenda.querySelector("[data-calendar-agenda-empty]").hidden = visible !== 0
+  var sources = Array.from(document.querySelectorAll("[data-calendar-visibility]"))
+  var allHidden = sources.length > 0 && sources.every(function (input) { return !_calendarSourceIsVisible(input) })
+  agenda.querySelector("[data-calendar-agenda-empty-title]").textContent = allHidden ? "All calendars are hidden" : selected ? "No events for this day" : "No upcoming events"
+  agenda.querySelector("[data-calendar-agenda-empty-detail]").textContent = allHidden ?
+    "Show a calendar in the sidebar to see its events. Hidden calendars continue syncing." : selected ?
+    "Choose another date to browse your cached calendar events." :
+    "Events from Google, Microsoft, or CalDAV will appear here after your selected calendars are synchronized."
+  agenda.querySelector("[data-calendar-agenda-providers]").hidden = !!selected || allHidden
+  // Switch views around the selected date rather than an unrelated week.
+  var focusDate = selected ? selected.dataset.calendarDay : calendar.dataset.calendarDate
+  calendar.querySelectorAll("[data-calendar-view-switch]").forEach(function (link) {
+    var url = link.dataset.calendarViewSwitch === "week" ?
+      "/calendar?date=" + encodeURIComponent(focusDate) + "&view=week" : "/calendar?month=" + focusDate.slice(0, 7)
+    if (link.getAttribute("hx-get") === url) return
+    link.setAttribute("href", url)
+    link.setAttribute("hx-get", url)
+    link.setAttribute("hx-push-url", url)
+    if (window.htmx) window.htmx.process(link)
+  })
+  // Desktop keeps the two panes; small screens use the agenda as the day view.
+  var mainPane = calendar.closest("#mail-list")
+  mainPane.classList.toggle("hidden", !!selected)
+  mainPane.classList.toggle("flex", !selected)
+  agenda.classList.toggle("hidden", !selected)
+  agenda.classList.toggle("flex", !!selected)
+  initializeCalendarViewport()
+}
+
+document.addEventListener("click", function (event) {
+  var trigger = event.target.closest && event.target.closest("[data-calendar-select-day]")
+  var calendar = document.getElementById("calendar-main")
+  if (trigger && calendar) {
+    var scroller = calendar.querySelector("[data-calendar-week-scroll]")
+    if (scroller && scroller.clientHeight) _calendarWeekScrollState = { period: calendar.dataset.calendarPeriod, zoom: _calendarWeekZoom, top: scroller.scrollTop, left: scroller.scrollLeft }
+    _calendarSelectedDay = { period: calendar.dataset.calendarPeriod, date: trigger.dataset.calendarSelectDay }
+    initializeCalendarDaySelection()
+    document.getElementById("calendar-agenda-list").scrollTop = 0
+    if (window.matchMedia("(max-width: 1023px)").matches) document.getElementById("calendar-agenda-heading").focus({ preventScroll: true })
+    return
+  }
+  if (calendar && event.target.closest && event.target.closest("[data-calendar-agenda-clear]")) {
+    var previous = _calendarSelectedDay && calendar.querySelector('[data-calendar-select-day="' + _calendarSelectedDay.date + '"]')
+    _calendarSelectedDay = null
+    initializeCalendarDaySelection()
+    if (previous) previous.focus({ preventScroll: true })
+  }
+})
+
+document.body.addEventListener("htmx:afterSwap", initializeCalendarDaySelection)
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initializeCalendarDaySelection)
+else initializeCalendarDaySelection()
+
+// All seven days share this axis: empty hours compress together, so events
+// at the same time still line up across columns. Zoom returns to uniform hours.
+function _calendarWeekAxis(availableHeight, periods, zoom) {
+  var busy = Array(24).fill(false)
+  periods.forEach(function (period) {
+    for (var hour = 0; hour < 24; hour++) {
+      if (period.start < (hour + 1) * 60 && (period.end > hour * 60 ||
+          (period.start === period.end && period.start >= hour * 60))) busy[hour] = true
+    }
+  })
+  var hasEvents = busy.some(function (value) { return value })
+  var expanded = busy.map(function (value, hour) { return value || (!hasEvents && hour >= 8 && hour < 18) })
+  var height = Math.max(1, availableHeight)
+  var heights
+  if (zoom > 0) {
+    height = Math.max(height * [1, 1.4, 2, 2.6][zoom], [0, 960, 1536, 2304][zoom])
+    heights = Array(24).fill(height / 24)
+  } else {
+    var minimum = Math.min(4, height / 48)
+    var weights = expanded.map(function (value) { return value ? 4 : 0.5 })
+    var total = weights.reduce(function (sum, weight) { return sum + weight }, 0)
+    heights = weights.map(function (weight) { return minimum + (height - minimum * 24) * weight / total })
+  }
+  var offsets = [0]
+  heights.forEach(function (value) { offsets.push(offsets[offsets.length - 1] + value) })
+  return { height: height, heights: heights, offsets: offsets, expanded: expanded, zoom: zoom }
+}
+
+function _calendarWeekMinutePosition(minute, axis) {
+  minute = Math.max(0, Math.min(1440, minute))
+  if (minute === 1440) return axis.height
+  var hour = Math.floor(minute / 60)
+  return axis.offsets[hour] + axis.heights[hour] * (minute % 60) / 60
+}
+
+function _calendarWeekMinuteAtPosition(position, axis) {
+  position = Math.max(0, Math.min(axis.height, position))
+  if (position === axis.height) return 1440
+  for (var hour = 0; hour < 24; hour++) {
+    if (position < axis.offsets[hour + 1]) return hour * 60 + (position - axis.offsets[hour]) * 60 / axis.heights[hour]
+  }
+  return 1440
+}
+
+function _calendarWeekBlockLayout(periods, axis) {
+  var minimum = Math.min(22, axis.height)
+  var blocks = periods.map(function (period, index) {
+    var top = Math.min(_calendarWeekMinutePosition(period.start, axis), axis.height - minimum)
+    var end = Math.min(axis.height, Math.max(_calendarWeekMinutePosition(period.end, axis), top + minimum))
+    return { index: index, top: top, height: end - top, end: end, column: 0, columns: 1 }
+  }).sort(function (left, right) { return left.top - right.top || right.end - left.end || left.index - right.index })
+  for (var first = 0; first < blocks.length;) {
+    var last = first, groupEnd = -1, columns = []
+    while (last < blocks.length && (last === first || blocks[last].top < groupEnd - 0.01)) {
+      var block = blocks[last]
+      var column = 0
+      while (column < columns.length && columns[column] > block.top + 0.01) column++
+      columns[column] = block.end
+      block.column = column
+      groupEnd = Math.max(groupEnd, block.end)
+      last++
+    }
+    for (var index = first; index < last; index++) blocks[index].columns = columns.length
+    first = last
+  }
+  return blocks
+}
+
+function _calendarMonthVisibleCount(total, available, itemHeight, overflowHeight, gap) {
+  var visible = Math.min(total, 3, Math.max(0, Math.floor((available + gap) / (itemHeight + gap))))
+  if (total > visible) visible = Math.min(visible, Math.max(0, Math.floor((available - overflowHeight) / (itemHeight + gap))))
+  return visible
+}
+
+function _calendarAllDayEventRows(days) {
+  var spans = new Map(), rows = new Map(), ends = []
+  days.forEach(function (day, index) {
+    day.buttons.forEach(function (button) {
+      var event = button.dataset
+      var id = event.calendarMonthEvent || event.calendarWeekAllDay
+      if (event.calendarEventAllDay !== "true" || !id ||
+          !(Date.parse(event.calendarEventEndDate) - Date.parse(event.calendarEventStartDate) > 86400000)) return
+      var span = spans.get(id)
+      if (!span) { span = { first: index, last: index, buttons: [] }; spans.set(id, span) }
+      span.last = index
+      span.buttons.push(button)
+    })
+  })
+  Array.from(spans.values()).sort(function (a, b) { return a.first - b.first || b.last - a.last }).forEach(function (span) {
+    var row = 0
+    while (row < ends.length && ends[row] >= span.first) row++
+    ends[row] = span.last
+    span.buttons.forEach(function (button) { rows.set(button, row) })
+  })
+  days.forEach(function (day) {
+    var occupied = new Set(day.buttons.filter(function (button) { return rows.has(button) }).map(function (button) { return rows.get(button) }))
+    day.buttons.forEach(function (button) {
+      if (rows.has(button)) return
+      var row = 0
+      while (occupied.has(row)) row++
+      occupied.add(row)
+      rows.set(button, row)
+    })
+  })
+  return rows
+}
+
+function layoutCalendarMonth(calendar) {
+  var grid = calendar.querySelector("[data-calendar-month-grid]")
+  if (!grid || grid.clientHeight === 0) return
+  var weeks = new Map()
+  grid.querySelectorAll("[data-calendar-month-events]").forEach(function (container) {
+    var allButtons = Array.from(container.querySelectorAll("[data-calendar-month-event]"))
+    var buttons = allButtons.filter(_calendarSourceIsVisible)
+    var overflow = container.querySelector("[data-calendar-day-overflow]")
+    if (!overflow) return
+    var total = buttons.length
+    var day = container.closest("[data-calendar-day]")
+    day.dataset.calendarDayEventCount = String(total)
+    allButtons.forEach(function (button) {
+      button.hidden = true
+      button.style.display = "none"
+    })
+    container.hidden = total === 0
+    if (!total) { overflow.hidden = true; return }
+    var key = day.dataset.calendarWeekStart || ""
+    if (!weeks.has(key)) weeks.set(key, [])
+    weeks.get(key).push({ container: container, buttons: buttons, overflow: overflow })
+  })
+  weeks.forEach(function (days) {
+    var rows = _calendarAllDayEventRows(days), spanLimits = new Map()
+    days.forEach(function (day) {
+      var buttons = day.buttons, overflow = day.overflow
+      var totalRows = Math.max.apply(null, buttons.map(function (button) { return rows.get(button) })) + 1
+      // Measuring a visible candidate avoids stale zero heights after a resize.
+      buttons[0].hidden = false
+      buttons[0].style.display = ""
+      buttons[0].style.gridRow = "1"
+      overflow.hidden = false
+      day.limit = _calendarMonthVisibleCount(totalRows, day.container.clientHeight, buttons[0].offsetHeight, overflow.offsetHeight, 4)
+      buttons.forEach(function (button) {
+        var event = button.dataset
+        if (event.calendarEventAllDay !== "true" || !event.calendarMonthEvent) return
+        var previous = spanLimits.get(event.calendarMonthEvent)
+        spanLimits.set(event.calendarMonthEvent, previous === undefined ? day.limit : Math.min(previous, day.limit))
+      })
+    })
+    days.forEach(function (day) {
+      var visible = 0
+      day.buttons.forEach(function (button) {
+        var row = rows.get(button), limit = spanLimits.get(button.dataset.calendarMonthEvent)
+        var show = row < day.limit && (limit === undefined || row < limit)
+        button.hidden = !show
+        button.style.display = show ? "" : "none"
+        button.style.gridRow = String(row + 1)
+        if (show) visible++
+      })
+      day.overflow.hidden = day.buttons.length <= visible
+      day.overflow.textContent = "+" + (day.buttons.length - visible) + " more"
+    })
+  })
+}
+
+function layoutCalendarWeekAllDay(grid) {
+  var days = Array.from(grid.querySelectorAll("[data-calendar-all-day-column]")).map(function (column) {
+    var buttons = Array.from(column.querySelectorAll("[data-calendar-week-all-day]"))
+    buttons.forEach(function (button) {
+      button.hidden = !_calendarSourceIsVisible(button)
+      button.style.display = button.hidden ? "none" : ""
+    })
+    return { buttons: buttons.filter(_calendarSourceIsVisible) }
+  })
+  var rows = _calendarAllDayEventRows(days)
+  rows.forEach(function (row, button) { button.style.gridRow = String(row + 1) })
+}
+
+function initializeCalendarWeekScroll() {
+  var calendar = document.getElementById("calendar-main")
+  var scroller = calendar && calendar.querySelector("[data-calendar-week-scroll]")
+  if (!scroller || scroller.clientHeight === 0) return
+  // Keep day widths stable as zoom adds or removes the vertical scrollbar.
+  scroller.style.scrollbarGutter = "stable"
+  scroller.style.overflowAnchor = "none"
+  var grid = scroller.querySelector("[data-calendar-week-grid]")
+  var header = grid && grid.querySelector("[data-calendar-week-header]")
+  var timeline = grid && grid.querySelector("[data-calendar-week-timeline]")
+  if (!header || !timeline) return
+  layoutCalendarWeekAllDay(grid)
+  var nodes = Array.from(grid.querySelectorAll("[data-calendar-week-event]"))
+  var visibility = nodes.map(function (node) { return _calendarSourceIsVisible(node) ? "1" : "0" }).join("")
+  var key = [scroller.clientHeight, scroller.clientWidth, header.offsetHeight, _calendarWeekZoom, visibility].join(":")
+  if (scroller.dataset.calendarLayoutKey === key) return
+  cancelCalendarWeekZoom(scroller)
+  var previousAxis = grid._calendarWeekAxis
+  var previousTop = scroller.scrollTop
+  var wasInitialized = !!scroller.dataset.calendarLayoutKey
+  nodes = nodes.filter(_calendarSourceIsVisible)
+  var periods = nodes.map(function (node) { return { start: Number(node.dataset.calendarWeekStart), end: Number(node.dataset.calendarWeekEnd) } })
+  var axis = _calendarWeekAxis(Math.max(1, scroller.clientHeight - header.offsetHeight - 2), periods, _calendarWeekZoom)
+  grid.style.height = (axis.height + header.offsetHeight + 2) + "px"
+  grid._calendarWeekAxis = axis
+  timeline.style.height = axis.height + "px"
+  timeline.style.flex = "0 0 auto"
+  grid.querySelectorAll("[data-calendar-week-hour]").forEach(function (row) {
+    var hour = Number(row.dataset.calendarWeekHour)
+    var compact = _calendarWeekZoom === 0 && !axis.expanded[hour]
+    var first = hour === 0 || axis.expanded[hour - 1]
+    row.style.height = axis.heights[hour] + "px"
+    row.style.borderTopStyle = compact && !first ? "none" : "solid"
+    row.querySelector("[data-calendar-half-hour]").hidden = compact || axis.heights[hour] < 28
+  })
+  grid.querySelectorAll("[data-calendar-week-hour-label]").forEach(function (row) {
+    var hour = Number(row.dataset.calendarWeekHourLabel)
+    var text = row.querySelector("[data-calendar-week-hour-text]")
+    row.style.height = axis.heights[hour] + "px"
+    text.hidden = false
+    text.textContent = String(hour).padStart(2, "0") + ":00"
+    text.title = ""
+    if (_calendarWeekZoom === 0 && !axis.expanded[hour]) {
+      var end = hour + 1
+      while (end < 24 && !axis.expanded[end]) end++
+      text.hidden = (hour > 0 && !axis.expanded[hour - 1]) || axis.offsets[end] - axis.offsets[hour] < 15
+      text.textContent = String(hour).padStart(2, "0") + "–" + String(end).padStart(2, "0")
+      text.title = "Empty hours condensed. Zoom in to expand."
+    } else if (axis.heights[hour] < 15) text.hidden = hour % 2 !== 0
+  })
+  grid.querySelectorAll("[data-calendar-timed-column]").forEach(function (column) {
+    var buttons = Array.from(column.querySelectorAll("[data-calendar-week-event]")).filter(_calendarSourceIsVisible)
+    var columnPeriods = buttons.map(function (node) { return { start: Number(node.dataset.calendarWeekStart), end: Number(node.dataset.calendarWeekEnd) } })
+    _calendarWeekBlockLayout(columnPeriods, axis).forEach(function (block) {
+      var button = buttons[block.index]
+      button.style.top = block.top + "px"
+      button.style.height = block.height + "px"
+      button.style.left = "calc(" + (block.column * 100 / block.columns) + "% + 2px)"
+      button.style.width = "calc(" + (100 / block.columns) + "% - 4px)"
+      var time = button.querySelector("[data-calendar-week-event-time]")
+      if (time) time.hidden = block.height < 42
+    })
+  })
+  scroller.dataset.calendarLayoutKey = key
+  var saved = _calendarWeekScrollState && _calendarWeekScrollState.period === calendar.dataset.calendarPeriod ? _calendarWeekScrollState : null
+  if (_calendarWeekZoom === 0) scroller.scrollTop = 0
+  else if (!wasInitialized) scroller.scrollTop = saved && saved.zoom === _calendarWeekZoom ? saved.top : _calendarWeekMinutePosition(7 * 60, axis)
+  else if (previousAxis && previousAxis.zoom !== _calendarWeekZoom) {
+    var center = _calendarWeekMinuteAtPosition(previousTop + (scroller.clientHeight - header.offsetHeight - 2) / 2, previousAxis)
+    scroller.scrollTop = Math.max(0, _calendarWeekMinutePosition(center, axis) - (scroller.clientHeight - header.offsetHeight - 2) / 2)
+  } else if (previousAxis) scroller.scrollTop = previousTop * axis.height / previousAxis.height
+  if (!wasInitialized) scroller.scrollLeft = saved ? saved.left : 0
+  var status = calendar.querySelector("[data-calendar-week-scale-status]")
+  if (status) status.textContent = _calendarWeekZoom === 0 ? "Fit · Empty hours condensed" : "Zoom · " + Math.round(axis.height / 24) + " px/hour"
+  calendar.querySelectorAll("[data-calendar-week-zoom]").forEach(function (button) {
+    var action = button.dataset.calendarWeekZoom
+    button.disabled = action === "out" ? _calendarWeekZoom === 0 : action === "in" && _calendarWeekZoom === 3
+    if (action === "fit") {
+      button.setAttribute("aria-pressed", _calendarWeekZoom === 0 ? "true" : "false")
+      button.classList.toggle("bg-accent", _calendarWeekZoom === 0)
+    }
+  })
+}
+
+function cancelCalendarWeekZoom(scroller) {
+  var animation = scroller && scroller._calendarZoomAnimation
+  if (!animation) return
+  cancelAnimationFrame(animation.frame)
+  scroller._calendarZoomAnimation = null
+}
+
+function setCalendarWeekZoom(zoom) {
+  if (zoom === _calendarWeekZoom) return
+  var calendar = document.getElementById("calendar-main")
+  var scroller = calendar && calendar.querySelector("[data-calendar-week-scroll]")
+  var grid = scroller && scroller.querySelector("[data-calendar-week-grid]")
+  cancelCalendarWeekZoom(scroller)
+  var fromAxis = grid && grid._calendarWeekAxis
+  var animate = fromAxis && scroller.clientHeight > 0 &&
+    !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  var fromTop = scroller ? scroller.scrollTop : 0
+  var frames = []
+  if (animate) {
+    grid.querySelectorAll("[data-calendar-week-timeline], [data-calendar-week-hour], [data-calendar-week-hour-label], [data-calendar-week-event]").forEach(function (element) {
+      if (element.hasAttribute("data-calendar-week-event") && !_calendarSourceIsVisible(element)) return
+      var properties = element.hasAttribute("data-calendar-week-event") ? ["top", "height", "left", "width"] : ["height"]
+      frames.push({ element: element, properties: properties })
+    })
+    frames.push({ element: grid, properties: ["height"] })
+    frames.forEach(function (frame) {
+      var computed = window.getComputedStyle(frame.element)
+      frame.from = frame.properties.map(function (property) { return parseFloat(computed[property]) })
+    })
+  }
+  _calendarWeekZoom = zoom
+  initializeCalendarViewport()
+  if (!animate) return
+  var toAxis = grid._calendarWeekAxis
+  var toTop = scroller.scrollTop
+  frames.forEach(function (frame) {
+    var computed = window.getComputedStyle(frame.element)
+    frame.to = frame.properties.map(function (property) { return parseFloat(computed[property]) })
+    frame.styles = frame.properties.map(function (property) { return frame.element.style[property] })
+  })
+  var animation = { frame: null, started: null }
+  scroller._calendarZoomAnimation = animation
+  function render(progress) {
+    function mix(from, to) { return from + (to - from) * progress }
+    frames.forEach(function (frame) {
+      frame.properties.forEach(function (property, index) {
+        frame.element.style[property] = progress === 1 ? frame.styles[index] : mix(frame.from[index], frame.to[index]) + "px"
+      })
+    })
+    // A second zoom starts from the visible axis, not the previous destination.
+    grid._calendarWeekAxis = progress === 1 ? toAxis : {
+      height: mix(fromAxis.height, toAxis.height),
+      heights: fromAxis.heights.map(function (height, hour) { return mix(height, toAxis.heights[hour]) }),
+      offsets: fromAxis.offsets.map(function (offset, hour) { return mix(offset, toAxis.offsets[hour]) }),
+      expanded: toAxis.expanded,
+      zoom: toAxis.zoom,
+    }
+    scroller.scrollTop = mix(fromTop, toTop)
+  }
+  function step(now) {
+    if (scroller._calendarZoomAnimation !== animation) return
+    if (!scroller.isConnected) { cancelCalendarWeekZoom(scroller); return }
+    if (animation.started === null) animation.started = now
+    var progress = Math.min(1, (now - animation.started) / 220)
+    render(1 - Math.pow(1 - progress, 3))
+    if (progress === 1) scroller._calendarZoomAnimation = null
+    else animation.frame = requestAnimationFrame(step)
+  }
+  // Restore the starting geometry before the browser paints the new layout.
+  render(0)
+  animation.frame = requestAnimationFrame(step)
+}
+
+var _calendarPillSnapshot = null
+var _calendarPillFades = new Map()
+
+function captureCalendarPills(calendar) {
+  var pills = new Map(), counts = new Map()
+  var bounds = calendar.getBoundingClientRect()
+  calendar.querySelectorAll("[data-calendar-month-event], [data-calendar-week-all-day], [data-calendar-week-event]").forEach(function (node) {
+    if (node.dataset.calendarPillExit) return
+    var kind = node.dataset.calendarMonthEvent !== undefined ? "month" : node.dataset.calendarWeekAllDay !== undefined ? "all-day" : "timed"
+    var id = node.dataset.calendarMonthEvent || node.dataset.calendarWeekAllDay || node.dataset.calendarWeekEvent
+    var base = JSON.stringify([kind, node.dataset.calendarSourceId, id])
+    var index = counts.get(base) || 0
+    counts.set(base, index + 1) // Count hidden segments too, keeping multi-day keys stable.
+    if (node.hidden || node.style.display === "none" || !node.getClientRects().length) return
+    var rect = node.getBoundingClientRect()
+    var style = window.getComputedStyle(node)
+    var scroll = node.closest("[data-calendar-week-scroll], [data-calendar-all-day-row]")
+    var clip = scroll && scroll.getBoundingClientRect()
+    var inset = clip ? [Math.max(0, clip.top - rect.top), Math.max(0, rect.right - clip.right),
+      Math.max(0, rect.bottom - clip.bottom), Math.max(0, clip.left - rect.left)] : [0, 0, 0, 0]
+    pills.set(base + ":" + index, { node: node, top: rect.top - bounds.top, left: rect.left - bounds.left,
+      width: rect.width, height: rect.height, opacity: style.opacity, dayPadding: style.getPropertyValue("--calendar-day-padding"),
+      clipPath: inset.some(function (value) { return value > 0 }) ? "inset(" + inset.map(function (value) { return value + "px" }).join(" ") + ")" : "none" })
+  })
+  return { calendar: calendar, period: calendar.dataset.calendarPeriod, view: calendar.dataset.calendarView, pills: pills }
+}
+
+function rememberCalendarPillGeometry(calendar) {
+  if (!calendar || !_calendarPillSnapshot || _calendarPillSnapshot.calendar !== calendar) return
+  var current = captureCalendarPills(calendar)
+  // Preserve entries already hidden by another layout pass until reconciliation.
+  current.pills.forEach(function (pill, key) {
+    if (_calendarPillSnapshot.pills.has(key)) _calendarPillSnapshot.pills.set(key, pill)
+  })
+}
+
+function finishCalendarPillFade(key) {
+  var fade = _calendarPillFades.get(key)
+  if (!fade) return
+  _calendarPillFades.delete(key)
+  fade.animation.cancel()
+  if (fade.ghost) fade.node.remove()
+}
+
+function clearCalendarPillFades() {
+  Array.from(_calendarPillFades.keys()).forEach(finishCalendarPillFade)
+}
+
+function fadeCalendarPill(key, node, from, to, ghost) {
+  var fade = { node: node, ghost: ghost, animation: node.animate([{ opacity: from }, { opacity: to }], {
+    duration: 300, easing: "ease", fill: "both", // Same easing as tabs, with a gentler pill fade.
+  }) }
+  _calendarPillFades.set(key, fade)
+  fade.animation.onfinish = function () {
+    if (_calendarPillFades.get(key) === fade) finishCalendarPillFade(key)
+  }
+}
+
+function animateCalendarPills(calendar) {
+  if (!calendar || calendar.hasAttribute("data-calendar-loading")) {
+    clearCalendarPillFades()
+    _calendarPillSnapshot = null
+    return
+  }
+  var current = captureCalendarPills(calendar), previous = _calendarPillSnapshot
+  var samePeriod = previous && previous.period === current.period && previous.view === current.view
+  _calendarPillSnapshot = current
+  if (!samePeriod) clearCalendarPillFades()
+  if ((window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) || !calendar.animate) {
+    clearCalendarPillFades()
+    return
+  }
+  // A cache refresh can replace the calendar during an exit fade. Keep its
+  // inert copy on the current root until the same animation finishes.
+  if (samePeriod) _calendarPillFades.forEach(function (fade) {
+    if (fade.ghost && fade.node.parentElement !== calendar) calendar.appendChild(fade.node)
+  })
+  if (samePeriod) previous.pills.forEach(function (pill, key) {
+    if (current.pills.has(key)) return
+    var fade = _calendarPillFades.get(key)
+    var opacity = fade ? window.getComputedStyle(fade.node).opacity || pill.opacity : pill.opacity
+    finishCalendarPillFade(key)
+    var ghost = pill.node.cloneNode(true)
+    // Keep visual data attributes for theme/RSVP styles, but no IDs or HTMX
+    // actions. The exit copy never participates in layout or user interaction.
+    ;[ghost].concat(Array.from(ghost.querySelectorAll("*"))).forEach(function (node) {
+      Array.from(node.attributes).forEach(function (attr) {
+        if (attr.name === "id" || /^(?:data-)?hx-/.test(attr.name) || /^on/i.test(attr.name)) node.removeAttribute(attr.name)
+      })
+    })
+    ghost.removeAttribute("data-calendar-event-hover")
+    ghost.dataset.calendarPillExit = "true"
+    ghost.hidden = false
+    ghost.inert = true
+    ghost.setAttribute("aria-hidden", "true")
+    Object.assign(ghost.style, { position: "absolute", display: "flex", pointerEvents: "none", margin: "0",
+      top: pill.top + "px", left: pill.left + "px", width: pill.width + "px", height: pill.height + "px", zIndex: "30", clipPath: pill.clipPath })
+    ghost.style.setProperty("--calendar-day-padding", pill.dayPadding)
+    calendar.appendChild(ghost)
+    fadeCalendarPill(key, ghost, opacity, 0, true)
+  })
+  current.pills.forEach(function (pill, key) {
+    var before = samePeriod && previous.pills.get(key)
+    var fade = _calendarPillFades.get(key)
+    if (before && (!fade || fade.node === pill.node)) return
+    var opacity = fade ? window.getComputedStyle(fade.node).opacity || (before ? before.opacity : 0) : before ? before.opacity : 0
+    finishCalendarPillFade(key)
+    fadeCalendarPill(key, pill.node, opacity, pill.opacity, false)
+  })
+}
+
+document.body.addEventListener("htmx:beforeSwap", function (event) {
+  if (event.defaultPrevented || !event.detail || event.detail.shouldSwap === false) return
+  rememberCalendarPillGeometry(document.getElementById("calendar-main"))
+})
+
+function initializeCalendarViewport() {
+  var calendar = document.getElementById("calendar-main")
+  rememberCalendarPillGeometry(calendar)
+  var pane = calendar && calendar.closest("#mail-list")
+  if (_calendarViewportPane !== pane) {
+    if (_calendarViewportObserver) _calendarViewportObserver.disconnect()
+    _calendarViewportPane = pane
+    if (pane && window.ResizeObserver) {
+      _calendarViewportObserver = new ResizeObserver(function () {
+        if (_calendarLayoutFrame) cancelAnimationFrame(_calendarLayoutFrame)
+        _calendarLayoutFrame = requestAnimationFrame(function () {
+          _calendarLayoutFrame = null
+          initializeCalendarViewport()
+        })
+      })
+      _calendarViewportObserver.observe(pane)
+      var scroller = pane.querySelector("[data-calendar-week-scroll]")
+      if (scroller) _calendarViewportObserver.observe(scroller)
+    }
+  }
+  if (!calendar) { animateCalendarPills(null); return }
+  layoutCalendarMonth(calendar)
+  initializeCalendarWeekScroll()
+  animateCalendarPills(calendar)
+}
+
+document.addEventListener("scroll", function (event) {
+  var scroller = event.target
+  if (!scroller.hasAttribute || !scroller.hasAttribute("data-calendar-week-scroll") || scroller.clientHeight === 0) return
+  var calendar = document.getElementById("calendar-main")
+  if (calendar) _calendarWeekScrollState = { period: calendar.dataset.calendarPeriod, zoom: _calendarWeekZoom, top: scroller.scrollTop, left: scroller.scrollLeft }
+}, true)
+document.addEventListener("click", function (event) {
+  var button = event.target.closest && event.target.closest("[data-calendar-week-zoom]")
+  if (!button || button.disabled) return
+  finishCalendarNavigationTransition()
+  var action = button.dataset.calendarWeekZoom
+  setCalendarWeekZoom(action === "fit" ? 0 : Math.max(0, Math.min(3, _calendarWeekZoom + (action === "in" ? 1 : -1))))
+})
+window.addEventListener("resize", initializeCalendarViewport)
+document.body.addEventListener("htmx:afterSwap", initializeCalendarViewport)
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initializeCalendarViewport)
+else initializeCalendarViewport()
+
+function finishCalendarNavigationTransition() {
+  var transition = _calendarNavigationTransition
+  if (!transition) return
+  _calendarNavigationTransition = null
+  transition.incoming.cancel()
+  transition.outgoing.cancel()
+  transition.snapshot.remove()
+}
+
+function prepareCalendarNavigation(event) {
+  var detail = event.detail
+  var xhr = detail && detail.xhr
+  if (!xhr) return
+  if (typeof xhr.goferCalendarCachePeriod === "string" && !calendarCacheResponseCurrent(xhr)) { detail.shouldSwap = false; return }
+  var navigation = typeof xhr.goferCalendarNavigationDirection === "number"
+  if (navigation && xhr !== _calendarNavigationRequest) {
+    detail.shouldSwap = false
+    return
+  }
+  if (detail.shouldSwap === false || !detail.target || detail.target.id !== "main-content") return
+  var active = _calendarNavigationTransition
+  if (!navigation && active) {
+    // A quick background refresh must not cut the period transition short.
+    var incoming = window.getComputedStyle(active.surface)
+    var outgoing = window.getComputedStyle(active.snapshot)
+    xhr.goferCalendarNavigationSnapshot = {
+      element: active.snapshot, top: active.snapshot.scrollTop, left: active.snapshot.scrollLeft,
+      incoming: { opacity: incoming.opacity, transform: incoming.transform },
+      outgoing: { opacity: outgoing.opacity, transform: outgoing.transform },
+      crossover: active.crossover, bounds: active.bounds,
+      distance: active.distance, duration: Math.max(0, active.duration - (active.incoming.currentTime || 0)),
+    }
+  }
+  finishCalendarNavigationTransition()
+  if (navigation && xhr.goferCalendarNavigationSnapshot) return
+  if (!navigation || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
+  var surface = document.querySelector("#calendar-main [data-calendar-surface]")
+  if (!surface || !surface.clientHeight || !surface.animate) return
+  var snapshot = surface.cloneNode(true)
+  // The outgoing grid is only a visual layer, never a second set of live controls.
+  var elements = [snapshot].concat(Array.from(snapshot.querySelectorAll("*")))
+  elements.forEach(function (element) {
+    Array.from(element.attributes).forEach(function (attribute) {
+      if (attribute.name === "id" || /^(data-calendar-|(?:data-)?hx-)/.test(attribute.name)) element.removeAttribute(attribute.name)
+    })
+  })
+  snapshot.inert = true
+  snapshot.setAttribute("aria-hidden", "true")
+  snapshot.setAttribute("data-calendar-navigation-overlay", "")
+  xhr.goferCalendarNavigationSnapshot = {
+    element: snapshot, top: surface.scrollTop, left: surface.scrollLeft,
+    bounds: xhr.goferCalendarNavigationCrossover ? surface.getBoundingClientRect() : null,
+  }
+}
+
+function animateCalendarNavigation(event) {
+  var xhr = event.detail && event.detail.xhr
+  if (!xhr || (typeof xhr.goferCalendarNavigationDirection === "number" && xhr !== _calendarNavigationRequest)) return
+  if (xhr === _calendarNavigationRequest) _calendarNavigationRequest = null
+  var saved = xhr.goferCalendarNavigationSnapshot
+  if (!saved) return
+  delete xhr.goferCalendarNavigationSnapshot
+  var calendar = document.getElementById("calendar-main")
+  var surface = calendar && calendar.querySelector("[data-calendar-surface]")
+  if (!saved || !surface || !surface.animate || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
+  var crossover = saved.crossover || xhr.goferCalendarNavigationCrossover
+  var bounds = saved.bounds || surface.getBoundingClientRect()
+  var parent = calendar.getBoundingClientRect()
+  var snapshot = saved.element
+  Object.assign(snapshot.style, {
+    position: "absolute", top: (bounds.top - parent.top) + "px", left: (bounds.left - parent.left) + "px",
+    width: bounds.width + "px", height: bounds.height + "px", margin: "0", overflow: "hidden",
+    pointerEvents: "none", zIndex: "30",
+  })
+  // Dissolve the old view over a fully opaque new one, never through the page
+  // background. Keep the old geometry so switching layouts cannot stretch it.
+  if (crossover) snapshot.style.backgroundColor = "var(--color-card)"
+  calendar.appendChild(snapshot)
+  snapshot.scrollTop = saved.top
+  snapshot.scrollLeft = saved.left
+  var distance = crossover ? 0 : saved.distance || xhr.goferCalendarNavigationDirection * 12
+  var timing = { duration: saved.duration === undefined ? (crossover ? 140 : 220) : saved.duration, easing: crossover ? "ease-out" : "cubic-bezier(0.22, 1, 0.36, 1)" }
+  var incoming = crossover ? [{ opacity: 1 }, { opacity: 1 }] : [saved.incoming || { opacity: 0, transform: "translateX(" + distance + "px) scale(0.98)" }, { opacity: 1, transform: "translateX(0) scale(1)" }]
+  var outgoing = crossover ? [{ opacity: saved.outgoing ? saved.outgoing.opacity : 1 }, { opacity: 0 }] : [saved.outgoing || { opacity: 1, transform: "translateX(0) scale(1)" }, { opacity: 0, transform: "translateX(" + -distance + "px) scale(0.98)" }]
+  var transition = {
+    snapshot: snapshot, surface: surface, distance: distance, duration: timing.duration,
+    crossover: crossover, bounds: saved.bounds,
+    incoming: surface.animate(incoming, timing),
+    outgoing: snapshot.animate(outgoing, timing),
+  }
+  _calendarNavigationTransition = transition
+  transition.incoming.onfinish = function () {
+    if (_calendarNavigationTransition === transition) finishCalendarNavigationTransition()
+  }
+}
+
+function configureCalendarNavigationRequest(event) {
+  var detail = event.detail
+  var trigger = detail && detail.elt
+  var arrow = trigger && trigger.hasAttribute("data-calendar-navigate")
+  var viewSwitch = trigger && trigger.hasAttribute("data-calendar-view-switch")
+  var calendar = viewSwitch && document.getElementById("calendar-main")
+  var unchanged = calendar && calendar.dataset.calendarView === trigger.dataset.calendarViewSwitch
+  if ((!arrow && !viewSwitch) || unchanged) {
+    if (detail && detail.target && detail.target.id === "main-content" && (!trigger || !trigger.hasAttribute("data-calendar-auto-sync"))) _calendarNavigationRequest = null
+    return
+  }
+  _calendarNavigationRequest = detail.xhr
+  detail.xhr.goferCalendarNavigationCrossover = viewSwitch
+  if (viewSwitch) finishCalendarNavigationTransition()
+  detail.xhr.goferCalendarNavigationDirection = arrow ? Number(trigger.dataset.calendarNavigate) : trigger.dataset.calendarViewSwitch === "week" ? 1 : -1
+}
+document.body.addEventListener("htmx:beforeRequest", configureCalendarNavigationRequest)
+document.body.addEventListener("htmx:beforeRequest", showCalendarContentPending)
+document.body.addEventListener("htmx:beforeSwap", function (event) {
+  var xhr = event.detail && event.detail.xhr
+  if (xhr && xhr.goferCalendarContentPending && xhr !== _calendarContentRequest) event.detail.shouldSwap = false
+})
+document.body.addEventListener("htmx:beforeSwap", prepareCalendarNavigation)
+// Layout/scroll restoration listeners above run before the incoming grid fades in.
+document.body.addEventListener("htmx:afterSwap", animateCalendarNavigation)
+function handleCalendarNavigationResult(event) {
+  if (!event.detail || event.detail.xhr !== _calendarNavigationRequest) return
+  delete event.detail.xhr.goferCalendarNavigationSnapshot
+  _calendarNavigationRequest = null
+}
+document.body.addEventListener("htmx:afterRequest", handleCalendarNavigationResult)
+document.body.addEventListener("htmx:sendAbort", handleCalendarNavigationResult)
+document.body.addEventListener("htmx:afterRequest", handleCalendarContentResult)
+document.body.addEventListener("htmx:sendAbort", handleCalendarContentResult)
+document.body.addEventListener("htmx:beforeHistorySave", finishCalendarNavigationTransition)
+window.addEventListener("resize", finishCalendarNavigationTransition)
+
+function updateCalendarEventHover(event) {
+  if (event.pointerType === "touch") return
+  var selector = "[data-calendar-month-event], [data-calendar-week-all-day], [data-calendar-week-event]"
+  var segment = event.target && event.target.closest && event.target.closest(selector)
+  var calendar = segment && segment.closest("#calendar-main")
+  if (!calendar) return
+  var related = event.relatedTarget && event.relatedTarget.closest && event.relatedTarget.closest(selector)
+  if (segment === related) return // Moving between a pill's label and color dot.
+  var active = event.type === "pointerover" ? segment : related
+  if (active && (active.hidden || active.closest("#calendar-main") !== calendar)) active = null
+  var id = active && (active.dataset.calendarMonthEvent || active.dataset.calendarWeekAllDay || active.dataset.calendarWeekEvent)
+  var source = active && active.dataset.calendarSourceId
+  // Compare data values directly: event IDs must never become CSS selectors.
+  // Keep every segment, including those wrapping into another row, in sync.
+  calendar.querySelectorAll(selector).forEach(function (pill) {
+    var sameEvent = !!id && !pill.hidden && pill.dataset.calendarSourceId === source &&
+      (pill.dataset.calendarMonthEvent || pill.dataset.calendarWeekAllDay || pill.dataset.calendarWeekEvent) === id
+    pill.toggleAttribute("data-calendar-event-hover", sameEvent)
+  })
+}
+
+document.addEventListener("pointerover", updateCalendarEventHover)
+document.addEventListener("pointerout", updateCalendarEventHover)
+document.addEventListener("pointercancel", updateCalendarEventHover)
+window.addEventListener("blur", function () {
+  document.querySelectorAll("#calendar-main [data-calendar-event-hover]").forEach(function (pill) {
+    pill.removeAttribute("data-calendar-event-hover")
+  })
+})
+
+var _calendarEventRequest = null
+
+function calendarEventRequestCurrent(xhr) {
+  var calendar = document.getElementById("calendar-main")
+  var dialog = xhr.goferCalendarEventDialog
+  return xhr === _calendarEventRequest && calendar && !calendar.hasAttribute("data-calendar-loading") &&
+    calendar.dataset.calendarPeriod === xhr.goferCalendarEventPeriod &&
+    _calendarSourceIsVisible({dataset: {calendarSourceId: xhr.goferCalendarEventSource}}) &&
+    (!dialog || (dialog.isConnected && dialog.open && !dialog.hasAttribute("data-tui-dialog-closing")))
+}
+
+function clearCalendarEventLoading(xhr, removeDialog) {
+  if (!xhr) return
+  clearTimeout(xhr.goferCalendarEventTimer)
+  delete xhr.goferCalendarEventTimer
+  var dialog = xhr.goferCalendarEventDialog
+  if (removeDialog && dialog && dialog.isConnected && !xhr.goferCalendarEventSwapped) {
+    if (dialog.open) dialog.close()
+    xhr.goferCalendarEventRoot.remove()
+  }
+}
+
+function showCalendarEventPending(xhr, trigger) {
+  if (!calendarEventRequestCurrent(xhr) || !window.tui || !window.tui.dialog) return
+  var template = document.getElementById("calendar-event-loading")
+  var target = document.getElementById("app-pane-dialogs")
+  if (!template || !target) return
+  target.replaceChildren(template.content.cloneNode(true))
+  var root = target.querySelector("#calendar-event-details-dialog")
+  var dialog = root && root.querySelector("[data-tui-dialog-content]")
+  if (!dialog) return
+  var summary = trigger.querySelector("[data-calendar-event-text]") || trigger.querySelector("[data-calendar-event-summary]")
+  if (summary) dialog.querySelector("#calendar-event-details-title").textContent = summary.textContent
+  xhr.goferCalendarEventRoot = root
+  xhr.goferCalendarEventDialog = dialog
+  function cancelPending() {
+    if (xhr !== _calendarEventRequest || xhr.goferCalendarEventSwapped) return
+    _calendarEventRequest = null
+    clearCalendarEventLoading(xhr, false)
+    if (window.htmx) window.htmx.trigger(trigger, "htmx:abort")
+  }
+  dialog.addEventListener("cancel", cancelPending)
+  dialog.addEventListener("close", cancelPending)
+  dialog.addEventListener("click", function (event) {
+    if (event.target === dialog || event.target.closest("[data-tui-dialog-close]")) cancelPending()
+  })
+  window.tui.dialog.open("calendar-event-details-dialog")
+}
+
+document.body.addEventListener("htmx:beforeRequest", function (event) {
+  var trigger = event.detail && event.detail.elt
+  if (!trigger || !trigger.hasAttribute("data-calendar-event-trigger")) return
+  clearCalendarEventLoading(_calendarEventRequest, true)
+  var calendar = document.getElementById("calendar-main")
+  var xhr = _calendarEventRequest = event.detail.xhr
+  xhr.goferCalendarEventPeriod = calendar ? calendar.dataset.calendarPeriod : ""
+  xhr.goferCalendarEventSource = trigger.dataset.calendarSourceId
+  // Fast requests open the complete dialog with no loading flash.
+  xhr.goferCalendarEventTimer = setTimeout(function () { showCalendarEventPending(xhr, trigger) }, 250)
+  trigger.setAttribute("aria-busy", "true")
+})
+
+document.body.addEventListener("htmx:beforeSwap", function (event) {
+  var xhr = event.detail && event.detail.xhr
+  if (!xhr || typeof xhr.goferCalendarEventPeriod !== "string") return
+  clearCalendarEventLoading(xhr, false)
+  if (!calendarEventRequestCurrent(xhr)) {
+    event.detail.shouldSwap = false
+    clearCalendarEventLoading(xhr, true)
+    return
+  }
+  if (!event.detail.shouldSwap || event.detail.isError || !xhr.goferCalendarEventDialog) return
+  var incoming = new DOMParser().parseFromString(event.detail.serverResponse, "text/html").querySelector("#calendar-event-details-dialog [data-tui-dialog-content] > [data-tui-dialog-panel]")
+  if (!incoming) { event.detail.shouldSwap = false; return }
+  // Keep the open modal in the top layer while its loading panel is filled.
+  event.detail.target = xhr.goferCalendarEventDialog
+  event.detail.selectOverride = "#calendar-event-details-dialog [data-tui-dialog-content] > [data-tui-dialog-panel]"
+  event.detail.swapOverride = "innerHTML"
+})
+
+document.body.addEventListener("htmx:afterSwap", function (event) {
+  var xhr = event.detail && event.detail.xhr
+  if (!xhr || typeof xhr.goferCalendarEventPeriod !== "string" || !calendarEventRequestCurrent(xhr)) return
+  xhr.goferCalendarEventSwapped = true
+  if (xhr.goferCalendarEventDialog) xhr.goferCalendarEventDialog.removeAttribute("aria-busy")
+})
+
+document.body.addEventListener("htmx:sendAbort", function (event) {
+  var xhr = event.detail && event.detail.xhr
+  if (!xhr || typeof xhr.goferCalendarEventPeriod !== "string") return
+  if (event.detail.elt) event.detail.elt.removeAttribute("aria-busy")
+  clearCalendarEventLoading(xhr, true)
+  if (xhr === _calendarEventRequest) _calendarEventRequest = null
+})
+
+document.body.addEventListener("htmx:afterRequest", function (event) {
+  var xhr = event.detail && event.detail.xhr
+  if (!xhr || typeof xhr.goferCalendarEventPeriod !== "string") return
+  var trigger = event.detail.elt
+  if (trigger) trigger.removeAttribute("aria-busy")
+  clearCalendarEventLoading(xhr, false)
+  if (xhr !== _calendarEventRequest) return
+  var current = calendarEventRequestCurrent(xhr)
+  _calendarEventRequest = null
+  if (!current) { clearCalendarEventLoading(xhr, true); return }
+  if (event.detail.successful && xhr.goferCalendarEventSwapped) {
+    if (!xhr.goferCalendarEventDialog && window.tui && window.tui.dialog) window.tui.dialog.open("calendar-event-details-dialog")
+    return
+  }
+  clearCalendarEventLoading(xhr, true)
+  showGoferToast({
+    title: "Could not open event",
+    description: xhr.status === 404 ? "This event is no longer available. Refresh calendars and try again." : "Event details could not be loaded. Please try again.",
+    variant: "error", icon: "error", position: "bottom-right", duration: 6000, dismissible: true,
+  })
+})
+
+var _calendarCreateDialogRequest = null
+
+function configureCalendarCreateDialog(event) {
+  if (event.detail.elt && event.detail.elt.hasAttribute("data-calendar-edit-trigger")) return
+  var calendar = document.getElementById("calendar-main")
+  if (!calendar) return
+  var selected = _calendarSelectedDay && _calendarSelectedDay.period === calendar.dataset.calendarPeriod ? _calendarSelectedDay.date : ""
+  event.detail.parameters.date = selected || (calendar.dataset.calendarView === "week" ? calendar.dataset.calendarDate : calendar.dataset.calendarTodayDate.slice(0, 7) === calendar.dataset.calendarMonth ? calendar.dataset.calendarTodayDate : calendar.dataset.calendarMonth + "-01")
+}
+
+document.body.addEventListener("htmx:configRequest", function (event) {
+  if (event.detail && event.detail.elt && event.detail.elt.hasAttribute("data-calendar-create-trigger")) configureCalendarCreateDialog(event)
+})
+
+document.body.addEventListener("htmx:beforeRequest", function (event) {
+  var trigger = event.detail && event.detail.elt
+  if (!trigger || !trigger.hasAttribute("data-calendar-create-trigger")) return
+  _calendarCreateDialogRequest = event.detail.xhr
+  var calendar = document.getElementById("calendar-main")
+  _calendarCreateDialogRequest.goferCalendarCreatePeriod = calendar ? calendar.dataset.calendarPeriod : ""
+  _calendarCreateDialogRequest.goferCalendarEdit = trigger.hasAttribute("data-calendar-edit-trigger")
+  if (_calendarCreateDialogRequest.goferCalendarEdit && window.tui && window.tui.popover) window.tui.popover.closeElement(trigger)
+  var details = _calendarCreateDialogRequest.goferCalendarEdit && document.getElementById("calendar-event-details-dialog")
+  _calendarCreateDialogRequest.goferCalendarEditDialog = details && details.querySelector("[data-tui-dialog-content]")
+  trigger.setAttribute("aria-busy", "true")
+})
+
+function calendarCreateDialogResponseCurrent(xhr) {
+  var calendar = document.getElementById("calendar-main")
+  var details = xhr.goferCalendarEditDialog
+  if (details && (!details.isConnected || !details.open || details.hasAttribute("data-tui-dialog-closing"))) return false
+  return xhr === _calendarCreateDialogRequest && calendar && !calendar.hasAttribute("data-calendar-loading") && calendar.dataset.calendarPeriod === xhr.goferCalendarCreatePeriod
+}
+
+function transitionCalendarEditDialog(details, editor, from) {
+  // Lay out the editor at its final size once. Disable templUI's transition-all
+  // while measuring so neither its width nor its entrance scale is in flight.
+  var transition = details.style.transitionProperty
+  details.style.transitionProperty = "none"
+  details.closest("[data-tui-dialog]").id = "calendar-create-dialog"
+  details.className = editor.className
+  details.removeAttribute("id")
+  details.setAttribute("aria-labelledby", editor.getAttribute("aria-labelledby"))
+  initializeCalendarCreateForm()
+  var to = details.getBoundingClientRect()
+  details.style.transitionProperty = transition
+  if (!from || !details.animate || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
+  if (from.width <= 0 || from.height <= 0 || to.width <= 0 || to.height <= 0) return
+  if (Math.abs(from.width - to.width) < 0.5 && Math.abs(from.height - to.height) < 0.5) return
+  var panel = details.querySelector("[data-tui-dialog-panel]")
+  var opacity = panel && panel.style.opacity
+  var inert = panel && panel.inert
+  if (panel) {
+    // Hide the entire content layer, including footer buttons. Visibility is
+    // inherited and templUI's transition-all buttons can delay that change;
+    // parent opacity cannot be overridden or delayed by a descendant.
+    panel.style.opacity = "0"
+    panel.inert = true
+  }
+  // FLIP the empty frame from its old visual bounds to the already-laid-out
+  // editor. Scale stays on the compositor; width/height would reflow the entire
+  // form on every frame even with visibility:hidden. Individual scale also
+  // preserves templUI's separate translate used to center the native dialog.
+  var willChange = details.style.willChange
+  details.style.willChange = "scale"
+  var resize = details.animate([
+    { scale: (from.width / to.width) + " " + (from.height / to.height) },
+    { scale: "1 1" },
+  ], { duration: 220, easing: "ease" }) // Match the templUI tabs indicator cadence.
+  function focusSummary() {
+    if (!details.isConnected || !details.open || details.hasAttribute("data-tui-dialog-closing") || (panel && (!panel.isConnected || panel.inert))) return
+    var input = details.querySelector("#calendar-create-summary")
+    if (input) input.focus({preventScroll: true})
+  }
+  function revealContent(fade) {
+    details.style.willChange = willChange
+    if (!panel) { focusSummary(); return }
+    panel.style.opacity = opacity
+    panel.inert = inert
+    if (!panel.isConnected || !details.isConnected || !details.open || details.hasAttribute("data-tui-dialog-closing")) return
+    if (fade && panel.animate) {
+      var reveal = panel.animate([{ opacity: 0 }, { opacity: opacity || "1" }], { duration: 160, easing: "ease" })
+      reveal.onfinish = focusSummary
+    } else focusSummary()
+  }
+  resize.onfinish = function () { revealContent(true) }
+  resize.oncancel = function () { revealContent(false) }
+  return resize
+}
+
+document.body.addEventListener("htmx:beforeSwap", function (event) {
+  var xhr = event.detail && event.detail.xhr
+  if (!xhr || typeof xhr.goferCalendarCreatePeriod !== "string") return
+  if (!calendarCreateDialogResponseCurrent(xhr)) { event.detail.shouldSwap = false; return }
+  if (!event.detail.shouldSwap || event.detail.isError) return
+  var details = xhr.goferCalendarEditDialog
+  if (details) {
+    var editor = new DOMParser().parseFromString(event.detail.serverResponse, "text/html").querySelector("#calendar-create-dialog [data-tui-dialog-content]")
+    if (!editor || !editor.querySelector("[data-tui-dialog-panel]")) { event.detail.shouldSwap = false; return }
+    // Swap only the panel: keep the native modal in the top layer so its backdrop
+    // never closes or replays its entrance transition during the handoff.
+    xhr.goferCalendarEditContent = editor
+    xhr.goferCalendarEditBounds = details.getBoundingClientRect()
+    event.detail.target = details
+    event.detail.selectOverride = "#calendar-create-dialog [data-tui-dialog-content] > [data-tui-dialog-panel]"
+    event.detail.swapOverride = "innerHTML"
+  }
+})
+
+document.body.addEventListener("htmx:afterSwap", function (event) {
+  var xhr = event.detail && event.detail.xhr
+  if (!xhr || typeof xhr.goferCalendarCreatePeriod !== "string" || !calendarCreateDialogResponseCurrent(xhr)) return
+  var details = xhr.goferCalendarEditDialog
+  var editor = xhr.goferCalendarEditContent
+  if (details && editor) xhr.goferCalendarEditAnimation = transitionCalendarEditDialog(details, editor, xhr.goferCalendarEditBounds)
+  xhr.goferCalendarCreateSwapped = true
+})
+
+document.body.addEventListener("htmx:sendAbort", function (event) {
+  var xhr = event.detail && event.detail.xhr
+  if (!xhr || typeof xhr.goferCalendarCreatePeriod !== "string") return
+  if (event.detail.elt) event.detail.elt.removeAttribute("aria-busy")
+  if (xhr === _calendarCreateDialogRequest) _calendarCreateDialogRequest = null
+})
+
+document.body.addEventListener("htmx:afterRequest", function (event) {
+  var xhr = event.detail && event.detail.xhr
+  if (!xhr || typeof xhr.goferCalendarCreatePeriod !== "string") return
+  if (event.detail.elt) event.detail.elt.removeAttribute("aria-busy")
+  if (xhr !== _calendarCreateDialogRequest) return
+  var current = calendarCreateDialogResponseCurrent(xhr)
+  _calendarCreateDialogRequest = null
+  if (!current) return
+  if (!event.detail.successful) {
+    showGoferToast({title: xhr.goferCalendarEdit ? "Could not open Edit event" : "Could not open New event", description: "Please try again.", variant: "error", icon: "error", duration: 5000})
+    return
+  }
+  if (!xhr.goferCalendarCreateSwapped) return
+  if (!xhr.goferCalendarEditDialog) {
+    initializeCalendarCreateForm()
+    if (window.tui && window.tui.dialog) window.tui.dialog.open("calendar-create-dialog")
+  }
+  var input = document.getElementById("calendar-create-summary")
+  if (input && !xhr.goferCalendarEditAnimation) setTimeout(function () { if (input.isConnected) input.focus() }, 80)
+})
+
+function adjustCalendarCreateAllDayRange(form) {
+  if (!form || form._calendarCreateBusy || form._calendarCreateUncertain || form._calendarCreateConflict || form._calendarCreateAdjustingDates) return
+  var allDay = form.querySelector('[name="all_day"]')
+  var start = form.querySelector('[name="start_date"]')
+  var end = form.querySelector('[name="end_date"]')
+  if (!allDay.checked) { form._calendarCreateDateAdjusted = ""; return }
+  if (!start || !end || !/^\d{4}-\d{2}-\d{2}$/.test(start.value) || !/^\d{4}-\d{2}-\d{2}$/.test(end.value)) return
+  if (end.value >= start.value) {
+    if (start.value !== form._calendarCreateDateAdjusted || end.value !== start.value) form._calendarCreateDateAdjusted = ""
+    return
+  }
+  form._calendarCreateAdjustingDates = true
+  form._calendarCreateDateAdjusted = start.value
+  try {
+    end.value = start.value
+    // Keep the popup's highlighted day and viewed month in sync with the
+    // authoritative hidden input, not just the date displayed on its trigger.
+    var root = end.closest("[data-tui-datepicker-root]")
+    var calendar = root && root.querySelector("[data-tui-calendar-container]")
+    if (calendar) {
+      calendar.setAttribute("data-tui-calendar-selected-date", start.value)
+      calendar.dataset.tuiCalendarCurrentYear = String(Number(start.value.slice(0, 4)))
+      calendar.dataset.tuiCalendarCurrentMonth = String(Number(start.value.slice(5, 7)) - 1)
+      var year = calendar.querySelector("[data-tui-calendar-year-select]")
+      var month = calendar.querySelector("[data-tui-calendar-month-select]")
+      if (year) year.value = calendar.dataset.tuiCalendarCurrentYear
+      if (month) {
+        month.value = calendar.dataset.tuiCalendarCurrentMonth
+        month.dispatchEvent(new Event("change", {bubbles: true}))
+      }
+    }
+  } finally { form._calendarCreateAdjustingDates = false }
+}
+
+function updateCalendarRecurrenceForm(form, locked) {
+  var frequency = form.querySelector('[name="repeat_frequency"]')
+  if (!frequency) return
+  var options = form.querySelector("[data-calendar-repeat-options]")
+  var repeating = frequency.value !== "none"
+  var row = form.querySelector("[data-calendar-repeat-row]")
+  if (row) row.dataset.repeating = String(repeating)
+  options.hidden = !repeating
+  options.disabled = locked || !repeating
+  var intervalGroup = form.querySelector("[data-calendar-repeat-interval-group]")
+  if (intervalGroup) {
+    intervalGroup.hidden = !repeating
+    intervalGroup.disabled = locked || !repeating
+  }
+  var ending = form.querySelector('[name="repeat_end"]').value
+  ;["until", "count"].forEach(function (kind) {
+    var group = form.querySelector("[data-calendar-repeat-" + kind + "]")
+    group.hidden = ending !== kind
+    group.disabled = locked || !repeating || ending !== kind
+  })
+  if (!repeating) return
+  var interval = form.querySelector('[name="repeat_interval"]').value
+  var unit = {daily: "day", weekly: "week", monthly: "month", yearly: "year"}[frequency.value]
+  form.querySelector("[data-calendar-repeat-unit]").textContent = unit + (interval === "1" ? "" : "s")
+  var summary = "Every " + (interval || "…") + " " + unit + (interval === "1" ? "" : "s")
+  var start = form.querySelector('[name="start_date"]').value
+  var date = /^\d{4}-\d{2}-\d{2}$/.test(start) ? new Date(start + "T12:00:00Z") : null
+  if (date && !isNaN(date.getTime())) {
+    if (frequency.value === "weekly") summary += " on " + date.toLocaleDateString(undefined, {weekday: "long", timeZone: "UTC"})
+    if (frequency.value === "monthly") summary += " on day " + date.getUTCDate()
+    if (frequency.value === "yearly") summary += " on " + date.toLocaleDateString(undefined, {month: "long", day: "numeric", timeZone: "UTC"})
+  }
+  if (ending === "count") {
+    var count = form.querySelector('[name="repeat_count"]').value
+    summary += ", " + (count || "…") + (count === "1" ? " occurrence" : " occurrences including the first")
+  }
+  if (ending === "until") summary += ", through " + (form.querySelector('[name="repeat_until"]').value || "the selected date")
+  if (ending === "never") summary += ", with no end date"
+  summary += "."
+  if (date && (frequency.value === "monthly" || frequency.value === "yearly") && date.getUTCDate() > 28) summary += " Uses the last day in shorter months."
+  if (!form.querySelector('[name="all_day"]').checked) summary += " Times follow " + form.querySelector('[name="timezone"]').value + "."
+  form.querySelector("[data-calendar-repeat-summary]").textContent = summary
+}
+
+function toggleCalendarDescription(form) {
+  if (!form || form._calendarCreateBusy || form._calendarCreateUncertain || form._calendarCreateConflict) return
+  return setCalendarDescriptionExpanded(form, !form._calendarDescriptionExpanded)
+}
+
+// Calendar uses the composer's contenteditable, formatting and selection
+// mechanics, without its email attachments, signatures or draft autosave.
+function syncCalendarDescription(editor) {
+  var form = editor && editor.closest("[data-calendar-create-form]")
+  if (!form) return
+  var html = _sanitizeComposeHTML(editor.innerHTML || "")
+  // No remote images or message-only metadata in calendar notes.
+  var fragment = document.createElement("template")
+  fragment.innerHTML = html
+  fragment.content.querySelectorAll("img").forEach(function (image) { image.remove() })
+  form.querySelector('[name="description_html"]').value = fragment.innerHTML.trim()
+  form.querySelector('[name="description"]').value = _composeEditorText(editor)
+  calendarDescriptionSelection(editor)
+}
+
+function calendarDescriptionSelection(editor) {
+  _saveComposeSelection(editor)
+  var form = editor && editor.closest("[data-calendar-create-form]")
+  if (!form) return
+  form.querySelectorAll("[data-calendar-description-command]").forEach(function (button) {
+    var active = false
+    try { active = document.queryCommandState(button.dataset.calendarDescriptionCommand) } catch (e) {}
+    button.classList.toggle("bg-accent", active)
+    button.classList.toggle("text-foreground", active)
+    button.setAttribute("aria-pressed", String(active))
+  })
+}
+
+function calendarDescriptionExec(el, command, value) {
+  // templUI dropdown items may be portaled outside the form.
+  var form = el.closest("[data-calendar-create-form]") || document.getElementById("calendar-create-form")
+  var editor = form && form.querySelector("[data-calendar-rich-editor]")
+  if (!editor || editor.getAttribute("contenteditable") !== "true") return
+  if (command === "createLink") {
+    value = window.prompt("Paste a URL or email address")
+    if (!value) return
+    value = value.trim()
+    if (value.indexOf("@") > 0 && !/^[a-z][a-z0-9+.-]*:/i.test(value)) value = "mailto:" + value
+    if (!/^[a-z][a-z0-9+.-]*:/i.test(value)) value = "https://" + value
+    if (!/^(https?:|mailto:)/i.test(value)) return
+  }
+  editor.focus()
+  _restoreComposeSelection(editor)
+  document.execCommand(command, false, value || null)
+  syncCalendarDescription(editor)
+}
+
+function pasteCalendarDescription(event) {
+  var clipboard = event.clipboardData || event.dataTransfer
+  if (!clipboard) return
+  event.preventDefault()
+  var fragment = document.createElement("template")
+  fragment.innerHTML = _sanitizeComposeHTML(clipboard.getData("text/html") || _composePlainToHTML(clipboard.getData("text/plain")))
+  fragment.content.querySelectorAll("img").forEach(function (image) { image.remove() })
+  document.execCommand("insertHTML", false, fragment.innerHTML)
+  syncCalendarDescription(event.currentTarget)
+}
+
+document.addEventListener("keydown", function (event) {
+  var editor = event.target && event.target.closest && event.target.closest("[data-calendar-rich-editor]")
+  if (!editor || (!event.ctrlKey && !event.metaKey)) return
+  var command = {b: "bold", i: "italic", u: "underline", k: "createLink"}[event.key.toLowerCase()]
+  if (command) { event.preventDefault(); calendarDescriptionExec(editor, command) }
+})
+
+document.addEventListener("selectionchange", function () {
+  var editor = document.activeElement && document.activeElement.closest && document.activeElement.closest("[data-calendar-rich-editor]")
+  if (editor) calendarDescriptionSelection(editor)
+})
+
+function setCalendarDescriptionExpanded(form, expanded) {
+  var editor = form.querySelector("[data-calendar-description-editor]")
+  var slot = form.querySelector("[data-calendar-description-slot]")
+  var viewport = form.querySelector("[data-calendar-create-viewport]")
+  var body = form.querySelector("[data-calendar-create-body]")
+  var content = editor && editor.querySelector("[data-calendar-description-content]")
+  if (!editor || !slot || !viewport || !body || !content) return Promise.resolve()
+  var richInput = editor.querySelector("[data-calendar-rich-editor]")
+  _saveComposeSelection(richInput)
+  var richRange = richInput._composeRange && richInput._composeRange.cloneRange()
+  var state = form._calendarDescriptionState
+  if (!state && !expanded) return Promise.resolve()
+  if (editor._calendarDescriptionReveal) editor._calendarDescriptionReveal.cancel()
+  var from = editor.getBoundingClientRect()
+  var opacity = getComputedStyle(body).opacity
+  if (!state) {
+    state = form._calendarDescriptionState = {
+      editorStyle: editor.style.cssText, slotHeight: slot.style.minHeight,
+      bodyOpacity: body.style.opacity, bodyPointerEvents: body.style.pointerEvents, bodyInert: body.inert,
+      contentOpacity: content.style.opacity,
+      token: 0,
+    }
+    slot.style.minHeight = from.height + "px"
+    // Move the original editor, not a copy: value, selection, and undo history
+    // stay live. Its placeholder keeps the dialog's layout and height stable.
+    viewport.appendChild(editor)
+    editor.dataset.expanded = "true"
+    editor.style.position = "absolute"
+    editor.style.zIndex = "10"
+  }
+  var token = ++state.token
+  if (state.resize) state.resize.cancel()
+  if (state.fade) state.fade.cancel()
+  if (state.reveal) state.reveal.cancel()
+  var bounds = viewport.getBoundingClientRect()
+  var padding = getComputedStyle(body)
+  var left = parseFloat(padding.paddingLeft) || 0
+  var top = parseFloat(padding.paddingTop) || 0
+  var right = parseFloat(padding.paddingRight) || 0
+  var bottom = parseFloat(padding.paddingBottom) || 0
+  var destination = expanded ? {
+    left: left, top: top,
+  } : (function () {
+    var target = slot.getBoundingClientRect()
+    return {left: target.left - bounds.left, top: target.top - bounds.top, width: target.width, height: target.height}
+  })()
+  editor.style.left = destination.left + "px"
+  editor.style.top = destination.top + "px"
+  // The expanded resting size follows the viewport on window resizing.
+  editor.style.width = expanded ? "calc(100% - " + (left + right) + "px)" : destination.width + "px"
+  editor.style.height = expanded ? "calc(100% - " + (top + bottom) + "px)" : destination.height + "px"
+  editor.style.transformOrigin = "top left"
+  editor.style.willChange = "translate, scale"
+  body.inert = true
+  body.style.pointerEvents = "none"
+  body.style.opacity = expanded ? "0" : state.bodyOpacity || "1"
+  form._calendarDescriptionExpanded = expanded
+  var button = editor.querySelector("[data-calendar-description-toggle]")
+  var label = expanded ? "Collapse description" : "Expand description"
+  button.setAttribute("aria-expanded", String(expanded))
+  button.setAttribute("aria-label", label)
+  button.title = label
+  editor.querySelector("[data-calendar-description-expand]").hidden = expanded
+  editor.querySelector("[data-calendar-description-collapse]").hidden = !expanded
+  // Rich-text wrapping and scrollbar changes are discrete. Keep them
+  // out of the motion: lay out the real input once, and scale an empty frame.
+  content.style.opacity = "0"
+  richInput.focus({preventScroll: true})
+  if (richRange) { richInput._composeRange = richRange; _restoreComposeSelection(richInput) }
+  editor.dataset.resizing = "true"
+  function finish() {
+    if (state.token !== token) return
+    var resize = state.resize, fade = state.fade
+    state.resize = state.fade = null
+    editor.style.willChange = ""
+    delete editor.dataset.resizing
+    if (!expanded) {
+      body.inert = state.bodyInert
+      body.style.opacity = state.bodyOpacity
+      body.style.pointerEvents = state.bodyPointerEvents
+      slot.appendChild(editor)
+      slot.style.minHeight = state.slotHeight
+      editor.style.cssText = state.editorStyle
+      delete editor.dataset.expanded
+      form._calendarDescriptionState = null
+    }
+    // Release the held final frame only after the normal layout is restored.
+    if (resize) resize.cancel()
+    if (fade) fade.cancel()
+    // Moving a focused input back into its slot may clear focus. Restore it
+    // in the same frame, before the text and controls fade back in.
+    var dialog = form.closest("dialog")
+    if (form.isConnected && dialog && dialog.open) {
+      var range = richInput._composeRange
+      richInput.focus({preventScroll: true})
+      if (range) { richInput._composeRange = range; _restoreComposeSelection(richInput) }
+    }
+    content.style.opacity = state.contentOpacity
+    if (!reduced && content.animate) {
+      state.reveal = content.animate([{opacity: 0}, {opacity: state.contentOpacity || "1"}], {duration: 160, easing: "ease"})
+      editor._calendarDescriptionReveal = state.reveal
+      return state.reveal.finished.catch(function () {})
+    }
+  }
+  var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  if (!editor.animate || reduced) { finish(); return Promise.resolve() }
+  var to = editor.getBoundingClientRect()
+  // FLIP only the empty surface, not the text or buttons. No width/height
+  // interpolation, percentage endpoint handoff, or last-frame text reflow.
+  state.resize = editor.animate([
+    {translate: (from.left - to.left) + "px " + (from.top - to.top) + "px", scale: (from.width / to.width) + " " + (from.height / to.height)},
+    {translate: "0px 0px", scale: "1 1"},
+  ], {duration: 220, easing: "ease", fill: "forwards"})
+  state.fade = body.animate([{opacity: opacity}, {opacity: body.style.opacity}], {duration: expanded ? 160 : 220, easing: "ease", fill: "forwards"})
+  return state.resize.finished.then(finish, function () {})
+}
+
+function prepareCalendarDescriptionSubmit(event, button) {
+  var form = button.closest("[data-calendar-create-form]")
+  if (!form || !form._calendarDescriptionState) return
+  // Reveal required fields before the browser tries to focus an invalid one.
+  event.preventDefault()
+  setCalendarDescriptionExpanded(form, false).then(function () {
+    if (form.isConnected && !form._calendarDescriptionState) submitCalendarCreate(form)
+  })
+}
+
+function updateCalendarTeamsForm(form, selected, locked) {
+  var teamsSource = form.querySelector('[name="source_id"]')
+  if (form._calendarTeamsPreview && (!teamsSource || teamsSource.value !== form._calendarTeamsPreview.source)) abandonCalendarTeamsPreview(form)
+  var currentSource = form.querySelector('[name="source_id"]')
+  if (form._calendarMeetPreview && (!currentSource || currentSource.value !== form._calendarMeetPreview.source)) form._calendarMeetPreview = null
+  var root = form.querySelector("[data-calendar-teams-options]")
+  if (!root) return
+  var source = form.querySelector('[name="source_id"]')
+  var provider = selected && selected.dataset.calendarSourceProvider
+  var supported = provider === "outlook" || provider === "gmail"
+  root.hidden = !supported
+  if (locked) {
+    if (root._calendarTeamsPending) {
+      root._calendarTeamsSource = ""
+      root.dataset.calendarTeamsState = ""
+      root._calendarTeamsPending = false
+    }
+    if (window.htmx) window.htmx.trigger(root, "htmx:abort")
+    root.querySelectorAll("input, button").forEach(function (input) { input.disabled = true })
+    return
+  }
+  if (!supported) {
+    if (window.htmx) window.htmx.trigger(root, "htmx:abort")
+    root.replaceChildren()
+    root._calendarTeamsSource = ""
+    root._calendarTeamsPending = false
+    return
+  }
+  if (root._calendarTeamsSource === undefined && root.dataset.calendarTeamsSource === source.value && root.dataset.calendarTeamsState) {
+    root._calendarTeamsSource = source.value
+  }
+  if (root._calendarTeamsSource !== source.value && window.htmx) {
+    window.htmx.trigger(root, "htmx:abort")
+    root._calendarTeamsSource = source.value
+    root.replaceChildren(form.querySelector(provider === "gmail" ? "[data-calendar-meet-checking]" : "[data-calendar-teams-checking]").content.cloneNode(true))
+    root._calendarTeamsPending = true
+    // A freshly swapped dialog can initialize before HTMX's settle phase
+    // binds this custom trigger. Process it before sending the first check.
+    window.htmx.process(root)
+    window.htmx.trigger(root, "calendar-teams-source-changed")
+  }
+  root.querySelectorAll("[data-calendar-teams-toggle]").forEach(function (toggle) {
+    toggle.disabled = toggle.dataset.calendarTeamsAvailable !== "true"
+  })
+  root.querySelectorAll("[data-calendar-teams-retry]").forEach(function (button) { button.disabled = false })
+  updateCalendarMeetPreview(form, locked)
+  updateCalendarTeamsPreview(form, locked)
+}
+
+// The conference is prepared independently of the event draft. Changes to
+// dates, guests, or title must not allocate another meeting or lose its link.
+function updateCalendarMeetPreview(form, locked) {
+  var toggle = form.querySelector('[name="google_meet_meeting"]')
+  var panel = form.querySelector("[data-calendar-meet-preview]")
+  if (!toggle || !panel) return
+  var input = panel.querySelector('[name="google_meet_draft_id"]')
+  var source = form.querySelector('[name="source_id"]').value
+  if (!toggle.checked) {
+    panel.hidden = true
+    input.value = ""
+    form._calendarMeetPreview = null
+    return
+  }
+  panel.hidden = false
+  var state = form._calendarMeetPreview
+  if (!state || state.source !== source) {
+    if (locked) return
+    state = {source: source, id: window.crypto.randomUUID(), status: "loading", url: ""}
+    form._calendarMeetPreview = state
+    prepareCalendarMeetPreview(form, state)
+  }
+  input.value = state.status === "ready" ? state.id : ""
+  panel.querySelector("[data-calendar-meet-status]").textContent = state.status === "loading" ? "Generating Google Meet link…" : state.status === "error" ? state.error : ""
+  var link = panel.querySelector("[data-calendar-meet-link]")
+  link.hidden = state.status !== "ready"
+  var anchor = panel.querySelector("[data-calendar-meet-url]")
+  anchor.textContent = state.url
+  if (state.url) anchor.href = state.url
+  else anchor.removeAttribute("href")
+  var retry = panel.querySelector("[data-calendar-meet-prepare-retry]")
+  retry.hidden = state.status !== "error"
+  retry.disabled = locked
+  panel.querySelector("[data-calendar-meet-copy]").disabled = locked
+}
+
+function abandonCalendarTeamsPreview(form) {
+  var state = form && form._calendarTeamsPreview
+  if (!state || state.saved || form._calendarCreateBusy || form._calendarCreateUncertain) return
+  form._calendarTeamsPreview = null
+  // The server serializes discard behind preparation and retains a tombstone
+  // if discard arrives first. A disconnected browser still has expiry cleanup.
+  fetch("/api/calendar/teams/drafts/discard", {method: "POST", headers: {"Content-Type": "application/x-www-form-urlencoded"}, body: new URLSearchParams({source_id: state.source, draft_id: state.id}).toString(), keepalive: true}).catch(function () {})
+}
+
+document.body.addEventListener("htmx:beforeCleanupElement", function (event) {
+  var element = event.detail && event.detail.elt
+  if (!element || !element.querySelector) return
+  var form = element.matches("[data-calendar-create-form]") ? element : element.querySelector("[data-calendar-create-form]")
+  if (form) { abandonCalendarTeamsPreview(form); stopCalendarDialogResize(form) }
+})
+
+window.addEventListener("pagehide", function () {
+  var form = document.querySelector("[data-calendar-create-form]")
+  if (form) abandonCalendarTeamsPreview(form)
+})
+
+function updateCalendarTeamsPreview(form, locked) {
+  var panel = form.querySelector('[data-calendar-meeting-provider="teams_meeting"]')
+  var toggle = form.querySelector('[name="teams_meeting"]')
+  if (!panel || !toggle || form.dataset.calendarEventId) return
+  var input = panel.querySelector('[name="teams_draft_id"]')
+  if (!toggle.checked) {
+    panel.hidden = true
+    input.value = ""
+    abandonCalendarTeamsPreview(form)
+    return
+  }
+  panel.hidden = false
+  var source = form.querySelector('[name="source_id"]').value
+  var state = form._calendarTeamsPreview
+  if (!state || state.source !== source) {
+    if (locked) return
+    state = {provider: "teams", source: source, id: window.crypto.randomUUID(), status: "loading", url: ""}
+    form._calendarTeamsPreview = state
+    prepareCalendarMeetPreview(form, state)
+  }
+  input.value = state.status === "ready" ? state.id : ""
+  panel.querySelector("[data-calendar-meet-status]").textContent = state.status === "loading" ? "Generating Teams link…" : state.status === "error" ? state.error : ""
+  panel.querySelector("[data-calendar-meet-link]").hidden = state.status !== "ready"
+  var anchor = panel.querySelector("[data-calendar-meet-url]")
+  anchor.textContent = state.url
+  if (state.url) anchor.href = state.url
+  else anchor.removeAttribute("href")
+  var retry = panel.querySelector("[data-calendar-meet-prepare-retry]")
+  retry.hidden = state.status !== "error"
+  retry.disabled = locked
+  panel.querySelector("[data-calendar-meet-copy]").disabled = locked
+}
+
+function retryCalendarTeamsPreview(form) {
+  var state = form && form._calendarTeamsPreview
+  if (!state || state.status !== "error" || form._calendarCreateBusy || form._calendarCreateUncertain || form._calendarCreateConflict) return
+  state.status = "loading"
+  state.attempts = 0
+  state.deadline = 0
+  updateCalendarCreateForm(form)
+  prepareCalendarMeetPreview(form, state)
+}
+
+function prepareCalendarMeetPreview(form, state) {
+  var teams = state.provider === "teams"
+  var key = teams ? "_calendarTeamsPreview" : "_calendarMeetPreview"
+  var label = teams ? "Teams" : "Google Meet"
+  var payload = new URLSearchParams({source_id: state.source, draft_id: state.id})
+  if (form.dataset.calendarEventId) payload.set("event_id", form.dataset.calendarEventId)
+  state.attempts = (state.attempts || 0) + 1
+  if (!state.deadline) state.deadline = Date.now() + 75000
+  var controller = new AbortController()
+  var timeout
+  var deadline = new Promise(function (_, reject) {
+    timeout = setTimeout(function () {
+      reject(new Error(label + " link generation timed out. Retry to check the same link again."))
+      controller.abort()
+    }, Math.max(0, Math.min(35000, state.deadline - Date.now())))
+  })
+  var request = fetch(teams ? "/api/calendar/teams/drafts" : "/api/calendar/google-meet/drafts", {method: "POST", headers: {"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"}, body: payload.toString(), signal: controller.signal})
+    .then(function (response) { return response.json().then(function (data) { return {ok: response.ok, data: data} }) })
+  return Promise.race([request, deadline])
+    .finally(function () { clearTimeout(timeout) })
+    .then(function (result) {
+      if (!form.isConnected || form[key] !== state) return
+      if (!result.ok) throw new Error(result.data.error || "Could not generate the " + label + " link. Retry.")
+      if (result.data.source_id !== state.source || result.data.draft_id !== state.id) throw new Error("The meeting request changed. Retry.")
+      if (result.data.pending && state.attempts < 5) {
+        setTimeout(function () { if (form.isConnected && form[key] === state) prepareCalendarMeetPreview(form, state) }, 750)
+        return
+      }
+      var validURL = teams ? /^https:\/\/(?:teams\.microsoft\.com|teams\.live\.com|teams\.cloud\.microsoft)\/(?:meet|l\/meetup-join)\/[^\s<>"']+$/i : /^https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}(?:\?[^\s]*)?$/
+      if (!validURL.test(result.data.join_url || "")) throw new Error(label + " is still preparing the link. Retry to check it again.")
+      state.status = "ready"
+      state.url = result.data.join_url
+      updateCalendarCreateForm(form)
+    })
+    .catch(function (error) {
+      if (!form.isConnected || form[key] !== state) return
+      state.status = "error"
+      state.error = error.message || "Could not generate the " + label + " link. Retry."
+      updateCalendarCreateForm(form)
+    })
+}
+
+function retryCalendarMeetPreview(form) {
+  var state = form && form._calendarMeetPreview
+  if (!state || state.status !== "error" || form._calendarCreateBusy || form._calendarCreateUncertain || form._calendarCreateConflict) return
+  state.status = "loading"
+  state.attempts = 0
+  state.deadline = 0
+  updateCalendarCreateForm(form)
+  prepareCalendarMeetPreview(form, state)
+}
+
+function copyCalendarMeetLink(button) {
+  var link = button.closest("[data-calendar-meet-preview]").querySelector("[data-calendar-meet-url]")
+  if (!link || !link.href || !navigator.clipboard) return
+  navigator.clipboard.writeText(link.href).then(function () {
+    button.textContent = "Copied"
+    setTimeout(function () { if (button.isConnected) button.textContent = "Copy link" }, 1500)
+  }).catch(function () {})
+}
+
+function retryCalendarTeams(form) {
+  if (!form || form._calendarCreateBusy || form._calendarCreateUncertain || form._calendarCreateConflict) return
+  var root = form.querySelector("[data-calendar-teams-options]")
+  if (!root) return
+  root._calendarTeamsSource = ""
+  root.dataset.calendarTeamsState = ""
+  updateCalendarCreateForm(form)
+}
+
+function calendarTeamsSwapAllowed(detail) {
+  var root = detail.target
+  var form = root.closest("[data-calendar-create-form]")
+  var source = form && form.querySelector('[name="source_id"]')
+  return !!(form && form.isConnected && !form._calendarCreateBusy && !form._calendarCreateUncertain && !form._calendarCreateConflict && source && detail.xhr.getResponseHeader("X-Gofer-Calendar-Source") === source.value)
+}
+
+document.body.addEventListener("htmx:beforeSwap", function (event) {
+  var detail = event.detail
+  if (detail && detail.target && detail.target.id === "calendar-teams-options" && !calendarTeamsSwapAllowed(detail)) detail.shouldSwap = false
+})
+
+document.body.addEventListener("htmx:afterSwap", function (event) {
+  var target = event.detail && event.detail.target
+  if (target && target.id === "calendar-teams-options") {
+    target._calendarTeamsPending = false
+    updateCalendarCreateForm(target.closest("[data-calendar-create-form]"))
+  }
+})
+
+document.body.addEventListener("htmx:afterRequest", function (event) {
+  var detail = event.detail
+  var root = detail && detail.elt
+  if (!root || root.id !== "calendar-teams-options" || !detail.failed || !root.isConnected) return
+  var form = root.closest("[data-calendar-create-form]")
+  if (!form || form._calendarCreateBusy || form._calendarCreateUncertain || form._calendarCreateConflict) return
+  var retry = root.querySelector("[data-calendar-teams-retry]")
+  if (retry) retry.hidden = false
+})
+
+function updateCalendarCreateForm(form) {
+  if (!form) return
+  adjustCalendarCreateAllDayRange(form)
+  var editing = !!form.dataset.calendarEventId
+  var source = form.querySelector('[name="source_id"]')
+  var sourceSelect = form.querySelector("[data-calendar-create-source-select]")
+  var choices = sourceSelect ? Array.from(sourceSelect.querySelectorAll("[data-tui-selectbox-value]")) : []
+  var selected = source && choices.find(function (choice) { return choice.dataset.tuiSelectboxValue === source.value })
+  var writable = selected && selected.dataset.tuiSelectboxDisabled !== "true" && selected.dataset.calendarSourceWritable === "true"
+  var allowed = writable && selected.dataset.calendarSourceAuthorized === "true"
+  var busy = !!form._calendarCreateBusy
+  var uncertain = !!form._calendarCreateUncertain
+  var locked = busy || uncertain || !!form._calendarCreateConflict
+  var richEditor = form.querySelector("[data-calendar-rich-editor]")
+  if (richEditor) {
+    richEditor.setAttribute("contenteditable", String(!locked))
+    richEditor.setAttribute("aria-disabled", String(locked))
+  }
+  var toolbar = form.querySelector("[data-calendar-description-toolbar]")
+  if (toolbar) {
+    toolbar.inert = locked
+    toolbar.querySelectorAll("button").forEach(function (button) { button.disabled = locked })
+  }
+  var descriptionToggle = form.querySelector("[data-calendar-description-toggle]")
+  if (descriptionToggle) descriptionToggle.disabled = locked
+  var allDay = form.querySelector('[name="all_day"]').checked
+  form.querySelectorAll("input, select, textarea").forEach(function (input) { input.disabled = locked })
+  updateCalendarTeamsForm(form, selected, locked)
+  var sourceTrigger = sourceSelect && sourceSelect.querySelector(".select-trigger")
+  form.querySelectorAll(".select-trigger, [data-tui-datepicker], [data-tui-timepicker]").forEach(function (trigger) {
+    trigger.disabled = locked
+  })
+  // The disabled templUI button still owns an enabled hidden source_id input.
+  if (sourceTrigger) sourceTrigger.disabled = editing || locked || choices.length === 0
+  form.querySelectorAll("[data-calendar-create-time]").forEach(function (node) {
+    node.hidden = allDay
+    var input = node.querySelector("input")
+    input.disabled = locked || allDay
+    var trigger = node.querySelector("[data-tui-timepicker]")
+    if (trigger) trigger.disabled = locked || allDay
+  })
+  if (locked || allDay) form.querySelectorAll("[data-tui-popover-content]").forEach(function (content) {
+    if (!locked && !content.closest("[data-calendar-create-time], [data-calendar-create-timezone]")) return
+    if (content.matches(":popover-open") && window.tui && window.tui.popover) window.tui.popover.closeElement(content)
+  })
+  form.querySelector("[data-calendar-create-timezone]").hidden = allDay
+  updateCalendarRecurrenceForm(form, locked)
+  var dateHelp = form.querySelector("[data-calendar-create-date-help]")
+  dateHelp.hidden = !allDay
+  dateHelp.textContent = form._calendarCreateDateAdjusted ?
+    "End date adjusted to the start date: it can’t end earlier." :
+    "The end date is included in an all-day event."
+  var access = form.querySelector("[data-calendar-create-access]")
+  access.hidden = !!allowed
+  access.textContent = editing ? "This calendar is no longer writable. Refresh calendars and reopen the event to check access." : !writable ?
+    "No writable calendar is configured. Choose calendars in Accounts first." :
+    "This account has read-only Calendar access. Reconnect it from Accounts to grant event creation permission."
+  var submit = form.querySelector("[data-calendar-create-submit]")
+  var meetToggle = form.querySelector('[name="google_meet_meeting"]')
+  var meetDraft = form.querySelector('[name="google_meet_draft_id"]')
+  var teamsToggle = form.querySelector('[name="teams_meeting"]')
+  var teamsDraft = form.querySelector('[name="teams_draft_id"]')
+  var teamsNotReady = !!(!editing && teamsToggle && teamsToggle.checked && (!teamsDraft || !teamsDraft.value))
+  var meetNotReady = !!(meetToggle && meetToggle.checked && (!meetDraft || !meetDraft.value))
+  submit.disabled = (editing ? locked || !allowed : busy || (!uncertain && !allowed)) || (!uncertain && (meetNotReady || teamsNotReady))
+  submit.setAttribute("aria-busy", busy ? "true" : "false")
+  form.querySelector("[data-calendar-create-spinner]").hidden = !busy
+  form.querySelector("[data-calendar-create-submit-label]").textContent = editing ? (busy ? "Saving..." : form.dataset.calendarEditSeries === "true" ? "Save series" : "Save changes") : busy ? "Creating…" : uncertain ? "Retry safely" : "Create event"
+  form.setAttribute("aria-busy", busy ? "true" : "false")
+}
+
+function stopCalendarDialogResize(form) {
+  var state = form && form._calendarDialogResize
+  if (!state) return
+  form._calendarDialogResize = null
+  state.mutations.disconnect()
+  if (state.sizes) state.sizes.disconnect()
+  if (state.frame) cancelAnimationFrame(state.frame)
+  if (state.animation) state.animation.cancel()
+  state.contentAnimations.forEach(function (animation) { animation.cancel() })
+  state.dialog.style.height = state.heightStyle
+  if (state.panel) state.panel.style.height = state.panelHeightStyle
+  if (state.body) state.body.style.scrollbarGutter = state.gutter
+  if (state.transition !== null) state.dialog.style.transitionProperty = state.transition
+  state.dialog.removeEventListener("close", state.close)
+  form.removeEventListener("input", state.interact, true)
+  form.removeEventListener("change", state.interact, true)
+  form.removeEventListener("click", state.interact, true)
+  window.removeEventListener("resize", state.resize)
+}
+
+function initializeCalendarDialogResize(form) {
+  if (!form || form._calendarDialogResize || !form.closest || typeof MutationObserver === "undefined") return
+  var dialog = form.closest("dialog")
+  if (!dialog || !dialog.animate) return
+  var body = form.querySelector("[data-calendar-create-body]")
+  var panel = dialog.querySelector && dialog.querySelector("[data-tui-dialog-panel]")
+  var gutter = body && body.style.scrollbarGutter
+  // Keep field widths stable as the animated viewport gains/loses scrolling.
+  if (body) body.style.scrollbarGutter = "stable"
+  function height() { return parseFloat(getComputedStyle(dialog).height) || 0 }
+  var state = {dialog: dialog, body: body, panel: panel, panelHeightStyle: panel && panel.style.height, gutter: gutter, endsAt: 0, heightStyle: dialog.style.height, height: dialog.open ? height() : 0, transition: null, animation: null, frame: null, contentAnimations: new Map(), layout: new Map(), interacted: false}
+  form._calendarDialogResize = state
+  function layout() {
+    var positions = new Map()
+    if (!body) return positions
+    function top(node) {
+      var value = 0
+      while (node && node !== dialog) { value += node.offsetTop; node = node.offsetParent }
+      return value
+    }
+    var origin = top(body)
+    // Only whole field rows participate. Layout offsets deliberately exclude
+    // the dialog's entrance transform, scrolling, and individual input geometry.
+    Array.from(body.children).forEach(function (node) {
+      if (!node.animate || !node.offsetHeight) return
+      positions.set(node, {y: top(node) - origin})
+    })
+    return positions
+  }
+  state.layout = layout()
+  function moveContent(duration, animate) {
+    // Keep rows below an expanded/collapsed section at their previous position,
+    // then slide them to their new position with the dialog's height animation.
+    var previous = state.layout
+    state.contentAnimations.forEach(function (animation, node) {
+      var position = previous.get(node)
+      var translate = getComputedStyle(node).translate.split(/\s+/)
+      if (position) {
+        position.y += parseFloat(translate[1]) || 0
+      }
+      animation.cancel()
+    })
+    state.contentAnimations.clear()
+    var next = layout()
+    state.layout = next
+    if (!animate) return
+    next.forEach(function (position, node) {
+      var old = previous.get(node)
+      var dy = old ? old.y - position.y : 0
+      if (Math.abs(dy) < 0.5) return
+      var keyframes = [{translate: "0px " + dy + "px"}, {translate: "0px 0px"}]
+      var animation = node.animate(keyframes, {duration: duration, easing: "ease"})
+      state.contentAnimations.set(node, animation)
+      animation.onfinish = function () {
+        if (state.contentAnimations.get(node) === animation) state.contentAnimations.delete(node)
+      }
+    })
+  }
+  function restore() {
+    dialog.style.height = state.heightStyle
+    if (panel) panel.style.height = state.panelHeightStyle
+    if (state.transition !== null) dialog.style.transitionProperty = state.transition
+    state.transition = null
+  }
+  function measure() {
+    state.frame = null
+    if (form._calendarDialogResize !== state) return
+    if (!form.isConnected || !dialog.isConnected) { stopCalendarDialogResize(form); return }
+    if (!dialog.open || dialog.hasAttribute("data-tui-dialog-closing")) {
+      if (state.animation) state.animation.cancel()
+      state.animation = null
+      restore()
+      state.height = 0
+      moveContent(0, false)
+      return
+    }
+    // Read the current animated height when retargeting a rapid second change.
+    // Measuring CSS height avoids templUI's separate entrance/exit scale.
+    var active = !!state.animation
+    var previousTarget = state.height
+    var from = active ? height() : state.height
+    if (state.animation) state.animation.cancel()
+    state.animation = null
+    // Exclude height from templUI's transition-all while measuring natural
+    // layout, keeping its opacity and transform transitions intact.
+    if (state.transition === null) state.transition = dialog.style.transitionProperty
+    dialog.style.transitionProperty = "opacity, transform, scale, translate"
+    dialog.style.height = state.heightStyle
+    if (panel) panel.style.height = state.panelHeightStyle
+    var to = height()
+    state.height = to
+    var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    var now = performance.now()
+    var duration = active && Math.abs(previousTarget - to) < 0.5 ? Math.max(1, state.endsAt - now) : 220
+    moveContent(duration, state.interacted && !!from && !!to && !reduced)
+    if (!from || !to || Math.abs(from - to) < 0.5 || reduced) {
+      restore()
+      return
+    }
+    // Animate height rather than scaling text and controls. The existing flex
+    // viewport keeps the footer visible, and max-height still caps the dialog.
+    dialog.style.height = to + "px"
+    // The panel otherwise keeps its new intrinsic height while only the outer
+    // dialog animates. Make its flex viewport follow each animated frame so
+    // the footer stays attached to the moving bottom edge.
+    if (panel) panel.style.height = "100%"
+    // Mutations that do not change the target must not keep restarting a resize
+    // (for example toolbar highlights while typing in the description).
+    state.endsAt = now + duration
+    var animation = dialog.animate([{height: from + "px"}, {height: to + "px"}], {duration: duration, easing: "ease"})
+    state.animation = animation
+    animation.onfinish = function () {
+      if (form._calendarDialogResize !== state || state.animation !== animation) return
+      state.animation = null
+      restore()
+      if (Math.abs(height() - state.height) >= 0.5) measure()
+    }
+  }
+  function schedule() {
+    if (!state.frame) state.frame = requestAnimationFrame(measure)
+  }
+  state.mutations = new MutationObserver(schedule)
+  state.mutations.observe(form, {subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ["hidden", "class", "style"]})
+  // Observe the intrinsic field rows, not the flex viewport whose height is
+  // changing during this animation. This also catches text wrapping/fonts.
+  if (typeof ResizeObserver !== "undefined") {
+    state.sizes = new ResizeObserver(function () { if (!state.animation) schedule() })
+    if (body) Array.from(body.children).forEach(function (row) { state.sizes.observe(row) })
+  }
+  state.close = function () { stopCalendarDialogResize(form) }
+  state.interact = function () { state.interacted = true }
+  state.resize = schedule
+  dialog.addEventListener("close", state.close)
+  form.addEventListener("input", state.interact, true)
+  form.addEventListener("change", state.interact, true)
+  form.addEventListener("click", state.interact, true)
+  window.addEventListener("resize", state.resize)
+}
+
+function initializeCalendarCreateForm() {
+  var form = document.querySelector("[data-calendar-create-form]")
+  if (!form) return
+  var list = form.querySelector("#calendar-create-timezones")
+  var template = form.querySelector("[data-calendar-create-timezone-option]")
+  if (list && template && !list.dataset.calendarTimezonesInitialized) {
+    list.dataset.calendarTimezonesInitialized = "true"
+    var existing = Array.from(list.querySelectorAll("[data-tui-selectbox-value]")).map(function (item) { return item.dataset.tuiSelectboxValue })
+    var zones = ["UTC"].concat(typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : [])
+    var fragment = document.createDocumentFragment()
+    zones.forEach(function (zone) {
+      if (existing.indexOf(zone) !== -1) return
+      var option = template.content.firstElementChild.cloneNode(true)
+      option.dataset.tuiSelectboxValue = zone
+      option.querySelector(".select-item-text").textContent = zone
+      fragment.appendChild(option)
+    })
+    list.appendChild(fragment)
+  }
+  if (!form._calendarTeamsCloseBound) {
+    var dialog = form.closest("dialog")
+    if (dialog) {
+      form._calendarTeamsCloseBound = true
+      dialog.addEventListener("close", function () { abandonCalendarTeamsPreview(form) })
+    }
+  }
+  updateCalendarCreateForm(form)
+  initializeCalendarDialogResize(form)
+}
+
+function updateCalendarGuestDropdown(form) {
+  if (!form || !window.tui || !window.tui.popover) return
+  var input = form.querySelector('[name="guests"]')
+  var root = form.querySelector("#calendar-guests-dropdown")
+  var list = form.querySelector("#calendar-guest-suggestions")
+  if (!input || !root || !list) return
+  var content = root.querySelector("[data-calendar-guests-dropdown-content]")
+  if (input.disabled || !list.querySelector("[data-calendar-guest-value]") || (document.activeElement !== input && !content.contains(document.activeElement))) {
+    window.tui.popover.close(root.id)
+    input.setAttribute("aria-expanded", "false")
+    input.removeAttribute("aria-activedescendant")
+    return
+  }
+  content.style.width = input.getBoundingClientRect().width + "px"
+  window.tui.popover.open(root.id)
+  input.setAttribute("aria-expanded", "true")
+}
+
+function syncCalendarGuestDropdownState(content, event) {
+  var form = content.closest("[data-calendar-create-form]")
+  var input = form && form.querySelector('[name="guests"]')
+  if (!input) return
+  var open = event.newState === "open"
+  input.setAttribute("aria-expanded", String(open))
+  if (!open) input.removeAttribute("aria-activedescendant")
+}
+
+function handleCalendarGuestKeydown(event, input) {
+  var form = input.closest("[data-calendar-create-form]")
+  var api = window.tui && window.tui.popover
+  if (!form || !api || input.disabled) return
+  var list = form.querySelector("#calendar-guest-suggestions")
+  if (event.key === "Escape" || event.key === "Tab") {
+    if (event.key === "Escape" && api.isOpen("calendar-guests-dropdown")) event.preventDefault()
+    api.close("calendar-guests-dropdown")
+    input.setAttribute("aria-expanded", "false")
+    input.removeAttribute("aria-activedescendant")
+    return
+  }
+  if (!list) return
+  var options = Array.from(list.querySelectorAll("[data-calendar-guest-value]"))
+  var active = options.findIndex(function (option) { return option.dataset.calendarGuestActive === "true" })
+  if (event.key === "Enter" && api.isOpen("calendar-guests-dropdown") && active !== -1) {
+    event.preventDefault()
+    selectCalendarGuest(options[active])
+  } else if ((event.key === "ArrowDown" || event.key === "ArrowUp") && options.length) {
+    event.preventDefault()
+    updateCalendarGuestDropdown(form)
+    active = active === -1 ? (event.key === "ArrowDown" ? 0 : options.length - 1) : (active + (event.key === "ArrowDown" ? 1 : -1) + options.length) % options.length
+    options.forEach(function (option, index) {
+      option.dataset.calendarGuestActive = String(index === active)
+      option.setAttribute("aria-selected", String(index === active))
+    })
+    input.setAttribute("aria-activedescendant", options[active].id)
+    options[active].scrollIntoView({block: "nearest"})
+  }
+}
+
+document.body.addEventListener("htmx:afterSwap", function (event) {
+  var target = event.detail && event.detail.target
+  if (!target || target.id !== "calendar-guest-suggestions") return
+  var form = target.closest("[data-calendar-create-form]")
+  var input = form && form.querySelector('[name="guests"]')
+  if (input) input.removeAttribute("aria-activedescendant")
+  updateCalendarGuestDropdown(form)
+})
+
+function selectCalendarGuest(button) {
+  var form = button.closest("[data-calendar-create-form]")
+  var input = form && form.querySelector('[name="guests"]')
+  if (!input || input.disabled) return
+  var separator = -1, quoted = false, escaped = false
+  for (var i = 0; i < input.value.length; i++) {
+    var char = input.value[i]
+    if (escaped) { escaped = false; continue }
+    if (char === "\\" && quoted) { escaped = true; continue }
+    if (char === '"') quoted = !quoted
+    if (char === "," && !quoted) separator = i
+  }
+  var prefix = input.value.slice(0, separator + 1).trim()
+  input.value = (prefix ? prefix + " " : "") + button.dataset.calendarGuestValue + ", "
+  if (window.htmx) window.htmx.trigger(input, "htmx:abort")
+  form.querySelector("#calendar-guest-suggestions").replaceChildren()
+  updateCalendarGuestDropdown(form)
+  input.dispatchEvent(new Event("change", {bubbles: true}))
+  input.focus()
+}
+
+function validateCalendarCreatePickers(form) {
+  adjustCalendarCreateAllDayRange(form)
+  var fields = ["start_date", "end_date", "timezone"]
+  if (!form.querySelector('[name="all_day"]').checked) fields = fields.concat(["start_time", "end_time"])
+  var repeat = form.querySelector('[name="repeat_frequency"]')
+  var teams = form.querySelector('[name="teams_meeting"]')
+  if (teams && teams.checked && !teams.disabled && repeat && repeat.value !== "none") {
+    setCalendarCreateError(form, "Teams meetings currently support events that do not repeat. Choose Does not repeat or turn Teams off.")
+    teams.focus()
+    return false
+  }
+  var meet = form.querySelector('[name="google_meet_meeting"]')
+  if (meet && meet.checked && !meet.disabled && repeat && repeat.value !== "none") {
+    setCalendarCreateError(form, "Google Meet meetings currently support events that do not repeat. Choose Does not repeat or turn Google Meet off.")
+    meet.focus()
+    return false
+  }
+  var guests = form.querySelector('[name="guests"]')
+  if (guests && guests.value.trim() && repeat && repeat.value !== "none") {
+    setCalendarCreateError(form, "Guest invitations currently support events that do not repeat. Remove the guests or choose Does not repeat.")
+    guests.focus()
+    return false
+  }
+  var meetDraft = form.querySelector('[name="google_meet_draft_id"]')
+  if (meet && meet.checked && !meet.disabled && (!meetDraft || !meetDraft.value)) {
+    setCalendarCreateError(form, "Wait for the Google Meet link before saving, or turn Google Meet off.")
+    return false
+  }
+  var teamsDraft = form.querySelector('[name="teams_draft_id"]')
+  if (!(form.dataset && form.dataset.calendarEventId) && teams && teams.checked && !teams.disabled && (!teamsDraft || !teamsDraft.value)) {
+    setCalendarCreateError(form, "Wait for the Teams link before saving, or turn Teams off.")
+    return false
+  }
+  var until = repeat && repeat.value !== "none" && form.querySelector('[name="repeat_end"]').value === "until"
+  if (until) fields.push("repeat_until")
+  for (var i = 0; i < fields.length; i++) {
+    var input = form.querySelector('[name="' + fields[i] + '"]')
+    if (input && input.value) continue
+    setCalendarCreateError(form, fields[i] === "repeat_until" ? "Choose the last date the series can start." : "Choose a " + fields[i].replace("_", " ").replace("timezone", "time zone") + ".")
+    var trigger = form.querySelector("#calendar-create-" + fields[i].replace(/_/g, "-"))
+    if (trigger) trigger.focus()
+    return false
+  }
+  if (until && form.querySelector('[name="repeat_until"]').value < form.querySelector('[name="start_date"]').value) {
+    setCalendarCreateError(form, "The repeat end date must be on or after the event’s start date.")
+    form.querySelector("#calendar-create-repeat-until").focus()
+    return false
+  }
+  return true
+}
+
+function setCalendarCreateError(form, message) {
+  var error = form.querySelector("[data-calendar-create-error]")
+  error.textContent = message || ""
+  error.hidden = !message
+  if (message && form.isConnected && form.dataset.calendarEventId && (form._calendarCreateUncertain || form._calendarCreateConflict)) error.focus()
+}
+
+function submitCalendarCreate(form) {
+  if (!form) return Promise.resolve()
+  if (form._calendarDescriptionState && !form._calendarCreateBusy && !form._calendarCreateUncertain && !form._calendarCreateConflict) {
+    return setCalendarDescriptionExpanded(form, false).then(function () {
+      if (form.isConnected && !form._calendarDescriptionState) return submitCalendarCreate(form)
+    })
+  }
+  var editing = !!form.dataset.calendarEventId
+  if (form._calendarCreateBusy || (editing && (form._calendarCreateUncertain || form._calendarCreateConflict)) || (!form._calendarCreateUncertain && (!form.reportValidity() || !validateCalendarCreatePickers(form)))) return Promise.resolve()
+  if (!form._calendarCreateUncertain) syncCalendarDescription(form.querySelector("[data-calendar-rich-editor]"))
+  if (editing) ["source_id", "version", "request_id", "edit_scope"].forEach(function (name) {
+    var input = form.querySelector('[name="' + name + '"]')
+    if (input) input.disabled = false
+  })
+  var payload = form._calendarCreateUncertain ? form._calendarCreatePayload : new URLSearchParams(new FormData(form)).toString()
+  form._calendarCreatePayload = payload
+  form._calendarCreateBusy = true
+  setCalendarCreateError(form, "")
+  updateCalendarCreateForm(form)
+  return fetch(editing ? form.action : "/api/calendar/events", {method: editing ? "PATCH" : "POST", headers: {"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"}, body: payload})
+    .then(function (response) {
+      return response.json().then(function (data) { return {ok: response.ok, data: data} })
+    })
+    .then(function (result) {
+      if (!result.ok) {
+        form._calendarCreateUncertain = !!result.data.uncertain
+        form._calendarCreateConflict = editing && !!result.data.conflict
+        if (!editing && !form._calendarCreateUncertain) {
+          if (result.data.request_id) form.querySelector('[name="request_id"]').value = result.data.request_id
+          else if (window.crypto && typeof window.crypto.randomUUID === "function") form.querySelector('[name="request_id"]').value = window.crypto.randomUUID()
+        }
+        var message = result.data.error || (editing ? "Could not update this event." : "Could not create this event. Try again.")
+        if (editing && (form._calendarCreateUncertain || form._calendarCreateConflict) && !result.data.error) message += " Refresh calendars and reopen this event to verify the saved details before editing again."
+        setCalendarCreateError(form, message)
+        return
+      }
+      if (!(result.data.event_id || (!editing && result.data.series_id)) || (editing && result.data.saved !== true)) throw new Error("Event save could not be confirmed")
+      if (editing && (result.data.event_id !== form.dataset.calendarEventId || (form.dataset.calendarEditOccurrence === "true" && result.data.scope !== "occurrence"))) throw new Error("Event scope could not be confirmed")
+      if (form._calendarTeamsPreview) form._calendarTeamsPreview.saved = true
+      // Close only this form; a delayed save must not close a newer dialog.
+      if (form.isConnected && window.tui && window.tui.dialog) window.tui.dialog.close("calendar-create-dialog")
+      var warning = result.data.teams_unconfirmed || result.data.google_meet_unconfirmed || result.data.refresh_pending
+      showGoferToast({title: editing ? (form.dataset.calendarEditSeries === "true" ? "Series updated" : "Event updated") : result.data.series_id ? "Recurring event created" : "Event created", description: result.data.teams_unconfirmed ? "Event saved, but Microsoft did not confirm a Teams link. Check the event in Outlook; do not create it again." : result.data.google_meet_unconfirmed ? "Event saved, but its Google Meet link is not ready. Refresh the calendar or check Google Calendar; do not create it again." : result.data.refresh_pending ? "Series saved. Its occurrences could not refresh yet; refresh the calendar to load them." : result.data.notify_guests ? "Meeting saved. Guest notifications are being delivered." : result.data.hidden ? "Saved to a hidden calendar. Enable its visibility to see it." : "Saved to your calendar.", variant: warning ? "warning" : "success", icon: warning ? "warning" : "success", duration: warning ? 10000 : 4500})
+      scheduleCalendarCacheRefresh()
+    })
+    .catch(function () {
+      form._calendarCreateUncertain = true
+      setCalendarCreateError(form, editing ? "The save result could not be confirmed. Refresh calendars and reopen this event to verify the saved details before editing again." : "The result could not be confirmed. Retry this same event to check without creating a duplicate.")
+    })
+    .finally(function () { form._calendarCreateBusy = false; updateCalendarCreateForm(form) })
+}
+
+document.addEventListener("submit", function (event) {
+  if (!event.target || !event.target.matches("[data-calendar-create-form]")) return
+  event.preventDefault()
+  submitCalendarCreate(event.target)
+})
+
+document.addEventListener("change", function (event) {
+  var form = event.target && event.target.closest && event.target.closest("[data-calendar-create-form]")
+  if (!form || form._calendarCreateBusy || form._calendarCreateUncertain || form._calendarCreateConflict) return
+  setCalendarCreateError(form, "")
+  updateCalendarCreateForm(form)
+})
+
+document.addEventListener("input", function (event) {
+  if (!event.target || !event.target.matches("[data-tui-datepicker-hidden-input], [data-tui-timepicker-hidden-input], [data-tui-selectbox-hidden-input], [data-calendar-repeat-number]")) return
+  var form = event.target.closest("[data-calendar-create-form]")
+  if (!form || form._calendarCreateBusy || form._calendarCreateUncertain || form._calendarCreateConflict) return
+  setCalendarCreateError(form, "")
+  updateCalendarCreateForm(form)
+})
+
+document.addEventListener("click", function (event) {
+  var toggle = event.target.closest && event.target.closest("[data-mail-calendar-response-edit], [data-mail-calendar-response-cancel]")
+  if (!toggle || toggle.disabled) return
+  var form = toggle.closest("[data-calendar-response-form]")
+  if (!form || form._calendarResponseBusy || form._calendarResponseBlocked || form._calendarResponseLoader || form.dataset.calendarResponseReady !== "true") return
+  var summary = form.querySelector("[data-mail-calendar-response-summary]")
+  var editor = form.querySelector("[data-mail-calendar-response-editor]")
+  if (!summary || !editor) return
+  var editing = toggle.hasAttribute("data-mail-calendar-response-edit")
+  summary.hidden = editing
+  editor.hidden = !editing
+  form.querySelector("[data-calendar-response-progress]").hidden = !editing
+  if (!editing) {
+    setCalendarResponseError(form, "")
+    summary.querySelector("[data-mail-calendar-response-edit]").focus()
+    return
+  }
+  var choice = editor.querySelector('[data-calendar-response-choice][aria-pressed="true"]') || editor.querySelector("[data-calendar-response-choice]")
+  if (choice) choice.focus()
+})
+
+function updateCalendarResponseForm(form) {
+  var busy = !!form._calendarResponseBusy
+  var locked = busy || !!form._calendarResponseBlocked
+  form.setAttribute("aria-busy", busy || !!form._calendarResponseLoader ? "true" : "false")
+  form.querySelectorAll("[data-calendar-response-choice], [data-calendar-response-trigger]").forEach(function (button) {
+    button.disabled = locked || form.dataset.calendarResponseReady !== "true"
+  })
+  form.querySelectorAll("[data-calendar-response-load]").forEach(function (button) { button.disabled = locked })
+  form.querySelectorAll("[data-mail-calendar-response-edit], [data-mail-calendar-response-cancel]").forEach(function (button) {
+    button.disabled = locked || !!form._calendarResponseLoader || form.dataset.calendarResponseReady !== "true"
+  })
+  var progress = form.querySelector("[data-calendar-response-progress]")
+  if (!form._calendarResponseHelp) form._calendarResponseHelp = progress.textContent
+  progress.textContent = busy ? "Sending your response…" : form._calendarResponseLoader ? "Checking invitation…" : form._calendarResponseHelp
+}
+
+function setCalendarResponseError(form, message) {
+  var error = form.querySelector("[data-calendar-response-error]")
+  error.textContent = message || ""
+  error.hidden = !message
+  if (message && form.isConnected) error.focus()
+}
+
+document.body.addEventListener("htmx:beforeRequest", function (event) {
+  var trigger = event.detail && event.detail.elt
+  if (!trigger) return
+  if (trigger.matches("[data-calendar-response-load]")) {
+    var loading = trigger.closest("[data-calendar-response-form]")
+    if (!loading || loading._calendarResponseBusy || loading._calendarResponseBlocked) { event.preventDefault(); return }
+    event.detail.xhr.goferCalendarResponseLoader = loading
+    loading._calendarResponseLoader = event.detail.xhr
+    loading.dataset.calendarResponseReady = "false"
+    setCalendarResponseError(loading, "")
+    updateCalendarResponseForm(loading)
+    return
+  }
+  if (!trigger.matches("[data-calendar-response-form]")) return
+  var response = event.detail.requestConfig && event.detail.requestConfig.parameters.response
+  if (trigger._calendarResponseBusy || trigger._calendarResponseBlocked || trigger.dataset.calendarResponseReady !== "true" || ["accepted", "tentative", "declined"].indexOf(response) < 0) { event.preventDefault(); return }
+  event.detail.xhr.goferCalendarResponse = {form: trigger, response: response, scope: trigger.dataset.calendarResponseScope}
+  trigger._calendarResponseBusy = true
+  setCalendarResponseError(trigger, "")
+  updateCalendarResponseForm(trigger)
+})
+
+document.body.addEventListener("htmx:beforeSwap", function (event) {
+  var form = event.detail && event.detail.xhr && event.detail.xhr.goferCalendarResponseLoader
+  if (!form) return
+  var dialog = form.closest("[data-tui-dialog-content]")
+  if (!form.isConnected || form._calendarResponseLoader !== event.detail.xhr || (dialog && (!dialog.open || dialog.hasAttribute("data-tui-dialog-closing")))) event.detail.shouldSwap = false
+})
+
+document.body.addEventListener("htmx:afterRequest", function (event) {
+  var xhr = event.detail && event.detail.xhr
+  var loading = xhr && xhr.goferCalendarResponseLoader
+  if (loading) {
+    delete xhr.goferCalendarResponseLoader
+    if (loading._calendarResponseLoader !== xhr) return
+    delete loading._calendarResponseLoader
+    if (!event.detail.successful && loading.isConnected) {
+      var message = xhr.status >= 400 && xhr.status < 500 && xhr.responseText && xhr.responseText.length < 600 ? xhr.responseText.trim() : "Could not check your response. Reopen the invitation or try the scope again."
+      setCalendarResponseError(loading, message)
+      updateCalendarResponseForm(loading)
+    }
+    return
+  }
+  var request = xhr && xhr.goferCalendarResponse
+  if (!request) return
+  delete xhr.goferCalendarResponse
+  var form = request.form
+  form._calendarResponseBusy = false
+  try {
+    var result = JSON.parse(xhr.responseText)
+    if (!event.detail.successful) {
+      form._calendarResponseBlocked = !!result.uncertain || !!result.conflict
+      setCalendarResponseError(form, result.error || "Could not send your response. Try again.")
+    } else {
+      if ((result.responded !== true && result.pending !== true) || (result.responded === true && result.pending === true) || result.event_id !== form.dataset.calendarEventId || result.scope !== request.scope || result.response !== request.response) throw new Error("Unconfirmed response")
+      form._calendarResponseBlocked = true
+      if (result.delivery === "email") {
+        if (result.pending !== true || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(result.delivery_id || "")) throw new Error("Unconfirmed email reply")
+        updateCalendarResponseForm(form)
+        var deliveryRoot = form.closest("[data-calendar-response-container]")
+        var deliveryDialog = form.closest("[data-tui-dialog]")
+        if (form.isConnected && deliveryRoot && (!deliveryDialog || (deliveryDialog.open && !deliveryDialog.hasAttribute("data-tui-dialog-closing")))) {
+          window.htmx.ajax("GET", "/api/calendar/replies/" + result.delivery_id, { target: deliveryRoot, swap: "innerHTML" }).catch(function () {
+            setCalendarResponseError(form, "Reply queued. Reopen this invitation to check delivery; do not send it again.")
+          })
+        }
+        showGoferToast({title: "Reply queued", description: "The email reply will send in the background. Reopen the invitation to check delivery.", variant: "info", duration: 5000})
+        return
+      }
+      var responseDialog = form.closest("[data-tui-dialog]")
+      if (form.isConnected && responseDialog && window.tui && window.tui.dialog) window.tui.dialog.close(responseDialog)
+      var mailFooter = form.closest("[data-mail-calendar-footer]")
+      var pending = result.pending || result.refresh_pending
+      if (mailFooter && form.isConnected) {
+        if (result.responded === true) {
+          var summary = form.querySelector("[data-mail-calendar-response-summary]")
+          var editor = form.querySelector("[data-mail-calendar-response-editor]")
+          var chosen = form.querySelector('[data-calendar-response-choice="' + request.response + '"]')
+          if (summary && editor && chosen) {
+            summary.querySelector("[data-mail-calendar-response-message]").textContent = chosen.getAttribute("data-mail-calendar-response-message")
+            summary.hidden = false
+            editor.hidden = true
+            form.querySelector("[data-calendar-response-progress]").hidden = true
+          }
+        }
+        if (pending) {
+          form._calendarResponseHelp = "Response submitted. Refresh to check its status before responding again."
+          form.querySelector("[data-calendar-response-progress]").hidden = false
+        } else {
+          window.htmx.ajax("GET", mailFooter.getAttribute("hx-get"), {target: mailFooter, swap: "innerHTML"}).catch(function () {
+            form._calendarResponseHelp = "Response saved. Refresh to update the event information."
+            form.querySelector("[data-calendar-response-progress]").hidden = false
+            updateCalendarResponseForm(form)
+          })
+        }
+      }
+      showGoferToast({title: result.pending ? "Response submitted" : "Response saved", description: result.pending ? "The provider is still processing your reply. Refresh the calendar to check its status; don't send it again." : result.refresh_pending ? "Your response was confirmed, but the calendar could not refresh yet." : request.scope === "series" ? "Your response to the series was confirmed." : "Your response was confirmed.", variant: pending ? "warning" : "success", icon: pending ? "warning" : "success", duration: pending ? 8000 : 4500})
+      scheduleCalendarCacheRefresh()
+    }
+  } catch (_) {
+    form._calendarResponseBlocked = true
+    setCalendarResponseError(form, "The response could not be confirmed. Refresh the calendar and reopen the invitation before trying again.")
+  }
+  updateCalendarResponseForm(form)
+})
+
+function updateCalendarDeleteForm(form) {
+  var busy = !!form._calendarDeleteBusy
+  var locked = busy || !!form._calendarDeleteBlocked
+  form.setAttribute("aria-busy", busy ? "true" : "false")
+  form.querySelector("[data-calendar-delete-submit]").disabled = locked || form.dataset.calendarDeleteReady === "false"
+  form.querySelector("[data-calendar-delete-cancel]").disabled = busy
+  form.querySelector("[data-calendar-delete-spinner]").hidden = !busy
+  form.querySelectorAll("[data-calendar-delete-load]").forEach(function (button) { button.disabled = locked })
+  form.querySelector("[data-calendar-delete-label]").textContent = busy ? "Deleting…" : form.dataset.calendarDeleteSeries === "true" ? "Delete series" : "Delete event"
+  var root = form.closest("[data-tui-dialog]")
+  if (root) root.querySelectorAll("[data-calendar-edit-trigger], [data-calendar-delete-trigger]").forEach(function (button) { button.disabled = locked })
+}
+
+function setCalendarDeleteError(form, message) {
+  var error = form.querySelector("[data-calendar-delete-error]")
+  error.textContent = message || ""
+  error.hidden = !message
+  if (message && form.isConnected) error.focus()
+}
+
+document.addEventListener("click", function (event) {
+  var cancel = event.target.closest && event.target.closest("[data-calendar-delete-cancel]")
+  if (!cancel || !window.tui || !window.tui.popover) return
+  var root = cancel.closest("[data-tui-popover-root]")
+  window.tui.popover.closeElement(root)
+  var trigger = root && root.querySelector("[data-calendar-delete-trigger]")
+  if (trigger) trigger.focus()
+})
+
+document.body.addEventListener("htmx:beforeRequest", function (event) {
+  var form = event.detail && event.detail.elt
+  if (form && form.matches("[data-calendar-delete-load]")) {
+    form = form.closest("[data-tui-popover-root]").querySelector("[data-calendar-delete-form]")
+    if (!form || form._calendarDeleteBusy || form._calendarDeleteBlocked) { event.preventDefault(); return }
+    event.detail.xhr.goferCalendarDeleteLoader = form
+    form._calendarDeleteLoader = event.detail.xhr
+    form.dataset.calendarDeleteReady = "false"
+    form.querySelector("[data-calendar-delete-check]").hidden = false
+    setCalendarDeleteError(form, "")
+    updateCalendarDeleteForm(form)
+    return
+  }
+  if (!form || !form.matches("[data-calendar-delete-form]")) return
+  if (form._calendarDeleteBusy || form._calendarDeleteBlocked || form.dataset.calendarDeleteReady === "false") { event.preventDefault(); return }
+  event.detail.xhr.goferCalendarDeleteForm = form
+  form._calendarDeleteBusy = true
+  setCalendarDeleteError(form, "")
+  updateCalendarDeleteForm(form)
+})
+
+document.body.addEventListener("htmx:beforeSwap", function (event) {
+  var form = event.detail && event.detail.xhr && event.detail.xhr.goferCalendarDeleteLoader
+  if (form && (!form.isConnected || form._calendarDeleteLoader !== event.detail.xhr)) event.detail.shouldSwap = false
+})
+
+document.body.addEventListener("htmx:afterRequest", function (event) {
+  var xhr = event.detail && event.detail.xhr
+  var loading = xhr && xhr.goferCalendarDeleteLoader
+  if (loading) {
+    delete xhr.goferCalendarDeleteLoader
+    if (loading._calendarDeleteLoader !== xhr) return
+    delete loading._calendarDeleteLoader
+    if (!event.detail.successful && loading.isConnected) {
+      loading.querySelector("[data-calendar-delete-check]").hidden = true
+      var message = xhr.status >= 400 && xhr.status < 500 && xhr.responseText && xhr.responseText.length < 600 ? xhr.responseText.trim() : "Could not check the selection. Choose the scope again or reopen this confirmation to retry."
+      setCalendarDeleteError(loading, message)
+      updateCalendarDeleteForm(loading)
+    }
+    return
+  }
+  var form = xhr && xhr.goferCalendarDeleteForm
+  if (!form) return
+  // Detached triggers can bubble afterRequest through their surviving ancestor.
+  // Handle a response once, and never close a newer event dialog.
+  delete xhr.goferCalendarDeleteForm
+  form._calendarDeleteBusy = false
+  try {
+    var result = JSON.parse(xhr.responseText)
+    if (!event.detail.successful) {
+      form._calendarDeleteBlocked = !!result.uncertain || !!result.conflict
+      setCalendarDeleteError(form, result.error || (form._calendarDeleteBlocked ? "Refresh the calendar and reopen the event before trying again." : "Could not delete the event. Try again."))
+    } else {
+      if (result.deleted !== true || result.event_id !== form.dataset.calendarEventId) throw new Error("Unconfirmed deletion")
+      if (form.dataset.calendarDeleteSeries === "true" && (!result.series_id || result.series_id !== form.dataset.calendarDeleteSeriesId)) throw new Error("Unconfirmed series deletion")
+      if (form.dataset.calendarDeleteOccurrence === "true" && result.scope !== "occurrence") throw new Error("Unconfirmed occurrence deletion")
+      form._calendarDeleteBlocked = true
+      if (form.isConnected && window.tui) {
+        if (window.tui.popover) window.tui.popover.closeElement(form)
+        if (window.tui.dialog) window.tui.dialog.close(form.closest("[data-tui-dialog]"))
+      }
+      showGoferToast({title: form.dataset.calendarDeleteSeries === "true" ? "Series deleted" : "Event deleted", description: form.dataset.calendarDeleteSeries === "true" ? "All occurrences were removed from your calendar." : form.dataset.calendarDeleteOccurrence === "true" ? "Only this occurrence was removed. The rest of the series is unchanged." : "Removed from your calendar.", variant: "success", icon: "success", duration: 4500})
+      scheduleCalendarCacheRefresh()
+    }
+  } catch (_) {
+    form._calendarDeleteBlocked = true
+    setCalendarDeleteError(form, "The deletion could not be confirmed. Refresh the calendar and reopen the event before trying again.")
+  }
+  updateCalendarDeleteForm(form)
+})
+
+var _calendarSyncRequest = null
+var _calendarSyncStates = new Map()
+var _calendarCacheRequest = null
+var _calendarCacheRefreshPending = false
+var _calendarCacheRefreshTimer = null
+
+function mergeCalendarSyncState(data) {
+  var previous = _calendarSyncStates.get(data.source_id)
+  data.attempt = Number(data.attempt) || 0
+  if (previous && (previous.attempt > data.attempt || (previous.attempt === data.attempt &&
+      (previous.state === "ok" || previous.state === "failed") && (data.state === "syncing" || data.state === "pending")))) return previous
+  _calendarSyncStates.set(data.source_id, data)
+  return data
+}
+
+function formatCalendarSyncTime(value, full) {
+  var at = new Date(value)
+  if (!value || isNaN(at.getTime())) return ""
+  var calendar = document.getElementById("calendar-main")
+  var zone = calendar && calendar.dataset.calendarTimezone
+  var options = { hour: "2-digit", minute: "2-digit", hour12: false }
+  if (full) { options.year = "numeric"; options.month = "short"; options.day = "numeric" }
+  if (zone && zone !== "Local" && zone !== "local") options.timeZone = zone
+  try { return at.toLocaleString("en-GB", options) } catch (_) { delete options.timeZone; return at.toLocaleString("en-GB", options) }
+}
+
+function updateCalendarSyncPresentation() {
+  var calendar = document.getElementById("calendar-main")
+  if (calendar && !calendar.hasAttribute("data-calendar-loading") && !calendar._calendarSyncMetadataLoaded) {
+    calendar._calendarSyncMetadataLoaded = true
+    var metadata
+    try { metadata = JSON.parse(calendar.dataset.calendarSyncSources || "[]") } catch (_) { metadata = [] }
+    if (Array.isArray(metadata)) {
+      metadata.forEach(mergeCalendarSyncState)
+      calendar._calendarSyncMetadataIDs = metadata.map(function (state) { return state.source_id })
+    }
+  }
+  var sources = []
+  document.querySelectorAll("[data-calendar-source-sync]").forEach(function (node) {
+    var state = mergeCalendarSyncState({ source_id: node.dataset.calendarSourceSync,
+      state: node.dataset.calendarSyncState || "pending", attempt: node.dataset.calendarSyncAttempt,
+      error: node.dataset.calendarSourceError || "", last_synced_at: node.dataset.calendarLastSynced || "", next_attempt_at: node.dataset.calendarNextAttempt || "" })
+    // A live event may be newer than the page that just arrived.
+    node.dataset.calendarSyncState = state.state
+    node.dataset.calendarSyncAttempt = String(state.attempt)
+    node.dataset.calendarSourceError = state.error || ""
+    node.dataset.calendarLastSynced = state.last_synced_at || ""
+    node.dataset.calendarNextAttempt = state.next_attempt_at || ""
+    var iconState = state.state === "ok" && !state.last_synced_at ? "pending" : state.state
+    node.querySelectorAll("[data-calendar-source-sync-icon]").forEach(function (icon) { icon.hidden = icon.dataset.calendarSourceSyncIcon !== iconState })
+    var title = state.state === "syncing" ? "Refreshing calendar…" : state.state === "failed" ?
+      "Refresh failed: " + (state.error || "Could not connect.") + " Cached events remain available." : state.last_synced_at ?
+      "Last synced " + formatCalendarSyncTime(state.last_synced_at, true) : "Waiting for first refresh"
+    if (state.state === "failed" && state.next_attempt_at) title += " Retrying at " + formatCalendarSyncTime(state.next_attempt_at, false) + "."
+    node.title = title
+    node.setAttribute("aria-label", title)
+    sources.push(state)
+  })
+  if (calendar && Array.isArray(calendar._calendarSyncMetadataIDs)) {
+    sources = calendar._calendarSyncMetadataIDs.map(function (id) { return _calendarSyncStates.get(id) }).filter(Boolean)
+  }
+  if (!calendar || calendar.hasAttribute("data-calendar-loading") || !sources.length) return
+  var busy = !!_calendarSyncRequest || sources.some(function (state) { return state.state === "syncing" })
+  var failed = sources.filter(function (state) { return state.state === "failed" }).length
+  var pending = sources.some(function (state) { return !state.last_synced_at })
+  var last = sources.reduce(function (oldest, state) {
+    var stamp = Date.parse(state.last_synced_at)
+    return isNaN(stamp) ? oldest : Math.min(oldest, stamp)
+  }, Infinity)
+  var synced = !pending && isFinite(last)
+  _setCalendarSyncBusy(busy)
+  var message = busy ? "Refreshing calendars…" : failed ? failed + " calendar(s) could not refresh. Retrying automatically." :
+    synced ? "Last synced " + formatCalendarSyncTime(last, false) : "Waiting for first refresh"
+  document.querySelectorAll("[data-calendar-sync-status]").forEach(function (node) {
+    node.textContent = message
+    node.parentElement.className = "inline-flex items-center gap-1.5 " + (busy ? "text-muted-foreground" : failed ? "text-destructive" : synced ? "text-emerald-700 dark:text-emerald-300" : "text-muted-foreground")
+  })
+  document.querySelectorAll("[data-calendar-sync-label]").forEach(function (node) {
+    node.textContent = busy ? "Refreshing calendars" : failed ? "Calendar sync needs attention" : synced ? "Calendar synchronized" : "Calendar sync pending"
+    node.parentElement.className = "flex items-center gap-2 text-xs font-semibold " + (!busy && failed ? "text-destructive" : "text-foreground")
+  })
+  document.querySelectorAll("[data-calendar-sync-dot]").forEach(function (node) {
+    node.className = "size-2 rounded-full " + (busy ? "bg-primary animate-pulse" : failed ? "bg-destructive" : synced ? "bg-emerald-500" : "bg-muted-foreground/50")
+  })
+  document.querySelectorAll("[data-calendar-sync-detail]").forEach(function (node) {
+    node.textContent = busy ? "Fetching events from your selected calendars." : failed ? "Previously cached events remain available. " + message :
+      synced ? message + ". Background refresh is enabled." : "Waiting for the first successful refresh. Cached events remain available."
+  })
+}
+
+function handleCalendarSyncEvent(data) {
+  if (!data || typeof data.source_id !== "string" || !["pending", "syncing", "ok", "failed"].includes(data.state)) return
+  var previous = _calendarSyncStates.get(data.source_id)
+  var current = mergeCalendarSyncState(data)
+  updateCalendarSyncPresentation()
+  if (current !== data || data.state !== "ok") return
+  if (data.changed || (data.snapshot && previous && Date.parse(data.last_synced_at) > (Date.parse(previous.last_synced_at) || 0))) scheduleCalendarCacheRefresh()
+}
+
+function scheduleCalendarCacheRefresh() {
+  _calendarCacheRefreshPending = true
+  if (_calendarCacheRefreshTimer) return
+  _calendarCacheRefreshTimer = setTimeout(function () {
+    _calendarCacheRefreshTimer = null
+    var calendar = document.getElementById("calendar-main")
+    if (!calendar) { _calendarCacheRefreshPending = false; return }
+    if (calendar.hasAttribute("data-calendar-loading") || _calendarContentRequest || _calendarSyncRequest || _calendarCacheRequest) return
+    var trigger = calendar.querySelector("[data-calendar-cache-refresh]")
+    if (!trigger || !window.htmx) return
+    _calendarCacheRefreshPending = false
+    window.htmx.trigger(trigger, "calendar-cache-refresh")
+  }, 180)
+}
+
+function configureCalendarCacheRequest(event) {
+  var calendar = document.getElementById("calendar-main")
+  if (!calendar) return
+  _calendarCacheRequest = event.detail.xhr
+  _calendarCacheRequest.goferCalendarCachePeriod = calendar.dataset.calendarPeriod
+}
+
+function calendarCacheResponseCurrent(xhr) {
+  var calendar = document.getElementById("calendar-main")
+  return xhr === _calendarCacheRequest && calendar && !calendar.hasAttribute("data-calendar-loading") && calendar.dataset.calendarPeriod === xhr.goferCalendarCachePeriod
+}
+
+document.body.addEventListener("htmx:beforeSwap", function (event) {
+  var xhr = event.detail && event.detail.xhr
+  if (!xhr || typeof xhr.goferCalendarCachePeriod !== "string") return
+  if (!calendarCacheResponseCurrent(xhr)) { event.detail.shouldSwap = false; return }
+  var calendar = document.getElementById("calendar-main")
+  var agenda = document.getElementById("calendar-agenda-list")
+  xhr.goferCalendarAgendaScroll = agenda ? agenda.scrollTop : 0
+  var scroller = calendar.querySelector("[data-calendar-week-scroll]")
+  if (scroller) _calendarWeekScrollState = { period: calendar.dataset.calendarPeriod, zoom: _calendarWeekZoom, top: scroller.scrollTop, left: scroller.scrollLeft }
+})
+
+document.body.addEventListener("htmx:afterSwap", function (event) {
+  var xhr = event.detail && event.detail.xhr
+  if (xhr && typeof xhr.goferCalendarCachePeriod === "string" && calendarCacheResponseCurrent(xhr)) {
+    var agenda = document.getElementById("calendar-agenda-list")
+    if (agenda) agenda.scrollTop = xhr.goferCalendarAgendaScroll || 0
+  }
+  updateCalendarSyncPresentation()
+  if (_calendarCacheRefreshPending) scheduleCalendarCacheRefresh()
+})
+
+function finishCalendarCacheRequest(event) {
+  var xhr = event.detail && event.detail.xhr
+  if (!xhr || xhr !== _calendarCacheRequest) return
+  _calendarCacheRequest = null
+  if (_calendarCacheRefreshPending) scheduleCalendarCacheRefresh()
+}
+document.body.addEventListener("htmx:afterRequest", finishCalendarCacheRequest)
+document.body.addEventListener("htmx:sendAbort", finishCalendarCacheRequest)
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", updateCalendarSyncPresentation)
+else updateCalendarSyncPresentation()
+
+function configureCalendarSyncRequest(event) {
+  var calendar = document.getElementById("calendar-main")
+  if (calendar && event.detail) {
+    event.detail.parameters.month = calendar.dataset.calendarMonth
+    event.detail.parameters.view = calendar.dataset.calendarView
+    event.detail.parameters.date = calendar.dataset.calendarDate
+  }
+}
+
+function _setCalendarSyncBusy(busy) {
+  var accountID = _calendarSyncRequest && _calendarSyncRequest.goferCalendarSyncAccount
+  document.querySelectorAll("[data-calendar-sync-button]").forEach(function (button) {
+    var buttonAccountID = button.dataset && button.dataset.calendarAccountSyncButton
+    var active = busy && (!accountID || !buttonAccountID || buttonAccountID === accountID)
+    button.disabled = busy
+    button.setAttribute("aria-busy", active ? "true" : "false")
+    var icon = button.querySelector("svg")
+    if (icon) icon.classList.toggle("animate-spin", active)
+  })
+  if (!busy) return
+  document.querySelectorAll("[data-calendar-sync-status]").forEach(function (status) {
+    status.textContent = "Refreshing calendars…"
+    status.parentElement.className = "inline-flex items-center gap-1.5 text-muted-foreground"
+  })
+  document.querySelectorAll("[data-calendar-sync-label]").forEach(function (label) {
+    label.textContent = "Refreshing calendars"
+    label.parentElement.className = "flex items-center gap-2 text-xs font-semibold text-foreground"
+  })
+  document.querySelectorAll("[data-calendar-sync-dot]").forEach(function (dot) {
+    dot.className = "size-2 rounded-full bg-primary animate-pulse"
+  })
+  document.querySelectorAll("[data-calendar-sync-detail]").forEach(function (detail) {
+    detail.textContent = "Fetching events from your selected calendars."
+  })
+}
+
+function handleCalendarSyncStart(event) {
+  _calendarSyncRequest = event.detail.xhr
+  var button = event.detail.elt
+  _calendarSyncRequest.goferCalendarSyncAccount = button && button.getAttribute("data-calendar-account-sync-button") || ""
+  var menu = button && button.closest("[data-tui-popover-content]")
+  if (menu && window.tui && window.tui.popover) window.tui.popover.closeElement(menu)
+  var calendar = document.getElementById("calendar-main")
+  _calendarSyncRequest.goferCalendarSyncPeriod = calendar ? calendar.dataset.calendarPeriod : ""
+  _setCalendarSyncBusy(true)
+}
+
+document.body.addEventListener("htmx:beforeSwap", function (event) {
+  var xhr = event.detail && event.detail.xhr
+  if (!xhr || typeof xhr.goferCalendarSyncPeriod !== "string") return
+  var calendar = document.getElementById("calendar-main")
+  if (xhr !== _calendarSyncRequest || !calendar || calendar.dataset.calendarPeriod !== xhr.goferCalendarSyncPeriod) {
+    event.detail.shouldSwap = false
+  }
+})
+
+function handleCalendarSyncAbort(event) {
+  if (_calendarSyncRequest !== event.detail.xhr) return
+  _calendarSyncRequest = null
+  _setCalendarSyncBusy(false)
+  updateCalendarSyncPresentation()
+  if (_calendarCacheRefreshPending) scheduleCalendarCacheRefresh()
+}
+
+function handleCalendarSyncResult(event) {
+  if (_calendarSyncRequest !== event.detail.xhr) return
+  _calendarSyncRequest = null
+  _setCalendarSyncBusy(false)
+  updateCalendarSyncPresentation()
+  if (_calendarCacheRefreshPending) scheduleCalendarCacheRefresh()
+  if (event.detail.successful) return
+  var message = "Calendar refresh failed. Cached events are still available."
+  document.querySelectorAll("[data-calendar-sync-status]").forEach(function (status) {
+    status.textContent = message
+    status.parentElement.className = "inline-flex items-center gap-1.5 text-destructive"
+  })
+  document.querySelectorAll("[data-calendar-sync-label]").forEach(function (label) {
+    label.textContent = "Calendar refresh failed"
+    label.parentElement.className = "flex items-center gap-2 text-xs font-semibold text-destructive"
+  })
+  document.querySelectorAll("[data-calendar-sync-dot]").forEach(function (dot) {
+    dot.className = "size-2 rounded-full bg-destructive"
+  })
+  document.querySelectorAll("[data-calendar-sync-detail]").forEach(function (detail) {
+    detail.textContent = message
+  })
 }
 
 function handleContactSidebarSyncStart(event) {

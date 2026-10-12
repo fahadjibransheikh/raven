@@ -1,226 +1,225 @@
 package storage
 
 import (
-	"context"
-	"errors"
 	"path/filepath"
 	"testing"
 	"time"
-
-	"github.com/cristianadrielbraun/gofer/internal/models"
 )
 
-func TestMigrateV96ToV97CreatesCalendarTablesAndIsIdempotent(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "gofer.db")
-	raw, err := openDB(dbPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := raw.Exec(`
-		CREATE TABLE schema_version (version INTEGER PRIMARY KEY, applied_at DATETIME DEFAULT CURRENT_TIMESTAMP);
-		INSERT INTO schema_version (version) VALUES (96);
-		CREATE TABLE accounts (id TEXT PRIMARY KEY, email_address TEXT NOT NULL)`); err != nil {
-		t.Fatal(err)
-	}
-	_ = raw.Close()
-	db, err := New(dbPath)
+func TestReplaceCalendarSourcesReconcilesAndPreservesSelection(t *testing.T) {
+	db, err := New(filepath.Join(t.TempDir(), "gofer.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	var version int
-	if err := db.Read().QueryRow(`SELECT MAX(version) FROM schema_version`).Scan(&version); err != nil || version != 106 {
-		t.Fatalf("version = %d, %v; want 106", version, err)
+
+	if _, err := db.Write().Exec(`
+		INSERT INTO users (id, username, username_normalized)
+		VALUES ('calendar-user', 'calendar-user', 'calendar-user');
+		INSERT INTO accounts (id, user_id, provider, email_address)
+		VALUES ('calendar-account', 'calendar-user', 'gmail', 'calendar@example.com');`); err != nil {
+		t.Fatalf("insert Calendar account: %v", err)
 	}
-	for _, table := range []string{"calendars", "calendar_events", "calendar_account_state"} {
-		var n int
-		if err := db.Read().QueryRow(`SELECT COUNT(*) FROM ` + table).Scan(&n); err != nil {
-			t.Fatalf("%s missing: %v", table, err)
+
+	if err := db.ReplaceCalendarSources(t.Context(), "calendar-user", "calendar-account", "gmail", []CalendarSource{
+		{RemoteID: "primary", Name: "Primary", TimeZone: "Europe/Prague", IsPrimary: true, IsSelected: true},
+		{RemoteID: "team", Name: "Team", IsPrimary: false, IsSelected: false},
+	}); err != nil {
+		t.Fatalf("initial ReplaceCalendarSources() error = %v", err)
+	}
+
+	sources, err := db.ListCalendarSourcesForAccount(t.Context(), "calendar-user", "calendar-account")
+	if err != nil {
+		t.Fatalf("ListCalendarSourcesForAccount() error = %v", err)
+	}
+	if len(sources) != 2 || sources[0].RemoteID != "primary" || !sources[0].IsSelected || sources[1].RemoteID != "team" || sources[1].IsSelected {
+		t.Fatalf("initial sources = %#v", sources)
+	}
+
+	if err := db.ReplaceCalendarSources(t.Context(), "calendar-user", "calendar-account", "gmail", []CalendarSource{
+		{RemoteID: "team", Name: "Team renamed", IsPrimary: false, IsSelected: true},
+	}); err != nil {
+		t.Fatalf("reconcile ReplaceCalendarSources() error = %v", err)
+	}
+
+	sources, err = db.ListCalendarSourcesForAccount(t.Context(), "calendar-user", "calendar-account")
+	if err != nil {
+		t.Fatalf("ListCalendarSourcesForAccount() after reconcile error = %v", err)
+	}
+	if len(sources) != 1 || sources[0].RemoteID != "team" || sources[0].Name != "Team renamed" || sources[0].IsSelected {
+		t.Fatalf("reconciled sources = %#v, want existing selection preserved", sources)
+	}
+
+	var deleted, selected, syncStates int
+	if err := db.Read().QueryRow(`SELECT is_deleted, is_selected FROM calendar_sources WHERE remote_id = 'primary'`).Scan(&deleted, &selected); err != nil {
+		t.Fatalf("read missing primary source: %v", err)
+	}
+	if deleted != 1 || selected != 0 {
+		t.Fatalf("missing primary source state = deleted:%d selected:%d", deleted, selected)
+	}
+	if err := db.Read().QueryRow(`SELECT COUNT(*) FROM calendar_sync_state`).Scan(&syncStates); err != nil {
+		t.Fatalf("count Calendar sync states: %v", err)
+	}
+	if syncStates != 2 {
+		t.Fatalf("Calendar sync state count = %d, want 2", syncStates)
+	}
+}
+
+func TestSetCalendarSourceSelectionValidatesAndReplacesSelection(t *testing.T) {
+	db, err := New(filepath.Join(t.TempDir(), "gofer.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	if _, err := db.Write().Exec(`
+		INSERT INTO users (id, username, username_normalized)
+		VALUES ('calendar-selection-user', 'calendar-selection-user', 'calendar-selection-user');
+		INSERT INTO accounts (id, user_id, provider, email_address)
+		VALUES ('calendar-selection-account', 'calendar-selection-user', 'outlook', 'calendar@example.com');
+		INSERT INTO accounts (id, user_id, provider, email_address)
+		VALUES ('calendar-other-account', 'calendar-selection-user', 'outlook', 'other@example.com');`); err != nil {
+		t.Fatalf("insert Calendar selection accounts: %v", err)
+	}
+	if err := db.ReplaceCalendarSources(t.Context(), "calendar-selection-user", "calendar-selection-account", "outlook", []CalendarSource{
+		{ID: "selection-primary", RemoteID: "primary", Name: "Primary", IsPrimary: true, IsSelected: true},
+		{ID: "selection-team", RemoteID: "team", Name: "Team", IsSelected: false},
+	}); err != nil {
+		t.Fatalf("ReplaceCalendarSources() target error = %v", err)
+	}
+	if err := db.ReplaceCalendarSources(t.Context(), "calendar-selection-user", "calendar-other-account", "outlook", []CalendarSource{
+		{ID: "selection-foreign", RemoteID: "foreign", Name: "Foreign", IsSelected: true},
+	}); err != nil {
+		t.Fatalf("ReplaceCalendarSources() foreign error = %v", err)
+	}
+
+	if err := db.SetCalendarSourceSelection(t.Context(), "calendar-selection-user", "calendar-selection-account", []string{"selection-team"}); err != nil {
+		t.Fatalf("SetCalendarSourceSelection() error = %v", err)
+	}
+	sources, err := db.ListCalendarSourcesForAccount(t.Context(), "calendar-selection-user", "calendar-selection-account")
+	if err != nil {
+		t.Fatalf("ListCalendarSourcesForAccount() error = %v", err)
+	}
+	if len(sources) != 2 || sources[0].IsSelected || !sources[1].IsSelected {
+		t.Fatalf("selected sources = %#v, want only team selected", sources)
+	}
+
+	if err := db.SetCalendarSourceSelection(t.Context(), "calendar-selection-user", "calendar-selection-account", []string{"selection-foreign"}); err == nil {
+		t.Fatal("SetCalendarSourceSelection() accepted a source from another account")
+	}
+	sources, err = db.ListCalendarSourcesForAccount(t.Context(), "calendar-selection-user", "calendar-selection-account")
+	if err != nil {
+		t.Fatalf("ListCalendarSourcesForAccount() after rejected selection error = %v", err)
+	}
+	if len(sources) != 2 || sources[0].IsSelected || !sources[1].IsSelected {
+		t.Fatalf("selection changed after rejected request = %#v", sources)
+	}
+
+	if err := db.SetCalendarSourceSelection(t.Context(), "calendar-selection-user", "calendar-selection-account", nil); err != nil {
+		t.Fatalf("SetCalendarSourceSelection() empty selection error = %v", err)
+	}
+	sources, err = db.ListCalendarSourcesForAccount(t.Context(), "calendar-selection-user", "calendar-selection-account")
+	if err != nil {
+		t.Fatalf("ListCalendarSourcesForAccount() after clearing selection error = %v", err)
+	}
+	for _, source := range sources {
+		if source.IsSelected {
+			t.Fatalf("source %q remains selected after clearing selection", source.ID)
 		}
 	}
-	tx, _ := db.Write().Begin()
-	defer tx.Rollback()
-	if err := migrateV96ToV97(tx); err != nil {
-		t.Fatalf("second run: %v", err)
-	}
 }
 
-func newCalendarTestDB(t *testing.T) (*DB, []int64) {
-	t.Helper()
-	db := newIdentityTestDB(t)
-	ctx := context.Background()
-	if err := db.UpsertCalendars(ctx, "a1", []models.Calendar{
-		{ProviderCalendarID: "primary@x", Name: "Me", Color: "#111111", IsPrimary: true, AccessRole: "owner"},
-		{ProviderCalendarID: "holidays", Name: "Holidays", AccessRole: "reader"},
+func TestReplaceCalendarEventsReconcilesWindowAndListsSelected(t *testing.T) {
+	db, err := New(filepath.Join(t.TempDir(), "gofer.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	if _, err := db.Write().Exec(`
+		INSERT INTO users (id, username, username_normalized)
+		VALUES ('calendar-event-user', 'calendar-event-user', 'calendar-event-user');
+		INSERT INTO accounts (id, user_id, provider, email_address)
+		VALUES ('calendar-event-account', 'calendar-event-user', 'gmail', 'calendar@example.com');`); err != nil {
+		t.Fatalf("insert Calendar account: %v", err)
+	}
+	if err := db.ReplaceCalendarSources(t.Context(), "calendar-event-user", "calendar-event-account", "gmail", []CalendarSource{
+		{RemoteID: "primary", Name: "Primary", Color: "#4285f4", IsPrimary: true, IsSelected: true},
 	}); err != nil {
-		t.Fatal(err)
+		t.Fatalf("ReplaceCalendarSources() error = %v", err)
 	}
-	cals, err := db.ListCalendarsForUser(ctx, "u1")
-	if err != nil || len(cals) != 2 {
-		t.Fatalf("calendars = %+v, %v", cals, err)
-	}
-	return db, []int64{cals[0].ID, cals[1].ID}
-}
-
-func ts(s string) time.Time {
-	v, err := time.Parse(time.RFC3339, s)
+	sources, err := db.ListSelectedCalendarSources(t.Context(), "calendar-event-user")
 	if err != nil {
-		panic(err)
+		t.Fatalf("ListSelectedCalendarSources() error = %v", err)
 	}
-	return v
-}
+	if len(sources) != 1 {
+		t.Fatalf("selected sources = %#v, want one source", sources)
+	}
 
-func timedEvent(id, start, end string) models.CalendarEvent {
-	return models.CalendarEvent{ProviderEventID: id, Title: id, Status: "confirmed", StartAt: ts(start), EndAt: ts(end)}
-}
+	windowStart := time.Date(2026, time.September, 1, 0, 0, 0, 0, time.UTC)
+	windowEnd := windowStart.AddDate(0, 1, 0)
+	timedStart := time.Date(2026, time.September, 3, 9, 0, 0, 0, time.UTC)
+	timedEnd := timedStart.Add(time.Hour)
+	if err := db.ReplaceCalendarEvents(t.Context(), "calendar-event-user", sources[0].ID, []CalendarEvent{
+		{
+			RemoteID:      "timed",
+			Summary:       "Planning",
+			Status:        "confirmed",
+			StartAt:       &timedStart,
+			EndAt:         &timedEnd,
+			AttendeesJSON: "not-json",
+		},
+		{
+			RemoteID:   "all-day",
+			Summary:    "Holiday",
+			Status:     "confirmed",
+			AllDay:     true,
+			StartDate:  "2026-09-04",
+			EndDate:    "2026-09-05",
+			SourceName: "ignored",
+		},
+	}, windowStart, windowEnd); err != nil {
+		t.Fatalf("initial ReplaceCalendarEvents() error = %v", err)
+	}
 
-func allDayEvent(id, startDate, endDate string) models.CalendarEvent {
-	s, _ := time.Parse("2006-01-02", startDate)
-	e, _ := time.Parse("2006-01-02", endDate)
-	return models.CalendarEvent{ProviderEventID: id, Title: id, Status: "confirmed", AllDay: true, StartAt: s, EndAt: e, StartDate: startDate, EndDate: endDate}
-}
-
-func titles(evs []models.CalendarEventView) map[string]bool {
-	m := map[string]bool{}
-	for _, e := range evs {
-		m[e.Title] = true
-	}
-	return m
-}
-
-func TestCalendarDefaultSelectionAndOwnerScopedToggle(t *testing.T) {
-	db, ids := newCalendarTestDB(t)
-	ctx := context.Background()
-	cals, _ := db.ListCalendarsForUser(ctx, "u1")
-	if !cals[0].Selected || cals[1].Selected {
-		t.Fatalf("default selection = %v/%v, want owned selected, reader not", cals[0].Selected, cals[1].Selected)
-	}
-	if other, _ := db.ListCalendarsForUser(ctx, "u2"); len(other) != 0 {
-		t.Fatalf("u2 sees %d calendars", len(other))
-	}
-	if err := db.SetCalendarSelected(ctx, "u2", ids[0], false); !errors.Is(err, ErrCalendarNotFound) {
-		t.Fatalf("foreign toggle err = %v", err)
-	}
-	if err := db.SetCalendarSelected(ctx, "u1", ids[1], true); err != nil {
-		t.Fatal(err)
-	}
-	// A re-sync of the list must keep the user's choice.
-	if err := db.UpsertCalendars(ctx, "a1", []models.Calendar{
-		{ProviderCalendarID: "primary@x", Name: "Me2", IsPrimary: true, AccessRole: "owner"},
-		{ProviderCalendarID: "holidays", Name: "Holidays", AccessRole: "reader"},
-	}); err != nil {
-		t.Fatal(err)
-	}
-	cals, _ = db.ListCalendarsForUser(ctx, "u1")
-	if !cals[1].Selected || cals[0].Name != "Me2" {
-		t.Fatalf("after re-sync = %+v", cals)
-	}
-	// Dropping a calendar from the provider list removes it and its events.
-	if err := db.ApplyCalendarEventPage(ctx, ids[1], "a1", []models.CalendarEvent{timedEvent("h", "2026-03-01T10:00:00Z", "2026-03-01T11:00:00Z")}, nil); err != nil {
-		t.Fatal(err)
-	}
-	if err := db.UpsertCalendars(ctx, "a1", []models.Calendar{{ProviderCalendarID: "primary@x", IsPrimary: true, AccessRole: "owner"}}); err != nil {
-		t.Fatal(err)
-	}
-	var n int
-	_ = db.Read().QueryRow(`SELECT COUNT(*) FROM calendar_events`).Scan(&n)
-	if n != 0 {
-		t.Fatalf("events after calendar removal = %d", n)
-	}
-}
-
-func TestListCalendarEventsOverlap(t *testing.T) {
-	db, ids := newCalendarTestDB(t)
-	ctx := context.Background()
-	if err := db.ApplyCalendarEventPage(ctx, ids[0], "a1", []models.CalendarEvent{
-		timedEvent("inside", "2026-03-10T10:00:00Z", "2026-03-10T11:00:00Z"),
-		timedEvent("spans-start", "2026-03-09T23:00:00Z", "2026-03-10T01:00:00Z"),
-		timedEvent("spans-end", "2026-03-10T23:00:00Z", "2026-03-11T02:00:00Z"),
-		timedEvent("spans-all", "2026-03-09T00:00:00Z", "2026-03-12T00:00:00Z"),
-		timedEvent("ends-at-start", "2026-03-09T22:00:00Z", "2026-03-10T00:00:00Z"),
-		timedEvent("starts-at-end", "2026-03-11T00:00:00Z", "2026-03-11T01:00:00Z"),
-		timedEvent("zero-at-start", "2026-03-10T00:00:00Z", "2026-03-10T00:00:00Z"),
-		timedEvent("fractional", "2026-03-10T05:00:00.5Z", "2026-03-10T05:30:00Z"),
-	}, nil); err != nil {
-		t.Fatal(err)
-	}
-	// Unselected calendar events are hidden.
-	_ = db.ApplyCalendarEventPage(ctx, ids[1], "a1", []models.CalendarEvent{timedEvent("hidden", "2026-03-10T10:00:00Z", "2026-03-10T11:00:00Z")}, nil)
-
-	got, err := db.ListCalendarEvents(ctx, "u1", ts("2026-03-10T00:00:00Z"), ts("2026-03-11T00:00:00Z"), time.UTC)
+	events, err := db.ListCalendarEvents(t.Context(), "calendar-event-user", windowStart, windowEnd)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("ListCalendarEvents() error = %v", err)
 	}
-	want := map[string]bool{"inside": true, "spans-start": true, "spans-end": true, "spans-all": true, "zero-at-start": true, "fractional": true}
-	if g := titles(got); len(g) != len(want) {
-		t.Fatalf("got %v, want %v", g, want)
-	} else {
-		for k := range want {
-			if !g[k] {
-				t.Fatalf("missing %s in %v", k, g)
-			}
-		}
+	if len(events) != 2 || events[0].Summary != "Planning" || events[1].Summary != "Holiday" {
+		t.Fatalf("cached events = %#v, want timed and all-day events", events)
 	}
-	if got, _ := db.ListCalendarEvents(ctx, "u2", ts("2026-03-10T00:00:00Z"), ts("2026-03-11T00:00:00Z"), time.UTC); len(got) != 0 {
-		t.Fatalf("foreign user sees %d events", len(got))
+	if events[0].SourceName != "Primary" || events[0].SourceColor != "#4285f4" {
+		t.Fatalf("cached source metadata = %#v", events[0])
 	}
-}
+	if events[0].AttendeesJSON != "[]" {
+		t.Fatalf("invalid attendees JSON was not normalized: %q", events[0].AttendeesJSON)
+	}
 
-func TestListCalendarEventsAllDayUsesLocalDates(t *testing.T) {
-	db, ids := newCalendarTestDB(t)
-	ctx := context.Background()
-	if err := db.ApplyCalendarEventPage(ctx, ids[0], "a1", []models.CalendarEvent{
-		allDayEvent("mar4", "2026-03-04", "2026-03-05"),
-		allDayEvent("mar5", "2026-03-05", "2026-03-06"),
-		allDayEvent("mar6", "2026-03-06", "2026-03-07"),
-		allDayEvent("mar5-7", "2026-03-05", "2026-03-08"),
-	}, nil); err != nil {
-		t.Fatal(err)
+	if err := db.ReplaceCalendarEvents(t.Context(), "calendar-event-user", sources[0].ID, []CalendarEvent{
+		{
+			RemoteID: "timed",
+			Summary:  "Planning updated",
+			Status:   "confirmed",
+			StartAt:  &timedStart,
+			EndAt:    &timedEnd,
+		},
+	}, windowStart, windowEnd); err != nil {
+		t.Fatalf("reconcile ReplaceCalendarEvents() error = %v", err)
 	}
-	la, _ := time.LoadLocation("America/Los_Angeles")
-	// The Los Angeles day of 2026-03-05: [08:00Z, next 08:00Z). A UTC-instant
-	// comparison would wrongly include mar6 (starts 00:00Z < 08:00Z next day).
-	day := time.Date(2026, 3, 5, 0, 0, 0, 0, la)
-	got, err := db.ListCalendarEvents(ctx, "u1", day, day.AddDate(0, 0, 1), la)
+	events, err = db.ListCalendarEvents(t.Context(), "calendar-event-user", windowStart, windowEnd)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("ListCalendarEvents() after reconcile error = %v", err)
 	}
-	g := titles(got)
-	if len(g) != 2 || !g["mar5"] || !g["mar5-7"] {
-		t.Fatalf("LA day = %v, want mar5 and mar5-7", g)
+	if len(events) != 1 || events[0].Summary != "Planning updated" {
+		t.Fatalf("reconciled events = %#v, want only updated timed event", events)
 	}
-	// Mid-day end still covers that final local day.
-	got, _ = db.ListCalendarEvents(ctx, "u1", day, day.Add(36*time.Hour), la)
-	if g := titles(got); !g["mar6"] || g["mar4"] {
-		t.Fatalf("36h range = %v", g)
-	}
-}
 
-func TestReplaceAndIncrementalPrune(t *testing.T) {
-	db, ids := newCalendarTestDB(t)
-	ctx := context.Background()
-	ws, we := ts("2026-01-01T00:00:00Z"), ts("2026-12-31T00:00:00Z")
-	if err := db.ReplaceCalendarEvents(ctx, ids[0], "a1", []models.CalendarEvent{timedEvent("old", "2026-02-01T10:00:00Z", "2026-02-01T11:00:00Z")}, "tok1", ws, we); err != nil {
-		t.Fatal(err)
+	var state string
+	if err := db.Read().QueryRow(`SELECT state FROM calendar_sync_state WHERE source_id = ?`, sources[0].ID).Scan(&state); err != nil {
+		t.Fatalf("read calendar sync state: %v", err)
 	}
-	if err := db.ReplaceCalendarEvents(ctx, ids[0], "a1", []models.CalendarEvent{timedEvent("new", "2026-02-02T10:00:00Z", "2026-02-02T11:00:00Z")}, "tok2", ws, we); err != nil {
-		t.Fatal(err)
-	}
-	// Incremental page brings a past and a far-future event; both get pruned.
-	if err := db.ApplyCalendarEventPage(ctx, ids[0], "a1", []models.CalendarEvent{
-		timedEvent("ancient", "2025-06-01T10:00:00Z", "2025-06-01T11:00:00Z"),
-		timedEvent("far", "2027-06-01T10:00:00Z", "2027-06-01T11:00:00Z"),
-	}, nil); err != nil {
-		t.Fatal(err)
-	}
-	if err := db.FinishIncrementalCalendarSync(ctx, ids[0], "tok3"); err != nil {
-		t.Fatal(err)
-	}
-	var n int
-	var tok string
-	_ = db.Read().QueryRow(`SELECT COUNT(*) FROM calendar_events`).Scan(&n)
-	_ = db.Read().QueryRow(`SELECT sync_token FROM calendars WHERE id = ?`, ids[0]).Scan(&tok)
-	if n != 1 || tok != "tok3" {
-		t.Fatalf("events=%d token=%q, want 1 event and tok3", n, tok)
+	if state != "ok" {
+		t.Fatalf("calendar sync state = %q, want ok", state)
 	}
 }

@@ -3411,7 +3411,7 @@ window.addEventListener("popstate", function (e) {
     var folderLinks = document.querySelectorAll("aside a[hx-get^='/folder/']")
     for (var c = 0; c < folderLinks.length; c++) {
       folderLinks[c].classList.remove("bg-sidebar-accent", "text-sidebar-primary", "font-medium")
-      folderLinks[c].classList.add("text-sidebar-foreground")
+      folderLinks[c].classList.add("text-sidebar-foreground", "hover:bg-sidebar-accent/60", "hover:text-sidebar-accent-foreground")
     }
     if (contactsLink) {
       contactsLink.classList.add("bg-sidebar-accent", "text-sidebar-primary", "font-medium")
@@ -3448,7 +3448,7 @@ window.addEventListener("popstate", function (e) {
         "text-sidebar-primary",
         "font-medium"
       )
-      sidebarLinks[i].classList.add("text-sidebar-foreground")
+      sidebarLinks[i].classList.add("text-sidebar-foreground", "hover:bg-sidebar-accent/60", "hover:text-sidebar-accent-foreground")
       var badge = sidebarLinks[i].querySelector("[data-folder-unread]")
       if (badge) {
         badge.classList.remove("text-sidebar-accent-foreground")
@@ -3482,7 +3482,7 @@ window.addEventListener("popstate", function (e) {
     if (!activeLink) activeLink = sidebar.querySelector('a[hx-get="/folder/' + folderID + '"]')
     if (activeLink) {
       activeLink.classList.add("bg-sidebar-accent", "text-sidebar-primary", "font-medium")
-      activeLink.classList.remove("text-sidebar-foreground")
+      activeLink.classList.remove("text-sidebar-foreground", "hover:bg-sidebar-accent/60", "hover:text-sidebar-accent-foreground")
       var activeRow = activeLink.closest("[data-sidebar-folder-row]")
       if (activeRow) {
         activeRow.classList.add("bg-sidebar-accent")

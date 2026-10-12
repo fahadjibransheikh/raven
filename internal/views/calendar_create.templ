@@ -1,0 +1,242 @@
+package views
+
+import (
+	"github.com/cristianadrielbraun/gofer/components/button"
+	"github.com/cristianadrielbraun/gofer/components/checkbox"
+	"github.com/cristianadrielbraun/gofer/components/datepicker"
+	"github.com/cristianadrielbraun/gofer/components/dialog"
+	"github.com/cristianadrielbraun/gofer/components/icon"
+	"github.com/cristianadrielbraun/gofer/components/input"
+	"github.com/cristianadrielbraun/gofer/components/label"
+	"github.com/cristianadrielbraun/gofer/components/popover"
+	"github.com/cristianadrielbraun/gofer/components/selectbox"
+	"github.com/cristianadrielbraun/gofer/components/timepicker"
+	"strconv"
+)
+
+templ CalendarCreateDialog(data CalendarCreateData) {
+	{{
+		editing := data.EventID != ""
+		title, closeLabel, submitLabel, action := "New event", "Close new event", "Create event", "/api/calendar/events"
+		if editing {
+			title, closeLabel, submitLabel, action = "Edit event", "Close edit event", "Save changes", calendarEventDetailsURL(data.EventID)
+		}
+		if data.EditSeries {
+			title, closeLabel, submitLabel = "Edit series", "Close edit series", "Save series"
+		}
+	}}
+	@dialog.Dialog(dialog.Props{ID: "calendar-create-dialog"}) {
+		@dialog.Content(dialog.ContentProps{
+			HideCloseButton: true,
+			Class:           calendarDialogClass("sm:max-w-xl"),
+			Attributes:      templ.Attributes{"aria-labelledby": "calendar-create-title"},
+		}) {
+			<header class="flex shrink-0 items-center justify-between gap-4 px-5 pt-5 pb-3 sm:px-6">
+				@dialog.Title(dialog.TitleProps{ID: "calendar-create-title", Class: "text-xl font-semibold tracking-tight"}) {
+					{ title }
+				}
+				@button.Button(button.Props{Variant: button.VariantGhost, Size: button.SizeIcon, Class: "-mr-2 size-8 text-muted-foreground", Attributes: templ.Attributes{"data-tui-dialog-close": "", "aria-label": closeLabel}}) {
+					@icon.X(icon.Props{Class: "size-4"})
+				}
+			</header>
+			<form id="calendar-create-form" data-calendar-create-form data-calendar-event-id={ data.EventID } data-calendar-edit-series={ strconv.FormatBool(data.EditSeries) } data-calendar-edit-occurrence={ strconv.FormatBool(data.EditOccurrence) } data-request-id={ data.RequestID } class="flex min-h-0 flex-1 flex-col" action={ templ.SafeURL(action) } method="post">
+				<input type="hidden" name="request_id" value={ data.RequestID }/>
+				if editing {
+					<input type="hidden" name="version" value={ data.Version }/>
+				}
+				if data.EditSeries {
+					<input type="hidden" name="edit_scope" value="series"/>
+				} else if data.EditOccurrence {
+					<input type="hidden" name="edit_scope" value="occurrence"/>
+				}
+				<div class="shrink-0 px-5 pt-1 pb-5 sm:px-6" data-calendar-create-title-field>
+					@label.Label(label.Props{For: "calendar-create-summary", Class: "sr-only"}) {
+						Title
+					}
+					@input.Input(input.Props{ID: "calendar-create-summary", Name: "summary", Value: data.Summary, Placeholder: "Add title", Required: true, Class: "h-11 text-base font-medium md:text-base", Attributes: templ.Attributes{"maxlength": "255", "autocomplete": "off"}})
+				</div>
+				<div class="relative flex min-h-0 flex-1 flex-col overflow-hidden" data-calendar-create-viewport>
+					<div class="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-5 pt-1 pb-5 sm:px-6" data-calendar-create-body>
+						if data.EditSeries {
+							@calendarDialogNotice() {
+								Changes apply to the whole series, including past occurrences. The dates below belong to the first event.
+							}
+						} else if data.EditOccurrence {
+							@calendarDialogNotice() {
+								Changes apply to this event only. The rest of the series stays as it is.
+							}
+						}
+						@calendarDialogRow(icon.CalendarDays(icon.Props{Class: "size-4"}), "pt-2.5") {
+							<div class="space-y-1.5">
+								@label.Label(label.Props{For: "calendar-create-source", Class: "sr-only"}) {
+									Calendar
+								}
+								@selectbox.SelectBox(selectbox.Props{Attributes: templ.Attributes{"data-calendar-create-source-select": ""}}) {
+									@selectbox.Trigger(selectbox.TriggerProps{ID: "calendar-create-source", Name: "source_id", DisableClear: true, Required: true, Disabled: editing || len(data.Sources) == 0, Attributes: templ.Attributes{"value": data.SourceID}}) {
+										if len(data.Sources) == 0 {
+											@selectbox.Value(selectbox.ValueProps{Placeholder: "No configured calendars"})
+										} else {
+											@selectbox.Value(selectbox.ValueProps{Placeholder: "Choose a calendar"})
+										}
+									}
+									@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
+										@selectbox.Group() {
+											for _, source := range data.Sources {
+												@selectbox.Item(selectbox.ItemProps{Value: source.ID, Selected: source.ID == data.SourceID, Disabled: !source.Writable, Class: "pr-7", Attributes: templ.Attributes{"data-calendar-source-writable": strconv.FormatBool(source.Writable), "data-calendar-source-authorized": strconv.FormatBool(source.Authorized), "data-calendar-source-provider": source.Provider}}) {
+													{ source.Name } · { source.AccountName }
+													if !source.Writable {
+														· Read-only
+													}
+												}
+											}
+										}
+									}
+								}
+								<p data-calendar-create-access hidden class="text-xs leading-relaxed text-muted-foreground"></p>
+							</div>
+						}
+						@calendarDialogRow(icon.Clock3(icon.Props{Class: "size-4"}), "pt-2.5") {
+							<fieldset class="min-w-0 space-y-2">
+								<legend class="sr-only">Date and time</legend>
+								@calendarCreateDateTimeLine("start", "Starts", data.Date, data.StartTime, data.AllDay)
+								@calendarCreateDateTimeLine("end", "Ends", data.EndDate, data.EndTime, data.AllDay)
+								<div class="flex min-h-9 flex-wrap items-center gap-x-4 gap-y-2">
+									@label.Label(label.Props{For: "calendar-create-all-day", Class: "inline-flex shrink-0 cursor-pointer items-center gap-2 font-normal"}) {
+										@checkbox.Checkbox(checkbox.Props{ID: "calendar-create-all-day", Name: "all_day", Value: "true", Checked: data.AllDay})
+										All day
+									}
+									<div class="min-w-48 flex-1" data-calendar-create-timezone hidden?={ data.AllDay }>
+										@label.Label(label.Props{For: "calendar-create-timezone", Class: "sr-only"}) {
+											Time zone
+										}
+										@selectbox.SelectBox(selectbox.Props{Attributes: templ.Attributes{"data-calendar-create-timezone-select": ""}}) {
+											@selectbox.Trigger(selectbox.TriggerProps{ID: "calendar-create-timezone", Name: "timezone", DisableClear: true, Attributes: templ.Attributes{"value": data.TimeZone}}) {
+												@selectbox.Value(selectbox.ValueProps{Placeholder: "Choose a time zone"})
+											}
+											@selectbox.Content(selectbox.ContentProps{SearchPlaceholder: "Search time zones…"}) {
+												@selectbox.Group(selectbox.GroupProps{ID: "calendar-create-timezones"}) {
+													@selectbox.Item(selectbox.ItemProps{Value: data.TimeZone, Selected: data.TimeZone != ""}) {
+														{ data.TimeZone }
+													}
+													<template data-calendar-create-timezone-option>
+														@selectbox.Item()
+													</template>
+												}
+											}
+										}
+									</div>
+									<p data-calendar-create-date-help hidden?={ !data.AllDay } role="status" aria-live="polite" aria-atomic="true" class="min-w-0 flex-1 text-xs leading-4 text-muted-foreground">The end date is included in an all-day event.</p>
+								</div>
+							</fieldset>
+						}
+						if !data.EditOccurrence {
+							@calendarDialogRow(icon.Repeat(icon.Props{Class: "size-4"}), "pt-2.5") {
+								@CalendarRecurrenceFields(data)
+							}
+						}
+						@calendarDialogRow(icon.MapPin(icon.Props{Class: "size-4"}), "pt-2.5") {
+							@label.Label(label.Props{For: "calendar-create-location", Class: "sr-only"}) {
+								Location
+							}
+							@input.Input(input.Props{ID: "calendar-create-location", Name: "location", Value: data.Location, Placeholder: "Add location", Attributes: templ.Attributes{"maxlength": "1024"}})
+						}
+						if !data.EditSeries && !data.EditOccurrence {
+							@calendarDialogRow(icon.Users(icon.Props{Class: "size-4"}), "pt-2.5") {
+								<div class="relative space-y-1.5">
+									@label.Label(label.Props{For: "calendar-create-guests", Class: "sr-only"}) {
+										Guests
+									}
+									@popover.Root(popover.RootProps{ID: "calendar-guests-dropdown"}) {
+										@popover.Trigger(popover.TriggerProps{TriggerType: popover.TriggerTypeManual}) {
+											@input.Input(input.Props{
+												ID: "calendar-create-guests", Type: input.TypeText, Name: "guests", Value: data.Guests,
+												Placeholder: "Add guests by name or email",
+												Attributes: templ.Attributes{
+													"maxlength": "16384", "autocomplete": "off",
+													"data-1p-ignore": "true", "data-bwignore": "true", "data-lpignore": "true",
+													"hx-get": "/api/calendar/guest-suggestions", "hx-trigger": "input changed delay:200ms",
+													"hx-params": "guests", "hx-target": "#calendar-guest-suggestions", "hx-sync": "this:replace",
+													"role": "combobox", "aria-autocomplete": "list", "aria-expanded": "false", "aria-controls": "calendar-guest-suggestions",
+													"onfocus":   "updateCalendarGuestDropdown(this.closest('[data-calendar-create-form]'))",
+													"onclick":   "updateCalendarGuestDropdown(this.closest('[data-calendar-create-form]'))",
+													"onkeydown": "handleCalendarGuestKeydown(event, this)",
+												},
+											})
+										}
+										@popover.Content(popover.ContentProps{Placement: popover.PlacementBottomStart, Exclusive: true, Class: "z-50 max-w-[calc(100vw-2rem)] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md", Attributes: templ.Attributes{"data-calendar-guests-dropdown-content": "", "ontoggle": "syncCalendarGuestDropdownState(this, event)"}}) {
+											<div id="calendar-guest-suggestions" class="max-h-60 overflow-y-auto" role="listbox" aria-label="Matching contacts"></div>
+										}
+									}
+									<p class="text-xs text-muted-foreground" data-calendar-guests-help>Separate guests with commas. Non-repeating meetings only; saving sends invitations and updates.</p>
+								</div>
+							}
+						}
+						<template data-calendar-teams-checking>
+							@CalendarTeamsOption(CalendarTeamsData{State:"checking"})
+						</template>
+						<template data-calendar-meet-checking>
+							@CalendarTeamsOption(CalendarTeamsData{State:"checking",Provider:"gmail"})
+						</template>
+						<div id="calendar-teams-options" data-calendar-teams-options data-calendar-teams-state={data.TeamsState} data-calendar-teams-source={data.SourceID} hx-get="/api/calendar/meeting-options" hx-trigger="calendar-teams-source-changed" hx-include="closest form" hx-vals={calendarTeamsEventParams(data.EventID)} hx-params="source_id,event_id" hx-target="this" hx-swap="innerHTML" hx-sync="this:replace">
+							if data.TeamsState != "" && len(data.Sources) > 0 && (data.Sources[0].Provider == "outlook" || data.Sources[0].Provider == "gmail") {
+								@CalendarTeamsOption(CalendarTeamsData{State:data.TeamsState,SourceID:data.SourceID,Provider:data.Sources[0].Provider,JoinURL:data.MeetingJoinURL,EventID:data.EventID})
+							}
+						</div>
+						@calendarDialogRow(icon.TextAlignStart(icon.Props{Class: "size-4"}), "pt-2.5") {
+							@CalendarDescriptionEditor(data)
+						}
+					</div>
+				</div>
+				<p data-calendar-create-error role="alert" aria-atomic="true" tabindex="-1" hidden class="max-h-24 shrink-0 overflow-y-auto border-t border-border px-5 py-3 text-sm leading-relaxed text-destructive sm:px-6"></p>
+				<footer class="flex shrink-0 items-center justify-end gap-2 border-t border-border px-5 py-3 sm:px-6">
+					@button.Button(button.Props{Variant: button.VariantGhost, Class: "font-semibold", Attributes: templ.Attributes{"data-tui-dialog-close": ""}}) {
+						Cancel
+					}
+					@button.Button(button.Props{Type: button.TypeSubmit, Class: "btn-skeuo font-semibold disabled:cursor-not-allowed", Attributes: templ.Attributes{"data-calendar-create-submit": "", "onclick": "prepareCalendarDescriptionSubmit(event, this)"}}) {
+						<span data-calendar-create-spinner hidden>
+							@icon.LoaderCircle(icon.Props{Class: "size-4 animate-spin"})
+						</span><span data-calendar-create-submit-label>{ submitLabel }</span>
+					}
+				</footer>
+			</form>
+		}
+	}
+}
+
+// calendarCreateDateTimeLine renders one "Starts"/"Ends" line. The time picker
+// sits in a fixed-width slot so hiding it for all-day events lets the date grow.
+templ calendarCreateDateTimeLine(kind, text, date, clock string, allDay bool) {
+	<div class="flex min-w-0 items-center gap-2">
+		@label.Label(label.Props{For: "calendar-create-" + kind + "-date", Class: "w-11 shrink-0 font-normal text-muted-foreground"}) {
+			{ text }
+		}
+		<div class="min-w-0 flex-1">
+			@datepicker.DatePicker(datepicker.Props{ID: "calendar-create-" + kind + "-date", Name: kind + "_date", Value: calendarCreatePickerValue("2006-01-02", date)})
+		</div>
+		<div class="w-28 shrink-0" data-calendar-create-time hidden?={ allDay }>
+			@timepicker.TimePicker(timepicker.Props{ID: "calendar-create-" + kind + "-time", Name: kind + "_time", Value: calendarCreatePickerValue("15:04", clock), Attributes: templ.Attributes{"aria-label": text + " at"}})
+		</div>
+	</div>
+}
+
+// calendarDialogRow lays a field group beside a muted leading icon, the way
+// calendar apps scan: when, repeat, where, which calendar, notes.
+templ calendarDialogRow(glyph templ.Component, iconClass string) {
+	<div class="grid grid-cols-[1rem_minmax(0,1fr)] gap-x-3 sm:gap-x-4">
+		<span class={ "flex justify-center text-muted-foreground", iconClass } aria-hidden="true">
+			@glyph
+		</span>
+		<div class="min-w-0">
+			{ children... }
+		</div>
+	</div>
+}
+
+templ calendarDialogNotice() {
+	<p class="flex items-start gap-2.5 rounded-md border border-border bg-muted/50 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
+		@icon.Info(icon.Props{Class: "mt-px size-3.5 shrink-0"})
+		<span>
+			{ children... }
+		</span>
+	</p>
+}

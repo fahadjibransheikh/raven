@@ -3,30 +3,19 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"html"
-	"io"
 	"net/http"
 	"net/url"
-	"regexp"
 	"strings"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/models"
+	"github.com/cristianadrielbraun/gofer/internal/calendar"
+	"github.com/cristianadrielbraun/gofer/internal/providers"
+	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/cristianadrielbraun/gofer/internal/views"
 )
 
 var googleCalendarAPIBaseURL = "https://www.googleapis.com/calendar/v3"
-
-const (
-	calendarDateLayout    = "2006-01-02"
-	calendarInitialPast   = 60 * 24 * time.Hour
-	calendarInitialFuture = 365 * 24 * time.Hour
-	// The window is fixed when the sync token is issued, so it is re-based
-	// (full resync) once it has drifted this far, keeping "now" inside it with
-	// at least ~335 days of future coverage.
-	calendarWindowMaxAge = 30 * 24 * time.Hour
-)
 
 type googleCalendarListResponse struct {
 	Items         []googleCalendarListEntry `json:"items"`
@@ -37,52 +26,13 @@ type googleCalendarListEntry struct {
 	ID              string `json:"id"`
 	Summary         string `json:"summary"`
 	SummaryOverride string `json:"summaryOverride"`
-	BackgroundColor string `json:"backgroundColor"`
+	Description     string `json:"description"`
+	Location        string `json:"location"`
 	TimeZone        string `json:"timeZone"`
+	BackgroundColor string `json:"backgroundColor"`
 	AccessRole      string `json:"accessRole"`
 	Primary         bool   `json:"primary"`
 	Deleted         bool   `json:"deleted"`
-}
-
-type googleEventTime struct {
-	Date     string `json:"date"`
-	DateTime string `json:"dateTime"`
-	TimeZone string `json:"timeZone"`
-}
-
-type googleCalendarEvent struct {
-	ID               string          `json:"id"`
-	Status           string          `json:"status"`
-	ICalUID          string          `json:"iCalUID"`
-	RecurringEventID string          `json:"recurringEventId"`
-	Summary          string          `json:"summary"`
-	Location         string          `json:"location"`
-	Description      string          `json:"description"`
-	HTMLLink         string          `json:"htmlLink"`
-	HangoutLink      string          `json:"hangoutLink"`
-	Recurrence       []string        `json:"recurrence"`
-	Updated          string          `json:"updated"`
-	Start            googleEventTime `json:"start"`
-	End              googleEventTime `json:"end"`
-	Organizer        struct {
-		Email string `json:"email"`
-		Self  bool   `json:"self"`
-	} `json:"organizer"`
-	Attendees []struct {
-		Email          string `json:"email"`
-		DisplayName    string `json:"displayName"`
-		ResponseStatus string `json:"responseStatus"`
-		Organizer      bool   `json:"organizer"`
-		Self           bool   `json:"self"`
-		Optional       bool   `json:"optional"`
-		Resource       bool   `json:"resource"`
-	} `json:"attendees"`
-	ConferenceData struct {
-		EntryPoints []struct {
-			EntryPointType string `json:"entryPointType"`
-			URI            string `json:"uri"`
-		} `json:"entryPoints"`
-	} `json:"conferenceData"`
 }
 
 type googleCalendarEventsResponse struct {
@@ -91,266 +41,473 @@ type googleCalendarEventsResponse struct {
 	NextSyncToken string                `json:"nextSyncToken"`
 }
 
-var errGoogleSyncTokenExpired = errors.New("google calendar sync token expired")
-
-func googleCalendarGet(ctx context.Context, accessToken, path string, values url.Values, out any) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, googleCalendarAPIBaseURL+path+"?"+values.Encode(), nil)
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Authorization", "Bearer "+accessToken)
-	resp, err := (&http.Client{Timeout: 30 * time.Second}).Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		body, _ := io.ReadAll(resp.Body)
-		return newGoogleAPIError(resp, body)
-	}
-	return json.NewDecoder(resp.Body).Decode(out)
+type googleCalendarEvent struct {
+	ID                 string                      `json:"id"`
+	ICalUID            string                      `json:"iCalUID"`
+	ETag               string                      `json:"etag"`
+	Status             string                      `json:"status"`
+	Summary            string                      `json:"summary"`
+	Description        string                      `json:"description"`
+	Location           string                      `json:"location"`
+	HTMLLink           string                      `json:"htmlLink"`
+	Created            string                      `json:"created"`
+	Updated            string                      `json:"updated"`
+	RecurringEventID   string                      `json:"recurringEventId"`
+	Recurrence         []string                    `json:"recurrence"`
+	Attendees          json.RawMessage             `json:"attendees"`
+	Organizer          googleCalendarPerson        `json:"organizer"`
+	Start              googleCalendarEventDateTime `json:"start"`
+	End                googleCalendarEventDateTime `json:"end"`
+	ConferenceData     json.RawMessage             `json:"conferenceData"`
+	ExtendedProperties struct {
+		Private map[string]string `json:"private"`
+	} `json:"extendedProperties"`
+	HangoutLink string `json:"hangoutLink"`
 }
 
-// isGoogleCalendarScopeError reports a 403 caused by the token lacking the
-// Calendar scopes (accounts connected before calendar support).
-func isGoogleCalendarScopeError(err error) bool {
-	var apiErr googleAPIError
-	if !errors.As(err, &apiErr) || apiErr.Status != http.StatusForbidden {
-		return false
-	}
-	return strings.Contains(apiErr.Body, "insufficientPermissions") ||
-		strings.Contains(apiErr.Body, "ACCESS_TOKEN_SCOPE_INSUFFICIENT") ||
-		strings.Contains(strings.ToLower(apiErr.Body), "insufficient authentication scopes")
+type googleCalendarPerson struct {
+	DisplayName string `json:"displayName"`
+	Email       string `json:"email"`
+	Self        *bool  `json:"self,omitempty"`
 }
 
-func (h *Handler) fetchGoogleCalendarList(ctx context.Context, accessToken string) ([]models.Calendar, error) {
-	var out []models.Calendar
+type googleCalendarEventDateTime struct {
+	Date     string `json:"date"`
+	DateTime string `json:"dateTime"`
+	TimeZone string `json:"timeZone"`
+}
+
+func discoverGoogleCalendars(ctx context.Context, accessToken string) ([]calendar.RemoteCalendar, error) {
+	accessToken = strings.TrimSpace(accessToken)
+	if accessToken == "" {
+		return nil, fmt.Errorf("Google Calendar access token is empty")
+	}
+
+	var calendars []calendar.RemoteCalendar
 	pageToken := ""
+	seenPageTokens := map[string]bool{}
 	for {
-		v := url.Values{}
-		v.Set("maxResults", "250")
-		v.Set("minAccessRole", "reader") // free/busy-only calendars have no event details
+		values := url.Values{}
+		values.Set("maxResults", "250")
+		values.Set("showDeleted", "true")
 		if pageToken != "" {
-			v.Set("pageToken", pageToken)
+			values.Set("pageToken", pageToken)
 		}
+
 		var page googleCalendarListResponse
-		if err := googleCalendarGet(ctx, accessToken, "/users/me/calendarList", v, &page); err != nil {
+		endpoint := googleCalendarAPIBaseURL + "/users/me/calendarList?" + values.Encode()
+		if err := doGoogleJSON(ctx, http.MethodGet, endpoint, accessToken, nil, &page); err != nil {
 			return nil, err
 		}
-		for _, item := range page.Items {
-			if item.Deleted || item.ID == "" {
+		for _, entry := range page.Items {
+			if entry.Deleted || strings.TrimSpace(entry.ID) == "" {
 				continue
 			}
-			name := item.SummaryOverride
+			name := strings.TrimSpace(entry.SummaryOverride)
 			if name == "" {
-				name = item.Summary
+				name = strings.TrimSpace(entry.Summary)
 			}
-			out = append(out, models.Calendar{
-				ProviderCalendarID: item.ID, Name: name, Color: item.BackgroundColor, TimeZone: item.TimeZone,
-				IsPrimary: item.Primary, AccessRole: item.AccessRole,
+			calendars = append(calendars, calendar.RemoteCalendar{
+				RemoteID:    strings.TrimSpace(entry.ID),
+				Name:        name,
+				Description: strings.TrimSpace(entry.Description),
+				TimeZone:    strings.TrimSpace(entry.TimeZone),
+				Color:       strings.TrimSpace(entry.BackgroundColor),
+				AccessRole:  strings.TrimSpace(entry.AccessRole),
+				Primary:     entry.Primary,
 			})
 		}
-		if pageToken = page.NextPageToken; pageToken == "" {
-			return out, nil
+
+		pageToken = strings.TrimSpace(page.NextPageToken)
+		if pageToken == "" {
+			return calendars, nil
 		}
+		if seenPageTokens[pageToken] {
+			return nil, fmt.Errorf("Google Calendar returned a repeated pagination token")
+		}
+		seenPageTokens[pageToken] = true
 	}
 }
 
-// syncGoogleCalendarEvents brings one calendar up to date. Incremental syncs
-// send only syncToken (+ the same singleEvents flag): Google rejects timeMin,
-// timeMax, updatedMin, orderBy, q, iCalUID and extended-property filters
-// together with a syncToken, so the window is fixed at the initial sync and
-// remembered on the calendar row.
-func (h *Handler) syncGoogleCalendarEvents(ctx context.Context, accessToken string, cal models.Calendar) error {
-	now := time.Now()
-	if cal.SyncToken != "" && cal.WindowStart != nil && cal.WindowEnd != nil &&
-		now.Sub(*cal.WindowStart) < calendarInitialPast+calendarWindowMaxAge {
-		err := h.syncGoogleCalendarIncremental(ctx, accessToken, cal)
-		if !errors.Is(err, errGoogleSyncTokenExpired) {
-			return err
-		}
+func listGoogleCalendarEvents(ctx context.Context, accessToken, remoteCalendarID string, query calendar.EventQuery) (calendar.EventPage, error) {
+	accessToken = strings.TrimSpace(accessToken)
+	remoteCalendarID = strings.TrimSpace(remoteCalendarID)
+	if accessToken == "" {
+		return calendar.EventPage{}, fmt.Errorf("Google Calendar access token is empty")
 	}
-	return h.syncGoogleCalendarFull(ctx, accessToken, cal, now)
-}
+	if remoteCalendarID == "" {
+		return calendar.EventPage{}, fmt.Errorf("Google Calendar id is empty")
+	}
+	if query.WindowStart.IsZero() || query.WindowEnd.IsZero() || !query.WindowEnd.After(query.WindowStart) {
+		return calendar.EventPage{}, fmt.Errorf("Google Calendar event window is invalid")
+	}
 
-func (h *Handler) syncGoogleCalendarFull(ctx context.Context, accessToken string, cal models.Calendar, now time.Time) error {
-	winStart, winEnd := now.Add(-calendarInitialPast), now.Add(calendarInitialFuture)
-	var events []models.CalendarEvent
-	pageToken, syncToken := "", ""
+	var events []calendar.RemoteEvent
+	pageToken := ""
+	seenPageTokens := map[string]bool{}
+	var nextSyncToken string
 	for {
-		v := url.Values{}
-		v.Set("singleEvents", "true")
-		v.Set("maxResults", "2500")
-		v.Set("timeMin", winStart.UTC().Format(time.RFC3339))
-		v.Set("timeMax", winEnd.UTC().Format(time.RFC3339))
+		values := url.Values{}
+		values.Set("maxResults", "2500")
+		values.Set("showDeleted", "true")
+		values.Set("singleEvents", "true")
+		values.Set("orderBy", "startTime")
+		values.Set("timeMin", query.WindowStart.Format(time.RFC3339))
+		values.Set("timeMax", query.WindowEnd.Format(time.RFC3339))
 		if pageToken != "" {
-			v.Set("pageToken", pageToken)
+			values.Set("pageToken", pageToken)
 		}
+
 		var page googleCalendarEventsResponse
-		if err := googleCalendarGet(ctx, accessToken, "/calendars/"+url.PathEscape(cal.ProviderCalendarID)+"/events", v, &page); err != nil {
-			return err
+		endpoint := googleCalendarAPIBaseURL + "/calendars/" + url.PathEscape(remoteCalendarID) + "/events?" + values.Encode()
+		if err := doGoogleJSON(ctx, http.MethodGet, endpoint, accessToken, nil, &page); err != nil {
+			return calendar.EventPage{}, err
 		}
-		for _, item := range page.Items {
-			if item.Status == "cancelled" {
+		for _, remote := range page.Items {
+			if remote.ExtendedProperties.Private["goferMeetDraft"] == "true" {
 				continue
 			}
-			ev, err := googleEventToModel(item)
+			normalized, err := normalizeGoogleCalendarEvent(remote)
 			if err != nil {
-				return fmt.Errorf("event %s: %w", item.ID, err)
+				return calendar.EventPage{}, err
 			}
-			events = append(events, ev)
+			if strings.TrimSpace(normalized.RemoteID) != "" {
+				events = append(events, normalized)
+			}
 		}
-		if pageToken = page.NextPageToken; pageToken == "" {
-			syncToken = page.NextSyncToken
+
+		pageToken = strings.TrimSpace(page.NextPageToken)
+		if pageToken == "" {
+			nextSyncToken = strings.TrimSpace(page.NextSyncToken)
+			break
+		}
+		if seenPageTokens[pageToken] {
+			return calendar.EventPage{}, fmt.Errorf("Google Calendar returned a repeated event pagination token")
+		}
+		seenPageTokens[pageToken] = true
+	}
+
+	result := calendar.EventPage{Events: events}
+	if nextSyncToken != "" {
+		result.NextSyncCursor = calendar.SyncCursor{Kind: "google-calendar", Value: nextSyncToken}
+	}
+	return result, nil
+}
+
+func normalizeGoogleCalendarEvent(remote googleCalendarEvent) (calendar.RemoteEvent, error) {
+	event := calendar.RemoteEvent{
+		RemoteID:       strings.TrimSpace(remote.ID),
+		ICalUID:        strings.TrimSpace(remote.ICalUID),
+		SeriesRemoteID: strings.TrimSpace(remote.RecurringEventID),
+		ETag:           strings.TrimSpace(remote.ETag),
+		Status:         strings.ToLower(strings.TrimSpace(remote.Status)),
+		Summary:        strings.TrimSpace(remote.Summary),
+		Description:    strings.TrimSpace(remote.Description),
+		Location:       strings.TrimSpace(remote.Location),
+		OrganizerName:  strings.TrimSpace(remote.Organizer.DisplayName),
+		OrganizerEmail: strings.TrimSpace(remote.Organizer.Email),
+		StartTimeZone:  strings.TrimSpace(remote.Start.TimeZone),
+		EndTimeZone:    strings.TrimSpace(remote.End.TimeZone),
+		HTMLLink:       strings.TrimSpace(remote.HTMLLink),
+		Deleted:        strings.EqualFold(strings.TrimSpace(remote.Status), "cancelled"),
+	}
+	if event.Status == "" {
+		event.Status = "confirmed"
+	}
+
+	if len(remote.Recurrence) > 0 {
+		value, err := json.Marshal(remote.Recurrence)
+		if err != nil {
+			return calendar.RemoteEvent{}, fmt.Errorf("encode Google Calendar recurrence for %q: %w", event.RemoteID, err)
+		}
+		event.Recurrence = value
+	} else {
+		event.Recurrence = json.RawMessage("[]")
+	}
+	if len(remote.Attendees) > 0 && json.Valid(remote.Attendees) {
+		event.Attendees = append(json.RawMessage(nil), remote.Attendees...)
+	} else {
+		event.Attendees = json.RawMessage("[]")
+	}
+	_, event.ResponseStatus = googleCalendarSelfResponse(remote)
+	if remote.Organizer.Self != nil && *remote.Organizer.Self {
+		event.ResponseStatus = "organizer"
+	}
+	event.OnlineMeeting = calendarGoogleMeetingJSON(remote)
+
+	var err error
+	event.ProviderCreatedAt, err = parseGoogleCalendarTimestamp(remote.Created)
+	if err != nil {
+		return calendar.RemoteEvent{}, fmt.Errorf("parse Google Calendar created time for %q: %w", event.RemoteID, err)
+	}
+	event.ProviderUpdatedAt, err = parseGoogleCalendarTimestamp(remote.Updated)
+	if err != nil {
+		return calendar.RemoteEvent{}, fmt.Errorf("parse Google Calendar updated time for %q: %w", event.RemoteID, err)
+	}
+
+	if strings.TrimSpace(remote.Start.Date) != "" || strings.TrimSpace(remote.End.Date) != "" {
+		event.AllDay = true
+		event.StartDate = strings.TrimSpace(remote.Start.Date)
+		event.EndDate = strings.TrimSpace(remote.End.Date)
+		if !event.Deleted && (event.StartDate == "" || event.EndDate == "" || event.StartDate >= event.EndDate) {
+			return calendar.RemoteEvent{}, fmt.Errorf("Google Calendar all-day event %q has an invalid date range", event.RemoteID)
+		}
+		return event, nil
+	}
+
+	event.StartAt, err = parseGoogleCalendarEventTime(remote.Start)
+	if err != nil {
+		return calendar.RemoteEvent{}, fmt.Errorf("parse Google Calendar start for %q: %w", event.RemoteID, err)
+	}
+	event.EndAt, err = parseGoogleCalendarEventTime(remote.End)
+	if err != nil {
+		return calendar.RemoteEvent{}, fmt.Errorf("parse Google Calendar end for %q: %w", event.RemoteID, err)
+	}
+	if !event.Deleted && (event.StartAt == nil || event.EndAt == nil || !event.EndAt.After(*event.StartAt)) {
+		return calendar.RemoteEvent{}, fmt.Errorf("Google Calendar timed event %q has an invalid time range", event.RemoteID)
+	}
+	return event, nil
+}
+
+func parseGoogleCalendarTimestamp(value string) (*time.Time, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil, nil
+	}
+	parsed, err := time.Parse(time.RFC3339Nano, value)
+	if err != nil {
+		return nil, err
+	}
+	parsed = parsed.UTC()
+	return &parsed, nil
+}
+
+func parseGoogleCalendarEventTime(value googleCalendarEventDateTime) (*time.Time, error) {
+	raw := strings.TrimSpace(value.DateTime)
+	if raw == "" {
+		return nil, nil
+	}
+	if parsed, err := time.Parse(time.RFC3339Nano, raw); err == nil {
+		parsed = parsed.UTC()
+		return &parsed, nil
+	}
+
+	location := time.UTC
+	if timezone := strings.TrimSpace(value.TimeZone); timezone != "" {
+		loaded, err := time.LoadLocation(timezone)
+		if err != nil {
+			return nil, fmt.Errorf("load timezone %q: %w", timezone, err)
+		}
+		location = loaded
+	}
+	parsed, err := time.ParseInLocation("2006-01-02T15:04:05", raw, location)
+	if err != nil {
+		return nil, err
+	}
+	parsed = parsed.UTC()
+	return &parsed, nil
+}
+
+func (h *Handler) syncGoogleCalendarWindow(ctx context.Context, userID string, windowStart, windowEnd time.Time) (int, error) {
+	return h.syncCalendarProviderWindow(ctx, userID, windowStart, windowEnd, providers.ProviderGmail)
+}
+
+func (h *Handler) discoverGoogleCalendarSources(ctx context.Context, userID, accountID, accessToken string) (int, error) {
+	calendars, err := discoverGoogleCalendars(ctx, accessToken)
+	if err != nil {
+		return 0, fmt.Errorf("discover Google calendars: %w", err)
+	}
+
+	hasPrimary := false
+	for _, remote := range calendars {
+		if remote.Primary {
+			hasPrimary = true
 			break
 		}
 	}
-	if syncToken == "" {
-		return errors.New("google calendar returned no nextSyncToken")
-	}
-	return h.db.ReplaceCalendarEvents(ctx, cal.ID, cal.AccountID, events, syncToken, winStart, winEnd)
-}
-
-func (h *Handler) syncGoogleCalendarIncremental(ctx context.Context, accessToken string, cal models.Calendar) error {
-	pageToken := ""
-	for {
-		v := url.Values{}
-		v.Set("singleEvents", "true")
-		v.Set("maxResults", "2500")
-		if pageToken != "" {
-			v.Set("pageToken", pageToken)
-		} else {
-			v.Set("syncToken", cal.SyncToken)
+	sources := make([]storage.CalendarSource, 0, len(calendars))
+	for index, remote := range calendars {
+		selected := remote.Primary
+		if !hasPrimary && index == 0 {
+			selected = true
 		}
-		var page googleCalendarEventsResponse
-		err := googleCalendarGet(ctx, accessToken, "/calendars/"+url.PathEscape(cal.ProviderCalendarID)+"/events", v, &page)
-		var apiErr googleAPIError
-		if errors.As(err, &apiErr) && apiErr.Status == http.StatusGone {
-			return errGoogleSyncTokenExpired
-		}
-		if err != nil {
-			return err
-		}
-		var upserts []models.CalendarEvent
-		var deletes []string
-		for _, item := range page.Items {
-			if item.Status == "cancelled" {
-				deletes = append(deletes, item.ID)
-				continue
-			}
-			ev, err := googleEventToModel(item)
-			if err != nil {
-				return fmt.Errorf("event %s: %w", item.ID, err)
-			}
-			upserts = append(upserts, ev)
-		}
-		if err := h.db.ApplyCalendarEventPage(ctx, cal.ID, cal.AccountID, upserts, deletes); err != nil {
-			return err
-		}
-		if pageToken = page.NextPageToken; pageToken == "" {
-			if page.NextSyncToken == "" {
-				return errors.New("google calendar returned no nextSyncToken")
-			}
-			return h.db.FinishIncrementalCalendarSync(ctx, cal.ID, page.NextSyncToken)
-		}
-	}
-}
-
-// googleEventToModel converts a non-cancelled Google event. Timed events are
-// normalised to UTC; all-day events keep their floating dates, with UTC
-// midnights as a sort key.
-func googleEventToModel(g googleCalendarEvent) (models.CalendarEvent, error) {
-	e := models.CalendarEvent{
-		ProviderEventID: g.ID, ICalUID: g.ICalUID, RecurringEventID: g.RecurringEventID,
-		Title: g.Summary, Location: g.Location, Description: googleDescriptionText(g.Description),
-		Status: g.Status, OrganizerEmail: g.Organizer.Email, HTMLLink: g.HTMLLink,
-		EventTimeZone: g.Start.TimeZone, Attendees: []models.EventAttendee{},
-	}
-	if e.Status == "" {
-		e.Status = "confirmed"
-	}
-	if g.Start.Date != "" {
-		start, err := time.Parse(calendarDateLayout, g.Start.Date)
-		if err != nil {
-			return e, fmt.Errorf("start date: %w", err)
-		}
-		end := start.AddDate(0, 0, 1)
-		if g.End.Date != "" {
-			if end, err = time.Parse(calendarDateLayout, g.End.Date); err != nil {
-				return e, fmt.Errorf("end date: %w", err)
-			}
-		}
-		e.AllDay, e.StartAt, e.EndAt = true, start, end
-		e.StartDate, e.EndDate = start.Format(calendarDateLayout), end.Format(calendarDateLayout)
-	} else {
-		start, err := parseGoogleDateTime(g.Start)
-		if err != nil {
-			return e, fmt.Errorf("start: %w", err)
-		}
-		end := start
-		if g.End.DateTime != "" {
-			if end, err = parseGoogleDateTime(g.End); err != nil {
-				return e, fmt.Errorf("end: %w", err)
-			}
-		}
-		e.StartAt, e.EndAt = start, end
-	}
-	if t, err := time.Parse(time.RFC3339, g.Updated); err == nil {
-		t = t.UTC()
-		e.UpdatedAtProvider = &t
-	}
-	for _, a := range g.Attendees {
-		e.Attendees = append(e.Attendees, models.EventAttendee{
-			Email: a.Email, Name: a.DisplayName, Response: a.ResponseStatus,
-			Organizer: a.Organizer, Self: a.Self, Optional: a.Optional, Resource: a.Resource,
+		sources = append(sources, storage.CalendarSource{
+			UserID:      userID,
+			AccountID:   accountID,
+			Provider:    providers.ProviderGmail,
+			RemoteID:    remote.RemoteID,
+			Name:        remote.Name,
+			Description: remote.Description,
+			TimeZone:    remote.TimeZone,
+			Color:       remote.Color,
+			AccessRole:  remote.AccessRole,
+			IsPrimary:   remote.Primary,
+			IsSelected:  selected,
 		})
-		if a.Self {
-			e.SelfResponse = a.ResponseStatus
+	}
+	if err := h.db.ReplaceCalendarSources(ctx, userID, accountID, providers.ProviderGmail, sources); err != nil {
+		return 0, fmt.Errorf("store discovered Google calendars: %w", err)
+	}
+	return len(sources), nil
+}
+
+func (h *Handler) handleDiscoverAccountCalendars(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	accountID := strings.TrimSpace(r.PathValue("id"))
+	if accountID == "" {
+		http.Error(w, "account id required", http.StatusBadRequest)
+		return
+	}
+	if !h.requireOwnedAccount(w, r, accountID) {
+		return
+	}
+
+	data, err := h.accountStore.GetEditData(ctx, accountID)
+	if err != nil {
+		http.Error(w, "account not found", http.StatusNotFound)
+		return
+	}
+	statusMessage := ""
+	statusError := false
+	discoverySucceeded := false
+	userID := h.userID(ctx)
+	switch data.Provider {
+	case providers.ProviderGmail:
+		if h.mailCredentials() == nil || !h.mailCredentials().HasGoogleOAuth() {
+			statusMessage = "Google OAuth is not configured for this Gofer instance."
+			statusError = true
+			break
 		}
-	}
-	if e.SelfResponse == "" && g.Organizer.Self {
-		e.SelfResponse = "accepted"
-	}
-	e.MeetingURL = g.HangoutLink
-	if e.MeetingURL == "" {
-		for _, ep := range g.ConferenceData.EntryPoints {
-			if ep.EntryPointType == "video" && ep.URI != "" {
-				e.MeetingURL = ep.URI
+		accessToken, tokenErr := h.mailCredentials().GetGoogleCalendarTokenForAccount(ctx, accountID)
+		if tokenErr != nil {
+			statusMessage = "Google Calendar access is missing. Reconnect this account from its actions menu, then discover calendars again."
+			statusError = true
+			break
+		}
+		count, discoverErr := h.discoverGoogleCalendarSources(ctx, userID, accountID, accessToken)
+		if discoverErr != nil {
+			statusMessage = "Calendar discovery failed: " + discoverErr.Error()
+			statusError = true
+			break
+		}
+		statusMessage = fmt.Sprintf("Discovered %d Google calendar source(s). The primary calendar is selected by default.", count)
+		discoverySucceeded = true
+	case providers.ProviderOutlook:
+		if h.mailCredentials() == nil || !h.mailCredentials().HasMicrosoftOAuth() {
+			statusMessage = "Microsoft OAuth is not configured for this Gofer instance."
+			statusError = true
+			break
+		}
+		accessToken, tokenErr := h.mailCredentials().GetMicrosoftGraphCalendarTokenForAccount(ctx, accountID)
+		if tokenErr != nil {
+			statusMessage = "Microsoft Calendar access is missing. Reconnect this account from its actions menu, then discover calendars again."
+			statusError = true
+			break
+		}
+		count, discoverErr := h.discoverOutlookCalendarSources(ctx, userID, accountID, accessToken)
+		if discoverErr != nil {
+			statusMessage = "Calendar discovery failed: " + discoverErr.Error()
+			statusError = true
+			break
+		}
+		statusMessage = fmt.Sprintf("Discovered %d Microsoft calendar source(s). The primary calendar is selected by default.", count)
+		discoverySucceeded = true
+	case providers.ProviderIMAP:
+		if err := r.ParseForm(); err != nil {
+			statusMessage = "Calendar discovery failed: the CalDAV server URL could not be read."
+			statusError = true
+			break
+		}
+		autodiscover := r.FormValue("autodiscover") == "1"
+		useAccountCredentials := r.FormValue("use_account_credentials") == "1"
+		baseURL := strings.TrimSpace(r.FormValue("caldav_url"))
+		if baseURL == "" && !autodiscover {
+			baseURL = data.CalendarSync.CalDAVBaseURL
+		}
+		data.CalendarSync.CalDAVBaseURL = baseURL
+		data.CalendarSync.CalDAVUseAccountCredentials = useAccountCredentials
+		username := strings.TrimSpace(r.FormValue("username"))
+		password := r.FormValue("password")
+		if useAccountCredentials {
+			username = strings.TrimSpace(data.Username)
+			if username == "" {
+				username = strings.TrimSpace(data.EmailAddress)
+			}
+			password, err = h.accountStore.DecryptPassword(ctx, accountID)
+			if err != nil || strings.TrimSpace(password) == "" {
+				statusMessage = "CalDAV discovery needs this mailbox's password or app password."
+				statusError = true
+				break
+			}
+			data.CalendarSync.CalDAVUsername = ""
+		} else {
+			if username == "" {
+				username = strings.TrimSpace(data.CalendarSync.CalDAVUsername)
+			}
+			data.CalendarSync.CalDAVUsername = username
+			if strings.TrimSpace(password) == "" {
+				password, err = h.accountStore.CalDAVPassword(ctx, userID, accountID)
+				if err != nil {
+					statusMessage = "Could not read the saved CalDAV password."
+					statusError = true
+					break
+				}
+			}
+			if username == "" || strings.TrimSpace(password) == "" {
+				statusMessage = "Enter the CalDAV username and password or use the incoming-mail credentials."
+				statusError = true
 				break
 			}
 		}
+		normalizedBaseURL := ""
+		if !autodiscover {
+			var normalizeErr error
+			normalizedBaseURL, normalizeErr = normalizeCalDAVBaseURL(baseURL)
+			if normalizeErr != nil {
+				statusMessage = "Calendar discovery failed: " + normalizeErr.Error()
+				statusError = true
+				break
+			}
+		}
+		discoveryCtx, cancel := context.WithTimeout(ctx, cardDAVDiscoveryOverallTimeout)
+		var calendars []storage.CalendarSource
+		var discoverErr error
+		if autodiscover {
+			candidates := calDAVAutodiscoveryCandidates(discoveryCtx, baseURL, data.EmailAddress, data.IMAPHost, data.SMTPHost)
+			calendars, normalizedBaseURL, discoverErr = discoverCalDAVCalendarsCandidates(discoveryCtx, candidates, username, password, userID, accountID)
+		} else {
+			calendars, discoverErr = discoverCalDAVCalendars(discoveryCtx, normalizedBaseURL, username, password, userID, accountID)
+		}
+		cancel()
+		if discoverErr != nil {
+			statusMessage = "Calendar discovery failed: " + discoverErr.Error()
+			statusError = true
+			break
+		}
+		if saveErr := h.accountStore.SaveCalDAVConfig(ctx, userID, accountID, normalizedBaseURL, username, password, useAccountCredentials); saveErr != nil {
+			statusMessage = "Calendars were found, but the CalDAV settings could not be saved."
+			statusError = true
+			break
+		}
+		data.CalendarSync.CalDAVBaseURL = normalizedBaseURL
+		if storeErr := h.db.ReplaceCalendarSources(ctx, userID, accountID, storage.CalendarSourceProviderCalDAV, calendars); storeErr != nil {
+			statusMessage = "Could not save the discovered CalDAV calendars."
+			statusError = true
+			break
+		}
+		statusMessage = fmt.Sprintf("Discovered %d CalDAV calendar(s). The first calendar is selected by default.", len(calendars))
+		discoverySucceeded = true
+	default:
+		statusMessage = "Calendar discovery is not available for this account type."
+		statusError = true
 	}
-	return e, nil
-}
+	if discoverySucceeded {
+		if refreshed, refreshErr := h.accountStore.GetEditData(ctx, accountID); refreshErr == nil {
+			data = refreshed
+		}
+	}
 
-// parseGoogleDateTime returns UTC. Google normally includes an offset; if it
-// omits one, timeZone supplies the zone.
-func parseGoogleDateTime(t googleEventTime) (time.Time, error) {
-	if parsed, err := time.Parse(time.RFC3339, t.DateTime); err == nil {
-		return parsed.UTC(), nil
+	if err := views.CalendarSyncSettingsResult(*data, statusMessage, statusError).Render(ctx, w); err != nil {
+		http.Error(w, "failed to render calendar discovery result", http.StatusInternalServerError)
 	}
-	loc, err := time.LoadLocation(t.TimeZone)
-	if err != nil || t.TimeZone == "" {
-		return time.Time{}, fmt.Errorf("unparseable dateTime %q", t.DateTime)
-	}
-	parsed, err := time.ParseInLocation("2006-01-02T15:04:05", t.DateTime, loc)
-	if err != nil {
-		return time.Time{}, err
-	}
-	return parsed.UTC(), nil
-}
-
-var (
-	googleDescBreakPattern = regexp.MustCompile(`(?i)<br\s*/?>|</p>|</div>|</li>`)
-	googleDescTagPattern   = regexp.MustCompile(`<[^>]*>`)
-)
-
-// googleDescriptionText flattens Google's HTML-ish descriptions to plain text.
-func googleDescriptionText(s string) string {
-	if !strings.Contains(s, "<") && !strings.Contains(s, "&") {
-		return s
-	}
-	s = googleDescBreakPattern.ReplaceAllString(s, "\n")
-	s = googleDescTagPattern.ReplaceAllString(s, "")
-	return strings.TrimSpace(html.UnescapeString(s))
 }

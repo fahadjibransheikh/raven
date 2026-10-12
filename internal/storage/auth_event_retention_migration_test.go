@@ -50,7 +50,7 @@ func TestMigrateV92ToV93AddsBoundedAuthenticationEventRetention(t *testing.T) {
 		t.Fatal(err)
 	}
 	if version != CurrentSchemaVersion || days != 180 {
-		t.Fatalf("migrated retention = version:%d days:%d", version, days)
+		t.Fatalf("migrated retention = version:%d days:%d, want version:%d", version, days, CurrentSchemaVersion)
 	}
 	for _, invalid := range []int{0, 366} {
 		if _, err := db.Write().Exec(`

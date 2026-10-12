@@ -49,22 +49,30 @@ type davPropStat struct {
 }
 
 type davProp struct {
-	GetETag              string          `xml:"getetag"`
-	AddressData          string          `xml:"address-data"`
-	DisplayName          string          `xml:"displayname"`
-	CTag                 string          `xml:"getctag"`
-	CurrentUserPrincipal davHrefProp     `xml:"current-user-principal"`
-	AddressBookHomeSet   davHrefProp     `xml:"addressbook-home-set"`
-	ResourceType         davResourceType `xml:"resourcetype"`
+	GetETag               string      `xml:"getetag"`
+	AddressData           string      `xml:"address-data"`
+	CalendarData          string      `xml:"urn:ietf:params:xml:ns:caldav calendar-data"`
+	CalendarTimeZone      string      `xml:"urn:ietf:params:xml:ns:caldav calendar-timezone"`
+	CalendarColor         string      `xml:"http://apple.com/ns/ical/ calendar-color"`
+	DisplayName           string      `xml:"displayname"`
+	CalendarDescription   string      `xml:"calendar-description"`
+	CTag                  string      `xml:"getctag"`
+	CurrentUserPrincipal  davHrefProp `xml:"current-user-principal"`
+	AddressBookHomeSet    davHrefProp `xml:"addressbook-home-set"`
+	CalendarHomeSet       davHrefProp `xml:"calendar-home-set"`
+	CalendarUserAddresses struct {
+		Hrefs []string `xml:"DAV: href"`
+	} `xml:"urn:ietf:params:xml:ns:caldav calendar-user-address-set"`
+	ResourceType          davResourceType  `xml:"resourcetype"`
+	CurrentUserPrivileges *davPrivilegeSet `xml:"current-user-privilege-set"`
+}
 
-	// CalDAV (RFC 4791, RFC 6578, RFC 6638); decoded by local name like the rest.
-	CalendarData          string        `xml:"calendar-data"`
-	CalendarHomeSet       davHrefProp   `xml:"calendar-home-set"`
-	CalendarUserAddresses davHrefsProp  `xml:"calendar-user-address-set"`
-	CalendarColor         string        `xml:"calendar-color"`
-	CalendarComponents    davNamedItems `xml:"supported-calendar-component-set"`
-	Privileges            davNamedItems `xml:"current-user-privilege-set"`
-	DAVSyncToken          string        `xml:"sync-token"`
+type davPrivilegeSet struct {
+	Privileges []struct {
+		All   *struct{} `xml:"all"`
+		Write *struct{} `xml:"write"`
+		Bind  *struct{} `xml:"bind"`
+	} `xml:"privilege"`
 }
 
 type davHrefProp struct {
@@ -75,7 +83,6 @@ type davResourceType struct {
 	Collection  bool
 	AddressBook bool
 	Calendar    bool
-	Shared      bool // a calendar shared to this user (calendarserver.org "shared")
 }
 
 type cardDAVSyncResult struct {
@@ -108,8 +115,6 @@ func (r *davResourceType) UnmarshalXML(d *xml.Decoder, start xml.StartElement) e
 				r.AddressBook = true
 			case "calendar":
 				r.Calendar = true
-			case "shared":
-				r.Shared = true
 			}
 		case xml.EndElement:
 			if t.Name.Local == start.Name.Local {
@@ -187,6 +192,7 @@ func (h *Handler) handleSaveAccountContactSync(w http.ResponseWriter, r *http.Re
 		htmlStatus(w, http.StatusInternalServerError, "Could not save contact sync settings.")
 		return
 	}
+	w.Header().Set("X-Gofer-Contact-Sync-Enabled", strconv.FormatBool(cfg.Enabled))
 	if !cfg.Enabled {
 		htmlStatus(w, http.StatusOK, "Contact sync is disabled for this account.")
 		return
@@ -204,6 +210,7 @@ func (h *Handler) handleSaveAccountContactSync(w http.ResponseWriter, r *http.Re
 func htmlContactSyncSaved(w http.ResponseWriter, accountID string, cfg models.ContactSyncConfig) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("X-Gofer-Status", "ok")
+	w.Header().Set("X-Gofer-Contact-Sync-Enabled", strconv.FormatBool(cfg.Enabled))
 	w.WriteHeader(http.StatusOK)
 	books := contactSyncSelectedBooks(cfg.AddressBooks)
 	defaultBook := contactSyncDefaultBook(books)

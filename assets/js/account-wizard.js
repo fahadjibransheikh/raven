@@ -40,13 +40,14 @@ function wizardGo(step, immediate) {
 	var root = document.getElementById('add-account-dialog');
 	if (!track || !root) return;
 	if (step < 0) step = 0;
-	if (step > 4) step = 4;
+	if (step > 5) step = 5;
 	syncAddContactStep();
 	if (step === 3 && !addContactsEnabled()) step = 4;
 	if (step === 3 && !addStepContentReady('add-step-3-content')) return;
 	if (step === 4 && !addStepContentReady('add-step-4-content')) return;
+	if (step === 5 && !addStepContentReady('add-step-5-content')) return;
 	_wizStep = step;
-	track.style.transform = 'translateX(-' + (step * 20) + '%)';
+	track.style.transform = 'translateX(-' + (step * (100 / 6)) + '%)';
 	root.querySelectorAll('[data-account-wizard-step]').forEach(function(item) {
 		item.dataset.active = String(+item.dataset.accountWizardStep === step);
 	});
@@ -55,6 +56,31 @@ function wizardGo(step, immediate) {
 		section.dataset.active = String(steps.indexOf(String(step)) !== -1);
 	});
 	setWizardFooter(root, step, !!immediate);
+	if (step === 5) startWizardConnectionTest(root); else resetWizardConnectionTest(root);
+}
+function resetWizardConnectionTest(root) {
+	var results = root && root.querySelector ? root.querySelector('[data-wizard-test-results]') : null;
+	if (!results) return;
+	if (root._wizardTestTimer) {
+		window.clearTimeout(root._wizardTestTimer);
+		root._wizardTestTimer = null;
+	}
+	delete results.dataset.wizardTestStarted;
+}
+function startWizardConnectionTest(root) {
+	var results = root && root.querySelector ? root.querySelector('[data-wizard-test-results]') : null;
+	if (!results || results.dataset.wizardTestStarted === 'true') return;
+	results.dataset.wizardTestStarted = 'true';
+	results.innerHTML = '<div class="flex items-center justify-center py-4 gap-2"><div class="size-4 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin"></div><span class="text-xs text-muted-foreground">Testing connection...</span></div>';
+	root._wizardTestTimer = window.setTimeout(function() {
+		root._wizardTestTimer = null;
+		var activeStep = root.querySelector('[data-account-wizard-step="5"][data-active="true"]');
+		if (!activeStep) {
+			delete results.dataset.wizardTestStarted;
+			return;
+		}
+		if (typeof htmx !== 'undefined') htmx.trigger(results, 'wizard-test');
+	}, 320);
 }
 function addStepContentReady(id) {
 	var content = document.getElementById(id);
@@ -69,17 +95,10 @@ function addAccountFormReady() {
 	return !!(form && form.checkValidity());
 }
 function syncAddAccountSubmitButtons() {
-	var contactsEnabled = addContactsEnabled();
-	var disabled = contactsEnabled && !addAccountFormReady();
+	var disabled = !addAccountFormReady();
 	document.querySelectorAll('#add-account-dialog [data-add-account-submit-button]').forEach(function(button) {
-		button.setAttribute('aria-label', contactsEnabled ? 'Setup Contacts' : 'Add Account');
+		button.setAttribute('aria-label', 'Next');
 		button.disabled = disabled;
-	});
-	document.querySelectorAll('#add-account-dialog [data-add-account-submit-label]').forEach(function(label) {
-		label.textContent = contactsEnabled ? 'Setup Contacts' : 'Add Account';
-	});
-	document.querySelectorAll('#add-account-dialog [data-add-account-submit-icon]').forEach(function(icon) {
-		icon.classList.toggle('hidden', icon.dataset.addAccountSubmitIcon === 'contacts' ? !contactsEnabled : contactsEnabled);
 	});
 }
 function setWizardStepDisabled(step, disabled) {
@@ -92,12 +111,13 @@ function syncAddContactStep() {
 	var root = document.getElementById('add-account-dialog');
 	if (!root) return;
 	var contactStep = root.querySelector('[data-account-wizard-step="3"]');
-	var finishStep = root.querySelector('[data-account-wizard-step="4"]');
+	var finishStep = root.querySelector('[data-account-wizard-step="5"]');
 	setWizardStepDisabled(contactStep, !addStepContentReady('add-step-3-content') || !addContactsEnabled());
-	setWizardStepDisabled(finishStep, !addStepContentReady('add-step-4-content'));
+	setWizardStepDisabled(finishStep, !addStepContentReady('add-step-5-content'));
 	syncAddAccountSubmitButtons();
 }
 function maybeGoAddContacts() {
+	if (!addStepContentReady('add-step-5-content')) return;
 	syncAddContactStep();
 	var targetStep = addContactsEnabled() ? 3 : 4;
 	if ((targetStep === 3 && !addStepContentReady('add-step-3-content')) || (targetStep === 4 && !addStepContentReady('add-step-4-content'))) {
@@ -114,7 +134,8 @@ function syncWizardServiceContent(root) {
 	root.querySelectorAll('[data-wizard-service-content]').forEach(function(content) {
 		var service = content.dataset.wizardServiceContent;
 		var toggle = root.querySelector('[data-wizard-service-switch="' + service + '"]');
-		var enabled = !toggle || toggle.checked;
+		var alwaysActive = content.dataset.wizardServiceAlwaysActive === 'true';
+		var enabled = alwaysActive || !toggle || toggle.checked;
 		content.classList.toggle('opacity-50', !enabled);
 		content.classList.toggle('pointer-events-none', !enabled);
 		content.classList.toggle('select-none', !enabled);
@@ -130,9 +151,81 @@ function syncWizardServiceContent(root) {
 		});
 	});
 }
+function wizardServiceStatus(root, service, message) {
+	var status = root.querySelector('[data-wizard-service-status="' + service + '"]');
+	if (!status) return;
+	status.textContent = '';
+	var messageBox = document.createElement('div');
+	messageBox.className = 'rounded-md border border-destructive/20 bg-destructive/10 px-3 py-2 text-xs text-destructive';
+	messageBox.textContent = message;
+	status.appendChild(messageBox);
+}
+function wizardServiceAdvance(root, step) {
+	if (root.id === 'add-account-dialog') {
+		wizardGo(step);
+	} else if (typeof editWizardGo === 'function') {
+		editWizardGo(step, true);
+	}
+}
+function wizardServiceNext(button, service, step) {
+	var root = button && button.closest ? button.closest('#add-account-dialog,#edit-account-dialog') : null;
+	if (!root) return;
+	var toggle = root.querySelector('[data-wizard-service-switch="' + service + '"]');
+	var enabled = !toggle || toggle.checked;
+	var contactForm = service === 'contacts' ? root.querySelector('[data-wizard-contact-form]') : null;
+	var calendarForm = service === 'calendar' && enabled ? root.querySelector('[data-calendar-source-form]') : null;
+	if (enabled && contactForm) {
+		if (contactForm.requestSubmit) contactForm.requestSubmit(); else contactForm.submit();
+		return;
+	}
+	if (enabled && calendarForm) {
+		if (calendarForm.requestSubmit) calendarForm.requestSubmit(); else calendarForm.submit();
+		return;
+	}
+	// Calendar can be toggled on before discovery so users can inspect the
+	// setup. With no discovered sources there is nothing valid to persist;
+	// let the wizard continue and leave that transient toggle unsaved.
+	if (service === 'calendar' && !root.querySelector('[data-calendar-source-checkbox]')) {
+		wizardServiceAdvance(root, step);
+		return;
+	}
+	var serviceForm = toggle && toggle.closest ? toggle.closest('[data-wizard-service-form]') : null;
+	var accountID = serviceForm ? serviceForm.dataset.accountId : '';
+	var initialEnabled = toggle ? toggle.dataset.wizardServiceInitialEnabled : '';
+	if (!accountID || !toggle || String(enabled) === initialEnabled || toggle.disabled) {
+		wizardServiceAdvance(root, step);
+		return;
+	}
+	var wasDisabled = toggle.disabled;
+	toggle.disabled = true;
+	wizardServiceStatus(root, service, 'Saving ' + service + ' settings...');
+	var body = new URLSearchParams();
+	body.append('service', service);
+	body.append('enabled', enabled ? 'true' : 'false');
+	fetch('/api/accounts/' + encodeURIComponent(accountID) + '/services', {
+		method: 'POST',
+		credentials: 'same-origin',
+		headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'text/html' },
+		body: body.toString()
+	}).then(function(response) {
+	if (!response.ok) {
+		return response.text().then(function(message) {
+			throw new Error((message || '').trim() || 'Could not save ' + service + ' settings.');
+		});
+	}
+		toggle.dataset.wizardServiceInitialEnabled = String(enabled);
+		wizardServiceAdvance(root, step);
+	}).catch(function(error) {
+		toggle.checked = initialEnabled === 'true';
+		wizardServiceStatus(root, service, error.message || 'Could not save ' + service + ' settings.');
+	}).finally(function() {
+		toggle.disabled = wasDisabled;
+	});
+}
 document.addEventListener('click', function(event) {
 	var button = event.target && event.target.closest ? event.target.closest('[data-account-wizard-action]') : null;
 	if (!button) return;
+	if (button.hasAttribute('onclick')) return;
 	var step = Number(button.dataset.accountWizardTargetStep || 0);
 	if (button.dataset.accountWizardAction === 'wizardGo') wizardGo(step);
 	if (button.dataset.accountWizardAction === 'editWizardGo' && typeof editWizardGo === 'function') editWizardGo(step);
@@ -384,8 +477,12 @@ function contactSyncSaveButtons(accountID) {
 }
 function contactSyncSetSaveButton(accountID, label, disabled, continueMode) {
 	contactSyncSaveButtons(accountID).forEach(function(button) {
-		button.textContent = label;
+		var buttonLabel = button.querySelector('[data-account-edit-submit-label]');
+		if (buttonLabel) buttonLabel.textContent = label; else button.textContent = label;
 		button.disabled = !!disabled;
+		button.setAttribute('aria-busy', label === 'Saving...' ? 'true' : 'false');
+		var buttonSpinner = button.querySelector('[data-account-edit-submit-spinner]');
+		if (buttonSpinner) buttonSpinner.classList.toggle('hidden', label !== 'Saving...');
 		if (continueMode) {
 			button.type = 'button';
 			button.removeAttribute('form');
@@ -635,6 +732,24 @@ document.body.addEventListener('htmx:afterRequest', function(event) {
 	var ok = !!(event.detail && event.detail.successful) && (!xhr || xhr.getResponseHeader('X-Gofer-Status') !== 'error');
 	contactSyncSaved(form.dataset.accountId || '', ok);
 });
+	document.body.addEventListener('htmx:afterRequest', function(event) {
+		var target = event.detail && event.detail.elt ? event.detail.elt : event.target;
+		var form = target && target.closest ? target.closest('[data-wizard-contact-form]') : null;
+	if (!form) return;
+		var xhr = event.detail && event.detail.xhr ? event.detail.xhr : null;
+		var ok = !!(event.detail && event.detail.successful) && (!xhr || xhr.getResponseHeader('X-Gofer-Status') !== 'error');
+		if (!ok) return;
+		var root = form.closest('#add-account-dialog,#edit-account-dialog');
+		var toggle = root && root.querySelector('[data-wizard-service-switch="contacts"]');
+		var savedEnabled = xhr ? xhr.getResponseHeader('X-Gofer-Contact-Sync-Enabled') : '';
+		if (toggle && (savedEnabled === 'true' || savedEnabled === 'false')) {
+			toggle.checked = savedEnabled === 'true';
+			toggle.dataset.wizardServiceInitialEnabled = savedEnabled;
+			syncWizardServiceContent(root);
+			if (root.id === 'add-account-dialog') syncAddContactStep();
+		}
+		if (root) wizardServiceAdvance(root, Number(form.dataset.wizardNextStep || 0));
+	});
 function refreshCardDAVBaseURLActions(root) {
 	(root || document).querySelectorAll('[data-carddav-base-url-action]').forEach(function(group) {
 		var fields = document.getElementById(group.dataset.fieldsId || '');

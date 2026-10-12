@@ -154,12 +154,127 @@ func (s *AccountStore) GetEditData(ctx context.Context, accountID string) (*mode
 		data.Signatures, _ = s.db.ListSignatures(ctx, userID)
 		data.SignatureSettings, _ = s.db.GetAccountSignatureSettings(ctx, userID, accountID)
 		data.ContactSync, _ = s.GetContactSyncConfig(ctx, userID, accountID)
+		data.CalendarSync, _ = s.GetCalendarSyncConfig(ctx, userID, accountID)
 		if isBuiltinContactProvider(data.Provider) && data.ContactSync.Provider != data.Provider {
 			data.ContactSync.Provider = data.Provider
 			data.ContactSync.Enabled = true
 		}
 	}
 	return &data, nil
+}
+
+func (s *AccountStore) GetCalendarSyncConfig(ctx context.Context, userID, accountID string) (models.CalendarSyncConfig, error) {
+	cfg := models.CalendarSyncConfig{AccountID: accountID, UserID: userID, CalDAVUseAccountCredentials: true}
+	err := s.db.Read().QueryRowContext(ctx, `
+		SELECT a.provider,
+		       COUNT(cs.id),
+		       COALESCE(SUM(CASE WHEN cs.is_selected = 1 THEN 1 ELSE 0 END), 0)
+		FROM accounts a
+		LEFT JOIN calendar_sources cs
+		  ON cs.account_id = a.id
+		 AND cs.user_id = a.user_id
+		 AND cs.is_deleted = 0
+		WHERE a.user_id = ? AND a.id = ? AND COALESCE(a.is_deleting, 0) = 0
+		GROUP BY a.id, a.provider`, userID, accountID).Scan(
+		&cfg.Provider, &cfg.SourceCount, &cfg.SelectedSourceCount)
+	if err != nil {
+		return cfg, err
+	}
+	if cfg.Provider == "imap" {
+		var hasPassword, useAccountCredentials int
+		err := s.db.Read().QueryRowContext(ctx, `
+			SELECT base_url, username, encrypted_password IS NOT NULL, use_account_credentials
+			FROM account_caldav_configs
+			WHERE user_id = ? AND account_id = ?`, userID, accountID).Scan(
+			&cfg.CalDAVBaseURL, &cfg.CalDAVUsername, &hasPassword, &useAccountCredentials)
+		if err != nil && err != sql.ErrNoRows {
+			return cfg, err
+		}
+		if err == nil {
+			cfg.CalDAVHasPassword = hasPassword == 1
+			cfg.CalDAVUseAccountCredentials = useAccountCredentials == 1
+		}
+	}
+	sources, err := s.db.ListCalendarSourcesForAccount(ctx, userID, accountID)
+	if err != nil {
+		return cfg, err
+	}
+	for _, source := range sources {
+		cfg.Sources = append(cfg.Sources, models.CalendarSource{
+			ID:          source.ID,
+			RemoteID:    source.RemoteID,
+			Name:        source.Name,
+			Description: source.Description,
+			TimeZone:    source.TimeZone,
+			Color:       source.Color,
+			AccessRole:  source.AccessRole,
+			IsPrimary:   source.IsPrimary,
+			IsSelected:  source.IsSelected,
+		})
+	}
+	cfg.Enabled = cfg.SelectedSourceCount > 0
+	return cfg, nil
+}
+
+// CalDAVPassword returns the separately configured CalDAV password, if any.
+func (s *AccountStore) CalDAVPassword(ctx context.Context, userID, accountID string) (string, error) {
+	var encrypted []byte
+	err := s.db.Read().QueryRowContext(ctx, `
+		SELECT encrypted_password FROM account_caldav_configs
+		WHERE user_id = ? AND account_id = ?`, userID, accountID).Scan(&encrypted)
+	if err == sql.ErrNoRows || (err == nil && encrypted == nil) {
+		return "", nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("query CalDAV password: %w", err)
+	}
+	password, err := s.decrypt(encrypted)
+	if err != nil {
+		return "", fmt.Errorf("decrypt CalDAV password: %w", err)
+	}
+	return password, nil
+}
+
+// SaveCalDAVConfig stores the endpoint and authentication choice for an IMAP
+// mailbox. Separate CalDAV passwords are encrypted with the account secret.
+func (s *AccountStore) SaveCalDAVConfig(ctx context.Context, userID, accountID, baseURL, username, password string, useAccountCredentials bool) error {
+	var encrypted []byte
+	if useAccountCredentials {
+		username = ""
+	} else if strings.TrimSpace(password) != "" {
+		var err error
+		encrypted, err = s.encrypt(password)
+		if err != nil {
+			return fmt.Errorf("encrypt CalDAV password: %w", err)
+		}
+	} else {
+		_ = s.db.Read().QueryRowContext(ctx, `
+			SELECT encrypted_password FROM account_caldav_configs
+			WHERE user_id = ? AND account_id = ?`, userID, accountID).Scan(&encrypted)
+	}
+	res, err := s.db.Write().ExecContext(ctx, `
+		INSERT INTO account_caldav_configs (account_id, user_id, base_url, username, encrypted_password, use_account_credentials)
+		SELECT id, user_id, ?, ?, ?, ?
+		FROM accounts
+		WHERE id = ? AND user_id = ? AND provider = 'imap' AND COALESCE(is_deleting, 0) = 0 AND 1 = 1
+		ON CONFLICT(account_id) DO UPDATE SET
+			user_id = excluded.user_id,
+			base_url = excluded.base_url,
+			username = excluded.username,
+			encrypted_password = excluded.encrypted_password,
+			use_account_credentials = excluded.use_account_credentials,
+			updated_at = CURRENT_TIMESTAMP`, strings.TrimSpace(baseURL), strings.TrimSpace(username), encrypted, boolInt(useAccountCredentials), accountID, userID)
+	if err != nil {
+		return fmt.Errorf("save CalDAV configuration: %w", err)
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }
 
 func (s *AccountStore) GetContactSyncConfig(ctx context.Context, userID, accountID string) (models.ContactSyncConfig, error) {
@@ -828,6 +943,28 @@ func (s *AccountStore) SetContactSyncEnabled(ctx context.Context, userID, accoun
 	return nil
 }
 
+func (s *AccountStore) SetCalendarSyncEnabled(ctx context.Context, userID, accountID string, enabled bool) error {
+	value := 0
+	if enabled {
+		value = 1
+	}
+	res, err := s.db.Write().ExecContext(ctx, `
+		UPDATE calendar_sources
+		SET is_selected = ?, updated_at = CURRENT_TIMESTAMP
+		WHERE account_id = ? AND user_id = ? AND is_deleted = 0`, value, accountID, userID)
+	if err != nil {
+		return err
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
 func (s *AccountStore) DeleteAccount(ctx context.Context, accountID string) error {
 	return s.DeleteAccountWithProgress(ctx, accountID, nil)
 }
@@ -1245,7 +1382,7 @@ func (s *AccountStore) GetAccountByIDForUser(ctx context.Context, userID, accoun
 
 func (s *AccountStore) getAccountByID(ctx context.Context, accountID, userID string) (*models.Account, error) {
 	var a models.Account
-	var emailSyncEnabled, contactSyncEnabled int
+	var emailSyncEnabled, contactSyncEnabled, calendarSyncEnabled int
 	where := "a.id = ?"
 	args := []any{accountID}
 	if userID != "" {
@@ -1256,11 +1393,16 @@ func (s *AccountStore) getAccountByID(ctx context.Context, accountID, userID str
 		`SELECT a.id, a.provider, a.email_address, a.display_name, a.label, a.color, a.initials, COALESCE(a.email_sync_enabled, 1),
 		        COALESCE(a.email_sync_error, ''), COALESCE(a.email_sync_error_at, ''),
 		        CASE WHEN a.provider IN ('gmail', 'outlook') THEN COALESCE(acc.enabled, 1) ELSE COALESCE(acc.enabled, 0) END AS contact_sync_enabled,
-		        CASE WHEN a.provider IN ('gmail', 'outlook') THEN a.provider ELSE COALESCE(acc.provider, '') END AS contact_sync_provider
+		        CASE WHEN a.provider IN ('gmail', 'outlook') THEN a.provider ELSE COALESCE(acc.provider, '') END AS contact_sync_provider,
+		        CASE WHEN EXISTS (
+		            SELECT 1 FROM calendar_sources cs
+		            WHERE cs.account_id = a.id AND cs.user_id = a.user_id
+		              AND cs.is_deleted = 0 AND cs.is_selected = 1
+		        ) THEN 1 ELSE 0 END AS calendar_sync_enabled
 		 FROM accounts a
 		 LEFT JOIN account_contact_sync_configs acc ON acc.account_id = a.id AND acc.user_id = a.user_id
 		 WHERE `+where+` AND COALESCE(a.is_deleting, 0) = 0`, args...,
-	).Scan(&a.ID, &a.Provider, &a.Email, &a.Name, &a.Label, &a.Color, &a.Initials, &emailSyncEnabled, &a.EmailSyncError, &a.EmailSyncErrorAt, &contactSyncEnabled, &a.ContactSyncProvider)
+	).Scan(&a.ID, &a.Provider, &a.Email, &a.Name, &a.Label, &a.Color, &a.Initials, &emailSyncEnabled, &a.EmailSyncError, &a.EmailSyncErrorAt, &contactSyncEnabled, &a.ContactSyncProvider, &calendarSyncEnabled)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -1269,6 +1411,7 @@ func (s *AccountStore) getAccountByID(ctx context.Context, accountID, userID str
 	}
 	a.EmailSyncEnabled = emailSyncEnabled == 1
 	a.ContactSyncEnabled = contactSyncEnabled == 1
+	a.CalendarSyncEnabled = calendarSyncEnabled == 1
 	return &a, nil
 }
 

@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"github.com/cristianadrielbraun/gofer/internal/auth"
 	avatarresolver "github.com/cristianadrielbraun/gofer/internal/avatar"
+	"github.com/cristianadrielbraun/gofer/internal/calendar"
 	"github.com/cristianadrielbraun/gofer/internal/config"
 	mail "github.com/cristianadrielbraun/gofer/internal/mail"
 	mailautodiscover "github.com/cristianadrielbraun/gofer/internal/mail/autodiscover"
@@ -77,8 +78,19 @@ type Handler struct {
 	contactSyncMu              sync.Mutex
 	contactSyncRunning         map[string]struct{}
 	contactSyncQueue           chan struct{}
+	calendarWorkerOnce         sync.Once
 	calendarSyncMu             sync.Mutex
-	calendarSyncRunning        map[string]struct{}
+	calendarSyncRunning        map[string]*calendarSyncRun
+	calendarFetchEvents        func(context.Context, storage.CalendarSource, calendar.EventQuery) (calendar.EventPage, error)
+	calendarIncomingLookupTXT  func(context.Context, string) ([]string, error)
+	calendarCreateEvent        func(context.Context, storage.CalendarSource, calendar.EventDraft) (calendar.RemoteEvent, error)
+	calendarMeetSupported      func(context.Context, storage.CalendarSource) (bool, error)
+	calendarTeamsSupported     func(context.Context, storage.CalendarSource) (bool, error)
+	calendarUpdateEvent        func(context.Context, storage.CalendarSource, storage.CalendarEvent, calendar.EventDraft) (calendar.RemoteEvent, error)
+	calendarReadSeries         func(context.Context, storage.CalendarSource, string) (calendar.RemoteEvent, error)
+	calendarDeleteEvent        func(context.Context, storage.CalendarSource, storage.CalendarEvent) error
+	calendarReadResponse       func(context.Context, storage.CalendarSource, storage.CalendarEvent, string) (calendarResponseTarget, error)
+	calendarSendResponse       func(context.Context, storage.CalendarSource, storage.CalendarEvent, calendarResponseTarget, string) (calendarResponseResult, error)
 	googleTranslator           *translation.GoogleWebConnector
 	vapidPublicKey             string
 	outgoingWake               chan struct{}
@@ -423,8 +435,8 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	adminRoute("POST /admin/security/private-target", h.handleAddPrivateTargetException)
 	adminRoute("POST /admin/security/exceptions/{id}/delete", h.handleDeleteMailSecurityException)
 	mux.HandleFunc("GET /email/{id}", h.handleEmailPartial)
+	mux.HandleFunc("GET /api/mail/{id}/calendar", h.handleMailCalendarFooter)
 	mux.HandleFunc("GET /email/{id}/body", h.handleEmailBody)
-	mux.HandleFunc("GET /email/{id}/invite", h.handleEmailInvite)
 	mux.HandleFunc("GET /email/{id}/body/translated", h.handleTranslatedEmailBody)
 	mux.HandleFunc("GET /folder/{id}", h.handleFolderPartial)
 	mux.HandleFunc("GET /folder/{id}/full", h.handleFolderFull)
@@ -434,15 +446,29 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /contacts", h.handleContacts)
 	mux.HandleFunc("GET /contacts/items", h.handleContactItems)
 	mux.HandleFunc("GET /calendar", h.handleCalendar)
-	mux.HandleFunc("GET /search", h.handleSearch)
-	mux.HandleFunc("GET /api/calendar/calendars", h.handleListCalendars)
-	mux.HandleFunc("POST /api/calendar/calendars/{id}/selected", h.handleSetCalendarSelected)
-	mux.HandleFunc("GET /api/calendar/events", h.handleListCalendarEvents)
-	mux.HandleFunc("POST /api/calendar/sync", h.handleSyncCalendars)
+	mux.HandleFunc("POST /api/calendar/sync", h.handleCalendarSync)
+	mux.HandleFunc("POST /api/calendar/sources/{id}/visibility", h.handleCalendarVisibility)
+	mux.HandleFunc("GET /api/calendar/events/{id}", h.handleCalendarEvent)
+	mux.HandleFunc("GET /api/calendar/events/{id}/delivery", h.handleCalendarDeliveryStatus)
+	mux.HandleFunc("POST /api/calendar/events/{id}/delivery/{sendID}/retry", h.handleCalendarDeliveryRetry)
+	mux.HandleFunc("GET /api/calendar/events/new", h.handleNewCalendarEvent)
+	mux.HandleFunc("POST /api/calendar/google-meet/drafts", h.handleCalendarGoogleMeetDraft)
+	mux.HandleFunc("POST /api/calendar/teams/drafts", h.handleCalendarTeamsDraft)
+	mux.HandleFunc("POST /api/calendar/teams/drafts/discard", h.handleCalendarTeamsDraftDiscard)
+	mux.HandleFunc("GET /api/calendar/meeting-options", h.handleCalendarTeamsOptions)
+	mux.HandleFunc("GET /api/calendar/teams-options", h.handleCalendarTeamsOptions)
+	mux.HandleFunc("GET /api/calendar/guest-suggestions", h.handleCalendarGuestSuggestions)
 	mux.HandleFunc("POST /api/calendar/events", h.handleCreateCalendarEvent)
-	mux.HandleFunc("PATCH /api/calendar/events/{id}", h.handlePatchCalendarEvent)
+	mux.HandleFunc("GET /api/calendar/events/{id}/edit", h.handleEditCalendarEvent)
+	mux.HandleFunc("PATCH /api/calendar/events/{id}", h.handleUpdateCalendarEvent)
 	mux.HandleFunc("DELETE /api/calendar/events/{id}", h.handleDeleteCalendarEvent)
-	mux.HandleFunc("POST /api/calendar/events/{id}/rsvp", h.handleRSVPCalendarEvent)
+	mux.HandleFunc("GET /api/calendar/events/{id}/delete-series-confirmation", h.handleCalendarSeriesDeleteConfirmation)
+	mux.HandleFunc("GET /api/calendar/events/{id}/delete-occurrence-confirmation", h.handleCalendarOccurrenceDeleteConfirmation)
+	mux.HandleFunc("GET /api/calendar/events/{id}/response", h.handleCalendarResponseForm)
+	mux.HandleFunc("POST /api/calendar/events/{id}/response", h.handleCalendarResponse)
+	mux.HandleFunc("GET /api/calendar/replies/{id}", h.handleCalendarReplyStatus)
+	mux.HandleFunc("POST /api/calendar/replies/{id}", h.handleCalendarReplyAction)
+	mux.HandleFunc("GET /search", h.handleSearch)
 	mux.HandleFunc("GET /api/contacts/export", h.handleExportContacts)
 	mux.HandleFunc("GET /api/contacts/{id}/export", h.handleExportContact)
 	mux.HandleFunc("GET /api/contacts/search", h.handleContactSearch)
@@ -468,6 +494,8 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/accounts/{id}/identities/dismiss", h.handleDismissIdentitySuggestion)
 	mux.HandleFunc("POST /api/accounts/{id}/identities/{identity}/delete", h.handleDeleteAccountIdentity)
 	mux.HandleFunc("POST /api/accounts/{id}/identities/{identity}/default", h.handleSetDefaultAccountIdentity)
+	mux.HandleFunc("POST /api/accounts/{id}/calendar/discover", h.handleDiscoverAccountCalendars)
+	mux.HandleFunc("POST /api/accounts/{id}/calendar/sources", h.handleSaveAccountCalendarSources)
 	mux.HandleFunc("POST /api/accounts/{id}/contacts/sync", h.handleSaveAccountContactSync)
 	mux.HandleFunc("POST /api/accounts/{id}/contacts/sync/test", h.handleTestAccountContactSync)
 	mux.HandleFunc("POST /api/accounts/{id}/contacts/sync/discover", h.handleDiscoverAccountContactSync)
@@ -731,11 +759,25 @@ func (h *Handler) handleEmailPartial(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+	if h.repairCachedCalendarBody(ctx, email.ID, email.AccountID, email.TextBody) {
+		if repaired, err := h.db.GetEmailByIDForFolderForUser(ctx, emailID, folderID, userID); err == nil && repaired != nil {
+			email = repaired
+		}
+	}
 
 	w.Header().Set("Content-Type", "text/html")
 	var thread []models.ThreadItem
 	if r.URL.Query().Get("single") != "1" {
 		thread, _ = h.db.GetThreadMessagesForUser(ctx, email.AccountID, email.ThreadID, userID)
+		repaired := false
+		for _, item := range thread {
+			if h.repairCachedCalendarBody(ctx, item.ID, email.AccountID, item.TextBody) {
+				repaired = true
+			}
+		}
+		if repaired {
+			thread, _ = h.db.GetThreadMessagesForUser(ctx, email.AccountID, email.ThreadID, userID)
+		}
 		_ = h.db.FillThreadListUnsubscribe(ctx, thread)
 	}
 	newestFirst := views.ThreadNewestFirst(h.db.GetUISettings(ctx, userID))
@@ -2657,8 +2699,14 @@ func (h *Handler) handleCreateAccount(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
+	editData, err := h.accountStore.GetEditData(r.Context(), account.ID)
+	if err != nil {
+		log.Printf("load account %s for post-create wizard: %v", account.ID, err)
+		http.Error(w, "account created but setup details could not be loaded", http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "text/html")
-	views.AddAccountPostCreateStep(account.ID).Render(r.Context(), w)
+	views.AddAccountPostCreateStep(*editData).Render(r.Context(), w)
 }
 
 func (h *Handler) handleGetEditAccount(w http.ResponseWriter, r *http.Request) {
@@ -2725,7 +2773,8 @@ func (h *Handler) handleUpdateAccount(w http.ResponseWriter, r *http.Request) {
 		req.Label = &label
 	}
 
-	if strings.EqualFold(strings.TrimSpace(req.Provider), providers.ProviderOutlook) {
+	if strings.EqualFold(strings.TrimSpace(req.Provider), providers.ProviderGmail) ||
+		strings.EqualFold(strings.TrimSpace(req.Provider), providers.ProviderOutlook) {
 		if strings.TrimSpace(req.EmailAddress) == "" {
 			w.Header().Set("Content-Type", "text/html")
 			views.AccountFormError("Email address is required").Render(r.Context(), w)
@@ -2791,6 +2840,22 @@ func (h *Handler) handleUpdateAccountService(w http.ResponseWriter, r *http.Requ
 					log.Printf("contacts sync %s after service enable: %v", accountID, err)
 				}
 			}()
+		}
+	case "calendar":
+		if enabled {
+			calendarConfig, configErr := h.accountStore.GetCalendarSyncConfig(ctx, userID, accountID)
+			if configErr != nil {
+				http.Error(w, "could not check calendar configuration", http.StatusInternalServerError)
+				return
+			}
+			if calendarConfig.SourceCount == 0 {
+				http.Error(w, "Discover at least one calendar before enabling Calendar.", http.StatusConflict)
+				return
+			}
+		}
+		if err := h.accountStore.SetCalendarSyncEnabled(ctx, userID, accountID, enabled); err != nil {
+			http.Error(w, "could not update calendar sync", http.StatusInternalServerError)
+			return
 		}
 	default:
 		http.Error(w, "unknown service", http.StatusBadRequest)
@@ -4562,6 +4627,12 @@ func (h *Handler) handleSSE(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, event := range h.syncer.IDLEFolderStatusSnapshot(userAccounts) {
 		writeEvent(event)
+	}
+	// Reconnecting browsers receive durable Calendar state, not invented success.
+	if sources, err := h.db.ListSelectedCalendarSources(r.Context(), userID); err == nil {
+		for _, source := range sources {
+			writeEvent(mail.Event{Type: mail.EventCalendarSync, UserID: userID, Payload: calendarSyncPayload(source, false, true)})
+		}
 	}
 
 	for {
@@ -6814,6 +6885,13 @@ func (h *Handler) handleGoogleAccountCallback(w http.ResponseWriter, r *http.Req
 		defer cancel()
 		if _, err := h.SyncContactAccount(bg, accountID); err != nil && !errors.Is(err, errContactSyncAlreadyRunning) {
 			log.Printf("contacts sync %s after gmail connect: %v", accountID, err)
+		}
+	}()
+	go func() {
+		bg, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
+		if _, err := h.discoverGoogleCalendarSources(bg, userID, accountID, token.AccessToken); err != nil {
+			log.Printf("calendar discovery %s after gmail connect: %v", accountID, err)
 		}
 	}()
 

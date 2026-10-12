@@ -26,7 +26,8 @@ It's built with Go, templ views, HTMX-style interactions, and SQLite storage. It
 
 Everything below comes from Gofer and works in Raven:
 
-- **Accounts and sync:** multiple IMAP/SMTP, Gmail, and Outlook accounts, with mail cached locally in SQLite.
+- **Users and access:** multiple users with separate administrators, invitations, and security policies; personal mode for one protected profile; and a no-login mode for local use.
+- **Accounts and sync:** multiple IMAP/SMTP, Gmail, and Outlook accounts, with mail cached in the instance's SQLite database.
 - **Reading and sending:** threads, attachments, drafts with autosave, signatures, scheduled send, and translation.
 - **Organization and search:** folders, stars, archive, spam controls, and advanced search filters.
 - **Contacts:** local address books, vCard import/export, Google, Outlook, and CardDAV sync, plus automatic contact syncing between accounts.

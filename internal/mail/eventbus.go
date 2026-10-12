@@ -24,6 +24,8 @@ const (
 	EventAvatarBackfill        EventType = "avatar-backfill"
 	EventContactActivity       EventType = "contact-activity"
 	EventContactBackfill       EventType = "contact-backfill"
+	EventCalendarSync          EventType = "calendar-sync"
+	EventCalendarChanged       EventType = "calendar-changed"
 )
 
 type Event struct {

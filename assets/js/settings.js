@@ -88,6 +88,206 @@ function handleAccountTestResult(event) {
   }, finishDelay)
 }
 
+function _settingsEventElement(event) {
+  return (event && event.detail && event.detail.elt) || (event && event.currentTarget) || (event && event.target)
+}
+
+function _editAccountSubmitButtons() {
+  return document.querySelectorAll("#edit-account-dialog [data-account-edit-submit-button]")
+}
+
+function _setEditAccountSubmitBusy(busy) {
+  _editAccountSubmitButtons().forEach(function (button) {
+    button.disabled = !!busy
+    button.setAttribute("aria-busy", busy ? "true" : "false")
+    button.classList.toggle("cursor-wait", !!busy)
+    var label = button.querySelector("[data-account-edit-submit-label]")
+    var spinner = button.querySelector("[data-account-edit-submit-spinner]")
+    if (label && busy) label.textContent = "Saving..."
+    if (spinner) spinner.classList.toggle("hidden", !busy)
+  })
+}
+
+function handleEditAccountSaveStart(event) {
+  var form = _settingsEventElement(event)
+  if (!form || form.id !== "edit-account-form") return
+  _setEditAccountSubmitBusy(true)
+}
+
+function handleEditAccountSaveResult(event) {
+  var form = _settingsEventElement(event)
+  if (!form || form.id !== "edit-account-form") return
+  var xhr = event && event.detail && event.detail.xhr
+  var ok = !!(event && event.detail && event.detail.successful) && (!xhr || xhr.getResponseHeader("X-Gofer-Status") !== "error")
+	if (ok) {
+		_setEditAccountSubmitBusy(false)
+		_editAccountSubmitButtons().forEach(function (button) {
+			var label = button.querySelector("[data-account-edit-submit-label]")
+			if (label) label.textContent = "Next"
+		})
+		var pendingStep = typeof _editWizPendingStep !== "undefined" ? _editWizPendingStep : null
+		var nextStep = typeof pendingStep === "number" ? pendingStep : 5
+		if (typeof pendingStep !== "number" && typeof _editWizStep !== "undefined" && _editWizStep === 3) nextStep = 4
+		if (typeof _editWizPendingStep !== "undefined") _editWizPendingStep = null
+		if (typeof editWizardGo === "function") editWizardGo(nextStep, true)
+    return
+  }
+
+  _setEditAccountSubmitBusy(false)
+  _editAccountSubmitButtons().forEach(function (button) {
+    var label = button.querySelector("[data-account-edit-submit-label]")
+    if (label) label.textContent = "Try again"
+  })
+}
+
+function _calendarDiscoveryForm(event) {
+  var element = _settingsEventElement(event)
+  return element && element.closest ? element.closest("[data-calendar-discovery-form]") : null
+}
+
+function toggleCalendarAuth(checkbox) {
+  var form = checkbox && checkbox.closest ? checkbox.closest("form") : null
+  if (!form) return
+  var fields = form.querySelector("[data-calendar-credential-fields]")
+  if (!fields) return
+  fields.classList.toggle("opacity-50", checkbox.checked)
+  fields.querySelectorAll('input[name="username"], input[name="password"]').forEach(function (input) {
+    input.disabled = checkbox.checked
+  })
+}
+
+document.addEventListener("click", function (event) {
+  var button = event.target && event.target.closest ? event.target.closest("[data-calendar-autodiscover]") : null
+  if (!button) return
+  var form = button.closest("[data-calendar-discovery-form]")
+  if (!form) return
+  event.preventDefault()
+
+  var flag = form.querySelector('input[name="autodiscover"]')
+  if (!flag) {
+    flag = document.createElement("input")
+    flag.type = "hidden"
+    flag.name = "autodiscover"
+    form.appendChild(flag)
+  }
+  flag.value = "1"
+  if (typeof form.requestSubmit === "function") {
+    var submitter = form.querySelector("[data-calendar-discovery-submit]")
+    if (submitter) form.requestSubmit(submitter)
+    else form.requestSubmit()
+  } else if (window.htmx) {
+    window.htmx.trigger(form, "submit")
+  }
+})
+
+function _setCalendarDiscoveryBusy(form, busy) {
+  if (!form) return
+  var autodiscover = form.querySelector('input[name="autodiscover"][value="1"]')
+  var buttons = [
+    form.querySelector("[data-calendar-discovery-submit]"),
+    form.querySelector("[data-calendar-autodiscover]")
+  ].filter(Boolean)
+  var button = autodiscover ? form.querySelector("[data-calendar-autodiscover]") : form.querySelector("[data-calendar-discovery-submit]")
+  if (!button) return
+
+  var label = button.querySelector(autodiscover ? "[data-calendar-autodiscover-label]" : "[data-calendar-discovery-label]")
+  if (busy) {
+    var originalLabel = label ? label.textContent.trim() : ""
+    button.dataset.calendarDiscoveryOriginalLabel = originalLabel
+    if (label) label.textContent = autodiscover ? "Searching..." : originalLabel.indexOf("Discover") === 0 ? "Discovering..." : "Refreshing..."
+  } else if (label && button.dataset.calendarDiscoveryOriginalLabel) {
+    label.textContent = button.dataset.calendarDiscoveryOriginalLabel
+    delete button.dataset.calendarDiscoveryOriginalLabel
+  }
+
+  buttons.forEach(function (item) { item.disabled = !!busy })
+  button.setAttribute("aria-busy", busy ? "true" : "false")
+  button.classList.toggle("cursor-wait", !!busy)
+  var icon = button.querySelector("svg")
+  if (icon) icon.classList.toggle("animate-spin", !!busy)
+}
+
+function handleCalendarDiscoveryStart(event) {
+  var form = _calendarDiscoveryForm(event)
+  if (!form) return
+  _setCalendarDiscoveryBusy(form, true)
+}
+
+function handleCalendarDiscoveryResult(event) {
+  var form = _calendarDiscoveryForm(event)
+  if (!form) return
+  var xhr = event && event.detail && event.detail.xhr
+  var ok = !!(event && event.detail && event.detail.successful) && (!xhr || xhr.getResponseHeader("X-Gofer-Status") !== "error")
+  if (ok) return
+
+  _setCalendarDiscoveryBusy(form, false)
+  var flag = form.querySelector('input[name="autodiscover"]')
+  if (flag) flag.remove()
+}
+
+function _calendarSourceForm(event) {
+  var element = _settingsEventElement(event)
+  return element && element.closest ? element.closest("[data-calendar-source-form]") : null
+}
+
+function _calendarSourceStatus(form, message, error) {
+  if (!form) return
+  var status = form.querySelector("[data-calendar-source-save-status]")
+  if (!status) return
+  status.textContent = ""
+  var box = document.createElement("div")
+  box.className = error
+    ? "rounded-md border border-destructive/20 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+    : "rounded-md border border-border bg-background px-3 py-2 text-xs text-muted-foreground"
+  if (error) {
+    box.textContent = message
+  } else {
+    box.innerHTML = '<span class="inline-flex items-center gap-2"><span class="size-3.5 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin"></span><span data-calendar-source-save-label></span></span>'
+    box.querySelector("[data-calendar-source-save-label]").textContent = message
+  }
+  status.appendChild(box)
+}
+
+function handleCalendarSourceSaveStart(event) {
+  var form = _calendarSourceForm(event)
+  if (!form) return
+  var root = form.closest ? form.closest("#add-account-dialog,#edit-account-dialog") : null
+  if (root) form.dataset.calendarWizardRootId = root.id
+  _calendarSourceStatus(form, "Saving calendar selection...", false)
+}
+
+function handleCalendarSourceSaveResult(event) {
+  var form = _calendarSourceForm(event)
+  if (!form) return
+  var xhr = event && event.detail && event.detail.xhr
+  var ok = !!(event && event.detail && event.detail.successful) && (!xhr || xhr.getResponseHeader("X-Gofer-Status") !== "error")
+  var root = form.closest ? form.closest("#add-account-dialog,#edit-account-dialog") : null
+  if (!root && form.dataset.calendarWizardRootId) root = document.getElementById(form.dataset.calendarWizardRootId)
+  var toggle = root && root.querySelector ? root.querySelector('[data-wizard-service-switch="calendar"]') : null
+  if (ok) {
+    if (toggle) {
+      toggle.checked = true
+      toggle.dataset.wizardServiceInitialEnabled = "true"
+    }
+    if (root && typeof wizardServiceAdvance === "function") wizardServiceAdvance(root, 5)
+    return
+  }
+
+  if (toggle && toggle.dataset.wizardServiceInitialEnabled !== "true") toggle.checked = false
+  var message = xhr && xhr.responseText ? xhr.responseText.trim() : "Could not save calendar source selection."
+  _calendarSourceStatus(form, message || "Could not save calendar source selection.", true)
+}
+
+function toggleUnencryptedTransportWarning(input) {
+  if (!input || !input.closest) return
+  var field = input.closest(".select-container")
+  var warning = field && field.parentElement ? field.parentElement.querySelector("[data-unencrypted-transport-warning]") : null
+  if (!warning) return
+  var active = input.value === "plaintext"
+  warning.classList.toggle("hidden", !active)
+  warning.classList.toggle("inline-flex", active)
+}
+
 function normalizeAccountColorInput(color) {
   color = (color || "").trim()
   if (/^[0-9a-f]{6}$/i.test(color)) color = "#" + color
@@ -913,6 +1113,13 @@ function setSettingsSidebarActive(value) {
     else link.removeAttribute("aria-current")
   })
 }
+
+document.body.addEventListener("htmx:afterSwap", function (event) {
+  var section = event.target
+  var request = event.detail && event.detail.requestConfig
+  if (!section || section.id !== "settings-content" || !request || request.verb !== "get") return
+  animateSectionContent(section)
+})
 
 document.body.addEventListener("htmx:afterSettle", function (e) {
   if (!e.target || !e.target.querySelector) return

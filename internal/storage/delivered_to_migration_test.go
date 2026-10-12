@@ -25,8 +25,8 @@ func TestMigrateV105ToV106AddsDeliveredTo(t *testing.T) {
 		t.Errorf("column missing: %v", err)
 	}
 	var version int
-	if err := db.Read().QueryRow(`SELECT MAX(version) FROM schema_version`).Scan(&version); err != nil || version != 106 {
-		t.Errorf("version = %d, %v; want 106", version, err)
+	if err := db.Read().QueryRow(`SELECT MAX(version) FROM schema_version`).Scan(&version); err != nil || version != CurrentSchemaVersion {
+		t.Errorf("version = %d, %v; want %d", version, err, CurrentSchemaVersion)
 	}
 	if err := db.migrate(); err != nil {
 		t.Fatalf("second migrate: %v", err)

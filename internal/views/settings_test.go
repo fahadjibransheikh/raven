@@ -568,6 +568,246 @@ func TestAccountDialogsOfferOnlyExplicitMailTransportModes(t *testing.T) {
 	}
 }
 
+func TestAccountDialogsIncludeCalendarServiceSection(t *testing.T) {
+	var addOut bytes.Buffer
+	if err := AddAccountDialogContent().Render(context.Background(), &addOut); err != nil {
+		t.Fatalf("AddAccountDialog.Render() error = %v", err)
+	}
+	addCalendarButton := renderedWizardButtonForStep(addOut.String(), `data-account-wizard-target-step="4"`)
+	if addCalendarButton == "" {
+		t.Fatalf("add account dialog did not render a Calendar navigation button")
+	}
+	if strings.Contains(addCalendarButton, " disabled") {
+		t.Fatalf("add account Calendar navigation button must remain selectable: %s", addCalendarButton)
+	}
+	for _, want := range []string{
+		"Calendar",
+		"Provider access",
+		`data-wizard-service-switch="calendar"`,
+		`data-wizard-step="4"`,
+		`data-wizard-step="5"`,
+		`add-step-5-content`,
+	} {
+		if !strings.Contains(addOut.String(), want) {
+			t.Fatalf("add account dialog missing Calendar service marker %q: %s", want, addOut.String())
+		}
+	}
+
+	var postCreateOut bytes.Buffer
+	if err := AddAccountPostCreateStep(models.EditAccountData{AccountID: "created-account"}).Render(context.Background(), &postCreateOut); err != nil {
+		t.Fatalf("AddAccountPostCreateStep.Render() error = %v", err)
+	}
+	for _, want := range []string{`add-wizard-footer-step-4`, `add-wizard-footer-step-5`, `add-step-4-content`, `add-step-5-content`, "Contact sync", "Calendar sync"} {
+		if !strings.Contains(postCreateOut.String(), want) {
+			t.Fatalf("post-create account wizard missing separate Calendar marker %q: %s", want, postCreateOut.String())
+		}
+	}
+
+	var editOut bytes.Buffer
+	if err := EditAccountDialog(models.EditAccountData{
+		AccountID:    "calendar-account",
+		Provider:     "outlook",
+		EmailAddress: "calendar@outlook.com",
+	}).Render(context.Background(), &editOut); err != nil {
+		t.Fatalf("EditAccountDialog.Render() error = %v", err)
+	}
+	editCalendarButton := renderedWizardButtonForStep(editOut.String(), `data-account-wizard-target-step="4"`)
+	if editCalendarButton == "" {
+		t.Fatalf("edit account dialog did not render a Calendar navigation button")
+	}
+	if strings.Contains(editCalendarButton, " disabled") {
+		t.Fatalf("edit account Calendar navigation button must remain selectable: %s", editCalendarButton)
+	}
+	editCalendarSwitch := renderedWizardSwitchForService(editOut.String(), "calendar")
+	if editCalendarSwitch == "" {
+		t.Fatalf("edit account dialog did not render a Calendar switch")
+	}
+	if strings.Contains(editCalendarSwitch, "disabled") {
+		t.Fatalf("edit account Calendar switch must remain interactive before discovery: %s", editCalendarSwitch)
+	}
+	if strings.Contains(editCalendarSwitch, `hx-post="/api/accounts/calendar-account/services"`) {
+		t.Fatalf("Calendar switch should be saved by its Next action, not immediately on change: %s", editCalendarSwitch)
+	}
+	for _, want := range []string{
+		"Calendar sync",
+		"Microsoft Calendar access",
+		"Discover calendars",
+		`/api/accounts/calendar-account/calendar/discover`,
+		`data-wizard-service-switch="calendar"`,
+		`handleEditAccountSaveStart(event)`,
+		`handleEditAccountSaveResult(event)`,
+		`data-account-edit-submit-button`,
+		`data-account-edit-submit-spinner`,
+		`data-wizard-step="4"`,
+		`data-wizard-step="5"`,
+		`edit-step-5-content`,
+		`data-wizard-footer-step="5"`,
+		`onclick="editWizardGo(4)"`,
+	} {
+		if !strings.Contains(editOut.String(), want) {
+			t.Fatalf("edit account dialog missing Calendar marker %q: %s", want, editOut.String())
+		}
+	}
+	for name, html := range map[string]string{"add": addOut.String() + postCreateOut.String(), "edit": editOut.String()} {
+		for _, want := range []string{"Next", "wizardServiceNext"} {
+			if !strings.Contains(html, want) {
+				t.Fatalf("%s account dialog missing wizard navigation marker %q: %s", name, want, html)
+			}
+		}
+		for _, forbidden := range []string{"Setup Contacts", "Save and continue"} {
+			if strings.Contains(html, forbidden) {
+				t.Fatalf("%s account dialog still renders obsolete wizard action %q: %s", name, forbidden, html)
+			}
+		}
+	}
+	if !strings.Contains(postCreateOut.String(), `data-wizard-contact-form`) {
+		t.Fatalf("post-create account wizard is missing the contact Next form")
+	}
+	for name, html := range map[string]string{"post-create": postCreateOut.String(), "edit": editOut.String()} {
+		for _, want := range []string{`data-wizard-test-results`, `hx-trigger="wizard-test"`, "Testing connection..."} {
+			if !strings.Contains(html, want) {
+				t.Fatalf("%s account wizard missing live test marker %q: %s", name, want, html)
+			}
+		}
+		if strings.Contains(html, `hx-trigger="load"`) {
+			t.Fatalf("%s account wizard must not test while the Finish step is hidden: %s", name, html)
+		}
+	}
+
+	var gmailOut bytes.Buffer
+	if err := EditAccountDialog(models.EditAccountData{
+		AccountID:    "gmail-calendar-account",
+		Provider:     "gmail",
+		EmailAddress: "calendar@gmail.com",
+		DisplayName:  "Calendar Gmail",
+	}).Render(context.Background(), &gmailOut); err != nil {
+		t.Fatalf("EditAccountDialog.Render() for Gmail error = %v", err)
+	}
+	for _, want := range []string{
+		"Google Calendar access",
+		"Discover calendars",
+		`/api/accounts/gmail-calendar-account/calendar/discover`,
+		`data-calendar-discovery-form`,
+		`data-calendar-discovery-label`,
+		`handleCalendarDiscoveryStart(event)`,
+		`handleCalendarDiscoveryResult(event)`,
+		`data-wizard-service-always-active="true"`,
+	} {
+		if !strings.Contains(gmailOut.String(), want) {
+			t.Fatalf("Gmail edit dialog missing Calendar setup marker %q: %s", want, gmailOut.String())
+		}
+	}
+	if strings.Contains(gmailOut.String(), "Reconnect Google") {
+		t.Fatal("Gmail Calendar setup should use the account actions menu for reconnecting")
+	}
+}
+
+func TestCalendarSyncSettingsRenderSelectableSources(t *testing.T) {
+	var out bytes.Buffer
+	if err := CalendarSyncSettings(models.EditAccountData{
+		AccountID:    "calendar-account",
+		Provider:     "outlook",
+		EmailAddress: "calendar@outlook.com",
+		CalendarSync: models.CalendarSyncConfig{
+			Enabled:             true,
+			SourceCount:         2,
+			SelectedSourceCount: 1,
+			Sources: []models.CalendarSource{
+				{ID: "primary-source", Name: "Primary", TimeZone: "Europe/Prague", AccessRole: "owner", IsPrimary: true, IsSelected: true, Color: "#4285f4"},
+				{ID: "team-source", Name: "Team", AccessRole: "reader", IsSelected: false, Color: "#34a853"},
+			},
+		},
+	}).Render(context.Background(), &out); err != nil {
+		t.Fatalf("CalendarSyncSettings.Render() error = %v", err)
+	}
+	html := out.String()
+	for _, want := range []string{
+		"Selected calendars",
+		"Primary",
+		"Team",
+		"Europe/Prague · Owner",
+		"Read only",
+		"1 of 2 selected",
+		`data-calendar-source-form`,
+		`name="source_id"`,
+		`/api/accounts/calendar-account/calendar/sources`,
+		"Your choices are saved when you click Next.",
+		"max-h-56",
+		"overflow-y-auto",
+		"p-3 text-xs",
+	} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("calendar source selector missing %q: %s", want, html)
+		}
+	}
+}
+
+func TestConnectionTestResultsUseProviderLayoutAndStatusColors(t *testing.T) {
+	results := []models.ConnectionTestResult{{Service: "gmail", Message: "Gmail API mail access successful", Success: true}}
+	var successOut bytes.Buffer
+	if err := ConnectionTestResults(results, "gmail-account", "edit").Render(context.Background(), &successOut); err != nil {
+		t.Fatalf("ConnectionTestResults() success render error = %v", err)
+	}
+	successHTML := successOut.String()
+	for _, want := range []string{
+		`class="grid grid-cols-1 gap-3"`,
+		// Raven keeps success quiet (muted), not emerald.
+		"bg-muted/35",
+		"Gmail API mail access successful",
+	} {
+		if !strings.Contains(successHTML, want) {
+			t.Fatalf("successful provider result missing %q: %s", want, successHTML)
+		}
+	}
+	if strings.Contains(successHTML, "sm:grid-cols-2") {
+		t.Fatalf("single provider result should use the full-width layout: %s", successHTML)
+	}
+
+	var failureOut bytes.Buffer
+	if err := ConnectionTestResults([]models.ConnectionTestResult{{Service: "graph", Error: "token expired", Message: "Microsoft Graph mail access"}}, "outlook-account", "edit").Render(context.Background(), &failureOut); err != nil {
+		t.Fatalf("ConnectionTestResults() failure render error = %v", err)
+	}
+	failureHTML := failureOut.String()
+	for _, want := range []string{"bg-destructive/10", "text-destructive", "token expired"} {
+		if !strings.Contains(failureHTML, want) {
+			t.Fatalf("failed provider result missing %q: %s", want, failureHTML)
+		}
+	}
+}
+
+func renderedWizardButtonForStep(html, marker string) string {
+	markerIndex := strings.Index(html, marker)
+	if markerIndex < 0 {
+		return ""
+	}
+	start := strings.LastIndex(html[:markerIndex], "<button")
+	if start < 0 {
+		return ""
+	}
+	endOffset := strings.Index(html[markerIndex:], "</button>")
+	if endOffset < 0 {
+		return ""
+	}
+	return html[start : markerIndex+endOffset+len("</button>")]
+}
+
+func renderedWizardSwitchForService(html, service string) string {
+	marker := `data-wizard-service-switch="` + service + `"`
+	markerIndex := strings.Index(html, marker)
+	if markerIndex < 0 {
+		return ""
+	}
+	start := strings.LastIndex(html[:markerIndex], "<input")
+	if start < 0 {
+		return ""
+	}
+	endOffset := strings.Index(html[markerIndex:], ">")
+	if endOffset < 0 {
+		return ""
+	}
+	return html[start : markerIndex+endOffset+1]
+}
+
 func TestAccountDiscoveryRequiresExplicitCandidateSelection(t *testing.T) {
 	var out bytes.Buffer
 	if err := AddAccountDialogContent().Render(context.Background(), &out); err != nil {

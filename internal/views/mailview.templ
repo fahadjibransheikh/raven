@@ -227,6 +227,7 @@ templ MailViewContent(email *models.Email, thread []models.ThreadItem, newestFir
 					}
 				</div>
 			</div>
+			<div id={"mail-calendar-footer-"+email.ID} data-mail-calendar-footer class="max-h-[35dvh] shrink-0 overflow-y-auto" hx-get={"/api/mail/"+email.ID+"/calendar"} hx-trigger="load" hx-swap="innerHTML" hx-sync="this:replace"></div>
 			if thread == nil || len(thread) <= 1 {
 				if email.IsDraft {
 					@MailViewDraftBar(email)
@@ -902,7 +903,6 @@ templ MailViewBody(email *models.Email) {
 }
 
 templ MailViewBodyByID(emailID string) {
-	<div data-invite-slot={ emailID } class="invite-slot hidden"></div>
 	<div data-remote-content-banner={ emailID } class="hidden mb-3 w-full px-3 py-2.5 rounded-lg border border-amber-600/20 bg-amber-50/50 dark:bg-amber-900/10 flex items-center gap-3">
 			<div class="size-7 rounded-md bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
 				@icon.ImageOff(icon.Props{Class: "size-3.5 text-amber-600 dark:text-amber-400"})

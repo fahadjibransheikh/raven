@@ -1905,6 +1905,7 @@ templ SettingsAccountCard(account models.Account) {
 					<div class="flex flex-wrap gap-2">
 						@AccountServiceIndicator(account, "email", "Email", "Fetches mail and keeps folders up to date.", account.EmailSyncEnabled)
 						@AccountServiceIndicator(account, "contacts", "Contacts", accountContactSyncStatusDescription(account), account.ContactSyncEnabled)
+						@AccountServiceIndicator(account, "calendar", "Calendar", accountCalendarSyncStatusDescription(account), account.CalendarSyncEnabled)
 					</div>
 					<span class="inline-flex shrink-0 items-center gap-1 rounded-md border border-border/70 bg-muted/35 px-2 py-0.5 text-xs font-semibold text-muted-foreground">
 						@AccountProviderIcon(account.Provider, "size-3.5 shrink-0")
@@ -2244,9 +2245,11 @@ templ SettingsAccountActionsMenu(account models.Account) {
 		>
 			if service == "email" {
 				@icon.Mail(icon.Props{Class: "size-3"})
-			} else {
+			} else if service == "contacts" {
 				@icon.Users(icon.Props{Class: "size-3"})
-		}
+			} else {
+				@icon.CalendarDays(icon.Props{Class: "size-3"})
+			}
 		<span>{ label }</span>
 		<span class="text-xs font-semibold opacity-75">{ serviceStateLabel(enabled) }</span>
 		</div>
@@ -2272,6 +2275,13 @@ func accountContactSyncStatusDescription(account models.Account) string {
 		return "Not used for contacts."
 	}
 	return "Contacts not configured."
+}
+
+func accountCalendarSyncStatusDescription(account models.Account) string {
+	if account.CalendarSyncEnabled {
+		return "Shows events from the selected provider calendars."
+	}
+	return "Calendar not configured."
 }
 
 func accountProviderName(provider string) string {
@@ -2757,7 +2767,7 @@ templ GmailAccountDialog() {
 				<div class="rounded-lg bg-accent/50 border border-border p-3">
 					<div class="flex items-start gap-2.5">
 						<svg class="size-4 text-muted-foreground mt-0.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-						<p class="text-xs text-muted-foreground leading-relaxed">You will be redirected to Google to grant Raven access to read and send email on your behalf.</p>
+						<p class="text-xs text-muted-foreground leading-relaxed">You will be redirected to Google to grant Raven access to read and send email, contacts, and read-only calendar data on your behalf.</p>
 					</div>
 				</div>
 				<button type="submit" class="w-full inline-flex items-center justify-center gap-2.5 text-sm font-medium px-4 py-2.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
@@ -2841,7 +2851,7 @@ templ AddAccountDialogContent() {
 					Add Account
 				}
 				@dialog.Description() {
-					Connect mail first, then optionally add contact sync.
+					Connect mail first, then optionally configure contacts and calendar.
 				}
 			}
 			@selectbox.Script()
@@ -2868,12 +2878,12 @@ templ AddAccountDialogContent() {
 				.account-wizard-viewport { min-height:0; height:100%; overflow:hidden; }
 				.account-wizard-viewport > .flex { height:100%; align-items:stretch; }
 				.account-wizard-viewport [data-wizard-step] { min-height:0; height:100%; }
-				.account-wizard-dialog [data-tui-dialog-panel] { height:calc(100vh - 2rem); max-height:calc(100vh - 2rem); grid-template-rows:auto minmax(0,1fr) auto; }
-				.account-wizard-shell { min-height:0; height:100%; grid-template-rows:auto minmax(0,1fr); }
+				.account-wizard-dialog [data-tui-dialog-panel] { height:fit-content; max-height:calc(100dvh - 2rem); grid-template-rows:auto minmax(0,1fr) auto; }
+				.account-wizard-shell { min-height:0; height:auto; grid-template-rows:auto minmax(0,1fr); }
 				@media (min-width: 768px) { .account-wizard-shell { grid-template-rows:minmax(0,1fr); } }
-				.account-wizard-shell > aside { min-height:0; height:100%; overflow-y:auto; }
-				.account-wizard-panel { display:flex; height:100%; min-height:0; flex-direction:column; overflow:hidden; padding-right:.25rem; }
-				.account-wizard-scroll { flex:1; min-height:0; overflow-y:auto; padding:6px calc(.25rem + 6px) calc(1rem + 6px) 6px; }
+				.account-wizard-shell > aside { min-height:0; height:auto; overflow-y:auto; }
+				.account-wizard-panel { display:flex; height:auto; min-height:0; flex-direction:column; overflow:hidden; padding-right:.25rem; }
+				.account-wizard-scroll { flex:1 1 auto; min-height:0; overflow-y:auto; padding:6px calc(.25rem + 6px) calc(1rem + 6px) 6px; }
 				.account-wizard-sticky-header { position:sticky; top:-6px; z-index:20; margin:-6px -6px 1rem; padding:6px 6px .75rem; background:var(--card); box-shadow:0 1px 0 color-mix(in oklab, var(--border) 70%, transparent); }
 				.account-wizard-controls { flex-shrink:0; margin-top:.5rem; border-top:1px solid var(--border); background:var(--card); padding-top:.75rem; padding-bottom:2px; }
 				.account-wizard-panel .account-wizard-controls { display:none; }
@@ -2885,9 +2895,9 @@ templ AddAccountDialogContent() {
 			<div class="account-wizard-shell grid gap-4 pt-2 md:grid-cols-[14.5rem_minmax(0,1fr)]">
 		@AccountWizardAddSidebar()
 				<div id="wizard-viewport" class="account-wizard-viewport">
-					<div id="wizard-track" class="flex items-start transition-transform duration-300 ease-in-out" style="width: 500%">
+					<div id="wizard-track" class="flex items-start transition-transform duration-300 ease-in-out" style="width: 600%">
 						<form id="account-form" hx-post="/api/accounts" hx-target="#add-step-3-content" hx-swap="innerHTML" class="contents">
-						<div class="w-1/5 shrink-0 px-1" data-wizard-step="0">
+						<div class="w-1/6 shrink-0 px-1" data-wizard-step="0">
 							<div class="account-wizard-panel">
 							<div class="account-wizard-scroll" data-wizard-service-content="email">
 							<h4 class="account-wizard-sticky-header text-sm font-semibold text-foreground flex items-center gap-2">
@@ -2936,7 +2946,7 @@ templ AddAccountDialogContent() {
 							</div>
 						</div>
 
-						<div class="w-1/5 shrink-0 px-1" data-wizard-step="1">
+						<div class="w-1/6 shrink-0 px-1" data-wizard-step="1">
 							<div class="account-wizard-panel">
 							<div class="account-wizard-scroll" data-wizard-service-content="email">
 							<h4 class="account-wizard-sticky-header text-sm font-semibold text-foreground flex items-center gap-2">
@@ -2963,20 +2973,22 @@ templ AddAccountDialogContent() {
 										Value:       "993",
 									})
 								</div>
-								<div>
-									<label class="text-xs font-medium text-muted-foreground mb-1.5 block">Encryption</label>
-									@selectbox.SelectBox() {
-										@selectbox.Trigger(selectbox.TriggerProps{Name: "imap_tls_mode", DisableClear: true}) {
-											@selectbox.Value(selectbox.ValueProps{Placeholder: "TLS"}) { TLS }
-										}
+					<div>
+						<label class="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1.5">
+							<span>Encryption</span>
+							@UnencryptedTransportWarning("add-imap-unencrypted-warning", false)
+						</label>
+						@selectbox.SelectBox() {
+							@selectbox.Trigger(selectbox.TriggerProps{Name: "imap_tls_mode", DisableClear: true, Attributes: templ.Attributes{"onchange": "toggleUnencryptedTransportWarning(this)"}}) {
+								@selectbox.Value(selectbox.ValueProps{Placeholder: "TLS"}) { TLS }
+							}
 									@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
 										@selectbox.Item(selectbox.ItemProps{Value: "tls", Selected: true}) { TLS }
 										@selectbox.Item(selectbox.ItemProps{Value: "starttls"}) { STARTTLS }
 										@selectbox.Item(selectbox.ItemProps{Value: "plaintext"}) { Unencrypted (admin exception) }
-									}
-								}
-								<p class="mt-1.5 text-xs leading-relaxed text-amber-700 dark:text-amber-300">Unencrypted connections only work for an exact endpoint approved under Admin → Mail security.</p>
-								</div>
+							}
+						}
+					</div>
 							</div>
 							<hr class="my-4 border-border"/>
 							<h4 class="text-sm font-semibold text-foreground flex items-center gap-2 mb-4">
@@ -3030,7 +3042,7 @@ templ AddAccountDialogContent() {
 							</div>
 						</div>
 
-						<div class="w-1/5 shrink-0 px-1" data-wizard-step="2">
+						<div class="w-1/6 shrink-0 px-1" data-wizard-step="2">
 							<div class="account-wizard-panel">
 							<div class="account-wizard-scroll" data-wizard-service-content="email">
 							<h4 class="account-wizard-sticky-header text-sm font-semibold text-foreground flex items-center gap-2">
@@ -3057,20 +3069,22 @@ templ AddAccountDialogContent() {
 										Value:       "465",
 									})
 								</div>
-								<div>
-									<label class="text-xs font-medium text-muted-foreground mb-1.5 block">Encryption</label>
-									@selectbox.SelectBox() {
-										@selectbox.Trigger(selectbox.TriggerProps{Name: "smtp_tls_mode", DisableClear: true}) {
-											@selectbox.Value(selectbox.ValueProps{Placeholder: "TLS"}) { TLS }
-										}
+					<div>
+						<label class="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1.5">
+							<span>Encryption</span>
+							@UnencryptedTransportWarning("add-smtp-unencrypted-warning", false)
+						</label>
+						@selectbox.SelectBox() {
+							@selectbox.Trigger(selectbox.TriggerProps{Name: "smtp_tls_mode", DisableClear: true, Attributes: templ.Attributes{"onchange": "toggleUnencryptedTransportWarning(this)"}}) {
+								@selectbox.Value(selectbox.ValueProps{Placeholder: "TLS"}) { TLS }
+							}
 									@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
 										@selectbox.Item(selectbox.ItemProps{Value: "tls", Selected: true}) { TLS }
 										@selectbox.Item(selectbox.ItemProps{Value: "starttls"}) { STARTTLS }
 										@selectbox.Item(selectbox.ItemProps{Value: "plaintext"}) { Unencrypted (admin exception) }
-									}
-								}
-								<p class="mt-1.5 text-xs leading-relaxed text-amber-700 dark:text-amber-300">Unencrypted connections only work for an exact endpoint approved under Admin → Mail security.</p>
-								</div>
+							}
+						}
+					</div>
 							</div>
 							<hr class="my-4 border-border"/>
 							<label class="flex items-center gap-2 cursor-pointer mb-4">
@@ -3109,29 +3123,33 @@ templ AddAccountDialogContent() {
 									@icon.ArrowLeft(icon.Props{Class: "size-4"})
 									Back
 								</button>
-								<button type="submit" data-add-account-submit-button aria-label="Setup Contacts" disabled class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-lg disabled:pointer-events-none disabled:opacity-50">
-									<span data-add-account-submit-icon="contacts" class="inline-flex">
-										@icon.BookUser(icon.Props{Class: "size-4"})
-									</span>
-									<span data-add-account-submit-icon="account" class="inline-flex hidden">
-										@icon.Plus(icon.Props{Class: "size-4"})
-									</span>
-									<span data-add-account-submit-label>Setup Contacts</span>
+								<button type="submit" data-add-account-submit-button aria-label="Next" disabled class="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:pointer-events-none disabled:opacity-50">
+									Next
+									@icon.ChevronRight(icon.Props{Class: "size-4"})
 								</button>
 							</div>
 							</div>
 						</div>
 						</form>
 
-						<div class="w-1/5 shrink-0 px-1" data-wizard-step="3">
+						<div class="w-1/6 shrink-0 px-1" data-wizard-step="3">
 							<div class="account-wizard-panel">
-								<div id="add-step-3-content" data-wizard-service-content="contacts" hx-on::after-swap="syncAddContactStep(); maybeGoAddContacts()"></div>
+								<div id="add-step-3-content" hx-on::after-swap="syncAddContactStep(); maybeGoAddContacts()"></div>
 							</div>
 						</div>
-						<div class="w-1/5 shrink-0 px-1" data-wizard-step="4">
+						<div class="w-1/6 shrink-0 px-1" data-wizard-step="4">
 							<div class="account-wizard-panel">
 								<div class="account-wizard-scroll">
-									<div id="add-step-4-content"></div>
+									<div id="add-step-4-content">
+										@CalendarSetupNotice()
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="w-1/6 shrink-0 px-1" data-wizard-step="5">
+							<div class="account-wizard-panel">
+								<div class="account-wizard-scroll">
+									<div id="add-step-5-content"></div>
 								</div>
 							</div>
 						</div>
@@ -3151,7 +3169,8 @@ templ AccountWizardAddSidebar() {
 		</div>
 		@AccountWizardEmailSection("wizardGo", "", true, true, false)
 		@AccountWizardTopStep("wizardGo", 3, "2", "Contacts", "Optional sync", true, true, "", "contacts", true, false, templ.Attributes{"data-add-contact-sync-switch": ""})
-		@AccountWizardTopStep("wizardGo", 4, "3", "Finish", "Test results", true, false, "", "", false, false, nil)
+		@AccountWizardTopStep("wizardGo", 4, "3", "Calendar", "Provider access", false, true, "", "calendar", false, false, nil)
+		@AccountWizardTopStep("wizardGo", 5, "4", "Finish", "Test results", true, false, "", "", false, false, nil)
 	</aside>
 }
 
@@ -3167,7 +3186,8 @@ templ AccountWizardEditSidebar(data models.EditAccountData) {
 			@AccountWizardEmailSection("editWizardGo", data.AccountID, data.EmailSyncEnabled, false, true)
 		}
 		@AccountWizardTopStep("editWizardGo", 3, "2", "Contacts", "Optional sync", false, true, data.AccountID, "contacts", data.ContactSync.Enabled, false, nil)
-		@AccountWizardTopStep("editWizardGo", 4, "3", "Finish", "Test results", false, false, "", "", false, false, nil)
+		@AccountWizardTopStep("editWizardGo", 4, "3", "Calendar", "Provider access", false, true, data.AccountID, "calendar", data.CalendarSync.Enabled, false, nil)
+		@AccountWizardTopStep("editWizardGo", 5, "4", "Finish", "Test results", false, false, "", "", false, false, nil)
 	</aside>
 }
 
@@ -3178,7 +3198,7 @@ templ AccountWizardEmailSection(goFn string, accountID string, enabled bool, dis
 				<span class="account-wizard-index">1</span>
 				<span class="min-w-0"><span class="block text-sm font-semibold">Email</span><span class="block text-xs text-muted-foreground">Mail account setup</span></span>
 			</button>
-			@AccountWizardSectionSwitch(accountID, "email", enabled, disabled, persist, nil)
+			@AccountWizardSectionSwitch(goFn, accountID, "email", enabled, disabled, persist, false, nil)
 		</div>
 		<div class="account-wizard-substeps">
 			@AccountWizardSubStep(goFn, 0, "1.a", "Account details", "Name and email", false, true)
@@ -3195,7 +3215,7 @@ templ AccountWizardProviderAPIEmailSection(goFn string, accountID string, provid
 				<span class="account-wizard-index">1</span>
 				<span class="min-w-0"><span class="block text-sm font-semibold">Email</span><span class="block text-xs text-muted-foreground">{ providerAPIMailTransportLabel(provider) }</span></span>
 			</button>
-			@AccountWizardSectionSwitch(accountID, "email", enabled, false, persist, nil)
+			@AccountWizardSectionSwitch(goFn, accountID, "email", enabled, false, persist, false, nil)
 		</div>
 		<div class="account-wizard-substeps">
 			@AccountWizardSubStep(goFn, 0, "1.a", "Account details", "Name and email", false, true)
@@ -3206,30 +3226,38 @@ templ AccountWizardProviderAPIEmailSection(goFn string, accountID string, provid
 }
 
 templ AccountWizardSubStep(goFn string, step int, index string, title string, description string, disabled bool, active bool) {
-	<button type="button" data-account-wizard-action={ goFn } data-account-wizard-target-step={ strconv.Itoa(step) } class="account-wizard-step" data-account-wizard-step={ strconv.Itoa(step) } data-active={ strconv.FormatBool(active) } disabled?={ disabled }>
+	<button type="button" onclick={ templ.JSFuncCall(goFn, step) } data-account-wizard-action={ goFn } data-account-wizard-target-step={ strconv.Itoa(step) } class="account-wizard-step" data-account-wizard-step={ strconv.Itoa(step) } data-active={ strconv.FormatBool(active) } disabled?={ disabled }>
 		<span class="account-wizard-index">{ index }</span>
 		<span class="min-w-0"><span class="block text-xs font-semibold">{ title }</span><span class="block text-xs text-muted-foreground">{ description }</span></span>
 	</button>
 }
 
 templ AccountWizardTopStep(goFn string, step int, index string, title string, description string, disabled bool, section bool, accountID string, service string, enabled bool, switchDisabled bool, attrs templ.Attributes) {
-	<div class="account-wizard-section" data-wizard-section-steps={ strconv.Itoa(step) } data-active="false" data-disabled={ strconv.FormatBool(disabled) }>
+	{{ navigationDisabled := disabled && service != "calendar" }}
+	<div id={ fmt.Sprintf("%s-service-section-%s", goFn, service) } class="account-wizard-section" data-wizard-section-steps={ strconv.Itoa(step) } data-active="false" data-disabled={ strconv.FormatBool(navigationDisabled) }>
 		<div class="account-wizard-section-heading">
-			<button type="button" data-account-wizard-action={ goFn } data-account-wizard-target-step={ strconv.Itoa(step) } class="account-wizard-section-title" data-account-wizard-step={ strconv.Itoa(step) } data-active="false" disabled?={ disabled }>
+			<button type="button" onclick={ templ.JSFuncCall(goFn, step) } data-account-wizard-action={ goFn } data-account-wizard-target-step={ strconv.Itoa(step) } class="account-wizard-section-title" data-account-wizard-step={ strconv.Itoa(step) } data-active="false" disabled?={ navigationDisabled }>
 				<span class="account-wizard-index">{ index }</span>
 				<span class="min-w-0"><span class="block text-sm font-semibold">{ title }</span><span class="block text-xs text-muted-foreground">{ description }</span></span>
 			</button>
 			if service != "" {
-				@AccountWizardSectionSwitch(accountID, service, enabled, switchDisabled, accountID != "", attrs)
+				@AccountWizardSectionSwitch(goFn, accountID, service, enabled, switchDisabled, accountID != "" && service != "contacts" && service != "calendar", false, attrs)
 			}
 		</div>
 	</div>
 }
 
-templ AccountWizardSectionSwitch(accountID string, service string, enabled bool, disabled bool, persist bool, attrs templ.Attributes) {
+templ AccountWizardSectionSwitch(goFn string, accountID string, service string, enabled bool, disabled bool, persist bool, oob bool, attrs templ.Attributes) {
 	<form
+		id={ fmt.Sprintf("%s-wizard-service-switch-%s", goFn, service) }
 		class="shrink-0 pt-0.5"
-		if persist {
+		data-wizard-service-form
+		data-wizard-service={ service }
+		data-account-id={ accountID }
+		if oob {
+			hx-swap-oob="outerHTML"
+		}
+		if persist && service != "calendar" {
 			hx-post={ fmt.Sprintf("/api/accounts/%s/services", accountID) }
 			hx-swap="none"
 		}
@@ -3243,7 +3271,7 @@ templ AccountWizardSectionSwitch(accountID string, service string, enabled bool,
 			Value:      "true",
 			Checked:    enabled,
 			Disabled:   disabled,
-			Attributes: mergeTemplAttrs(attrs, templ.Attributes{"data-wizard-service-switch": service, "onchange": "if (this.form.hasAttribute('hx-post')) this.form.requestSubmit()"}),
+			Attributes: mergeTemplAttrs(attrs, templ.Attributes{"data-wizard-service-switch": service, "data-wizard-service-initial-enabled": strconv.FormatBool(enabled), "onchange": "if (this.form.hasAttribute('hx-post')) this.form.requestSubmit()"}),
 		})
 	</form>
 }
@@ -3281,18 +3309,14 @@ templ AddAccountWizardFooter() {
 				@icon.ArrowLeft(icon.Props{Class: "size-4"})
 				Back
 			</button>
-			<button type="submit" form="account-form" data-add-account-submit-button aria-label="Setup Contacts" disabled class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-lg disabled:pointer-events-none disabled:opacity-50">
-				<span data-add-account-submit-icon="contacts" class="inline-flex">
-					@icon.BookUser(icon.Props{Class: "size-4"})
-				</span>
-				<span data-add-account-submit-icon="account" class="inline-flex hidden">
-					@icon.Plus(icon.Props{Class: "size-4"})
-				</span>
-				<span data-add-account-submit-label>Setup Contacts</span>
+			<button type="submit" form="account-form" data-add-account-submit-button aria-label="Next" disabled class="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:pointer-events-none disabled:opacity-50">
+				Next
+				@icon.ChevronRight(icon.Props{Class: "size-4"})
 			</button>
 		</div>
 		<div id="add-wizard-footer-step-3" data-wizard-footer-step="3" data-active="false" class="hidden"></div>
 		<div id="add-wizard-footer-step-4" data-wizard-footer-step="4" data-active="false" class="hidden"></div>
+		<div id="add-wizard-footer-step-5" data-wizard-footer-step="5" data-active="false" class="hidden"></div>
 	</div>
 }
 
@@ -3321,6 +3345,29 @@ templ ProviderAPIMailPanel(provider string, mode string) {
 			</div>
 		</div>
 	</div>
+}
+
+templ UnencryptedTransportWarning(id string, active bool) {
+	<span class="relative inline-flex size-4 shrink-0 align-middle">
+		@popover.Root(popover.RootProps{ID: id, Class: "contents"}) {
+			@popover.Trigger(popover.TriggerProps{TriggerType: popover.TriggerTypeHover}) {
+				<button
+					type="button"
+					data-unencrypted-transport-warning
+					class={ "size-4 items-center justify-center rounded-sm text-amber-700 transition-colors hover:bg-amber-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:text-amber-300", templ.KV("hidden", !active), templ.KV("inline-flex", active) }
+					aria-label="Show unencrypted connection warning"
+				>
+					@icon.TriangleAlert(icon.Props{Class: "size-3.5"})
+				</button>
+			}
+			@popover.Content(popover.ContentProps{Placement: popover.PlacementBottomStart, Offset: 8, ShowArrow: true, Class: "w-80 p-3"}) {
+				<div class="flex items-start gap-2.5">
+					@icon.TriangleAlert(icon.Props{Class: "mt-0.5 size-4 shrink-0 text-amber-700 dark:text-amber-300"})
+					<p class="text-xs leading-relaxed text-muted-foreground">Unencrypted connections only work while this exact endpoint remains approved under Admin → Mail security.</p>
+				</div>
+			}
+		}
+	</span>
 }
 
 func accountEditUsesProviderAPI(provider string) bool {
@@ -3368,19 +3415,33 @@ templ EditAccountDialog(data models.EditAccountData) {
 					Edit Account
 				}
 				@dialog.Description() {
-					Update mail settings and optional contact sync.
+					Update mail settings and optional contacts and calendar services.
 				}
 			}
 			<script>
 				var _editWizStep = 0;
+				var _editWizPendingStep = null;
+				function editWizardSaveAndGo(step) {
+					var form = document.getElementById('edit-account-form');
+					if (!form) {
+						editWizardGo(step, true);
+						return;
+					}
+					_editWizPendingStep = step;
+					form.requestSubmit();
+				}
 				function editWizardGo(step, immediate) {
-					_editWizStep = step;
+					if (step < 0) step = 0;
+					if (step > 5) step = 5;
+					if (!immediate && step > _editWizStep && step <= 3) {
+						editWizardSaveAndGo(step);
+						return;
+					}
 					var track = document.getElementById('edit-wizard-track');
 					var root = document.getElementById('edit-account-dialog');
 					if (!track || !root) return;
-					if (step < 0) step = 0;
-					if (step > 4) step = 4;
-					track.style.transform = 'translateX(-' + (step * 20) + '%)';
+					_editWizStep = step;
+					track.style.transform = 'translateX(-' + (step * (100 / 6)) + '%)';
 					root.querySelectorAll('[data-account-wizard-step]').forEach(function(item) {
 						item.dataset.active = String(+item.dataset.accountWizardStep === step);
 					});
@@ -3389,6 +3450,31 @@ templ EditAccountDialog(data models.EditAccountData) {
 						section.dataset.active = String(steps.indexOf(String(step)) !== -1);
 					});
 					setWizardFooter(root, step, !!immediate);
+					if (step === 5) startWizardConnectionTest(root); else resetWizardConnectionTest(root);
+				}
+				function resetWizardConnectionTest(root) {
+					var results = root && root.querySelector ? root.querySelector('[data-wizard-test-results]') : null;
+					if (!results) return;
+					if (root._wizardTestTimer) {
+						window.clearTimeout(root._wizardTestTimer);
+						root._wizardTestTimer = null;
+					}
+					delete results.dataset.wizardTestStarted;
+				}
+				function startWizardConnectionTest(root) {
+					var results = root && root.querySelector ? root.querySelector('[data-wizard-test-results]') : null;
+					if (!results || results.dataset.wizardTestStarted === 'true') return;
+					results.dataset.wizardTestStarted = 'true';
+					results.innerHTML = '<div class="flex items-center justify-center py-4 gap-2"><div class="size-4 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin"></div><span class="text-xs text-muted-foreground">Testing connection...</span></div>';
+					root._wizardTestTimer = window.setTimeout(function() {
+						root._wizardTestTimer = null;
+						var activeStep = root.querySelector('[data-account-wizard-step="5"][data-active="true"]');
+						if (!activeStep) {
+							delete results.dataset.wizardTestStarted;
+							return;
+						}
+						if (typeof htmx !== 'undefined') htmx.trigger(results, 'wizard-test');
+					}, 320);
 				}
 				function editToggleSmtpAuth(checked) {
 					var fields = document.getElementById('edit-smtp-auth-fields');
@@ -3409,10 +3495,10 @@ templ EditAccountDialog(data models.EditAccountData) {
 			<div class="account-wizard-shell grid gap-4 pt-2 md:grid-cols-[14.5rem_minmax(0,1fr)]">
 		@AccountWizardEditSidebar(data)
 				<div id="edit-wizard-viewport" class="account-wizard-viewport">
-					<div id="edit-wizard-track" class="flex items-start transition-transform duration-300 ease-in-out" style="width: 500%">
-						<form id="edit-account-form" hx-post={ fmt.Sprintf("/api/accounts/%s/edit", data.AccountID) } hx-target="#edit-step-4-content" hx-swap="innerHTML" hx-on::after-request="editWizardGo(4)" class="contents">
+					<div id="edit-wizard-track" class="flex items-start transition-transform duration-300 ease-in-out" style="width: 600%">
+						<form id="edit-account-form" hx-post={ fmt.Sprintf("/api/accounts/%s/edit", data.AccountID) } hx-target="#edit-step-5-content" hx-swap="innerHTML" hx-on::before-request="handleEditAccountSaveStart(event)" hx-on::after-request="handleEditAccountSaveResult(event)" class="contents">
 						<input type="hidden" name="provider" value={ data.Provider }/>
-						<div class="w-1/5 shrink-0 px-1" data-wizard-step="0">
+						<div class="w-1/6 shrink-0 px-1" data-wizard-step="0">
 							<div class="account-wizard-panel">
 							<div class="account-wizard-scroll" data-wizard-service-content="email">
 							<h4 class="account-wizard-sticky-header text-sm font-semibold text-foreground flex items-center gap-2">
@@ -3457,7 +3543,7 @@ templ EditAccountDialog(data models.EditAccountData) {
 							</div>
 						</div>
 
-						<div class="w-1/5 shrink-0 px-1" data-wizard-step="1">
+						<div class="w-1/6 shrink-0 px-1" data-wizard-step="1">
 							<div class="account-wizard-panel">
 							<div class="account-wizard-scroll" data-wizard-service-content="email">
 							if accountEditUsesProviderAPI(data.Provider) {
@@ -3485,10 +3571,13 @@ templ EditAccountDialog(data models.EditAccountData) {
 											Value: strconv.Itoa(data.IMAPPort),
 										})
 									</div>
-									<div>
-										<label class="text-xs font-medium text-muted-foreground mb-1.5 block">Encryption</label>
-										@selectbox.SelectBox() {
-											@selectbox.Trigger(selectbox.TriggerProps{Name: "imap_tls_mode", DisableClear: true}) {
+					<div>
+											<label class="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1.5">
+												<span>Encryption</span>
+												@UnencryptedTransportWarning("edit-imap-unencrypted-warning", data.IMAPTLSMode == "plaintext")
+											</label>
+											@selectbox.SelectBox() {
+												@selectbox.Trigger(selectbox.TriggerProps{Name: "imap_tls_mode", DisableClear: true, Attributes: templ.Attributes{"onchange": "toggleUnencryptedTransportWarning(this)"}}) {
 												@selectbox.Value(selectbox.ValueProps{Placeholder: "TLS"}) { TLS }
 											}
 										@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
@@ -3497,8 +3586,7 @@ templ EditAccountDialog(data models.EditAccountData) {
 											@selectbox.Item(selectbox.ItemProps{Value: "plaintext", Selected: data.IMAPTLSMode == "plaintext"}) { Unencrypted (admin exception) }
 										}
 									}
-									<p class="mt-1.5 text-xs leading-relaxed text-amber-700 dark:text-amber-300">Unencrypted connections only work while this exact endpoint remains approved under Admin → Mail security.</p>
-									</div>
+										</div>
 								</div>
 								<hr class="my-4 border-border"/>
 								<h4 class="text-sm font-semibold text-foreground flex items-center gap-2 mb-4">
@@ -3550,7 +3638,7 @@ templ EditAccountDialog(data models.EditAccountData) {
 							</div>
 						</div>
 
-						<div class="w-1/5 shrink-0 px-1" data-wizard-step="2">
+						<div class="w-1/6 shrink-0 px-1" data-wizard-step="2">
 							<div class="account-wizard-panel">
 							<div class="account-wizard-scroll" data-wizard-service-content="email">
 							if accountEditUsesProviderAPI(data.Provider) {
@@ -3578,10 +3666,13 @@ templ EditAccountDialog(data models.EditAccountData) {
 										Value: strconv.Itoa(data.SMTPPort),
 									})
 								</div>
-								<div>
-									<label class="text-xs font-medium text-muted-foreground mb-1.5 block">Encryption</label>
+					<div>
+									<label class="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1.5">
+										<span>Encryption</span>
+										@UnencryptedTransportWarning("edit-smtp-unencrypted-warning", data.SMTPTLSMode == "plaintext")
+									</label>
 									@selectbox.SelectBox() {
-										@selectbox.Trigger(selectbox.TriggerProps{Name: "smtp_tls_mode", DisableClear: true}) {
+										@selectbox.Trigger(selectbox.TriggerProps{Name: "smtp_tls_mode", DisableClear: true, Attributes: templ.Attributes{"onchange": "toggleUnencryptedTransportWarning(this)"}}) {
 											@selectbox.Value(selectbox.ValueProps{Placeholder: "TLS"}) { TLS }
 										}
 									@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
@@ -3590,8 +3681,7 @@ templ EditAccountDialog(data models.EditAccountData) {
 										@selectbox.Item(selectbox.ItemProps{Value: "plaintext", Selected: data.SMTPTLSMode == "plaintext"}) { Unencrypted (admin exception) }
 									}
 								}
-								<p class="mt-1.5 text-xs leading-relaxed text-amber-700 dark:text-amber-300">Unencrypted connections only work while this exact endpoint remains approved under Admin → Mail security.</p>
-								</div>
+							</div>
 							</div>
 							<hr class="my-4 border-border"/>
 							<label class="flex items-center gap-2 cursor-pointer mb-4">
@@ -3640,30 +3730,53 @@ templ EditAccountDialog(data models.EditAccountData) {
 						</div>
 						</form>
 
-						<div class="w-1/5 shrink-0 px-1" data-wizard-step="3">
+						<div class="w-1/6 shrink-0 px-1" data-wizard-step="3">
 							<div class="account-wizard-panel">
-							<div class="account-wizard-scroll" data-wizard-service-content="contacts">
-								@ContactSyncSettings(data)
+							<div class="account-wizard-scroll">
+								<div data-wizard-service-content="contacts">
+									@ContactSyncSettings(data)
+								</div>
 							</div>
-						<div class="account-wizard-controls flex justify-between gap-2">
+							<div class="account-wizard-controls flex justify-between gap-2">
 								<button type="button" onclick="editWizardGo(2)" class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md border border-border hover:bg-accent">
 									@icon.ArrowLeft(icon.Props{Class: "size-4"})
 									Back
 								</button>
-								<div class="flex flex-wrap justify-end gap-2">
-									<button type="submit" form="edit-account-form" class="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg border border-border hover:bg-accent transition-colors">Skip</button>
-									<button type="submit" form={ fmt.Sprintf("account-contact-sync-form-%s", data.AccountID) } data-contact-sync-save-button data-account-id={ data.AccountID } class="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:pointer-events-none disabled:opacity-70">
-										Save
-									</button>
-								</div>
+				<button type="button" onclick="wizardServiceNext(this, 'contacts', 4)" class="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+					Next
+					@icon.ChevronRight(icon.Props{Class: "size-4"})
+				</button>
 							</div>
 							</div>
 						</div>
 
-						<div class="w-1/5 shrink-0 px-1" data-wizard-step="4">
+						<div class="w-1/6 shrink-0 px-1" data-wizard-step="4">
 							<div class="account-wizard-panel">
 							<div class="account-wizard-scroll">
-								<div id="edit-step-4-content">
+								<div
+									data-wizard-service-content="calendar"
+									data-wizard-service-always-active="true"
+								>
+									@CalendarSyncSettings(data)
+								</div>
+							</div>
+							<div class="account-wizard-controls flex justify-between gap-2">
+								<button type="button" onclick="editWizardGo(3)" class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md border border-border hover:bg-accent">
+									@icon.ArrowLeft(icon.Props{Class: "size-4"})
+									Back
+								</button>
+				<button type="button" onclick="wizardServiceNext(this, 'calendar', 5)" class="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+					Next
+					@icon.ChevronRight(icon.Props{Class: "size-4"})
+				</button>
+							</div>
+						</div>
+						</div>
+
+						<div class="w-1/6 shrink-0 px-1" data-wizard-step="5">
+							<div class="account-wizard-panel">
+							<div class="account-wizard-scroll">
+								<div id="edit-step-5-content">
 									@WizardConnectionTestStep(data.AccountID, "edit")
 								</div>
 							</div>
@@ -3680,8 +3793,9 @@ templ EditAccountDialog(data models.EditAccountData) {
 templ EditAccountWizardFooter(data models.EditAccountData) {
 	<div id="edit-wizard-footer" class="account-wizard-card-footer">
 		<div data-wizard-footer-step="0" data-active="true" class="flex justify-end">
-			<button type="button" onclick="editWizardGo(1)" class="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
-				Next
+			<button type="button" onclick="editWizardGo(1)" data-account-edit-submit-button class="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:pointer-events-none disabled:opacity-70">
+				<span data-account-edit-submit-label>Next</span>
+				<span data-account-edit-submit-spinner class="hidden" aria-hidden="true">@icon.LoaderCircle(icon.Props{Class: "size-4 animate-spin"})</span>
 				@icon.ChevronRight(icon.Props{Class: "size-4"})
 			</button>
 		</div>
@@ -3690,8 +3804,9 @@ templ EditAccountWizardFooter(data models.EditAccountData) {
 				@icon.ArrowLeft(icon.Props{Class: "size-4"})
 				Back
 			</button>
-			<button type="button" onclick="editWizardGo(2)" class="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
-				Next
+			<button type="button" onclick="editWizardGo(2)" data-account-edit-submit-button class="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:pointer-events-none disabled:opacity-70">
+				<span data-account-edit-submit-label>Next</span>
+				<span data-account-edit-submit-spinner class="hidden" aria-hidden="true">@icon.LoaderCircle(icon.Props{Class: "size-4 animate-spin"})</span>
 				@icon.ChevronRight(icon.Props{Class: "size-4"})
 			</button>
 		</div>
@@ -3700,8 +3815,9 @@ templ EditAccountWizardFooter(data models.EditAccountData) {
 				@icon.ArrowLeft(icon.Props{Class: "size-4"})
 				Back
 			</button>
-			<button type="button" onclick="editWizardGo(3)" class="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
-				Next
+			<button type="button" onclick="editWizardGo(3)" data-account-edit-submit-button class="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:pointer-events-none disabled:opacity-70">
+				<span data-account-edit-submit-label>Next</span>
+				<span data-account-edit-submit-spinner class="hidden" aria-hidden="true">@icon.LoaderCircle(icon.Props{Class: "size-4 animate-spin"})</span>
 				@icon.ChevronRight(icon.Props{Class: "size-4"})
 			</button>
 		</div>
@@ -3711,14 +3827,26 @@ templ EditAccountWizardFooter(data models.EditAccountData) {
 				Back
 			</button>
 			<div class="flex flex-wrap justify-end gap-2">
-				<button type="submit" form="edit-account-form" class="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg border border-border hover:bg-accent transition-colors">Skip</button>
-				<button type="submit" form={ fmt.Sprintf("account-contact-sync-form-%s", data.AccountID) } data-contact-sync-save-button data-account-id={ data.AccountID } class="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:pointer-events-none disabled:opacity-70">
-					Save
+				<button type="button" onclick="wizardServiceNext(this, 'contacts', 4)" class="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+					Next
+					@icon.ChevronRight(icon.Props{Class: "size-4"})
 				</button>
 			</div>
 		</div>
-		<div id="edit-wizard-footer-step-4" data-wizard-footer-step="4" data-active="false" class="hidden flex justify-between gap-2">
+		<div data-wizard-footer-step="4" data-active="false" class="hidden flex justify-between gap-2">
 			<button type="button" onclick="editWizardGo(3)" class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md border border-border hover:bg-accent">
+				@icon.ArrowLeft(icon.Props{Class: "size-4"})
+				Back
+			</button>
+			<div class="flex flex-wrap justify-end gap-2">
+				<button type="button" onclick="wizardServiceNext(this, 'calendar', 5)" class="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+					Next
+					@icon.ChevronRight(icon.Props{Class: "size-4"})
+				</button>
+			</div>
+		</div>
+		<div id="edit-wizard-footer-step-5" data-wizard-footer-step="5" data-active="false" class="hidden flex justify-between gap-2">
+			<button type="button" onclick="editWizardGo(4)" class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md border border-border hover:bg-accent">
 				@icon.ArrowLeft(icon.Props{Class: "size-4"})
 				Back
 			</button>
@@ -3746,10 +3874,11 @@ templ ContactSyncSettings(data models.EditAccountData) {
 				<span class="shrink-0 rounded-md bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">Not configured</span>
 			}
 		</div>
+		<div data-wizard-service-status="contacts" class="min-h-0"></div>
 		if isBuiltinOAuthContactSync {
 			<div class="rounded-lg border border-border bg-background/50 p-3 text-xs text-muted-foreground leading-relaxed">{ providerName } contacts use this account's existing authorization. Reconnect the account if contact sync reports missing access.</div>
 		} else {
-			<form id={ fmt.Sprintf("account-contact-sync-form-%s", data.AccountID) } data-contact-sync-form data-account-id={ data.AccountID } hx-post={ fmt.Sprintf("/api/accounts/%s/contacts/sync", data.AccountID) } hx-target={ fmt.Sprintf("#account-contact-sync-status-%s", data.AccountID) } hx-swap="innerHTML" class="space-y-3">
+			<form id={ fmt.Sprintf("account-contact-sync-form-%s", data.AccountID) } data-contact-sync-form data-wizard-contact-form data-wizard-next-step="4" data-account-id={ data.AccountID } hx-post={ fmt.Sprintf("/api/accounts/%s/contacts/sync", data.AccountID) } hx-target={ fmt.Sprintf("#account-contact-sync-status-%s", data.AccountID) } hx-swap="innerHTML" class="space-y-3">
 				<div id={ fmt.Sprintf("account-contact-sync-fields-%s", data.AccountID) } class="grid gap-3 sm:grid-cols-2">
 					<div class="sm:col-span-2">
 						<div class="mb-1.5 flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
@@ -3827,8 +3956,220 @@ templ ContactSyncSettings(data models.EditAccountData) {
 	</div>
 }
 
+templ CalendarSyncSettings(data models.EditAccountData) {
+	@CalendarSyncSettingsPanel(data, "", false)
+}
+
+templ CalendarSyncSettingsResult(data models.EditAccountData, message string, isError bool) {
+	@CalendarSyncSettingsPanel(data, message, isError)
+}
+
+templ CalendarProviderAccessNotice(title string, message string) {
+	<div class="rounded-lg border border-border bg-background/50 p-3 text-xs leading-relaxed text-muted-foreground">
+		<p class="font-semibold text-foreground">{ title }</p>
+		<p class="mt-0.5">{ message }</p>
+	</div>
+}
+
+templ CalendarSyncSettingsPanel(data models.EditAccountData, message string, isError bool) {
+	<div id={ fmt.Sprintf("account-calendar-sync-panel-%s", data.AccountID) } class="space-y-3" data-wizard-service-content="calendar">
+		<div class="account-wizard-sticky-header flex items-start justify-between gap-4">
+			<div class="min-w-0">
+				<h4 class="flex items-center gap-2 text-sm font-semibold text-foreground">
+					@icon.CalendarDays(icon.Props{Class: "size-4 text-muted-foreground"})
+					Calendar sync
+				</h4>
+				<p class="mt-1 text-xs leading-relaxed text-muted-foreground">Choose whether this account contributes calendars to Raven.</p>
+			</div>
+			if data.CalendarSync.Enabled {
+				<span class="shrink-0 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">Enabled</span>
+			} else if data.CalendarSync.SourceCount > 0 {
+				<span class="shrink-0 rounded-md bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">Not selected</span>
+			} else {
+				<span class="shrink-0 rounded-md bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">Not configured</span>
+			}
+		</div>
+		<div data-wizard-service-status="calendar" class="min-h-0"></div>
+		if data.Provider == "gmail" {
+			@CalendarProviderAccessNotice("Google Calendar access", "Discovery uses this account's Google authorization. If Calendar access is missing, reconnect the account from its actions menu, then try again.")
+			<form method="POST" action={ fmt.Sprintf("/api/accounts/%s/calendar/discover", data.AccountID) } data-calendar-discovery-form hx-post={ fmt.Sprintf("/api/accounts/%s/calendar/discover", data.AccountID) } hx-target={ fmt.Sprintf("#account-calendar-sync-panel-%s", data.AccountID) } hx-swap="outerHTML" hx-on::before-request="handleCalendarDiscoveryStart(event)" hx-on::after-request="handleCalendarDiscoveryResult(event)" class="flex justify-end">
+				<button type="submit" data-calendar-discovery-submit class="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-70">
+					@icon.RefreshCw(icon.Props{Class: "size-3.5"})
+					<span data-calendar-discovery-label>
+						if data.CalendarSync.SourceCount > 0 {
+							Refresh calendars
+						} else {
+							Discover calendars
+						}
+					</span>
+				</button>
+			</form>
+		} else if data.Provider == "outlook" {
+			@CalendarProviderAccessNotice("Microsoft Calendar access", "Discovery uses this account's Microsoft authorization. If Calendar access is missing, reconnect the account from its actions menu, then try again.")
+			<form method="POST" action={ fmt.Sprintf("/api/accounts/%s/calendar/discover", data.AccountID) } data-calendar-discovery-form hx-post={ fmt.Sprintf("/api/accounts/%s/calendar/discover", data.AccountID) } hx-target={ fmt.Sprintf("#account-calendar-sync-panel-%s", data.AccountID) } hx-swap="outerHTML" hx-on::before-request="handleCalendarDiscoveryStart(event)" hx-on::after-request="handleCalendarDiscoveryResult(event)" class="flex justify-end">
+				<button type="submit" data-calendar-discovery-submit class="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-70">
+					@icon.RefreshCw(icon.Props{Class: "size-3.5"})
+					<span data-calendar-discovery-label>
+						if data.CalendarSync.SourceCount > 0 {
+							Refresh calendars
+						} else {
+							Discover calendars
+						}
+					</span>
+				</button>
+			</form>
+		} else if data.Provider == "imap" {
+			<form method="POST" action={ fmt.Sprintf("/api/accounts/%s/calendar/discover", data.AccountID) } data-calendar-discovery-form hx-post={ fmt.Sprintf("/api/accounts/%s/calendar/discover", data.AccountID) } hx-target={ fmt.Sprintf("#account-calendar-sync-panel-%s", data.AccountID) } hx-swap="outerHTML" hx-on::before-request="handleCalendarDiscoveryStart(event)" hx-on::after-request="handleCalendarDiscoveryResult(event)" class="space-y-3">
+				<div class="grid gap-3 sm:grid-cols-2">
+					<div class="sm:col-span-2">
+						<div class="mb-1.5 flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
+							<label class="text-xs font-medium text-muted-foreground">Base URL</label>
+							<button type="button" data-calendar-autodiscover class="inline-flex h-8 w-fit shrink-0 items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-3 text-xs font-semibold text-primary shadow-sm transition-colors hover:border-primary/45 hover:bg-primary/15 disabled:pointer-events-none disabled:opacity-70">
+								@icon.Search(icon.Props{Class: "size-3.5"})
+								<span data-calendar-autodiscover-label>Attempt URL autodiscover</span>
+							</button>
+						</div>
+						@input.Input(input.Props{Name: "caldav_url", Type: input.TypeURL, Value: data.CalendarSync.CalDAVBaseURL, Placeholder: "https://cdav.migadu.com"})
+					</div>
+					<label class="sm:col-span-2 flex cursor-pointer items-center gap-2">
+						@checkbox.Checkbox(checkbox.Props{
+							Name:       "use_account_credentials",
+							Value:      "1",
+							Checked:    data.CalendarSync.CalDAVUseAccountCredentials,
+							Attributes: templ.Attributes{"onchange": "toggleCalendarAuth(this)"},
+						})
+						<span class="text-sm">Use same credentials as incoming mail</span>
+					</label>
+					<div class={ "sm:col-span-2 grid gap-3 sm:grid-cols-2", templ.KV("opacity-50", data.CalendarSync.CalDAVUseAccountCredentials) } data-calendar-credential-fields>
+						<div>
+							<label class="mb-1.5 block text-xs font-medium text-muted-foreground">Username</label>
+							@input.Input(input.Props{Name: "username", Type: input.TypeText, Value: data.CalendarSync.CalDAVUsername, Placeholder: data.Username, Disabled: data.CalendarSync.CalDAVUseAccountCredentials})
+						</div>
+						<div>
+							<label class="mb-1.5 block text-xs font-medium text-muted-foreground">Password or app password</label>
+							@input.Input(input.Props{Name: "password", Type: input.TypePassword, Placeholder: calDAVPasswordPlaceholder(data.CalendarSync), Disabled: data.CalendarSync.CalDAVUseAccountCredentials})
+						</div>
+					</div>
+				</div>
+				<div class="flex flex-wrap justify-end gap-2">
+					<button type="submit" data-calendar-discovery-submit class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-70">
+						@icon.RefreshCw(icon.Props{Class: "size-3.5"})
+						<span data-calendar-discovery-label>
+							if data.CalendarSync.SourceCount > 0 {
+								Refresh calendars
+							} else {
+								Discover calendars
+							}
+						</span>
+					</button>
+				</div>
+			</form>
+		} else {
+			<div class="rounded-lg border border-border bg-background/50 p-4">
+				<div class="flex items-start gap-3">
+					<div class="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md border border-border/70 bg-card text-muted-foreground">
+						@icon.LockKeyhole(icon.Props{Class: "size-4"})
+					</div>
+					<div class="min-w-0">
+						<p class="text-xs font-semibold text-foreground">Calendar discovery is not available</p>
+						<p class="mt-1 text-xs leading-relaxed text-muted-foreground">Calendar discovery is available for Google and Microsoft accounts. This account will remain out of the Calendar view until a source is connected and selected.</p>
+					</div>
+					<span class="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Next</span>
+				</div>
+			</div>
+		}
+		if data.CalendarSync.SourceCount > 0 {
+			<div class="rounded-lg border border-border bg-background/45 p-3">
+				<div class="flex items-center justify-between gap-4">
+					<div class="text-xs font-semibold text-foreground">Selected calendars</div>
+					<span class="shrink-0 rounded-md bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">{ fmt.Sprintf("%d of %d selected", data.CalendarSync.SelectedSourceCount, data.CalendarSync.SourceCount) }</span>
+				</div>
+				<p class="mt-1 text-[11px] leading-relaxed text-muted-foreground">Select calendars to sync. Your choices are saved when you click Next.</p>
+				<form
+					method="POST"
+					action={ fmt.Sprintf("/api/accounts/%s/calendar/sources", data.AccountID) }
+					data-calendar-source-form
+					data-account-id={ data.AccountID }
+					hx-post={ fmt.Sprintf("/api/accounts/%s/calendar/sources", data.AccountID) }
+					hx-target={ fmt.Sprintf("#account-calendar-sync-panel-%s", data.AccountID) }
+					hx-swap="outerHTML"
+					hx-on::before-request="handleCalendarSourceSaveStart(event)"
+					hx-on::after-request="handleCalendarSourceSaveResult(event)"
+					class="mt-3"
+				>
+					<div class="max-h-56 space-y-2 overflow-y-auto overscroll-contain pr-1">
+						for _, source := range data.CalendarSync.Sources {
+							<label class="flex w-full cursor-pointer items-start gap-3 rounded-md border border-border bg-background/35 px-3 py-2 text-xs transition-colors hover:bg-accent/50 has-[:checked]:border-primary/40 has-[:checked]:bg-primary/[0.06]">
+								<span class="mt-0.5 inline-flex shrink-0">
+									@checkbox.Checkbox(checkbox.Props{
+										ID:      fmt.Sprintf("calendar-source-%s", source.ID),
+										Name:    "source_id",
+										Value:   source.ID,
+										Checked: source.IsSelected,
+										Attributes: templ.Attributes{
+											"data-calendar-source-checkbox": "",
+										},
+									})
+								</span>
+								<span class="mt-1 size-2 shrink-0 rounded-full" style={ accountColorStyle(source.Color) }></span>
+								<span class="min-w-0 flex-1">
+									<span class="block truncate font-semibold text-foreground">{ calendarSourceName(source) }</span>
+									if calendarSourceDetails(source) != "" {
+										<span class="mt-0.5 block truncate text-[11px] text-muted-foreground">{ calendarSourceDetails(source) }</span>
+									}
+								</span>
+								if source.IsPrimary {
+									<span class="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">Primary</span>
+								}
+							</label>
+						}
+					</div>
+					<div data-calendar-source-save-status class="mt-3 min-h-0"></div>
+				</form>
+			</div>
+		} else if data.Provider == "gmail" || data.Provider == "outlook" || data.Provider == "imap" {
+			<div class="rounded-lg border border-border bg-background/50 p-3 text-xs leading-relaxed text-muted-foreground">
+				<p class="font-semibold text-foreground">No calendars discovered yet</p>
+				<p class="mt-0.5">Run discovery above. This account will appear in Calendar once at least one source is selected.</p>
+			</div>
+		}
+		if message != "" {
+			if isError {
+				<div role="alert" class="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs leading-relaxed text-destructive">{ message }</div>
+			} else {
+				<div role="status" class="rounded-lg border border-emerald-500/25 bg-emerald-500/5 px-3 py-2 text-xs leading-relaxed text-emerald-700 dark:text-emerald-300">{ message }</div>
+			}
+		}
+	</div>
+}
+
+templ CalendarSetupNotice() {
+	<div data-wizard-service-content="calendar" data-wizard-service-always-active="true" class="rounded-lg border border-border bg-background/45 p-4">
+		<div class="flex items-start justify-between gap-4">
+			<div class="flex min-w-0 items-start gap-3">
+				<div class="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md border border-border/70 bg-card text-muted-foreground">
+					@icon.CalendarDays(icon.Props{Class: "size-4"})
+				</div>
+				<div class="min-w-0">
+					<h4 class="text-sm font-semibold text-foreground">Calendar sync</h4>
+					<p class="mt-1 text-xs leading-relaxed text-muted-foreground">Calendar setup is optional and depends on the provider. Google and Microsoft use account authorization; IMAP mailboxes can connect a separate CalDAV service.</p>
+				</div>
+			</div>
+			<span class="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">Available</span>
+		</div>
+		<p class="mt-3 border-t border-border/60 pt-3 text-[11px] leading-relaxed text-muted-foreground">This account will not appear in Calendar until a calendar source has been discovered and selected.</p>
+	</div>
+}
+
 func contactSyncPasswordPlaceholder(cfg models.ContactSyncConfig) string {
 	if cfg.HasPassword {
+		return "Leave blank to keep current"
+	}
+	return "App password"
+}
+
+func calDAVPasswordPlaceholder(cfg models.CalendarSyncConfig) string {
+	if cfg.CalDAVHasPassword {
 		return "Leave blank to keep current"
 	}
 	return "App password"
@@ -3915,36 +4256,50 @@ templ CardDAVManualAddressBookButton(fieldsID string, baseURL string) {
 	</span>
 }
 
-templ AddAccountPostCreateStep(accountID string) {
+templ AddAccountPostCreateStep(data models.EditAccountData) {
+	{{ accountID := data.AccountID }}
 	<div id="add-wizard-footer-step-3" data-wizard-footer-step="3" data-active="false" hx-swap-oob="outerHTML" class="hidden flex-wrap justify-between gap-2">
 		<button type="button" onclick="wizardGo(2)" class="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
 			@icon.ArrowLeft(icon.Props{Class: "size-4"})
 			Back
 		</button>
-		<div class="flex flex-wrap justify-end gap-2">
-			<button type="button" onclick="wizardGo(4)" class="inline-flex items-center gap-1.5 rounded-lg border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-accent">Skip</button>
-			<button type="submit" form={ fmt.Sprintf("add-contact-sync-form-%s", accountID) } class="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors">
-				Save
-			</button>
-		</div>
+		<button type="submit" form={ fmt.Sprintf("add-contact-sync-form-%s", accountID) } class="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors">
+			Next
+			@icon.ChevronRight(icon.Props{Class: "size-4"})
+		</button>
 	</div>
 	<div id="add-wizard-footer-step-4" data-wizard-footer-step="4" data-active="false" hx-swap-oob="outerHTML" class="hidden flex-wrap justify-between gap-2">
-		<button type="button" onclick="wizardGo(addContactsEnabled() ? 3 : 2)" class="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+		<button type="button" onclick="wizardGo(3)" class="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+			@icon.ArrowLeft(icon.Props{Class: "size-4"})
+			Back
+		</button>
+		<button type="button" onclick="wizardServiceNext(this, 'calendar', 5)" class="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+			Next
+			@icon.ChevronRight(icon.Props{Class: "size-4"})
+		</button>
+	</div>
+	<div id="add-step-4-content" hx-swap-oob="innerHTML">
+		@CalendarSyncSettings(data)
+	</div>
+	@AccountWizardSectionSwitch("wizardGo", accountID, "calendar", data.CalendarSync.Enabled, false, false, true, nil)
+	<div id="add-wizard-footer-step-5" data-wizard-footer-step="5" data-active="false" hx-swap-oob="outerHTML" class="hidden flex-wrap justify-between gap-2">
+		<button type="button" onclick="wizardGo(4)" class="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
 			@icon.ArrowLeft(icon.Props{Class: "size-4"})
 			Back
 		</button>
 		<a href="/settings/accounts?account_added=1" class="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">Done</a>
 	</div>
-	<div id="add-step-4-content" hx-swap-oob="innerHTML">
+	<div id="add-step-5-content" hx-swap-oob="innerHTML">
 		@WizardStepSuccess("Account created", accountID, "add")
 	</div>
 	<div class="flex h-full flex-col pt-1">
 		<div class="account-wizard-scroll space-y-5">
+		<div data-wizard-service-content="contacts" class="space-y-5">
 		<h4 class="account-wizard-sticky-header text-sm font-semibold text-foreground flex items-center gap-2">
 			@icon.BookUser(icon.Props{Class: "size-4 text-muted-foreground"})
 			Contact sync
 		</h4>
-		<form id={ fmt.Sprintf("add-contact-sync-form-%s", accountID) } hx-post={ fmt.Sprintf("/api/accounts/%s/contacts/sync", accountID) } hx-target={ fmt.Sprintf("#add-contact-sync-status-%s", accountID) } hx-swap="innerHTML" class="rounded-lg border border-border bg-background/45 p-4">
+		<form id={ fmt.Sprintf("add-contact-sync-form-%s", accountID) } data-wizard-contact-form data-wizard-next-step="4" hx-post={ fmt.Sprintf("/api/accounts/%s/contacts/sync", accountID) } hx-target={ fmt.Sprintf("#add-contact-sync-status-%s", accountID) } hx-swap="innerHTML" class="rounded-lg border border-border bg-background/45 p-4">
 			<div class="mb-3 flex items-start justify-between gap-4">
 				<div class="min-w-0">
 					<h4 class="flex items-center gap-2 text-sm font-semibold text-foreground">
@@ -3996,17 +4351,16 @@ templ AddAccountPostCreateStep(accountID string) {
 			</div>
 		</form>
 		</div>
+		</div>
 		<div class="account-wizard-controls flex flex-wrap justify-between gap-2">
 			<button type="button" onclick="wizardGo(2)" class="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
 				@icon.ArrowLeft(icon.Props{Class: "size-4"})
 				Back
 			</button>
-			<div class="flex flex-wrap justify-end gap-2">
-				<button type="button" onclick="wizardGo(4)" class="inline-flex items-center gap-1.5 rounded-lg border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-accent">Skip</button>
-				<button type="submit" form={ fmt.Sprintf("add-contact-sync-form-%s", accountID) } class="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors">
-					Save
-				</button>
-			</div>
+			<button type="submit" form={ fmt.Sprintf("add-contact-sync-form-%s", accountID) } class="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors">
+				Next
+				@icon.ChevronRight(icon.Props{Class: "size-4"})
+			</button>
 		</div>
 	</div>
 }
@@ -4023,8 +4377,9 @@ templ WizardStepSuccess(heading string, accountID string, wizardType string) {
 		</div>
 		<div
 			id="wizard-test-results"
+			data-wizard-test-results
 			hx-post={ fmt.Sprintf("/api/accounts/%s/test?wizard=%s", accountID, wizardType) }
-			hx-trigger="load"
+			hx-trigger="wizard-test"
 			hx-target="#wizard-test-results"
 			hx-swap="innerHTML"
 			class="space-y-3"
@@ -4045,8 +4400,9 @@ templ WizardConnectionTestStep(accountID string, wizardType string) {
 		</h4>
 		<div
 			id="wizard-test-results"
+			data-wizard-test-results
 			hx-post={ fmt.Sprintf("/api/accounts/%s/test?wizard=%s", accountID, wizardType) }
-			hx-trigger="load"
+			hx-trigger="wizard-test"
 			hx-target="#wizard-test-results"
 			hx-swap="innerHTML"
 			class="space-y-3"
@@ -4119,7 +4475,7 @@ templ AccountFormError(message string) {
 templ ConnectionTestResults(results []models.ConnectionTestResult, accountID string, wizardType string) {
 	{{ hasFailure := false }}
 	<div class="space-y-3">
-		<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+		<div class={ "grid grid-cols-1 gap-3", templ.KV("sm:grid-cols-2", len(results) > 1) }>
 			for _, r := range results {
 				if !r.Success {
 					{{ hasFailure = true }}
@@ -4150,8 +4506,8 @@ templ ConnectionTestResults(results []models.ConnectionTestResult, accountID str
 			}
 		</div>
 		if wizardType == "edit" {
-			<div id="edit-wizard-footer-step-4" data-wizard-footer-step="4" data-active="false" hx-swap-oob="outerHTML" class="hidden justify-between gap-2">
-				<button type="button" onclick="editWizardGo(3)" class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md border border-border hover:bg-accent">
+			<div id="edit-wizard-footer-step-5" data-wizard-footer-step="5" data-active="false" hx-swap-oob="outerHTML" class="hidden justify-between gap-2">
+				<button type="button" onclick="editWizardGo(4)" class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md border border-border hover:bg-accent">
 					@icon.ArrowLeft(icon.Props{Class: "size-4"})
 					Back
 				</button>

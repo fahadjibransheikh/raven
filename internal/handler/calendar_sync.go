@@ -3,134 +3,160 @@ package handler
 import (
 	"context"
 	"errors"
-	"log"
+	"fmt"
+	"strings"
 	"time"
 
+	"github.com/cristianadrielbraun/gofer/internal/calendar"
 	"github.com/cristianadrielbraun/gofer/internal/providers"
 	"github.com/cristianadrielbraun/gofer/internal/storage"
 )
 
-var errCalendarSyncAlreadyRunning = errors.New("calendar sync already running for this account")
-
-// StartCalendarSync mirrors StartContactSync: one sync at startup, then one
-// per user sync interval. Failures are logged and never fatal.
-func (h *Handler) StartCalendarSync(ctx context.Context) {
-	go func() {
-		h.SyncCalendarsForAllAccounts(ctx)
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-time.After(h.contactSyncInterval(ctx)): // same cadence as contacts
-				h.SyncCalendarsForAllAccounts(ctx)
-			}
-		}
-	}()
+type calendarCredentials struct {
+	token    string
+	baseURL  string
+	username string
+	password string
+	err      error
 }
 
-func (h *Handler) SyncCalendarsForAllAccounts(ctx context.Context) {
-	accounts, err := h.db.GetAllAccountIDs(ctx)
+var errCalendarAccountNotConfigured = errors.New("no calendars are configured for this account")
+
+func (h *Handler) syncCalendarWindow(ctx context.Context, userID string, start, end time.Time) (int, error) {
+	return h.syncCalendarProviderWindow(ctx, userID, start, end, "")
+}
+
+func (h *Handler) syncCalendarProviderWindow(ctx context.Context, userID string, start, end time.Time, provider string) (int, error) {
+	return h.syncCalendarScopedWindow(ctx, userID, start, end, provider, "")
+}
+
+func (h *Handler) syncCalendarScopedWindow(ctx context.Context, userID string, start, end time.Time, provider, accountID string) (int, error) {
+	sources, err := h.db.ListSelectedCalendarSources(ctx, userID)
 	if err != nil {
-		log.Printf("calendar sync: list accounts: %v", err)
-		return
+		return 0, fmt.Errorf("list selected calendars: %w", err)
 	}
-	for _, accountID := range accounts {
-		if ctx.Err() != nil {
-			return
+	credentials := make(map[string]calendarCredentials)
+	total := 0
+	matched := accountID == ""
+	var failures []error
+	for _, source := range sources {
+		if (provider != "" && source.Provider != provider) || (accountID != "" && source.AccountID != accountID) {
+			continue
 		}
-		if err := h.SyncCalendarAccount(ctx, accountID); err != nil && !errors.Is(err, errCalendarSyncAlreadyRunning) {
-			log.Printf("calendar sync %s: %v", accountID, err)
+		matched = true
+		if err := ctx.Err(); err != nil {
+			return total, err
+		}
+		count, err := h.syncCalendarSource(ctx, source, start, end, false, credentials)
+		total += count
+		if err != nil {
+			failures = append(failures, fmt.Errorf("%s: %w", source.Name, err))
 		}
 	}
+	if !matched {
+		return 0, errCalendarAccountNotConfigured
+	}
+	if len(failures) > 1 {
+		return total, fmt.Errorf("%w (and %d more errors)", failures[0], len(failures)-1)
+	}
+	if len(failures) == 1 {
+		return total, failures[0]
+	}
+	return total, nil
 }
 
-// SyncCalendarAccount syncs one account; accounts whose provider has no
-// calendar support are skipped with a nil error.
-func (h *Handler) SyncCalendarAccount(ctx context.Context, accountID string) error {
-	provider, err := h.db.CalendarAccountProvider(ctx, accountID)
-	if err != nil || provider == "" {
-		return nil // missing or deleting account
+func (h *Handler) fetchCalendarSource(ctx context.Context, source storage.CalendarSource, query calendar.EventQuery, credentials map[string]calendarCredentials) (calendar.EventPage, error) {
+	if h.calendarFetchEvents != nil {
+		return h.calendarFetchEvents(ctx, source, query)
 	}
-	var pull func(context.Context, string) error
-	var isScopeErr func(error) bool
-	reconnectMsg := ""
-	switch {
-	case provider == providers.ProviderGmail && h.mailCredentials() != nil && h.mailCredentials().HasGoogleOAuth():
-		pull, isScopeErr, reconnectMsg = h.pullGoogleCalendarAccount, isGoogleCalendarScopeError, "reconnect Google to grant calendar access"
-	case provider == providers.ProviderOutlook && h.mailCredentials() != nil && h.mailCredentials().HasMicrosoftOAuth():
-		pull, isScopeErr, reconnectMsg = h.pullOutlookCalendarAccount, isOutlookCalendarScopeError, "reconnect Outlook to grant calendar access"
-	case provider == storage.CalendarProviderICloud && h.accountStore != nil:
-		pull, isScopeErr, reconnectMsg = h.pullICloudCalendarAccount, isICloudAuthError, icloudReconnectMsg
+	key := source.Provider + ":" + source.AccountID
+	credential, ok := credentials[key]
+	if !ok {
+		credential = h.calendarCredentialsForSource(ctx, source.UserID, source)
+		credentials[key] = credential
+	}
+	if credential.err != nil {
+		return calendar.EventPage{}, credential.err
+	}
+	switch source.Provider {
+	case providers.ProviderGmail:
+		return listGoogleCalendarEvents(ctx, credential.token, source.RemoteID, query)
+	case providers.ProviderOutlook:
+		return listOutlookCalendarEvents(ctx, credential.token, source.RemoteID, query)
+	case storage.CalendarSourceProviderCalDAV:
+		if _, err := resolveCalDAVHref(credential.baseURL, source.RemoteID); err != nil {
+			return calendar.EventPage{}, err
+		}
+		return listCalDAVCalendarEvents(ctx, source, credential.username, credential.password, query)
 	default:
-		return nil
+		return calendar.EventPage{}, fmt.Errorf("this calendar provider is not supported")
 	}
-	if !h.beginCalendarSync(accountID) {
-		return errCalendarSyncAlreadyRunning
-	}
-	defer h.endCalendarSync(accountID)
+}
 
-	err = pull(ctx, accountID)
-	switch {
-	case err == nil:
-		err = h.db.SetCalendarAccountState(ctx, accountID, false, "")
-	case isScopeErr(err):
-		if e := h.db.SetCalendarAccountState(ctx, accountID, true, reconnectMsg); e != nil {
-			log.Printf("calendar sync %s: record reconnect state: %v", accountID, e)
+func (h *Handler) calendarCredentialsForSource(ctx context.Context, userID string, source storage.CalendarSource) calendarCredentials {
+	var result calendarCredentials
+	switch source.Provider {
+	case providers.ProviderGmail:
+		if h.mailCredentials() == nil {
+			result.err = fmt.Errorf("Google authorization is not configured")
+		} else {
+			result.token, result.err = h.mailCredentials().GetGoogleCalendarTokenForAccount(ctx, source.AccountID)
+		}
+	case providers.ProviderOutlook:
+		if h.mailCredentials() == nil {
+			result.err = fmt.Errorf("Microsoft authorization is not configured")
+		} else {
+			result.token, result.err = h.mailCredentials().GetMicrosoftGraphCalendarTokenForAccount(ctx, source.AccountID)
+		}
+	case storage.CalendarSourceProviderCalDAV:
+		if h.accountStore == nil {
+			result.err = fmt.Errorf("CalDAV account settings are not available")
+			return result
+		}
+		cfg, err := h.accountStore.GetCalendarSyncConfig(ctx, userID, source.AccountID)
+		if err != nil {
+			result.err = err
+			return result
+		}
+		if cfg.Provider != providers.ProviderIMAP {
+			result.err = fmt.Errorf("CalDAV is not configured for this account")
+			return result
+		}
+		result.baseURL, result.err = normalizeCalDAVBaseURL(cfg.CalDAVBaseURL)
+		if result.err != nil {
+			return result
+		}
+		result.username = strings.TrimSpace(cfg.CalDAVUsername)
+		if cfg.CalDAVUseAccountCredentials {
+			result.err = h.db.Read().QueryRowContext(ctx, `
+				SELECT COALESCE(NULLIF(username, ''), email_address)
+				FROM accounts WHERE id = ? AND user_id = ? AND COALESCE(is_deleting, 0) = 0`, source.AccountID, userID).Scan(&result.username)
+			if result.err == nil {
+				result.password, result.err = h.accountStore.DecryptPassword(ctx, source.AccountID)
+			}
+		} else {
+			result.password, result.err = h.accountStore.CalDAVPassword(ctx, userID, source.AccountID)
+		}
+		if result.err == nil && (strings.TrimSpace(result.username) == "" || result.password == "") {
+			result.err = fmt.Errorf("complete Calendar authentication in account setup")
 		}
 	default:
-		if e := h.db.SetCalendarAccountState(ctx, accountID, false, err.Error()); e != nil {
-			log.Printf("calendar sync %s: record error: %v", accountID, e)
-		}
+		result.err = fmt.Errorf("this calendar provider is not supported")
 	}
-	return err
+	return result
 }
 
-func (h *Handler) pullGoogleCalendarAccount(ctx context.Context, accountID string) error {
-	token, err := h.mailCredentials().GetOAuthTokenForAccount(ctx, accountID)
-	if err != nil {
-		return err
+func calendarStorageEvent(userID, sourceID string, remote calendar.RemoteEvent) storage.CalendarEvent {
+	return storage.CalendarEvent{
+		UserID: userID, SourceID: sourceID, RemoteID: remote.RemoteID,
+		ICalUID: remote.ICalUID, SeriesRemoteID: remote.SeriesRemoteID, ETag: remote.ETag,
+		Status: remote.Status, Summary: remote.Summary, Description: remote.Description, Location: remote.Location,
+		OrganizerName: remote.OrganizerName, OrganizerEmail: remote.OrganizerEmail,
+		ResponseStatus: remote.ResponseStatus,
+		AllDay:         remote.AllDay, StartDate: remote.StartDate, EndDate: remote.EndDate,
+		StartAt: remote.StartAt, EndAt: remote.EndAt, StartTimeZone: remote.StartTimeZone, EndTimeZone: remote.EndTimeZone,
+		RecurrenceJSON: string(remote.Recurrence), AttendeesJSON: string(remote.Attendees), OnlineMeetingJSON: string(remote.OnlineMeeting),
+		HTMLLink: remote.HTMLLink, ProviderCreatedAt: remote.ProviderCreatedAt, ProviderUpdatedAt: remote.ProviderUpdatedAt,
+		IsDeleted: remote.Deleted,
 	}
-	calendars, err := h.fetchGoogleCalendarList(ctx, token)
-	if err != nil {
-		return err
-	}
-	if err := h.db.UpsertCalendars(ctx, accountID, calendars); err != nil {
-		return err
-	}
-	selected, err := h.db.ListSelectedCalendarsForAccount(ctx, accountID)
-	if err != nil {
-		return err
-	}
-	var firstErr error
-	for _, cal := range selected {
-		if err := h.syncGoogleCalendarEvents(ctx, token, cal); err != nil {
-			if isGoogleCalendarScopeError(err) {
-				return err
-			}
-			log.Printf("calendar sync %s calendar %d: %v", accountID, cal.ID, err)
-			if firstErr == nil {
-				firstErr = err
-			}
-		}
-	}
-	return firstErr
-}
-
-func (h *Handler) beginCalendarSync(accountID string) bool {
-	h.calendarSyncMu.Lock()
-	defer h.calendarSyncMu.Unlock()
-	if h.calendarSyncRunning == nil {
-		h.calendarSyncRunning = make(map[string]struct{})
-	}
-	if _, ok := h.calendarSyncRunning[accountID]; ok {
-		return false
-	}
-	h.calendarSyncRunning[accountID] = struct{}{}
-	return true
-}
-
-func (h *Handler) endCalendarSync(accountID string) {
-	h.calendarSyncMu.Lock()
-	delete(h.calendarSyncRunning, accountID)
-	h.calendarSyncMu.Unlock()
 }

@@ -55,7 +55,18 @@ Each stage ends with: `templ generate`, `go build ./...`, `go vet ./...`,
 
 ## Progress
 
-- [ ] Stage 1
+- [x] Stage 1 (2026-10-12). Notes:
+  - Removed Raven's calendar handlers, models, invite card (`email_invite.go`,
+    `invite.templ`, `invite-card.js`, `internal/mail/ical`), `calendar-app.js`
+    and its CSS, and the `scripts/render-calendar` / `render-invite` helpers.
+  - Google: Raven still requests `calendar.calendarlist.readonly` +
+    `calendar.events`; `GetGoogleCalendarTokenForAccount` accepts that pair, so
+    existing Raven grants keep working without a reconnect.
+  - Microsoft: kept Raven's typed `ErrMicrosoftCalendarConsentRequired`.
+  - `migrateV109ToV110` (upstream CalDAV credentials) skips existing columns.
+  - Calendar page uses Raven's head, scripts, sidebar surface and no serif;
+    the rest of upstream's calendar markup is unrestyled (stage 4).
+  - Dropped upstream's per-section settings headers (Raven's single header).
 - [ ] Stage 2
 - [ ] Stage 3
 - [ ] Stage 4

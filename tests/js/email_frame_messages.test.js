@@ -7,7 +7,6 @@ const path = require("node:path")
 const { JSDOM } = require("jsdom")
 
 const appJS = fs.readFileSync(path.join(__dirname, "..", "..", "assets", "js", "app.js"), "utf8")
-const inviteJS = fs.readFileSync(path.join(__dirname, "..", "..", "assets", "js", "invite-card.js"), "utf8")
 
 async function setup() {
   const dom = new JSDOM('<!doctype html><body>' +
@@ -60,18 +59,4 @@ test("only a frame's own banner is shown", async () => {
   post(f2, { type: "remoteContentBlocked", emailId: "1" })
   assert.ok(!d.querySelector('[data-remote-content-banner="2"]').classList.contains("hidden"))
   assert.ok(d.querySelector('[data-remote-content-banner="1"]').classList.contains("hidden"))
-})
-
-test("invite card only requests plain numeric message ids", async () => {
-  const dom = new JSDOM('<!doctype html><html><body><div data-invite-slot="42" class="hidden"></div></body></html>', { url: "http://localhost/", runScripts: "outside-only" })
-  const w = dom.window
-  const urls = []
-  w.fetch = (url) => { urls.push(url); return Promise.resolve({ ok: true, status: 204, text: () => Promise.resolve("") }) }
-  w.eval(inviteJS)
-  for (const id of ["../../settings", "42/../../x", "4 2", "", "-1", "1e3"]) w.postMessage({ type: "emailBodyResize", emailId: id, height: 1 }, "*")
-  await new Promise((r) => setTimeout(r, 20))
-  assert.deepEqual(urls, [])
-  w.postMessage({ type: "emailBodyResize", emailId: "42", height: 1 }, "*")
-  await new Promise((r) => setTimeout(r, 20))
-  assert.deepEqual(urls, ["/email/42/invite"])
 })

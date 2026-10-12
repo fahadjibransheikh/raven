@@ -1,0 +1,364 @@
+package views
+
+import (
+	"time"
+	"strconv"
+	"github.com/cristianadrielbraun/gofer/components/button"
+	"github.com/cristianadrielbraun/gofer/components/dialog"
+	"github.com/cristianadrielbraun/gofer/components/icon"
+	"github.com/cristianadrielbraun/gofer/components/popover"
+	"github.com/cristianadrielbraun/gofer/internal/calendar"
+)
+
+templ CalendarEventDialog(details CalendarEventDetails, location *time.Location) {
+	{{
+		event := details.Event
+		organizer := calendarParticipantName(details.Organizer) != ""
+	}}
+	@dialog.Dialog(dialog.Props{ID: "calendar-event-details-dialog"}) {
+		@dialog.Content(dialog.ContentProps{
+			HideCloseButton: true,
+			Class:           calendarDialogClass("sm:max-w-lg"),
+			Attributes:      templ.Attributes{"id": "calendar-event-details-content", "aria-labelledby": "calendar-event-details-title"},
+		}) {
+			<header class="flex shrink-0 items-start gap-3 px-5 pt-5 pb-4 sm:px-6">
+				<span class="mt-2 size-3 shrink-0 rounded-[3px]" style={ calendarEventColorStyle(event) } aria-hidden="true"></span>
+				<div class="min-w-0 flex-1">
+					@dialog.Title(dialog.TitleProps{ID: "calendar-event-details-title", Class: "break-words text-xl font-semibold leading-snug tracking-tight [overflow-wrap:anywhere]"}) {
+						{ calendarEventSummary(event) }
+					}
+					if event.SourceName != "" {
+						<p class="mt-1 break-words text-xs text-muted-foreground">{ event.SourceName }</p>
+					}
+				</div>
+				<div class="-mt-1 -mr-2 flex shrink-0 items-center gap-1">
+					if details.CanEdit {
+						if details.HasOccurrence {
+							@popover.Root() {
+								@popover.Trigger() {
+									@button.Button(button.Props{Variant: button.VariantOutline, Size: button.SizeSm, Class: "font-semibold", Attributes: templ.Attributes{"data-calendar-edit-trigger": "", "aria-haspopup": "menu"}}) {
+										@icon.Pencil(icon.Props{Class: "size-3.5"})
+										Edit
+										@icon.ChevronDown(icon.Props{Class: "size-3.5 text-muted-foreground"})
+									}
+								}
+								@popover.Content(popover.ContentProps{Placement: popover.PlacementBottomEnd, Class: "w-44 p-1"}) {
+									@CalendarEventEditAction(details, "This event", "occurrence", true)
+									@CalendarEventEditAction(details, "Entire series", "series", true)
+								}
+							}
+						} else if details.EditSeries {
+							@CalendarEventEditAction(details, "Edit series", "series", false)
+						} else {
+							@CalendarEventEditAction(details, "Edit", "", false)
+						}
+					}
+					if details.CanDelete {
+						{{
+							deleteLabel := "Delete event"
+							if details.DeleteSeries && !details.HasOccurrence {
+								deleteLabel = "Delete series"
+							}
+							deleteAttrs := templ.Attributes{"data-calendar-delete-trigger": "", "aria-haspopup": "dialog", "aria-controls": "calendar-event-delete-confirmation-content", "aria-label": deleteLabel, "title": deleteLabel}
+							if details.DeleteSeries && !details.HasOccurrence {
+								deleteAttrs["data-calendar-delete-load"] = ""
+								deleteAttrs["hx-get"] = calendarEventDetailsURL(event.ID) + "/delete-series-confirmation"
+								deleteAttrs["hx-target"] = "#calendar-event-delete-confirmation-body"
+								deleteAttrs["hx-swap"] = "innerHTML"
+								deleteAttrs["hx-sync"] = "closest [data-tui-popover-root]:replace"
+							}
+						}}
+						@popover.Root(popover.RootProps{ID: "calendar-event-delete-confirmation"}) {
+							@popover.Trigger() {
+								@button.Button(button.Props{Variant: button.VariantGhost, Size: button.SizeIcon, Class: "size-8 text-muted-foreground hover:text-destructive", Attributes: deleteAttrs}) {
+									@icon.Trash2(icon.Props{Class: "size-4"})
+								}
+							}
+							@popover.Content(popover.ContentProps{ID: "calendar-event-delete-confirmation-content", Placement: popover.PlacementBottomEnd, Class: "w-80 p-4", Attributes: templ.Attributes{"role": "dialog", "aria-labelledby": "calendar-event-delete-title", "aria-describedby": "calendar-event-delete-description"}}) {
+								<div id="calendar-event-delete-confirmation-body">
+									{{ confirmation := details }}
+									if details.HasOccurrence {
+										{{ confirmation.DeleteSeries, confirmation.DeleteOccurrence = false, true }}
+									}
+									@CalendarEventDeleteConfirmation(confirmation)
+								</div>
+							}
+						}
+					}
+					@button.Button(button.Props{Variant: button.VariantGhost, Size: button.SizeIcon, Class: "size-8 text-muted-foreground", Attributes: templ.Attributes{"data-tui-dialog-close": "", "aria-label": "Close event details", "title": "Close"}}) {
+						@icon.X(icon.Props{Class: "size-4"})
+					}
+				</div>
+			</header>
+			<div class="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-5 pb-6 text-sm [overflow-wrap:anywhere] sm:px-6" role="region" aria-label="Event information" tabindex="0" data-calendar-event-details-body>
+				@calendarDialogRow(icon.Clock3(icon.Props{Class: "size-4"}), "pt-0.5") {
+					<p class="font-medium">{ calendarEventDetailsDate(event, location) }</p>
+					<p class="mt-0.5 text-muted-foreground">
+						{ calendarEventAgendaTimeLabel(event, location) }
+						if timezone := calendarEventDetailsTimeZone(event, location); timezone != "" {
+							<span aria-hidden="true">·</span> { timezone }
+						}
+					</p>
+				}
+				if joinURL := calendar.SafeMeetingURL(details.JoinURL); joinURL != "" {
+					@calendarDialogRow(icon.Video(icon.Props{Class: "size-4"}), "pt-0.5 sm:pt-2") {
+						<div class="flex min-w-0 flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-3" data-calendar-meeting-section>
+							if calendar.TeamsJoinURL(joinURL) != "" {
+								<p class="min-w-0 flex-1 text-sm leading-5 text-muted-foreground">This is a Microsoft Teams meeting</p>
+							} else if calendar.GoogleMeetJoinURL(joinURL) != "" {
+								<p class="min-w-0 flex-1 text-sm leading-5 text-muted-foreground">This is a Google Meet meeting</p>
+							}
+							@button.Button(button.Props{Href: joinURL, Target: "_blank", Variant: button.VariantOutline, Size: button.SizeSm, Class: "shrink-0 font-semibold", Attributes: templ.Attributes{"rel": "noopener noreferrer", "data-calendar-join-meeting": ""}}) {
+								Join meeting
+								@icon.ExternalLink(icon.Props{Class: "size-3.5"})
+							}
+						</div>
+					}
+				}
+				if event.Location != "" {
+					@calendarDialogRow(icon.MapPin(icon.Props{Class: "size-4"}), "pt-0.5") {
+						<p class="sr-only">Location</p>
+						<p class="whitespace-pre-wrap">{ event.Location }</p>
+					}
+				}
+				if organizer && !calendarOrganizerListed(details) {
+					@calendarDialogRow(icon.UserRound(icon.Props{Class: "size-4"}), "pt-0.5") {
+						@CalendarParticipantIdentity(details.Organizer)
+						<p class="mt-0.5 text-xs text-muted-foreground">Organizer</p>
+					}
+				}
+				if len(details.Attendees) > 0 || details.Delivery != nil {
+					@calendarDialogRow(icon.Users(icon.Props{Class: "size-4"}), "pt-0.5") {
+						@CalendarEventGuests(details)
+					}
+				}
+				if details.Description != "" {
+					@calendarDialogRow(icon.TextAlignStart(icon.Props{Class: "size-4"}), "pt-0.5") {
+						<h3 class="sr-only">Description</h3>
+						if details.DescriptionHTML != "" {
+							<div class="calendar-rich-description leading-relaxed">@templ.Raw(calendar.SanitizeDescriptionHTML(details.DescriptionHTML))</div>
+						} else {
+							<p class="whitespace-pre-wrap leading-relaxed">{ details.Description }</p>
+						}
+					}
+				}
+				if !details.CanEdit {
+					@calendarDialogRow(icon.Lock(icon.Props{Class: "size-3.5"}), "pt-px") {
+						<p class="text-xs leading-relaxed text-muted-foreground" data-calendar-edit-unavailable>
+							if details.Response != nil {
+								Meeting details are read-only.
+							} else {
+								Read-only.
+							}
+							if details.EditUnavailableReason != "" {
+								{ details.EditUnavailableReason }
+							} else {
+								Editing is unavailable for this event.
+							}
+						</p>
+					}
+				}
+			</div>
+			if details.Response != nil {
+				<footer id="calendar-event-response" class="max-h-[40dvh] shrink-0 overflow-y-auto border-t border-border bg-muted/30 px-5 py-3 sm:px-6" data-calendar-response-root data-calendar-response-container>
+					@CalendarResponseForm(*details.Response)
+				</footer>
+			}
+		}
+	}
+}
+
+templ CalendarEventGuests(details CalendarEventDetails) {
+	{{
+		attrs := templ.Attributes{}
+		if details.Delivery != nil {
+			attrs = templ.Attributes{"hx-get": calendarEventDetailsURL(details.Event.ID) + "/delivery", "hx-trigger": "every 5s [document.visibilityState === 'visible' && document.getElementById('calendar-event-guests')?.getClientRects().length > 0]", "hx-target": "this", "hx-swap": "outerHTML", "hx-sync": "this:drop", "hx-params": "none"}
+		}
+	}}
+	<section id="calendar-event-guests" aria-labelledby="calendar-event-guests-heading" { attrs... }>
+		<div class="flex flex-wrap items-baseline gap-x-2">
+			<h3 id="calendar-event-guests-heading" class="font-medium">
+				{ strconv.Itoa(len(details.Attendees)) }
+				if len(details.Attendees) == 1 {
+					guest
+				} else {
+					guests
+				}
+			</h3>
+			<p class="text-xs text-muted-foreground">{ calendarGuestSummary(details.Attendees) }</p>
+		</div>
+		<ul class="mt-3 space-y-3">
+			for _, person := range details.Attendees {
+				{{ response := calendarParticipantResponse(person) }}
+				<li class="flex items-center gap-3">
+					<span class="relative flex size-8 shrink-0 items-center justify-center rounded-full bg-foreground/10 text-[11px] font-semibold text-foreground/75" aria-hidden="true">
+						{ calendarParticipantInitials(person) }
+						<span class={ calendarParticipantBadgeClass(person) } title={ response }>
+							switch response {
+								case "Accepted", "Organizer":
+									@icon.Check(icon.Props{Class: "size-2.5 [stroke-width:3.5]"})
+								case "Declined":
+									@icon.X(icon.Props{Class: "size-2.5 [stroke-width:3.5]"})
+								case "Tentative":
+									?
+							}
+						</span>
+					</span>
+					<div class="min-w-0 flex-1">
+						<p class="truncate font-medium">
+							{ calendarParticipantName(person) }
+							if calendarSameParticipant(person, details.Organizer) {
+								<span class="ml-1 text-xs font-normal text-muted-foreground">Organizer</span>
+							}
+							if person.Optional {
+								<span class="ml-1 text-xs font-normal text-muted-foreground">Optional</span>
+							}
+						</p>
+						if person.Name != "" && person.Email != "" && person.Name != person.Email {
+							<p class="truncate text-xs text-muted-foreground">{ person.Email }</p>
+						}
+						<p class="sr-only">{ response }</p>
+					</div>
+				</li>
+			}
+		</ul>
+		if details.Delivery != nil {
+			@CalendarDeliveryStatus(*details.Delivery)
+		}
+	</section>
+}
+
+templ CalendarEventEditAction(details CalendarEventDetails, text, scope string, menu bool) {
+	{{
+		endpoint := calendarEventDetailsURL(details.Event.ID) + "/edit"
+		if scope != "" { endpoint += "?scope=" + scope }
+		variant, size, class := button.VariantOutline, button.SizeSm, "font-semibold"
+		if menu { variant, size, class = button.VariantGhost, button.SizeDefault, "w-full justify-start font-medium" }
+	}}
+	@button.Button(button.Props{Variant: variant, Size: size, Class: class, Attributes: templ.Attributes{
+		"data-calendar-create-trigger": "", "data-calendar-edit-trigger": "",
+		"hx-get": endpoint, "hx-target": "#app-pane-dialogs", "hx-swap": "innerHTML",
+		"hx-sync": "#app-pane-dialogs:replace", "hx-disabled-elt": "this",
+		"aria-haspopup": "dialog", "aria-controls": "calendar-create-dialog",
+	}}) {
+		if !menu {
+			@icon.Pencil(icon.Props{Class: "size-3.5"})
+		}
+		{ text }
+	}
+}
+
+templ CalendarEventDeleteConfirmation(details CalendarEventDetails) {
+	{{
+		params, title, submitLabel := "version", "Delete this event?", "Delete event"
+		ready := details.DeleteVersion != ""
+		if details.DeleteSeries {
+			params, title, submitLabel = "version,scope,series_id", "Delete the entire series?", "Delete series"
+		} else if details.DeleteOccurrence {
+			params, title = "version,scope", "Delete this occurrence?"
+		}
+	}}
+	<form data-calendar-delete-form data-calendar-event-id={ details.Event.ID } data-calendar-delete-series={ strconv.FormatBool(details.DeleteSeries) } data-calendar-delete-occurrence={ strconv.FormatBool(details.DeleteOccurrence) } data-calendar-delete-series-id={ details.DeleteSeriesID } data-calendar-delete-ready={ strconv.FormatBool(ready) } hx-delete={ calendarEventDetailsURL(details.Event.ID) } hx-params={ params } hx-swap="none" hx-sync="this:drop">
+		if details.HasOccurrence {
+			<div class="mb-3 grid grid-cols-2 gap-2" role="group" aria-label="Delete scope">
+				for _, scope := range []string{"occurrence", "series"} {
+					{{
+						selected := (scope == "series") == details.DeleteSeries
+						class := ""
+						if selected { class = "bg-accent text-accent-foreground" }
+					}}
+					@button.Button(button.Props{Type: button.TypeButton, Variant: button.VariantOutline, Size: button.SizeSm, Class: class, Attributes: templ.Attributes{
+						"aria-pressed": strconv.FormatBool(selected), "data-calendar-delete-load": "",
+						"hx-get": calendarEventDetailsURL(details.Event.ID) + "/delete-" + scope + "-confirmation",
+						"hx-target": "#calendar-event-delete-confirmation-body", "hx-swap": "innerHTML",
+						"hx-sync": "closest [data-tui-popover-root]:replace",
+					}}) {
+						if scope == "series" {
+							Entire series
+						} else {
+							This event
+						}
+					}
+				}
+			</div>
+		}
+		<input type="hidden" name="version" value={ details.DeleteVersion }/>
+		if details.DeleteSeries {
+			<input type="hidden" name="scope" value="series"/>
+			<input type="hidden" name="series_id" value={ details.DeleteSeriesID }/>
+		} else if details.DeleteOccurrence {
+			<input type="hidden" name="scope" value="occurrence"/>
+		}
+		<h3 id="calendar-event-delete-title" class="font-semibold">{ title }</h3>
+		<p class="mt-2 break-words text-sm font-medium">{ calendarEventSummary(details.Event) }</p>
+		<p id="calendar-event-delete-description" class="mt-2 text-xs leading-relaxed text-muted-foreground">
+			if details.DeleteSeries {
+				This deletes all occurrences, including past and future events, from your calendar provider—not just Gofer. You can’t undo this in Gofer.
+			} else if details.DeleteOccurrence {
+				Only this occurrence will be removed from your calendar provider. The rest of the series stays unchanged. You can’t undo this in Gofer.
+			} else {
+				This deletes the event from your calendar provider, not just Gofer. You can’t undo this in Gofer.
+			}
+			if len(details.Attendees) > 0 {
+				Guests will receive a cancellation.
+			}
+		</p>
+		<p data-calendar-delete-check hidden?={ ready } role="status" class="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+			@icon.LoaderCircle(icon.Props{Class: "size-3 animate-spin"})
+			Checking the selection…
+		</p>
+		<p data-calendar-delete-error hidden role="alert" tabindex="-1" class="mt-3 text-xs leading-relaxed text-destructive"></p>
+		<div class="mt-4 flex justify-end gap-2">
+			@button.Button(button.Props{Variant: button.VariantOutline, Size: button.SizeSm, Attributes: templ.Attributes{"data-calendar-delete-cancel": ""}}) {
+				Cancel
+			}
+			@button.Button(button.Props{Type: button.TypeSubmit, Variant: button.VariantDestructive, Size: button.SizeSm, Disabled: !ready, Attributes: templ.Attributes{"data-calendar-delete-submit": ""}}) {
+				<span data-calendar-delete-spinner hidden>
+					@icon.LoaderCircle(icon.Props{Class: "size-4 animate-spin"})
+				</span>
+				<span data-calendar-delete-label aria-live="polite">{ submitLabel }</span>
+			}
+		</div>
+	</form>
+}
+
+templ CalendarParticipantIdentity(person CalendarEventParticipant) {
+	<p class="break-words font-medium">{ calendarParticipantName(person) }</p>
+	if person.Name != "" && person.Email != "" && person.Name != person.Email {
+		<p class="mt-0.5 break-all text-xs text-muted-foreground">{ person.Email }</p>
+	}
+}
+
+// The pending dialog is installed only for slow detail requests. Its panel is
+// replaced in place so the native dialog and backdrop stay open.
+templ CalendarEventLoadingDialog() {
+ @dialog.Dialog(dialog.Props{ID: "calendar-event-details-dialog"}) {
+  @dialog.Content(dialog.ContentProps{
+   HideCloseButton: true,
+   Class: calendarDialogClass("sm:max-w-lg"),
+   Attributes: templ.Attributes{"id": "calendar-event-details-content", "aria-labelledby": "calendar-event-details-title", "aria-busy": "true"},
+  }) {
+   <header class="flex shrink-0 items-start gap-3 px-5 pt-5 pb-4 sm:px-6">
+    <span class="mt-2 size-3 shrink-0 rounded-[3px] bg-muted-foreground/40" aria-hidden="true"></span>
+    <div class="min-w-0 flex-1">
+     @dialog.Title(dialog.TitleProps{ID: "calendar-event-details-title", Class: "break-words text-xl font-semibold leading-snug tracking-tight [overflow-wrap:anywhere]"}) {
+      Event
+     }
+    </div>
+    <div class="-mt-1 -mr-2 shrink-0">
+     @button.Button(button.Props{Variant: button.VariantGhost, Size: button.SizeIcon, Class: "size-8 text-muted-foreground", Attributes: templ.Attributes{"data-tui-dialog-close": "", "aria-label": "Close event details", "title": "Close"}}) {
+      @icon.X(icon.Props{Class: "size-4"})
+     }
+    </div>
+   </header>
+   <div data-calendar-event-loading class="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 pb-6 text-sm sm:px-6">
+    <p role="status" aria-live="polite" class="text-muted-foreground">Loading event details…</p>
+    <div aria-hidden="true" class="space-y-5 motion-safe:animate-pulse">
+     <div class="space-y-2"><div class="h-4 w-3/4 rounded bg-muted"></div><div class="h-3 w-1/2 rounded bg-muted"></div></div>
+     <div class="h-4 w-1/2 rounded bg-muted"></div>
+     <div class="space-y-2"><div class="h-3 w-full rounded bg-muted"></div><div class="h-3 w-3/4 rounded bg-muted"></div></div>
+    </div>
+   </div>
+  }
+ }
+}
