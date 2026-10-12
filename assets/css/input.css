@@ -3762,3 +3762,12 @@ html[data-desktop="macos"] body > div.h-screen {
   height: calc(100vh - var(--desktop-titlebar-h));
   margin-top: var(--desktop-titlebar-h);
 }
+
+/* iOS zooms the page when a focused field's font-size is under 16px. Touch only, so the
+   desktop type scale is untouched; !important and :is() (class-level specificity) because
+   the compose fields above set their size with !important, and zoom is never disabled. */
+@media (pointer: coarse) {
+  :is(input, textarea, select, [contenteditable="true"]):not([type="checkbox"], [type="radio"], [type="range"]) {
+    font-size: 16px !important;
+  }
+}
