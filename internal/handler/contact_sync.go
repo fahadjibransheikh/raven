@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+const minContactSyncInterval = 30 * time.Minute
+
 var errContactSyncAlreadyRunning = errors.New("contact sync already running for this account")
 
 func (h *Handler) StartContactSync(ctx context.Context) {
@@ -35,12 +37,13 @@ func (h *Handler) contactSyncInterval(ctx context.Context) time.Duration {
 			userID, err := h.db.GetAccountUserID(ctx, accountID)
 			if err == nil && userID != "" {
 				if interval := h.db.GetSyncInterval(ctx, userID); interval > 0 {
-					return time.Duration(interval) * time.Minute
+					// Contacts change rarely; following a 1-minute mail interval trips People API rate limits (429).
+					return max(time.Duration(interval)*time.Minute, minContactSyncInterval)
 				}
 			}
 		}
 	}
-	return 5 * time.Minute
+	return minContactSyncInterval
 }
 
 func (h *Handler) SyncContactsForAllAccounts(ctx context.Context) {
