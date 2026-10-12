@@ -2688,6 +2688,8 @@ aside[data-app-sidebar] nav a.py-1\.5 {
   :root[data-mail-density="airy"] .mail-view-toolbar {
     padding-block: 14px;
   }
+}
+
 /* Joined all-day segments share a row and meet across the day gutters. */
 .dark [data-calendar-month-grid] [data-calendar-day-selected="true"] {
   background-color: color-mix(in srgb, var(--color-primary) 8%, transparent);
