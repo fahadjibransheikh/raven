@@ -3490,6 +3490,18 @@ html[data-platform="other"] .hint-other {
     max-width: calc(100vw - 2rem);
   }
 
+  /* Sync progress: stay inside the screen. min-w-0 on the grid track lets long account
+     errors wrap instead of stretching the panel past the centred dialog's edge. */
+  #mail-sync-progress-dialog dialog[data-tui-dialog-content] {
+    width: min(calc(100vw - 2rem), 42rem);
+    max-width: none;
+    max-height: calc(100dvh - 2rem);
+  }
+
+  #mail-sync-progress-dialog [data-tui-dialog-panel] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   /* Hover-only row actions are unreachable on touch; the message toolbar has them. */
   html[data-phone] [data-mail-row-actions] {
     display: none !important;
