@@ -64,6 +64,11 @@ document.addEventListener("DOMContentLoaded", function () {
   setupDesktopNotifications()
   setupSidebarSyncErrorTimes()
   refreshSidebarUnread()
+  // Unread changes made elsewhere (another device, or events missed while the window was
+  // hidden) only reach the sidebar through a later event; recount whenever the window returns.
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible") refreshSidebarUnread()
+  })
 
   function setupContactsList() {
     var searchTimer = null
@@ -3604,6 +3609,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
     var source = new EventSource("/api/events")
     appEventSource = source
+
+    // Events published while the stream was down are lost, so recount on every (re)connect.
+    source.addEventListener("connected", function () { refreshSidebarUnread() })
 
     source.addEventListener("new-mail", function (e) {
       var data
