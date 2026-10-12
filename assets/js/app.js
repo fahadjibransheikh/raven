@@ -1820,6 +1820,13 @@ document.addEventListener("DOMContentLoaded", function () {
       { id: "move", label: "Move to\u2026", group: "Message", palette: true, needsMessage: true, match: ["v"], keys: ["v"], run: function () { if (requireKeyboardMailSelection()) performMailSelectionAction("move") } },
       { id: "label", label: "Label\u2026", group: "Message", palette: true, needsMessage: true, match: ["l"], keys: ["l"], run: labelKeyboardSelectedMail },
       { id: "read", label: "Mark read / unread", group: "Message", palette: true, needsMessage: true, match: ["u"], keys: ["u"], run: toggleKeyboardSelectedRead },
+      // The list's More menu offers one or the other depending on whether this is a spam folder.
+      { id: "spam", label: "Report spam", group: "Message", palette: true, needsMessage: true, match: [], keys: [],
+        when: function () { return !!document.querySelector('[data-mail-selection-action="spam"]') },
+        run: function () { if (requireKeyboardMailSelection()) performMailSelectionAction("spam") } },
+      { id: "not-spam", label: "Not spam", group: "Message", palette: true, needsMessage: true, match: [], keys: [],
+        when: function () { return !!document.querySelector('[data-mail-selection-action="not-spam"]') },
+        run: function () { if (requireKeyboardMailSelection()) performMailSelectionAction("not-spam") } },
       { id: "unsubscribe", label: "Unsubscribe", group: "Message", palette: true, match: [], keys: [],
         when: function () { return !!document.querySelector("[data-unsubscribe-id]:not(.hidden)") },
         run: function () { if (typeof unsubscribeFromMessage === "function") unsubscribeFromMessage() } },
