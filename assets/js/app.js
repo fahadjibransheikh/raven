@@ -3912,9 +3912,14 @@ document.addEventListener("DOMContentLoaded", function () {
     for (var i = 0; i < toggles.length; i++) {
       toggles[i].disabled = mode === "web_push" && (!supported || permission === "denied")
     }
+    // Push permission is per device but the setting is per account: a device that never granted it needs a tap (iOS only prompts from a gesture).
+    var needsDevicePermission = enabled && mode !== "off" && mode !== "browser_tab" && !native && supported && permission === "default"
+    var enableButtons = document.querySelectorAll("[data-enable-device-notifications]")
+    for (var k = 0; k < enableButtons.length; k++) enableButtons[k].classList.toggle("hidden", !needsDevicePermission)
     var labels = document.querySelectorAll("[data-desktop-notifications-status]")
     for (var j = 0; j < labels.length; j++) {
       if (!enabled || mode === "off") labels[j].textContent = "Notifications are off."
+      else if (needsDevicePermission) labels[j].textContent = "Notifications are on for your account but not on this device yet. Tap Enable on this device."
       else if (native && permission === "denied") labels[j].textContent = "Notifications are blocked. Enable Raven in System Settings > Notifications."
       else if (permission === "denied") labels[j].textContent = "Notifications are blocked in this browser."
       else if (native) labels[j].textContent = "Desktop notifications are on. If none appear, enable Raven in System Settings > Notifications."
@@ -3922,6 +3927,19 @@ document.addEventListener("DOMContentLoaded", function () {
       else if (browserNotificationsSupported()) labels[j].textContent = "Browser-tab notifications are available while Raven is open."
       else labels[j].textContent = "No notification method is available for this browser/origin."
     }
+  }
+
+  function showNotificationsUnavailableToast(err) {
+    showGoferToast({
+      id: "desktop-notifications-toast",
+      title: "Notifications unavailable",
+      description: err && err.message ? err.message : "Could not enable Web Push notifications.",
+      variant: "warning",
+      icon: "warning",
+      position: "bottom-right",
+      duration: 7000,
+      dismissible: true,
+    })
   }
 
   function setupDesktopNotifications() {
@@ -3960,18 +3978,17 @@ document.addEventListener("DOMContentLoaded", function () {
         if (window.GoferSettings) GoferSettings.set("desktop_notifications", "false")
         disableClientNotifications().catch(function () {})
         setNotificationActiveMethod("none")
-        showGoferToast({
-          id: "desktop-notifications-toast",
-          title: "Notifications unavailable",
-          description: err && err.message ? err.message : "Could not enable Web Push notifications.",
-          variant: "warning",
-          icon: "warning",
-          position: "bottom-right",
-          duration: 7000,
-          dismissible: true,
-        })
+        showNotificationsUnavailableToast(err)
         updateDesktopNotificationControls()
       })
+    })
+    // Per-device opt-in: prompts for this browser only, leaves the account setting alone.
+    document.addEventListener("click", function (e) {
+      if (!e.target || !e.target.closest || !e.target.closest("[data-enable-device-notifications]")) return
+      configureNotificationMethod({ prompt: true }).catch(function (err) {
+        setNotificationActiveMethod("none")
+        showNotificationsUnavailableToast(err)
+      }).then(updateDesktopNotificationControls)
     })
     document.addEventListener("htmx:afterSwap", function () {
       updateDesktopNotificationControls()

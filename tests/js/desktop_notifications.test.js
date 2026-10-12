@@ -80,3 +80,30 @@ test("a partial __TAURI__ object without the notification plugin falls back to t
   w.goferNotifications.deliver("Carol", { body: "Yo" })
   assert.equal(web.created.length, 1)
 })
+
+function loadAccountNotificationsPage(web, permission) {
+  return loadPage(function (w) {
+    Object.defineProperty(w, "isSecureContext", { value: true })
+    Object.defineProperty(w.navigator, "serviceWorker", { value: { ready: new Promise(function () {}) } })
+    w.PushManager = function () {}
+    w.GoferSettings = { get: function (k) { return { desktop_notifications: "true", notification_mode: "auto" }[k] }, set: function () { throw new Error("must not change the account setting") } }
+    stubWebNotification(w, web)
+    w.Notification.permission = permission
+    w.document.body.insertAdjacentHTML("beforeend", '<button class="hidden" data-enable-device-notifications></button>')
+  })
+}
+
+test("account-level notifications with no device permission show an Enable button that prompts without touching the setting", async function () {
+  const web = {}
+  const w = await loadAccountNotificationsPage(web, "default")
+  const button = w.document.querySelector("[data-enable-device-notifications]")
+  assert.equal(button.classList.contains("hidden"), false)
+  assert.match(w.document.querySelector("[data-desktop-notifications-status]").textContent, /not on this device/)
+  button.click()
+  assert.equal(web.asked, true)
+})
+
+test("the Enable button stays hidden once this device has granted permission", async function () {
+  const w = await loadAccountNotificationsPage({}, "granted")
+  assert.equal(w.document.querySelector("[data-enable-device-notifications]").classList.contains("hidden"), true)
+})

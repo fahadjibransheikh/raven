@@ -135,13 +135,13 @@ func (s *Service) sendWebPush(ctx context.Context, userID string, event mail.Eve
 			},
 		}
 		pushCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		// No Topic: a shared one lets a newer pending push replace an undelivered one from another account; the payload tag collapses visible notifications.
 		resp, err := webpush.SendNotificationWithContext(pushCtx, payload, pushSub, &webpush.Options{
 			Subscriber:      s.vapidSubject,
 			VAPIDPublicKey:  s.vapidPublicKey,
 			VAPIDPrivateKey: s.vapidPrivateKey,
-			TTL:             60,
-			Topic:           "gofer-new-mail",
-			Urgency:         webpush.UrgencyNormal,
+			TTL:             86400, // a sleeping phone must still get it when it wakes
+			Urgency:         webpush.UrgencyHigh,
 			HTTPClient:      s.httpClient,
 		})
 		cancel()
