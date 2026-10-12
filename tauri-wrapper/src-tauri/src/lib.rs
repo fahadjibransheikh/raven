@@ -43,6 +43,32 @@ const UNREAD_BADGE_SCRIPT: &str = include_str!("unread_badge.js");
 /// theme and, on macOS, draws the overlay title bar strip.
 const WINDOW_CHROME_SCRIPT: &str = include_str!("window_chrome.js");
 
+/// macOS: Liquid Glass (macOS 26+; the sidebar material on older versions)
+/// behind the window. The page's app background is transparent on macOS
+/// (input.css, html[data-desktop="macos"]), so it shows around the panes.
+#[cfg(target_os = "macos")]
+fn desktop_glass<'a, R: tauri::Runtime, M: Manager<R>>(
+    builder: tauri::WebviewWindowBuilder<'a, R, M>,
+) -> tauri::WebviewWindowBuilder<'a, R, M> {
+    use tauri::window::{Color, Effect, EffectState, EffectsBuilder};
+    builder
+        .transparent(true)
+        .background_color(Color(0, 0, 0, 0))
+        .effects(
+            EffectsBuilder::new()
+                .effects([Effect::LiquidGlassRegular, Effect::Sidebar])
+                .state(EffectState::Active)
+                .build(),
+        )
+}
+
+#[cfg(not(target_os = "macos"))]
+fn desktop_glass<'a, R: tauri::Runtime, M: Manager<R>>(
+    builder: tauri::WebviewWindowBuilder<'a, R, M>,
+) -> tauri::WebviewWindowBuilder<'a, R, M> {
+    builder
+}
+
 /// The port Gofer is started on when it is free. The Microsoft app's redirect
 /// URIs are registered for http://localhost:8090, so every other port breaks
 /// the "Add Outlook account" sign-in (see pick_port).
@@ -690,7 +716,7 @@ pub fn run() {
                 .find(|w| w.label == "main")
                 .expect("main window config missing from tauri.conf.json")
                 .clone();
-            tauri::WebviewWindowBuilder::from_config(&app_handle, &window_config)?
+            desktop_glass(tauri::WebviewWindowBuilder::from_config(&app_handle, &window_config)?)
                 .on_new_window(|url, _features| {
                     if matches!(url.scheme(), "http" | "https" | "mailto") {
                         if let Err(err) = tauri_plugin_opener::open_url(url.as_str(), None::<&str>) {

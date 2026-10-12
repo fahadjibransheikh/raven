@@ -3726,6 +3726,18 @@ html[data-desktop="macos"] {
   --desktop-titlebar-h: 2.25rem;
 }
 
+/* [data-theme] so this outranks the theme's own [data-theme].dark --app-bg. */
+html[data-desktop="macos"][data-theme] {
+  /* The window has Liquid Glass behind it (lib.rs desktop_glass): let it show
+     through the sidebar, the title bar and the gaps around the panes. */
+  --app-bg: transparent;
+}
+
+html[data-desktop="macos"],
+html[data-desktop="macos"] body {
+  background: transparent;
+}
+
 html[data-desktop="macos"] [data-desktop-titlebar] {
   position: fixed;
   inset: 0 0 auto 0;
