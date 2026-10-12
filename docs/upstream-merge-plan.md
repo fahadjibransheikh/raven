@@ -34,7 +34,7 @@ Raven's design.
 
 ## Stages
 
-Each stage ends with: `templ generate`, `go build ./...`, `go vet ./...`,
+Each stage ends with: `templ generate`, `tailwindcss` build, `go build ./...`, `go vet ./...`,
 `go test ./...` all green, then a merge commit.
 
 | # | Merge | Upstream content | Main work |
