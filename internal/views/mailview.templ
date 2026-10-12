@@ -1008,28 +1008,29 @@ templ MailViewReplyBar(email *models.Email) {
 						"data-unsubscribe-method": method,
 						"data-unsubscribe-target": target,
 						"data-unsubscribe-sender": contactDisplay(email.From),
+						"aria-label":              "Unsubscribe",
 					},
 				}) {
 					@icon.MailX(icon.Props{Class: "size-4"})
-					<span class="text-sm">Unsubscribe</span>
+					<span class="mail-view-reply-label text-sm">Unsubscribe</span>
 				}
 			}
 			@button.Button(button.Props{
 				Variant:    button.VariantOutline,
 				Class:      "h-9 shrink-0 gap-1.5 px-3 border-input bg-background text-foreground hover:bg-row-hover",
-				Attributes: templ.Attributes{"onclick": "handleReply(this, 'forward')", "aria-keyshortcuts": shortcutKeys["forward"]},
+				Attributes: templ.Attributes{"onclick": "handleReply(this, 'forward')", "aria-keyshortcuts": shortcutKeys["forward"], "aria-label": "Forward"},
 			}) {
 				@icon.Forward(icon.Props{Class: "size-4"})
-				<span class="text-sm">Forward</span>
+				<span class="mail-view-reply-label text-sm">Forward</span>
 			}
 			<div class="mail-view-reply-split inline-flex shrink-0 items-stretch">
 				@button.Button(button.Props{
 					Variant:    button.VariantDefault,
 					Class:      "h-9 gap-1.5 rounded-r-none px-3 bg-foreground text-background hover:bg-foreground/90",
-					Attributes: templ.Attributes{"onclick": "handleReply(this, 'reply')", "aria-keyshortcuts": shortcutKeys["reply"]},
+					Attributes: templ.Attributes{"onclick": "handleReply(this, 'reply')", "aria-keyshortcuts": shortcutKeys["reply"], "aria-label": "Reply"},
 				}) {
 					@icon.Reply(icon.Props{Class: "size-4"})
-					<span class="text-sm">Reply</span>
+					<span class="mail-view-reply-label text-sm">Reply</span>
 				}
 				@dropdown.Dropdown() {
 					@dropdown.Trigger() {
