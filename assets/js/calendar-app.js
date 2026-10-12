@@ -1006,16 +1006,29 @@
     E.guestInput = h("input", "cal-chip-input")
     E.guestInput.type = "text"
     E.guestInput.id = "cal-ed-guests"
-    E.guestInput.placeholder = "Add guests (email)"
+    E.guestInput.placeholder = "Add guests (name or email)"
     E.guestInput.setAttribute("autocomplete", "off")
     E.chips.appendChild(E.guestInput)
     form.appendChild(edRow("Guests", E.chips, "guests"))
     renderChips(ed)
+    E.suggest = h("div", "compose-recipient-suggestions")
+    E.suggest.hidden = true
+    E.chips.appendChild(E.suggest)
+    E.guestInput.addEventListener("input", function () { suggestGuests(ed) })
     E.guestInput.addEventListener("keydown", function (e) {
-      if (e.key === "Enter" || e.key === ",") { e.preventDefault(); e.stopPropagation(); commitGuests(ed) }
+      var items = E.suggest.hidden ? [] : E.suggest.children
+      var active = Array.prototype.findIndex.call(items, function (b) { return b.dataset.active === "true" })
+      if (items.length && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+        e.preventDefault()
+        var next = (active + (e.key === "ArrowDown" ? 1 : -1) + items.length) % items.length
+        Array.prototype.forEach.call(items, function (b, i) { b.dataset.active = i === next ? "true" : "false" })
+        items[next].scrollIntoView({ block: "nearest" })
+      } else if (items.length && (e.key === "Enter" || e.key === "Tab") && active >= 0) {
+        e.preventDefault(); e.stopPropagation(); pickGuest(ed, items[active].dataset.email)
+      } else if (e.key === "Enter" || e.key === ",") { e.preventDefault(); e.stopPropagation(); commitGuests(ed) }
       else if (e.key === "Backspace" && !E.guestInput.value && ed.guests.length) { ed.guests.pop(); renderChips(ed) }
     })
-    E.guestInput.addEventListener("blur", function () { commitGuests(ed) })
+    E.guestInput.addEventListener("blur", function () { hideGuestSuggestions(ed); commitGuests(ed) })
     E.chips.addEventListener("click", function (e) {
       var rm = e.target.closest && e.target.closest("[data-cal-chip-remove]")
       if (rm) { ed.guests.splice(parseInt(rm.getAttribute("data-cal-chip-remove"), 10), 1); renderChips(ed) }
@@ -1178,6 +1191,56 @@
     else setEditorError("")
     renderChips(ed)
     return !rest.length
+  }
+
+  // Suggests contacts as the user types a guest, like the compose recipient fields.
+  function suggestGuests(ed) {
+    var q = ed.els.guestInput.value.trim()
+    var seq = ed.suggestSeq = (ed.suggestSeq || 0) + 1
+    clearTimeout(ed.suggestTimer)
+    if (q.length < 2 || q.indexOf("@") >= 0 || /[,;\s]/.test(q)) { hideGuestSuggestions(ed); return }
+    ed.suggestTimer = setTimeout(function () {
+      fetch("/api/contacts/search?q=" + encodeURIComponent(q), { headers: { "Accept": "application/json" } })
+        .then(function (r) { return r.ok ? r.json() : { results: [] } })
+        .then(function (data) { if (seq === ed.suggestSeq) renderGuestSuggestions(ed, data.results || []) })
+        .catch(function () { hideGuestSuggestions(ed) })
+    }, 140)
+  }
+
+  function renderGuestSuggestions(ed, results) {
+    var box = ed.els.suggest
+    clear(box)
+    results.filter(function (c) {
+      return c.email && !ed.guests.some(function (g) { return g.toLowerCase() === c.email.toLowerCase() })
+    }).forEach(function (c, i) {
+      var b = h("button", "compose-recipient-suggestion")
+      b.type = "button"
+      b.dataset.email = c.email
+      b.dataset.active = i === 0 ? "true" : "false"
+      b.addEventListener("mousedown", function (e) { e.preventDefault(); pickGuest(ed, c.email) })
+      var main = h("span", "compose-recipient-suggestion-main")
+      main.appendChild(h("span", "compose-recipient-suggestion-name", c.name || c.email))
+      main.appendChild(h("span", "compose-recipient-suggestion-email", c.email))
+      b.appendChild(main)
+      box.appendChild(b)
+    })
+    box.hidden = !box.children.length
+  }
+
+  function hideGuestSuggestions(ed) {
+    ed.suggestSeq = (ed.suggestSeq || 0) + 1
+    clearTimeout(ed.suggestTimer)
+    ed.els.suggest.hidden = true
+    clear(ed.els.suggest)
+  }
+
+  function pickGuest(ed, email) {
+    if (!ed.guests.some(function (g) { return g.toLowerCase() === email.toLowerCase() })) ed.guests.push(email)
+    ed.els.guestInput.value = ""
+    hideGuestSuggestions(ed)
+    setEditorError("")
+    renderChips(ed)
+    ed.els.guestInput.focus()
   }
 
   function guestKey(list) { return list.map(function (g) { return g.toLowerCase() }).sort().join(",") }
@@ -1410,6 +1473,12 @@
     if (S.scope || S.editor) {
       // While the discard prompt is open Esc belongs to the prompt (it closes itself as "cancel").
       if (k === "Escape" && !S.scope && S.editor.confirming) return
+      // Esc with the guest suggestions open only closes the suggestions.
+      if (k === "Escape" && !S.scope && !S.editor.els.suggest.hidden) {
+        hideGuestSuggestions(S.editor)
+        e.preventDefault(); e.stopImmediatePropagation()
+        return
+      }
       if (k === "Escape") {
         if (S.scope) S.scope.cancel()
         else escapeEditor(S.editor)

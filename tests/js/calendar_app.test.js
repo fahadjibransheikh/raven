@@ -46,6 +46,7 @@ async function load(opts) {
     else if (url === "/api/calendar/calendars") data = opts.calendars || defaultCalendars
     else if (url === "/api/calendar/sync") data = { accounts: [{ account_id: "acc1", status: "ok" }] }
     else if (/\/selected$/.test(url)) data = { id: 10, selected: true }
+    else if (url.indexOf("/api/contacts/search") === 0) data = { results: opts.contacts || [] }
     return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(data) })
   }
   w.eval(src)
@@ -546,6 +547,35 @@ test("RSVP buttons appear only for non-organizer attendees on writable calendars
   await flush()
   const [post] = writes(calls)
   assert.deepEqual([post.method, post.url, params(post).response], ["POST", "/api/calendar/events/1/rsvp", "tentative"])
+})
+
+test("guest field suggests contacts; Enter picks one, Esc only closes the list", async () => {
+  const contacts = [{ name: "Bob Smith", email: "bob@example.com" }, { name: "Bobby Lee", email: "bobby@example.com" }]
+  const { w, d, cal, calls } = await load({ contacts })
+  await cal.goTo("2026-10-07", "week")
+  key(w, d.body, "c")
+  const g = field(d, "guests")
+  g.value = "bo"
+  g.dispatchEvent(new w.Event("input", { bubbles: true }))
+  await new Promise((r) => setTimeout(r, 200))
+  await flush()
+  assert.ok(calls.some((c) => c.url === "/api/contacts/search?q=bo"))
+  const names = () => [...d.querySelectorAll(".compose-recipient-suggestion-name")].map((n) => n.textContent)
+  assert.deepEqual(names(), ["Bob Smith", "Bobby Lee"])
+  key(w, g, "ArrowDown")
+  key(w, g, "Enter")
+  assert.deepEqual([...d.querySelectorAll(".cal-chip > span")].map((n) => n.textContent), ["bobby@example.com"])
+  assert.equal(g.value, "")
+  assert.ok(d.querySelector(".compose-recipient-suggestions").hidden)
+
+  g.value = "bo"
+  g.dispatchEvent(new w.Event("input", { bubbles: true }))
+  await new Promise((r) => setTimeout(r, 200))
+  await flush()
+  assert.deepEqual(names(), ["Bob Smith"], "already-added guests are not suggested")
+  key(w, g, "Escape")
+  assert.ok(d.querySelector(".compose-recipient-suggestions").hidden)
+  assert.ok(d.querySelector("[data-cal-editor]"), "editor stays open")
 })
 
 test("c opens a new event without reaching mail compose; e edits the open event; Esc closes the editor", async () => {
