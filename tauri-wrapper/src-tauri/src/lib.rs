@@ -39,6 +39,10 @@ use tauri_plugin_updater::UpdaterExt;
 /// below parses back out into the Dock/taskbar badge.
 const UNREAD_BADGE_SCRIPT: &str = include_str!("unread_badge.js");
 
+/// Injected into the main window; keeps the native title bar in the page's
+/// theme and, on macOS, draws the overlay title bar strip.
+const WINDOW_CHROME_SCRIPT: &str = include_str!("window_chrome.js");
+
 /// The port Gofer is started on when it is free. The Microsoft app's redirect
 /// URIs are registered for http://localhost:8090, so every other port breaks
 /// the "Add Outlook account" sign-in (see pick_port).
@@ -723,6 +727,10 @@ pub fn run() {
                     }
                 })
                 .initialization_script(UNREAD_BADGE_SCRIPT)
+                .initialization_script(format!(
+                    "window.__RAVEN_DESKTOP_OS__ = {:?};\n{WINDOW_CHROME_SCRIPT}",
+                    std::env::consts::OS
+                ))
                 .on_document_title_changed(|window, title| {
                     // unread_badge.js prefixes the title with "(N) " when
                     // there's unread mail; parse that back out for the

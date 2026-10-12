@@ -3718,3 +3718,24 @@ html[data-phone] .mail-list-toolbar > .w-px {
 html[data-phone] .mail-list-toolbar {
   min-height: 3rem;
 }
+
+/* Desktop app on macOS: the native title bar is an overlay (tauri.conf.json
+   titleBarStyle), so the page draws it. tauri-wrapper/src-tauri/src/window_chrome.js
+   sets data-desktop and adds the bar; the traffic lights sit at its left. */
+html[data-desktop="macos"] {
+  --desktop-titlebar-h: 2.25rem;
+}
+
+html[data-desktop="macos"] [data-desktop-titlebar] {
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: var(--desktop-titlebar-h);
+  z-index: 40;
+  background: var(--sidebar);
+}
+
+html[data-desktop="macos"] #app-shell,
+html[data-desktop="macos"] body > div.h-screen {
+  height: calc(100vh - var(--desktop-titlebar-h));
+  margin-top: var(--desktop-titlebar-h);
+}
