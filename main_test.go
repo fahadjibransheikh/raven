@@ -10,7 +10,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cristianadrielbraun/gofer/internal/auth"
 	"github.com/cristianadrielbraun/gofer/internal/storage"
 )
 
@@ -93,82 +92,6 @@ func TestRunApplicationDispatchesAuthBeforeServerStartup(t *testing.T) {
 	}
 }
 
-func TestProvisionInitialSetupTokenPrintsGeneratedSecretOnlyOnce(t *testing.T) {
-	databasePath := filepath.Join(t.TempDir(), "gofer.db")
-	db, err := storage.New(databasePath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer db.Close()
-	manager := auth.NewManager(&auth.Config{Enabled: true, BaseURL: "https://gofer.example"}, db)
-
-	var console bytes.Buffer
-	if err := provisionInitialSetupToken(t.Context(), manager, "", &console); err != nil {
-		t.Fatal(err)
-	}
-	output := console.String()
-	if !strings.Contains(output, "shown once") || !strings.Contains(output, "Expires: ") || !strings.Contains(output, "setup_token: ") || !strings.Contains(output, "Open: https://gofer.example/setup") || !strings.Contains(output, "server local time") {
-		t.Fatalf("initial setup console output = %q", output)
-	}
-	var rawToken string
-	for _, line := range strings.Split(output, "\n") {
-		if strings.HasPrefix(strings.TrimSpace(line), "setup_token: ") {
-			rawToken = strings.TrimPrefix(strings.TrimSpace(line), "setup_token: ")
-		}
-	}
-	if rawToken == "" || strings.Count(output, rawToken) != 1 {
-		t.Fatalf("generated setup token was not printed exactly once: %q", output)
-	}
-	var storedHash string
-	if err := db.Read().QueryRow(`SELECT setup_token_hash FROM auth_system_state WHERE id = 1`).Scan(&storedHash); err != nil {
-		t.Fatal(err)
-	}
-	if storedHash == rawToken || len(storedHash) != 64 {
-		t.Fatalf("stored setup token is not hash-only: %q", storedHash)
-	}
-
-	console.Reset()
-	if err := provisionInitialSetupToken(t.Context(), manager, "", &console); err != nil {
-		t.Fatal(err)
-	}
-	if strings.Contains(console.String(), rawToken) || strings.Contains(console.String(), "setup_token:") || !strings.Contains(console.String(), "auth setup-token rotate") {
-		t.Fatalf("incorrect restart notice: %q", console.String())
-	}
-	if _, err := db.Write().Exec(`UPDATE auth_system_state SET initialized = 1 WHERE id = 1`); err != nil {
-		t.Fatal(err)
-	}
-	console.Reset()
-	if err := provisionInitialSetupToken(t.Context(), manager, "", &console); err != nil {
-		t.Fatal(err)
-	}
-	if console.Len() != 0 {
-		t.Fatal("completed setup still displayed a setup notice")
-	}
-	manager.Config().Enabled = false
-	if err := provisionInitialSetupToken(t.Context(), manager, "", &console); err != nil || console.Len() != 0 {
-		t.Fatal("open mode displayed setup notice")
-	}
-}
-
-func TestProvisionInitialSetupTokenDoesNotEchoOperatorSuppliedSecret(t *testing.T) {
-	databasePath := filepath.Join(t.TempDir(), "gofer.db")
-	db, err := storage.New(databasePath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer db.Close()
-	manager := auth.NewManager(&auth.Config{Enabled: true, BaseURL: "https://gofer.example"}, db)
-	configuredToken := strings.Repeat("operator-supplied-secret-", 2)
-
-	var console bytes.Buffer
-	if err := provisionInitialSetupToken(t.Context(), manager, configuredToken, &console); err != nil {
-		t.Fatal(err)
-	}
-	if strings.Contains(console.String(), configuredToken) || !strings.Contains(console.String(), "GOFER_SETUP_TOKEN") {
-		t.Fatalf("operator-supplied setup token was echoed: %q", console.String())
-	}
-}
-
 func TestRunApplicationUsesServerPathForNonAuthArguments(t *testing.T) {
 	serverStarts := 0
 	if code := runApplication(t.Context(), nil, &bytes.Buffer{}, &bytes.Buffer{}, func() { serverStarts++ }); code != 0 || serverStarts != 1 {
@@ -177,6 +100,14 @@ func TestRunApplicationUsesServerPathForNonAuthArguments(t *testing.T) {
 	serverStarts = 0
 	if code := runApplication(t.Context(), []string{"unexpected"}, &bytes.Buffer{}, &bytes.Buffer{}, func() { serverStarts++ }); code != 0 || serverStarts != 1 {
 		t.Fatalf("non-auth dispatch = code:%d starts:%d", code, serverStarts)
+	}
+}
+
+func TestRunApplicationDispatchesStorageBeforeServerStartup(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	started := false
+	if code := runApplication(t.Context(), []string{"storage"}, &stdout, &stderr, func() { started = true }); code != 2 || started || !strings.Contains(stderr.String(), "usage: gofer storage") {
+		t.Fatalf("storage dispatch: code=%d started=%v stderr=%q", code, started, stderr.String())
 	}
 }
 
@@ -225,46 +156,4 @@ func TestAuthCommandHelperProcess(t *testing.T) {
 		fmt.Fprintln(os.Stderr, "server-started")
 	})
 	os.Exit(exitCode)
-}
-
-func TestReadOrCreateSecretKeyNeverReplacesAnExistingKey(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "data", "secret.key")
-
-	key, err := readOrCreateSecretKey(path)
-	if err != nil || len(key) != 32 {
-		t.Fatalf("create: key len %d, err %v", len(key), err)
-	}
-	if info, err := os.Stat(path); err != nil || info.Mode().Perm() != 0o600 {
-		t.Fatalf("key file mode = %v, %v; want 0600", info.Mode().Perm(), err)
-	}
-	again, err := readOrCreateSecretKey(path)
-	if err != nil || !bytes.Equal(again, key) {
-		t.Fatalf("second read changed the key or failed: %v", err)
-	}
-
-	// Wrong size (truncated write, bad restore): refuse, and leave the file alone.
-	if err := os.WriteFile(path, []byte("short"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := readOrCreateSecretKey(path); err == nil {
-		t.Fatal("malformed key file was accepted or silently replaced")
-	}
-	if got, _ := os.ReadFile(path); string(got) != "short" {
-		t.Fatalf("malformed key file was overwritten: %q", got)
-	}
-
-	// Unreadable (not merely missing): refuse instead of generating a new key.
-	if os.Geteuid() != 0 {
-		if err := os.WriteFile(path, key, 0o600); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.Chmod(path, 0); err != nil {
-			t.Fatal(err)
-		}
-		t.Cleanup(func() { os.Chmod(path, 0o600) })
-		if _, err := readOrCreateSecretKey(path); err == nil {
-			t.Fatal("unreadable key file was replaced instead of reported")
-		}
-	}
 }

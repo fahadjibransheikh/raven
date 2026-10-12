@@ -92,12 +92,22 @@ type cardDAVSyncResult struct {
 }
 
 type cardDAVHTTPError struct {
-	Status int
-	Body   string
+	Status  int
+	Body    string
+	RetryAt time.Time
+	Sync    bool
 }
 
 func (e cardDAVHTTPError) Error() string {
-	return fmt.Sprintf("CardDAV returned %d: %s", e.Status, strings.TrimSpace(e.Body))
+	label := "CardDAV"
+	if e.Sync {
+		label += " sync"
+	}
+	return fmt.Sprintf("%s returned %d: %s", label, e.Status, sanitizeProviderErrorBody(e.Body))
+}
+
+func (e cardDAVHTTPError) RetryAfter() (time.Time, bool) {
+	return e.RetryAt, !e.RetryAt.IsZero()
 }
 
 func (r *davResourceType) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
@@ -961,7 +971,7 @@ func cardDAVAddressBookQuery(ctx context.Context, cfg models.ContactSyncConfig, 
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		return nil, "", fmt.Errorf("CardDAV returned %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+		return nil, "", cardDAVHTTPError{Status: resp.StatusCode, Body: string(body), RetryAt: providerRetryAfter(resp)}
 	}
 	multi, err := decodeDAVMultiStatus(resp.Body)
 	if err != nil {
@@ -1023,7 +1033,7 @@ func cardDAVSyncCollection(ctx context.Context, cfg models.ContactSyncConfig, pa
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		return cardDAVSyncResult{}, fmt.Errorf("CardDAV sync returned %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+		return cardDAVSyncResult{}, cardDAVHTTPError{Status: resp.StatusCode, Body: string(body), RetryAt: providerRetryAfter(resp), Sync: true}
 	}
 	multi, err := decodeDAVMultiStatus(resp.Body)
 	if err != nil {
@@ -1082,7 +1092,7 @@ func cardDAVAddressBookMultiget(ctx context.Context, cfg models.ContactSyncConfi
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		return nil, cardDAVHTTPError{Status: resp.StatusCode, Body: string(body)}
+		return nil, cardDAVHTTPError{Status: resp.StatusCode, Body: string(body), RetryAt: providerRetryAfter(resp)}
 	}
 	multi, err := decodeDAVMultiStatus(resp.Body)
 	if err != nil {
@@ -1696,7 +1706,7 @@ func cardDAVPut(ctx context.Context, cfg models.ContactSyncConfig, password, rem
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		return "", cardDAVHTTPError{Status: resp.StatusCode, Body: string(body)}
+		return "", cardDAVHTTPError{Status: resp.StatusCode, Body: string(body), RetryAt: providerRetryAfter(resp)}
 	}
 	return resp.Header.Get("ETag"), nil
 }
@@ -1723,7 +1733,7 @@ func cardDAVDelete(ctx context.Context, cfg models.ContactSyncConfig, password, 
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		return cardDAVHTTPError{Status: resp.StatusCode, Body: string(body)}
+		return cardDAVHTTPError{Status: resp.StatusCode, Body: string(body), RetryAt: providerRetryAfter(resp)}
 	}
 	return nil
 }

@@ -2,17 +2,31 @@ package imap
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/emersion/go-imap/v2"
 )
 
+var ErrMutationUIDValidityChanged = errors.New("IMAP UIDVALIDITY changed; waiting for folder resync")
+
 func (c *Client) StoreFlags(ctx context.Context, folderRemoteName string, uid uint32, op imap.StoreFlagsOp, flags []imap.Flag) error {
 	return c.StoreFlagsBatch(ctx, folderRemoteName, []uint32{uid}, op, flags)
 }
 
 func (c *Client) StoreFlagsBatch(ctx context.Context, folderRemoteName string, uids []uint32, op imap.StoreFlagsOp, flags []imap.Flag) error {
+	return c.storeFlagsBatch(ctx, folderRemoteName, uids, op, flags, 0)
+}
+
+func (c *Client) StoreFlagsIfUIDValidity(ctx context.Context, folder string, uid uint32, op imap.StoreFlagsOp, flags []imap.Flag, validity uint32) error {
+	if validity == 0 {
+		return fmt.Errorf("IMAP UIDVALIDITY is unavailable")
+	}
+	return c.storeFlagsBatch(ctx, folder, []uint32{uid}, op, flags, validity)
+}
+
+func (c *Client) storeFlagsBatch(ctx context.Context, folderRemoteName string, uids []uint32, op imap.StoreFlagsOp, flags []imap.Flag, validity uint32) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -23,11 +37,14 @@ func (c *Client) StoreFlagsBatch(ctx context.Context, folderRemoteName string, u
 		return fmt.Errorf("client is closed")
 	}
 
-	_, err := c.client.Select(folderRemoteName, nil).Wait()
+	selected, err := c.client.Select(folderRemoteName, nil).Wait()
 	if err != nil {
 		return fmt.Errorf("select %s: %w", folderRemoteName, err)
 	}
-	defer c.client.Unselect()
+	defer c.unselect()
+	if validity > 0 && validity != uint32(selected.UIDValidity) {
+		return ErrMutationUIDValidityChanged
+	}
 
 	var uidSet imap.UIDSet
 	for _, uid := range uids {
@@ -44,6 +61,17 @@ func (c *Client) StoreFlagsBatch(ctx context.Context, folderRemoteName string, u
 }
 
 func (c *Client) StoreKeyword(ctx context.Context, folderRemoteName string, uid uint32, op imap.StoreFlagsOp, keyword string) error {
+	return c.storeKeyword(ctx, folderRemoteName, uid, op, keyword, 0)
+}
+
+func (c *Client) StoreKeywordIfUIDValidity(ctx context.Context, folder string, uid uint32, op imap.StoreFlagsOp, keyword string, validity uint32) error {
+	if validity == 0 {
+		return fmt.Errorf("IMAP UIDVALIDITY is unavailable")
+	}
+	return c.storeKeyword(ctx, folder, uid, op, keyword, validity)
+}
+
+func (c *Client) storeKeyword(ctx context.Context, folderRemoteName string, uid uint32, op imap.StoreFlagsOp, keyword string, validity uint32) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -59,7 +87,10 @@ func (c *Client) StoreKeyword(ctx context.Context, folderRemoteName string, uid 
 	if err != nil {
 		return fmt.Errorf("select %s: %w", folderRemoteName, err)
 	}
-	defer c.client.Unselect()
+	defer c.unselect()
+	if validity > 0 && uint32(selectData.UIDValidity) != validity {
+		return ErrMutationUIDValidityChanged
+	}
 
 	flag := imap.Flag(keyword)
 	if op == imap.StoreFlagsAdd && !supportsPermanentKeyword(selectData.PermanentFlags, flag) {
@@ -105,6 +136,21 @@ func (c *Client) MoveMessages(ctx context.Context, folderRemoteName string, uids
 }
 
 func (c *Client) MoveMessagesWithDestUIDs(ctx context.Context, folderRemoteName string, uids []uint32, destFolderRemoteName string) ([]uint32, error) {
+	return c.moveMessagesWithDestUIDs(ctx, folderRemoteName, uids, destFolderRemoteName, 0)
+}
+
+func (c *Client) MoveMessageIfUIDValidity(ctx context.Context, source string, uid uint32, destination string, validity uint32) (uint32, error) {
+	if validity == 0 {
+		return 0, fmt.Errorf("IMAP UIDVALIDITY is unavailable")
+	}
+	uids, err := c.moveMessagesWithDestUIDs(ctx, source, []uint32{uid}, destination, validity)
+	if err != nil || len(uids) == 0 {
+		return 0, err
+	}
+	return uids[0], nil
+}
+
+func (c *Client) moveMessagesWithDestUIDs(ctx context.Context, folderRemoteName string, uids []uint32, destFolderRemoteName string, validity uint32) ([]uint32, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -115,11 +161,14 @@ func (c *Client) MoveMessagesWithDestUIDs(ctx context.Context, folderRemoteName 
 		return nil, fmt.Errorf("client is closed")
 	}
 
-	_, err := c.client.Select(folderRemoteName, nil).Wait()
+	selected, err := c.client.Select(folderRemoteName, nil).Wait()
 	if err != nil {
 		return nil, fmt.Errorf("select %s: %w", folderRemoteName, err)
 	}
-	defer c.client.Unselect()
+	defer c.unselect()
+	if validity > 0 && validity != uint32(selected.UIDValidity) {
+		return nil, ErrMutationUIDValidityChanged
+	}
 
 	var uidSet imap.UIDSet
 	for _, uid := range uids {
@@ -171,8 +220,8 @@ func (c *Client) DeleteMessagesIfUIDValidity(ctx context.Context, folderRemoteNa
 	if err != nil {
 		return false, fmt.Errorf("select %s: %w", folderRemoteName, err)
 	}
-	defer c.client.Unselect()
-	if uidValidityChanged(expectedUIDValidity, uint32(selectData.UIDValidity)) {
+	defer c.unselect()
+	if expectedUIDValidity > 0 && expectedUIDValidity != uint32(selectData.UIDValidity) {
 		return true, nil
 	}
 

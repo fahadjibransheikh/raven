@@ -15,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cristianadrielbraun/gofer/internal/auth"
 	avatarresolver "github.com/cristianadrielbraun/gofer/internal/avatar"
 	mail "github.com/cristianadrielbraun/gofer/internal/mail"
 	"github.com/cristianadrielbraun/gofer/internal/models"
@@ -46,6 +47,11 @@ type avatarWarmupRequest struct {
 	Emails []string `json:"emails"`
 }
 
+type avatarWarmupJob struct {
+	candidate storage.SenderAvatarCandidate
+	validate  func(context.Context) error
+}
+
 type avatarBackfillResult struct {
 	found    bool
 	outcomes []avatarProviderOutcome
@@ -74,44 +80,98 @@ func isAllowedProviderAvatarHost(host string) bool {
 }
 
 func (h *Handler) StartAvatarBackfill(ctx context.Context) {
-	go func() {
-		h.startAvatarBackfill(ctx, false)
-
-		ticker := time.NewTicker(15 * time.Minute)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				h.startAvatarBackfill(ctx, false)
-			}
+	h.startAvatarWarmupWorkers(ctx)
+	h.avatarSchedulerOnce.Do(func() {
+		h.avatarWarmupMu.Lock()
+		if h.avatarClosed || h.avatarWorkerContext.Err() != nil {
+			h.avatarWarmupMu.Unlock()
+			return
 		}
-	}()
-}
-
-func (h *Handler) startAvatarWarmupWorkers() {
-	for i := 0; i < avatarWarmupWorkers; i++ {
+		ctx = h.avatarWorkerContext
+		h.avatarWorkers.Add(1)
+		h.avatarWarmupMu.Unlock()
 		go func() {
-			throttle := time.NewTicker(avatarWarmupProviderDelay)
-			defer throttle.Stop()
-			for candidate := range h.avatarWarmupQueue {
-				func() {
-					defer h.clearAvatarWarmupQueued(candidate.EmailHash)
-					ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-					defer cancel()
-					log.Printf("avatar: warmup started email=%s", candidate.Email)
-					_, found, outcomes, err := h.fetchAndPersistAvatar(ctx, candidate.EmailHash, candidate.Email, throttle, 0, nil)
-					if err != nil && !errors.Is(err, context.Canceled) {
-						log.Printf("avatar: warmup failed email=%s outcomes=%s err=%v", candidate.Email, avatarOutcomeSummary(outcomes), err)
-						return
-					}
-					log.Printf("avatar: warmup completed email=%s found=%v outcomes=%s", candidate.Email, found, avatarOutcomeSummary(outcomes))
-				}()
+			defer h.avatarWorkers.Done()
+			h.startAvatarBackfill(ctx, false)
+
+			ticker := time.NewTicker(15 * time.Minute)
+			defer ticker.Stop()
+
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					h.startAvatarBackfill(ctx, false)
+				}
 			}
 		}()
+	})
+}
+
+func (h *Handler) startAvatarWarmupWorkers(parent context.Context) {
+	h.avatarWorkersOnce.Do(func() {
+		if parent == nil {
+			parent = context.Background()
+		}
+		h.avatarWarmupMu.Lock()
+		defer h.avatarWarmupMu.Unlock()
+		if h.avatarClosed {
+			return
+		}
+		h.avatarWorkerContext, h.avatarWorkerCancel = context.WithCancel(parent)
+		ctx := h.avatarWorkerContext
+		h.avatarWorkers.Add(avatarWarmupWorkers)
+		for i := 0; i < avatarWarmupWorkers; i++ {
+			go func() {
+				defer h.avatarWorkers.Done()
+				throttle := time.NewTicker(avatarWarmupProviderDelay)
+				defer throttle.Stop()
+				for {
+					var job avatarWarmupJob
+					select {
+					case <-ctx.Done():
+						return
+					case job = <-h.avatarWarmupQueue:
+					}
+					func() {
+						candidate := job.candidate
+						defer h.clearAvatarWarmupQueued(candidate.EmailHash)
+						ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+						defer cancel()
+						log.Printf("avatar: warmup started email=%s", candidate.Email)
+						_, found, outcomes, err := h.fetchAndPersistAvatarGuarded(ctx, candidate.EmailHash, candidate.Email, throttle, 0, nil, job.validate)
+						if err != nil && !errors.Is(err, context.Canceled) {
+							log.Printf("avatar: warmup failed email=%s outcomes=%s err=%v", candidate.Email, avatarOutcomeSummary(outcomes), err)
+							return
+						}
+						log.Printf("avatar: warmup completed email=%s found=%v outcomes=%s", candidate.Email, found, avatarOutcomeSummary(outcomes))
+					}()
+				}
+			}()
+		}
+	})
+}
+
+// WaitAvatarWorkers cancels and joins shared warmup, discovery and backfill.
+// It closes admission before waiting so concurrent requests cannot add work.
+func (h *Handler) WaitAvatarWorkers() {
+	h.avatarWarmupMu.Lock()
+	h.avatarClosed = true
+	if h.avatarWorkerCancel != nil {
+		h.avatarWorkerCancel()
 	}
+	h.avatarWarmupMu.Unlock()
+	h.avatarWorkers.Wait()
+	h.avatarWarmupMu.Lock()
+	clear(h.avatarWarmupQueued)
+	clear(h.avatarWarmupForced)
+	// Admission is closed and workers have joined. Drop queued authority
+	// snapshots as well as their deduplication keys.
+	for len(h.avatarWarmupQueue) > 0 {
+		<-h.avatarWarmupQueue
+	}
+	h.avatarWarmupMu.Unlock()
 }
 
 func (h *Handler) clearAvatarWarmupQueued(hash string) {
@@ -121,6 +181,12 @@ func (h *Handler) clearAvatarWarmupQueued(hash string) {
 }
 
 func (h *Handler) startAvatarBackfill(ctx context.Context, force bool) bool {
+	h.startAvatarWarmupWorkers(ctx)
+	h.avatarWarmupMu.Lock()
+	defer h.avatarWarmupMu.Unlock()
+	if h.avatarClosed || h.avatarWorkerContext.Err() != nil || ctx.Err() != nil {
+		return false
+	}
 	startedAt := time.Now()
 	mode := "scheduled"
 	if force {
@@ -134,13 +200,20 @@ func (h *Handler) startAvatarBackfill(ctx context.Context, force bool) bool {
 		return false
 	}
 	runCtx, cancel := context.WithCancel(ctx)
+	stop := context.AfterFunc(h.avatarWorkerContext, cancel)
 	h.avatarBackfillRunID++
 	runID := h.avatarBackfillRunID
 	h.avatarBackfillState = models.AvatarBackfillState{InProgress: true, Mode: mode, StartedAt: startedAt, ProviderStats: emptyAvatarProviderStats()}
 	h.avatarBackfillCancel = cancel
 	h.avatarBackfillMu.Unlock()
 
-	go h.runAvatarBackfill(runCtx, runID, force, startedAt, mode)
+	h.avatarWorkers.Add(1)
+	go func() {
+		defer h.avatarWorkers.Done()
+		defer stop()
+		defer cancel()
+		h.runAvatarBackfill(runCtx, runID, force, startedAt, mode)
+	}()
 	return true
 }
 
@@ -151,7 +224,7 @@ func (h *Handler) runAvatarBackfill(ctx context.Context, runID int64, force bool
 		h.avatar.ClearCache()
 	}
 
-	if _, err := h.db.EnsureSenderAvatarCandidates(ctx); err != nil {
+	if err := h.ensureAvatarCandidates(ctx); err != nil {
 		log.Printf("avatar: candidate scan failed: %v", err)
 		state := finishAvatarBackfillCanceled(models.AvatarBackfillState{InProgress: true, Mode: mode, StartedAt: startedAt}, err)
 		h.setAvatarBackfillState(state)
@@ -624,6 +697,22 @@ func avatarProviderSpecByName() map[string]avatarProviderSpec {
 }
 
 func (h *Handler) fetchAndPersistAvatar(ctx context.Context, hash, email string, throttle *time.Ticker, domainSenderCount int, observeProvider func(string)) (avatarresolver.Image, bool, []avatarProviderOutcome, error) {
+	return h.fetchAndPersistAvatarGuarded(ctx, hash, email, throttle, domainSenderCount, observeProvider, nil)
+}
+
+func (h *Handler) fetchAndPersistAvatarGuarded(ctx context.Context, hash, email string, throttle *time.Ticker, domainSenderCount int, observeProvider func(string), guard func(context.Context) error) (avatarresolver.Image, bool, []avatarProviderOutcome, error) {
+	validate := func() error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if guard != nil {
+			return guard(ctx)
+		}
+		return nil
+	}
+	if err := validate(); err != nil {
+		return avatarresolver.Image{}, false, nil, err
+	}
 	providerStatuses := map[string]string{
 		"gravatar":    "unchecked",
 		"libravatar":  "unchecked",
@@ -642,6 +731,9 @@ func (h *Handler) fetchAndPersistAvatar(ctx context.Context, hash, email string,
 	providersByName := avatarProviderSpecByName()
 
 	for _, providerName := range plan.providers {
+		if err := validate(); err != nil {
+			return avatarresolver.Image{}, false, outcomes, err
+		}
 		provider, ok := providersByName[providerName]
 		if !ok {
 			continue
@@ -664,9 +756,15 @@ func (h *Handler) fetchAndPersistAvatar(ctx context.Context, hash, email string,
 				return avatarresolver.Image{}, false, outcomes, err
 			}
 		}
+		if err := validate(); err != nil {
+			return avatarresolver.Image{}, false, outcomes, err
+		}
 
 		if provider.name == "domain_icon" {
-			image, message, reused, err := h.reuseStoredDomainIconAvatar(ctx, hash, email, avatarStatus(providerStatuses, "gravatar"), avatarStatus(providerStatuses, "bimi"))
+			image, message, reused, err := h.reuseStoredDomainIconAvatarGuarded(ctx, hash, email, avatarStatus(providerStatuses, "gravatar"), avatarStatus(providerStatuses, "bimi"), validate)
+			if guardErr := validate(); guardErr != nil {
+				return avatarresolver.Image{}, false, outcomes, guardErr
+			}
 			if err != nil {
 				providerStatuses[provider.name] = "error"
 				outcomes = append(outcomes, avatarProviderOutcome{provider: provider.name, status: "error"})
@@ -683,8 +781,14 @@ func (h *Handler) fetchAndPersistAvatar(ctx context.Context, hash, email string,
 		}
 
 		image, found, err := resolveAvatarWithRetry(ctx, func(ctx context.Context) (avatarresolver.Image, bool, error) {
+			if err := validate(); err != nil {
+				return avatarresolver.Image{}, false, err
+			}
 			return provider.resolve(ctx, h, hash, email)
 		})
+		if guardErr := validate(); guardErr != nil {
+			return avatarresolver.Image{}, false, outcomes, guardErr
+		}
 		if err != nil {
 			if errors.Is(err, context.Canceled) {
 				return avatarresolver.Image{}, false, outcomes, err
@@ -709,6 +813,9 @@ func (h *Handler) fetchAndPersistAvatar(ctx context.Context, hash, email string,
 		_ = h.db.RecordSenderAvatarAttempt(ctx, hash, email, provider.name, "missing", provider.missingMessage(hash, email))
 	}
 
+	if err := validate(); err != nil {
+		return avatarresolver.Image{}, false, outcomes, err
+	}
 	if lastProviderErr != nil {
 		if err := h.db.SaveSenderAvatarError(ctx, hash, email, lastErrorProvider, lastProviderErr.Error(), time.Now().Add(avatarErrorRetryAfter), avatarStatus(providerStatuses, "gravatar"), avatarStatus(providerStatuses, "bimi")); err != nil {
 			return avatarresolver.Image{}, false, outcomes, err
@@ -722,8 +829,15 @@ func (h *Handler) fetchAndPersistAvatar(ctx context.Context, hash, email string,
 }
 
 func (h *Handler) reuseStoredDomainIconAvatar(ctx context.Context, hash, email, gravatarStatus, bimiStatus string) (avatarresolver.Image, string, bool, error) {
+	return h.reuseStoredDomainIconAvatarGuarded(ctx, hash, email, gravatarStatus, bimiStatus, ctx.Err)
+}
+
+func (h *Handler) reuseStoredDomainIconAvatarGuarded(ctx context.Context, hash, email, gravatarStatus, bimiStatus string, validate func() error) (avatarresolver.Image, string, bool, error) {
 	rec, err := h.db.GetReusableDomainIconAvatar(ctx, hash, email)
 	if err != nil || rec == nil {
+		return avatarresolver.Image{}, "", false, err
+	}
+	if err := validate(); err != nil {
 		return avatarresolver.Image{}, "", false, err
 	}
 	image := avatarresolver.Image{
@@ -923,6 +1037,10 @@ func (h *Handler) persistFoundAvatar(ctx context.Context, hash, email string, im
 }
 
 func (h *Handler) publishAvatarUpdated(ctx context.Context, hash, email string, expiresAt time.Time) {
+	if h.avatarRouting != nil {
+		h.publishUserAvatarUpdated(ctx, hash, email, expiresAt)
+		return
+	}
 	userIDs, err := h.db.GetSenderAvatarUserIDs(ctx, email)
 	if err != nil {
 		log.Printf("avatar update %s: resolve visible users: %v", hash, err)
@@ -964,7 +1082,12 @@ func (h *Handler) handleAvatarImage(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	rec, err := h.db.GetSenderAvatarByHashForUser(r.Context(), hash, h.userID(r.Context()))
+	var rec *storage.SenderAvatarRecord
+	err := h.withUserDB(r.Context(), h.userID(r.Context()), func(db *storage.DB) error {
+		var err error
+		rec, err = db.GetSenderAvatarByHashForUser(r.Context(), hash, h.userID(r.Context()))
+		return err
+	})
 	if err != nil {
 		http.Error(w, "failed to load avatar", http.StatusInternalServerError)
 		return
@@ -994,6 +1117,10 @@ func (h *Handler) serveAvatarImage(w http.ResponseWriter, r *http.Request, rec *
 
 	data := rec.ImageData
 	if rec.StoragePath != "" {
+		if h.blobStore == nil {
+			http.NotFound(w, r)
+			return
+		}
 		fileData, err := h.blobStore.ReadAvatar(rec.StoragePath)
 		if err != nil && len(data) == 0 {
 			http.NotFound(w, r)
@@ -1031,13 +1158,20 @@ func (h *Handler) serveAvatarImage(w http.ResponseWriter, r *http.Request, rec *
 }
 
 func (h *Handler) handleProviderAvatarImage(w http.ResponseWriter, r *http.Request) {
+	if h.userStorage != nil {
+		ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
+		defer cancel()
+		stop := context.AfterFunc(h.userStorageContext, cancel)
+		defer stop()
+		r = r.WithContext(ctx)
+	}
 	rawURL := strings.TrimSpace(r.URL.Query().Get("url"))
 	parsed, err := url.Parse(rawURL)
 	if err != nil || parsed.Scheme != "https" || parsed.Host == "" || !isAllowedProviderAvatarHost(parsed.Hostname()) {
 		http.Error(w, "unsupported provider avatar", http.StatusBadRequest)
 		return
 	}
-	visible, err := h.db.IsProviderAvatarURLVisibleToUser(r.Context(), rawURL, h.userID(r.Context()))
+	visible, err := h.providerAvatarVisible(r.Context(), rawURL)
 	if err != nil {
 		http.Error(w, "failed to authorize provider avatar", http.StatusInternalServerError)
 		return
@@ -1089,6 +1223,13 @@ func (h *Handler) handleProviderAvatarImage(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "provider avatar is too large", http.StatusRequestEntityTooLarge)
 		return
 	}
+	if h.userStorage != nil {
+		visible, err := h.providerAvatarVisible(r.Context(), rawURL)
+		if err != nil || !visible {
+			http.NotFound(w, r)
+			return
+		}
+	}
 
 	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("X-Content-Type-Options", "nosniff")
@@ -1097,6 +1238,10 @@ func (h *Handler) handleProviderAvatarImage(w http.ResponseWriter, r *http.Reque
 }
 
 func (h *Handler) handleAvatarWarmup(w http.ResponseWriter, r *http.Request) {
+	cache := h
+	if h.avatarWarmupOwner != nil {
+		cache = h.avatarWarmupOwner
+	}
 	var req avatarWarmupRequest
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 16<<10)).Decode(&req); err != nil {
 		http.Error(w, "invalid warmup request", http.StatusBadRequest)
@@ -1128,7 +1273,7 @@ func (h *Handler) handleAvatarWarmup(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		seen[hash] = struct{}{}
-		visible, err := h.db.IsSenderAvatarEmailVisibleToUser(r.Context(), email, h.userID(r.Context()))
+		visible, err := h.senderAvatarVisible(r.Context(), email)
 		if err != nil {
 			http.Error(w, "failed to authorize avatar warmup candidates", http.StatusInternalServerError)
 			return
@@ -1138,7 +1283,13 @@ func (h *Handler) handleAvatarWarmup(w http.ResponseWriter, r *http.Request) {
 			notDue++
 			continue
 		}
-		candidate, ok, forceRetry, attemptCapped, err := h.avatarWarmupCandidate(r.Context(), email, hash)
+		if h.userStorage != nil {
+			if err := h.userStorage.RecordUserAvatarInterests(r.Context(), h.userID(r.Context()), []string{email}); err != nil {
+				userAccountError(w, r, err)
+				return
+			}
+		}
+		candidate, ok, forceRetry, attemptCapped, err := cache.avatarWarmupCandidate(r.Context(), email, hash)
 		if err != nil {
 			http.Error(w, "failed to inspect avatar warmup candidates", http.StatusInternalServerError)
 			return
@@ -1153,7 +1304,7 @@ func (h *Handler) handleAvatarWarmup(w http.ResponseWriter, r *http.Request) {
 			notDue++
 			continue
 		}
-		if !h.enqueueAvatarWarmup(candidate) {
+		if !cache.enqueueAvatarWarmup(candidate) {
 			skipped++
 			notQueued++
 			continue
@@ -1201,6 +1352,15 @@ func (h *Handler) allowAvatarWarmupForced(hash string) bool {
 	if ok && now.Before(until) {
 		return false
 	}
+	if len(h.avatarWarmupForced) >= 1024 {
+		var oldest string
+		for key, expiry := range h.avatarWarmupForced {
+			if oldest == "" || expiry.Before(h.avatarWarmupForced[oldest]) {
+				oldest = key
+			}
+		}
+		delete(h.avatarWarmupForced, oldest)
+	}
 	h.avatarWarmupForced[hash] = now.Add(avatarErrorRetryAfter)
 	return true
 }
@@ -1220,20 +1380,31 @@ func senderAvatarRecordDue(rec storage.SenderAvatarRecord) bool {
 }
 
 func (h *Handler) enqueueAvatarWarmup(candidate storage.SenderAvatarCandidate) bool {
+	return h.enqueueAvatarWarmupJob(avatarWarmupJob{candidate: candidate})
+}
+
+func (h *Handler) enqueueAvatarWarmupJob(job avatarWarmupJob) bool {
+	candidate := job.candidate
+	h.startAvatarWarmupWorkers(nil)
 	h.avatarWarmupMu.Lock()
+	if h.avatarClosed || h.avatarWorkerContext.Err() != nil {
+		h.avatarWarmupMu.Unlock()
+		return false
+	}
 	if _, ok := h.avatarWarmupQueued[candidate.EmailHash]; ok {
 		h.avatarWarmupMu.Unlock()
 		return false
 	}
 	h.avatarWarmupQueued[candidate.EmailHash] = struct{}{}
-	h.avatarWarmupMu.Unlock()
 
 	select {
-	case h.avatarWarmupQueue <- candidate:
+	case h.avatarWarmupQueue <- job:
+		h.avatarWarmupMu.Unlock()
 		log.Printf("avatar: warmup queued email=%s", candidate.Email)
 		return true
 	default:
-		h.clearAvatarWarmupQueued(candidate.EmailHash)
+		delete(h.avatarWarmupQueued, candidate.EmailHash)
+		h.avatarWarmupMu.Unlock()
 		return false
 	}
 }
@@ -1253,6 +1424,12 @@ func (h *Handler) handleAvatarAttempts(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "failed to load webmail accounts", http.StatusInternalServerError)
 		return
 	}
+	read, err := h.beginAdminAvatarRead(r.Context(), scope)
+	if err != nil {
+		http.Error(w, "failed to read avatar visibility", http.StatusInternalServerError)
+		return
+	}
+	defer read.close()
 	limit := 50
 	if raw := r.URL.Query().Get("limit"); raw != "" {
 		if n, err := strconv.Atoi(raw); err == nil && n > 0 && n <= 100 {
@@ -1266,14 +1443,15 @@ func (h *Handler) handleAvatarAttempts(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	errorsOnly := r.URL.Query().Get("kind") == "errors"
-	logs, total, err := h.db.GetSenderAvatarAttemptLogs(r.Context(), storage.SenderAvatarAttemptLogFilter{
-		UserID:     scope.SelectedUserID,
-		ErrorsOnly: errorsOnly,
-		Query:      r.URL.Query().Get("q"),
-		Provider:   r.URL.Query().Get("provider"),
-		Status:     r.URL.Query().Get("status"),
-		Limit:      limit,
-		Offset:     offset,
+	logs, total, err := h.db.GetSenderAvatarAttemptLogs(read.ctx, storage.SenderAvatarAttemptLogFilter{
+		UserID:        scope.SelectedUserID,
+		VisibleEmails: read.emails,
+		ErrorsOnly:    errorsOnly,
+		Query:         r.URL.Query().Get("q"),
+		Provider:      r.URL.Query().Get("provider"),
+		Status:        r.URL.Query().Get("status"),
+		Limit:         limit,
+		Offset:        offset,
 	})
 	if err != nil {
 		http.Error(w, "failed to get avatar attempt logs", http.StatusInternalServerError)
@@ -1288,6 +1466,10 @@ func (h *Handler) handleAvatarAttempts(w http.ResponseWriter, r *http.Request) {
 			Message:   entry.Message,
 			CreatedAt: entry.CreatedAt,
 		})
+	}
+	if err := read.validate(); err != nil {
+		http.Error(w, "avatar access expired", http.StatusInternalServerError)
+		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{
@@ -1308,6 +1490,12 @@ func (h *Handler) handleAvatarSenders(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "failed to load webmail accounts", http.StatusInternalServerError)
 		return
 	}
+	read, err := h.beginAdminAvatarRead(r.Context(), scope)
+	if err != nil {
+		http.Error(w, "failed to read avatar visibility", http.StatusInternalServerError)
+		return
+	}
+	defer read.close()
 	limit := 80
 	if raw := r.URL.Query().Get("limit"); raw != "" {
 		if n, err := strconv.Atoi(raw); err == nil && n > 0 && n <= 200 {
@@ -1320,21 +1508,22 @@ func (h *Handler) handleAvatarSenders(w http.ResponseWriter, r *http.Request) {
 			offset = n
 		}
 	}
-	rows, total, err := h.db.GetSenderAvatarRows(r.Context(), storage.SenderAvatarRowFilter{
-		UserID:     scope.SelectedUserID,
-		Query:      r.URL.Query().Get("q"),
-		Status:     r.URL.Query().Get("status"),
-		Source:     r.URL.Query().Get("source"),
-		Provider:   r.URL.Query().Get("provider"),
-		ErrorsOnly: r.URL.Query().Get("errors") == "true",
-		Limit:      limit,
-		Offset:     offset,
+	rows, total, err := h.db.GetSenderAvatarRows(read.ctx, storage.SenderAvatarRowFilter{
+		UserID:        scope.SelectedUserID,
+		VisibleEmails: read.emails,
+		Query:         r.URL.Query().Get("q"),
+		Status:        r.URL.Query().Get("status"),
+		Source:        r.URL.Query().Get("source"),
+		Provider:      r.URL.Query().Get("provider"),
+		ErrorsOnly:    r.URL.Query().Get("errors") == "true",
+		Limit:         limit,
+		Offset:        offset,
 	})
 	if err != nil {
 		http.Error(w, "failed to get avatar senders", http.StatusInternalServerError)
 		return
 	}
-	providers, err := h.db.GetAvatarProviderNames(r.Context())
+	providers, err := h.db.GetAvatarProviderNames(read.ctx)
 	if err != nil {
 		http.Error(w, "failed to get avatar providers", http.StatusInternalServerError)
 		return
@@ -1344,12 +1533,7 @@ func (h *Handler) handleAvatarSenders(w http.ResponseWriter, r *http.Request) {
 	for _, row := range rows {
 		emails = append(emails, row.Email)
 	}
-	var providerContactAvatars map[string]string
-	if scope.SelectedUserID == "" {
-		providerContactAvatars, err = h.db.GetInstanceProviderContactAvatarsByEmail(r.Context(), emails)
-	} else {
-		providerContactAvatars, err = h.db.GetProviderContactAvatarsByEmail(r.Context(), scope.SelectedUserID, emails)
-	}
+	providerContactAvatars, err := h.adminProviderContactAvatars(read.ctx, scope, emails)
 	if err != nil {
 		http.Error(w, "failed to get provider contact avatars", http.StatusInternalServerError)
 		return
@@ -1400,6 +1584,10 @@ func (h *Handler) handleAvatarSenders(w http.ResponseWriter, r *http.Request) {
 		}
 		items = append(items, item)
 	}
+	if err := read.validate(); err != nil {
+		http.Error(w, "avatar access expired", http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"items":       items,
@@ -1419,17 +1607,50 @@ func adminSenderAvatarURL(hash string, expiresAt time.Time) string {
 }
 
 func (h *Handler) handleRecheckAvatarSender(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	var validate func(context.Context) error
+	deny := func(err error) {
+		status := http.StatusServiceUnavailable
+		if errors.Is(err, storage.ErrUserDiagnosticsAccess) {
+			status = http.StatusForbidden
+		}
+		http.Error(w, "avatar recheck unavailable", status)
+	}
+	if h.ownedMailbox != nil {
+		var cancel context.CancelFunc
+		ctx, cancel = h.ownedAdminDiagnosticContext(ctx)
+		defer cancel()
+		user := auth.GetCurrentUser(ctx)
+		if user == nil {
+			http.Error(w, "administrator access required", http.StatusForbidden)
+			return
+		}
+		actor := storage.DiagnosticsActor{ID: user.ID, AuthVersion: user.AuthVersion}
+		routing := h.ownedMailbox.userStorage
+		validate = func(ctx context.Context) error { return routing.ValidateDiagnosticsAdministrator(ctx, actor) }
+		if err := validate(ctx); err != nil {
+			deny(err)
+			return
+		}
+	}
 	hash := r.PathValue("hash")
-	rec, err := h.db.GetSenderAvatarByHash(r.Context(), hash)
+	rec, err := h.db.GetSenderAvatarByHash(ctx, hash)
 	if err != nil || rec == nil || rec.Email == "" {
 		http.NotFound(w, r)
 		return
 	}
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
-		_, _, _, _ = h.fetchAndPersistAvatar(ctx, rec.EmailHash, rec.Email, nil, 0, nil)
-	}()
+	if validate != nil {
+		if err := validate(ctx); err != nil {
+			deny(err)
+			return
+		}
+	}
+	if !h.enqueueAvatarWarmupJob(avatarWarmupJob{candidate: storage.SenderAvatarCandidate{EmailHash: rec.EmailHash, Email: rec.Email}, validate: validate}) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusConflict)
+		_ = json.NewEncoder(w).Encode(map[string]bool{"started": false})
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]bool{"started": true})
 }
@@ -1461,9 +1682,16 @@ func (h *Handler) handleCancelAvatarBackfill(w http.ResponseWriter, r *http.Requ
 }
 
 func (h *Handler) avatarStatus(ctx context.Context, scope models.AdminWebmailScope) (models.AvatarStatus, error) {
+	read, err := h.beginAdminAvatarRead(ctx, scope)
+	if err != nil {
+		return models.AvatarStatus{}, err
+	}
+	defer read.close()
+	ctx = read.ctx
 	var stats storage.SenderAvatarStats
-	var err error
-	if scope.SelectedUserID == "" {
+	if read.emails != nil {
+		stats, err = h.db.GetSenderAvatarStatsForEmails(ctx, read.emails)
+	} else if scope.SelectedUserID == "" {
 		stats, err = h.db.GetSenderAvatarStats(ctx)
 	} else {
 		stats, err = h.db.GetSenderAvatarStatsForUser(ctx, scope.SelectedUserID)
@@ -1471,11 +1699,11 @@ func (h *Handler) avatarStatus(ctx context.Context, scope models.AdminWebmailSco
 	if err != nil {
 		return models.AvatarStatus{}, err
 	}
-	recent, _, err := h.db.GetSenderAvatarAttemptLogs(ctx, storage.SenderAvatarAttemptLogFilter{UserID: scope.SelectedUserID, Limit: 50})
+	recent, _, err := h.db.GetSenderAvatarAttemptLogs(ctx, storage.SenderAvatarAttemptLogFilter{UserID: scope.SelectedUserID, VisibleEmails: read.emails, Limit: 50})
 	if err != nil {
 		return models.AvatarStatus{}, err
 	}
-	recentErrors, _, err := h.db.GetSenderAvatarAttemptLogs(ctx, storage.SenderAvatarAttemptLogFilter{UserID: scope.SelectedUserID, ErrorsOnly: true, Limit: 50})
+	recentErrors, _, err := h.db.GetSenderAvatarAttemptLogs(ctx, storage.SenderAvatarAttemptLogFilter{UserID: scope.SelectedUserID, VisibleEmails: read.emails, ErrorsOnly: true, Limit: 50})
 	if err != nil {
 		return models.AvatarStatus{}, err
 	}
@@ -1498,6 +1726,9 @@ func (h *Handler) avatarStatus(ctx context.Context, scope models.AdminWebmailSco
 			Message:   entry.Message,
 			CreatedAt: entry.CreatedAt,
 		})
+	}
+	if err := read.validate(); err != nil {
+		return models.AvatarStatus{}, err
 	}
 	return models.AvatarStatus{
 		Scope:    scope,

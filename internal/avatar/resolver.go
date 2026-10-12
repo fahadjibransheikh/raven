@@ -74,6 +74,15 @@ func NewResolver() *Resolver {
 	}
 }
 
+// SetTransport replaces the transport of the resolver's HTTP client, keeping its
+// timeout and redirect policy. Tests use it to stand in for avatar providers: the
+// guarded production client never goes through http.DefaultTransport.
+func (r *Resolver) SetTransport(rt http.RoundTripper) {
+	c := *r.client
+	c.Transport = rt
+	r.client = &c
+}
+
 func (r *Resolver) ClearCache() {
 	if r == nil {
 		return

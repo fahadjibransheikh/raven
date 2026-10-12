@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/cristianadrielbraun/gofer/internal/storage"
@@ -307,8 +308,10 @@ func LoadConfig(baseURL string) *Config {
 }
 
 type Manager struct {
+	cleanupWorkers             sync.WaitGroup
 	config                     *Config
 	db                         *storage.DB
+	userStorage                atomic.Pointer[storage.AccountRouting]
 	clock                      Clock
 	tokens                     TokenGenerator
 	bucketHashKey              []byte

@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"sort"
 	"strings"
@@ -14,6 +15,35 @@ type GmailMessageFetchQueueEntry struct {
 	HistoryID         string
 	Attempts          int
 	LastError         string
+}
+
+// NextGmailQueueAttempt exposes durable retry deadlines to paged central
+// discovery, without reopening every owner's database on every timer tick.
+func (db *DB) NextGmailQueueAttempt(ctx context.Context, accountID string) (time.Time, error) {
+	if strings.TrimSpace(accountID) == "" {
+		return time.Time{}, fmt.Errorf("Gmail account is required")
+	}
+	var next time.Time
+	err := db.Read().QueryRowContext(ctx, `SELECT next_attempt_at FROM (
+		SELECT next_attempt_at FROM gmail_message_fetch_queue WHERE account_id=?
+		UNION ALL SELECT next_attempt_at FROM label_mutation_queue WHERE account_id=? AND provider_type=?
+	) ORDER BY julianday(next_attempt_at),next_attempt_at LIMIT 1`, accountID, accountID, LabelProviderGmail).Scan(&next)
+	if err == sql.ErrNoRows {
+		return time.Time{}, nil
+	}
+	return next, err
+}
+
+func (db *DB) NextProviderLabelQueueAttempt(ctx context.Context, accountID, provider string) (time.Time, error) {
+	if strings.TrimSpace(accountID) == "" || (provider != LabelProviderGmail && provider != LabelProviderOutlook) {
+		return time.Time{}, fmt.Errorf("provider account is required")
+	}
+	var next time.Time
+	err := db.Read().QueryRowContext(ctx, `SELECT next_attempt_at FROM label_mutation_queue WHERE account_id=? AND provider_type=? ORDER BY julianday(next_attempt_at),next_attempt_at LIMIT 1`, accountID, provider).Scan(&next)
+	if err == sql.ErrNoRows {
+		return time.Time{}, nil
+	}
+	return next, err
 }
 
 func (db *DB) EnqueueGmailMessageFetch(ctx context.Context, accountID, providerMessageID, historyID string, fetchErr error) error {
@@ -154,7 +184,7 @@ func (db *DB) MarkProviderMessageDeleted(ctx context.Context, accountID, provide
 		SELECT DISTINCT mfs.folder_id
 		FROM message_folder_state mfs
 		JOIN messages m ON m.id = mfs.message_id
-		WHERE m.account_id = ? AND m.remote_message_id = ? AND mfs.is_deleted = 0`, accountID, providerMessageID)
+		WHERE m.account_id = ? AND m.remote_message_id = ? AND mfs.is_deleted = 0`+db.userProviderDraftProtectionSQL("m"), accountID, providerMessageID)
 	if err != nil {
 		return nil, err
 	}
@@ -177,8 +207,8 @@ func (db *DB) MarkProviderMessageDeleted(ctx context.Context, accountID, provide
 		UPDATE message_folder_state
 		SET is_deleted = 1, synced_at = CURRENT_TIMESTAMP
 		WHERE message_id IN (
-			SELECT id FROM messages WHERE account_id = ? AND remote_message_id = ?
-		)`, accountID, providerMessageID); err != nil {
+			SELECT m.id FROM messages m WHERE m.account_id = ? AND m.remote_message_id = ?
+		`+db.userProviderDraftProtectionSQL("m")+`)`, accountID, providerMessageID); err != nil {
 		return nil, err
 	}
 	if _, err := tx.ExecContext(ctx, `

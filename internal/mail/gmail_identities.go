@@ -51,7 +51,7 @@ func (o *SyncOrchestrator) RefreshGmailIdentities(ctx context.Context, accountID
 	now := time.Now()
 	if err != nil {
 		// Stamp the attempt so a failing account is retried daily, not every sync.
-		if serr := o.db.TouchIdentitiesSyncedAt(ctx, accountID, now); serr != nil {
+		if serr := o.withIdentityDB(ctx, func(db *storage.DB) error { return db.TouchIdentitiesSyncedAt(ctx, accountID, now) }); serr != nil {
 			log.Printf("gmail identities %s: record attempt: %v", accountID, serr)
 		}
 		return err
@@ -75,13 +75,29 @@ func (o *SyncOrchestrator) RefreshGmailIdentities(ctx context.Context, accountID
 			providerDefault = email
 		}
 	}
-	return o.db.ApplyProviderIdentities(ctx, accountID, aliases, providerDefault, now)
+	return o.withIdentityDB(ctx, func(db *storage.DB) error {
+		return db.ApplyProviderIdentities(ctx, accountID, aliases, providerDefault, now)
+	})
+}
+
+// withIdentityDB runs fn on the database that holds the account's identities:
+// the owner's own database in the per-user runtime, the shared one otherwise.
+func (o *SyncOrchestrator) withIdentityDB(ctx context.Context, fn func(*storage.DB) error) error {
+	if o.imapScope != nil {
+		return o.imapScope.call(ctx, fn)
+	}
+	return fn(o.db)
 }
 
 // refreshGmailIdentitiesIfDue is the sync-path entry point. Failures are logged
 // and never fail the sync.
 func (o *SyncOrchestrator) refreshGmailIdentitiesIfDue(ctx context.Context, accountID string) {
-	at, ok, err := o.db.IdentitiesSyncedAt(ctx, accountID)
+	var at time.Time
+	var ok bool
+	err := o.withIdentityDB(ctx, func(db *storage.DB) (err error) {
+		at, ok, err = db.IdentitiesSyncedAt(ctx, accountID)
+		return err
+	})
 	if err != nil {
 		log.Printf("gmail identities %s: read last fetch: %v", accountID, err)
 		return

@@ -42,7 +42,7 @@ Each stage ends with: `templ generate`, `tailwindcss` build, `go build ./...`, `
 | 1 | `v0.4.0` (`0bbd646`, 21 commits) | Calendar, mail filter fixes, brand kit | Swap calendar to upstream's; renumber its migrations to 107–119; restyle upstream calendar views to Raven's design; keep Raven's logo. |
 | 2 | `v0.5.2` (`23a39ae`, 67 commits) | Per-user SQLite storage, managed mode, atomic mail writes | Re-route Raven's own storage additions (push detection, contacts sync throttle, Raven settings) through per-user storage; renumber upstream 105→107 to 119→121. |
 | 3 | `v0.6.0` (`5b08c5d`, 54 commits) | Security hardening, mail fixes, phone UI, Express theme | Take security and mail fixes in full, reconciling with Raven's own SSRF guard, sanitizer and iframe CSP (keep the stricter of each). Keep Raven's phone UI; skip Express theme. |
-| 4 | — | Ports | Raven calendar extras onto upstream's calendar (iCloud sync-collection and conditional PUT details if not covered, guest suggestions from contacts, invite card in mail). Upstream phone *behaviour* worth keeping in Raven's markup: select all, collapse quoted history, continue draft from thread, show why a message can't load. |
+| 4 | — | Ports | **Must-fix before release:** after v107, existing accounts have no calendar sources until each account's calendars are discovered and chosen again (and iCloud CalDAV settings re-entered). Carry Raven's calendar selection over automatically (run discovery for accounts that had Raven calendars and mark the previously selected ones), then verify on a copy of the real DB with logins intact. Raven calendar extras onto upstream's calendar (iCloud sync-collection and conditional PUT details if not covered, guest suggestions from contacts, invite card in mail). Upstream phone *behaviour* worth keeping in Raven's markup: select all, collapse quoted history, continue draft from thread, show why a message can't load. |
 | 5 | — | Verify on the real path | Run the desktop app against a copy of the real database; then alexis after a DB backup. Release. |
 
 ## Data safety
@@ -67,7 +67,47 @@ Each stage ends with: `templ generate`, `tailwindcss` build, `go build ./...`, `
   - Calendar page uses Raven's head, scripts, sidebar surface and no serif;
     the rest of upstream's calendar markup is unrestyled (stage 4).
   - Dropped upstream's per-section settings headers (Raven's single header).
-- [ ] Stage 2
+- [x] Stage 2 (2026-10-12). Notes:
+  - Desktop and alexis run personal/open mode, so the per-user conversion
+    never runs for them. Managed mode lacks these Raven routes (no per-user
+    port yet): account identities and label, message unsubscribe, folder
+    read-all/empty, `/hooks/gmail` and `/hooks/graph`, provider push
+    (`StartPush`).
+  - `renderMailboxView` returns 404 only for missing rows/foreign accounts;
+    other storage errors are now 503 (Raven used to ignore some).
+  - `raven_calendar_carryover` (v107) keeps each account's Raven calendar list
+    and selection for stage 4.
+  - Per-user conversion (managed mode only) maps upstream shared versions
+    105/106/107 to Raven 119/120/121 and inventories Raven-only tables.
+  - Known upstream test issue: 3 `TestUserStorageMigration*` tests fail when
+    TMPDIR is a symlink (macOS `/var` -> `/private/var`); they also fail on
+    pristine upstream v0.5.2. Run storage tests with
+    `TMPDIR=/private/tmp/<dir>` on macOS.
 - [ ] Stage 3
 - [ ] Stage 4
 - [ ] Stage 5
+
+## Post-merge feature backlog (added 2026-10-12)
+
+Source: a comparison with Bytemail's marketing page (unverified), against the
+`upstream-merge` branch. Checked upstream gofer `master` (5b08c5d) and its only
+other branch (`storage/per-user-sqlite`, already merged here) on 2026-10-12:
+none of these exist upstream and no upstream issue proposes them. Decision for
+all: **build in Raven**, after stage 5, in Raven-owned files (new
+`raven_*`-prefixed migrations/tables, separate handler files) to keep future
+upstream merges small. Re-check upstream before starting each one.
+
+| # | Feature | Decision | Notes |
+|---|---|---|---|
+| 1 | Undo send (5–30 s) + undo archive/trash/move | Build | Reuse the scheduled-send path: delayed send + cancel toast. |
+| 2 | Snooze until a time | Build | Shares a timer/wake-up queue with 1 and 3. |
+| 3 | Follow-up reminders (no reply by a date) | Build | Same queue; build 1–3 as one feature. |
+| 4 | "Copy code" for sign-in codes in notifications | Build | Small; Web Push + desktop notification action. |
+| 5 | Tracker stripping (pixels when images load, `utm_` etc. in links) | Build | Hooks into Raven's existing sanitizer/image proxy; check stage 3's upstream image proxy first. |
+| 6 | Link mismatch and look-alike sender warnings | Build | Local only; moderate. |
+| 7 | Mail rules (match → move/archive/read/trash) | Build, later | Larger: rules UI plus sync hooks for IMAP, Gmail and Outlook. |
+| 8 | Smart tabs + "To Reply" | Build tabs later; defer "To Reply" | Gmail categories can feed tabs; IMAP needs a classifier. "To Reply" leans on AI. |
+| – | Reply templates, mute thread, Subscriptions list | Low priority | |
+| – | AI summaries/rewrite/suggested replies | Skip | Needs an LLM provider and keys; conflicts with local-first. |
+
+Order: 1–3 together, then 4 and 5, then 6, then 7 and 8.

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -16,7 +17,7 @@ func TestDownloadRemoteResourceRefusesInternalTargets(t *testing.T) {
 		_, _ = w.Write([]byte("secret"))
 	}))
 	defer srv.Close()
-	if data, err := downloadRemoteResource(srv.URL + "/latest/meta-data/"); err == nil || hit || len(data) > 0 {
+	if data, err := downloadRemoteResource(context.Background(), srv.URL+"/latest/meta-data/"); err == nil || hit || len(data) > 0 {
 		t.Fatalf("downloadRemoteResource(loopback) = %q, %v (hit=%v), want refusal", data, err, hit)
 	}
 }

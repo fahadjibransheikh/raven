@@ -3615,6 +3615,10 @@ document.addEventListener("DOMContentLoaded", function () {
       oauth_invalid_state: { title: "Sign-in link is invalid", description: "Start connecting the account again from Settings." },
       oauth_expired_state: { title: "Sign-in took too long", description: "The sign-in link expired. Start connecting the account again." },
       oauth_session_mismatch: { title: "Sign-in could not be verified", description: "Raven's session changed during sign-in. Sign in to Raven again and retry." },
+      oauth_identity_mismatch: { title: "Different provider account", description: "The signed-in provider account differs from this mailbox. Reconnect using its original provider account." },
+      oauth_store_failed: { title: "Could not save the sign-in", description: "Raven could not store the mailbox authorization. Reconnect the account to try again." },
+      oauth_metadata_failed: { title: "Account details not updated", description: "Authorization was saved, but account details could not be updated. Reconnect the account to try again." },
+      oauth_sync_failed: { title: "Sync did not start", description: "Authorization was saved, but synchronization could not start. Try syncing the account again." },
       create_failed: { title: "Could not save the account", description: "The provider connected but Raven could not store the account. Try again." },
     }
     var params = new URLSearchParams(window.location.search)

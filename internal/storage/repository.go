@@ -215,6 +215,8 @@ func (db *DB) unifiedFolderAccountFilter(ctx context.Context, userID, folderID, 
 	if folderID == "scheduled" {
 		return "", nil, nil
 	}
+	// Settings use the same reader pool, so load them before opening the cursor.
+	settings := db.GetUISettings(ctx, userID)
 
 	rows, err := db.Read().QueryContext(ctx,
 		`SELECT id FROM accounts
@@ -225,7 +227,6 @@ func (db *DB) unifiedFolderAccountFilter(ctx context.Context, userID, folderID, 
 	}
 	defer rows.Close()
 
-	settings := db.GetUISettings(ctx, userID)
 	var ids []any
 	for rows.Next() {
 		var accountID string
@@ -679,6 +680,34 @@ func (db *DB) updateThreadAggregatesTx(ctx context.Context, tx *sql.Tx, threadID
 	return err
 }
 
+type threadingRepairMessage struct {
+	id        int64
+	accountID string
+	msgID     string
+	inReplyTo string
+	refs      string
+	subject   string
+	sentAt    sql.NullString
+}
+
+func (db *DB) reconcileThreadingRepairMessageTx(ctx context.Context, tx *sql.Tx, m threadingRepairMessage) error {
+	messageID := mailmessage.NormalizeMessageID(m.msgID)
+	if messageID == "" {
+		messageID = fmt.Sprintf("local-%d@gofer.local", m.id)
+	}
+	inReplyTo := ""
+	if ids := mailmessage.ParseMessageIDs(m.inReplyTo); len(ids) > 0 {
+		inReplyTo = ids[0]
+	}
+	sentAt := time.Now().UTC()
+	if m.sentAt.Valid {
+		if parsed, ok := parseSQLiteDateTime(m.sentAt.String); ok {
+			sentAt = parsed
+		}
+	}
+	return db.reconcileMessageThreadTx(ctx, tx, m.id, m.accountID, messageID, inReplyTo, m.refs, m.subject, sentAt)
+}
+
 func (db *DB) EnsureThreading(ctx context.Context) error {
 	const batchSize = 500
 
@@ -698,21 +727,13 @@ func (db *DB) EnsureThreading(ctx context.Context) error {
 	log.Printf("storage: EnsureThreading backfill required")
 
 	rows, err := db.Read().QueryContext(ctx,
-		`SELECT id, account_id, internet_message_id, in_reply_to, "references", subject, date_received
+		`SELECT id, account_id, COALESCE(internet_message_id, ''), in_reply_to, "references", subject, date_received
 		 FROM messages ORDER BY date_received ASC, id ASC`)
 	if err != nil {
 		return err
 	}
 
-	type row struct {
-		id        int64
-		accountID string
-		msgID     string
-		inReplyTo string
-		refs      string
-		subject   string
-		sentAt    sql.NullString
-	}
+	type row = threadingRepairMessage
 	var messages []row
 	for rows.Next() {
 		var r row
@@ -744,7 +765,7 @@ func (db *DB) EnsureThreading(ctx context.Context) error {
 		for i := start; i < end; i++ {
 			var m row
 			err := tx.QueryRowContext(ctx,
-				`SELECT id, account_id, internet_message_id, in_reply_to, "references", subject, date_received
+				`SELECT id, account_id, COALESCE(internet_message_id, ''), in_reply_to, "references", subject, date_received
 				 FROM messages WHERE id = ?`, messages[i].id,
 			).Scan(&m.id, &m.accountID, &m.msgID, &m.inReplyTo, &m.refs, &m.subject, &m.sentAt)
 			if err == sql.ErrNoRows {
@@ -754,21 +775,7 @@ func (db *DB) EnsureThreading(ctx context.Context) error {
 				tx.Rollback()
 				return err
 			}
-			messageID := mailmessage.NormalizeMessageID(m.msgID)
-			if messageID == "" {
-				messageID = fmt.Sprintf("local-%d@gofer.local", m.id)
-			}
-			inReplyTo := ""
-			if ids := mailmessage.ParseMessageIDs(m.inReplyTo); len(ids) > 0 {
-				inReplyTo = ids[0]
-			}
-			sentAt := time.Now().UTC()
-			if m.sentAt.Valid {
-				if parsed, ok := parseSQLiteDateTime(m.sentAt.String); ok {
-					sentAt = parsed
-				}
-			}
-			if err := db.reconcileMessageThreadTx(ctx, tx, m.id, m.accountID, messageID, inReplyTo, m.refs, m.subject, sentAt); err != nil {
+			if err := db.reconcileThreadingRepairMessageTx(ctx, tx, m); err != nil {
 				tx.Rollback()
 				return err
 			}
@@ -1037,6 +1044,35 @@ func (db *DB) ReindexMessageSearch(ctx context.Context, messageID int64) error {
 }
 
 func (db *DB) ReindexMessagesSearch(ctx context.Context, messageIDs []int64) error {
+	messageIDs = compactMessageIDs(messageIDs)
+	if len(messageIDs) == 0 {
+		return nil
+	}
+	tx, err := db.Write().BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin message search batch: %w", err)
+	}
+	defer tx.Rollback()
+	if err := db.reindexMessagesSearchTx(ctx, tx, messageIDs); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// Keep search documents in the same transaction as the mail they describe.
+// Callers must not commit mail changes before this succeeds.
+func (db *DB) reindexMessagesSearchTx(ctx context.Context, tx *sql.Tx, messageIDs []int64) (err error) {
+	defer func() {
+		// Cancellation can close prepared statements during automatic rollback
+		// before their next Exec reports the context error. Retain both causes.
+		if err != nil && ctx.Err() != nil {
+			err = errors.Join(err, ctx.Err())
+		}
+	}()
+	messageIDs = compactMessageIDs(messageIDs)
+	if len(messageIDs) == 0 {
+		return nil
+	}
 	type searchDoc struct {
 		accountID       string
 		threadKey       string
@@ -1049,16 +1085,6 @@ func (db *DB) ReindexMessagesSearch(ctx context.Context, messageIDs []int64) err
 		bodyTextPath    sql.NullString
 		bodyHTMLPath    sql.NullString
 	}
-
-	messageIDs = compactMessageIDs(messageIDs)
-	if len(messageIDs) == 0 {
-		return nil
-	}
-	tx, err := db.Write().BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("begin message search batch: %w", err)
-	}
-	defer tx.Rollback()
 
 	loadStmt, err := tx.PrepareContext(ctx, `
 		SELECT m.account_id,
@@ -1121,7 +1147,7 @@ func (db *DB) ReindexMessagesSearch(ctx context.Context, messageIDs []int64) err
 			return fmt.Errorf("insert message search doc: %w", err)
 		}
 	}
-	return tx.Commit()
+	return nil
 }
 
 func compactMessageIDs(messageIDs []int64) []int64 {
@@ -1137,12 +1163,28 @@ func compactMessageIDs(messageIDs []int64) []int64 {
 	return compacted
 }
 
-func (db *DB) deleteMessageSearch(ctx context.Context, messageID int64) error {
-	_, err := db.Write().ExecContext(ctx, `DELETE FROM message_search WHERE rowid = ?`, messageID)
-	return err
+func (db *DB) SaveDraftMessage(ctx context.Context, draft DraftMessageInput) (int64, error) {
+	if draft.Date.IsZero() {
+		draft.Date = time.Now().UTC()
+	}
+	tx, err := db.Write().BeginTx(ctx, nil)
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+	msgID, err := db.saveDraftMessageTx(ctx, tx, draft)
+	if err != nil {
+		return 0, err
+	}
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
+	db.UpsertObservedContactsForMessage(ctx, draft.AccountID, draft.FromName, draft.FromEmail, draft.ToRecipients, draft.CCRecipients, draft.BCCRecipients, draft.Date)
+	db.refreshFolderForMessages(ctx, draft.FolderID, []int64{msgID})
+	return msgID, nil
 }
 
-func (db *DB) SaveDraftMessage(ctx context.Context, draft DraftMessageInput) (int64, error) {
+func (db *DB) saveDraftMessageTx(ctx context.Context, tx *sql.Tx, draft DraftMessageInput) (int64, error) {
 	if draft.AccountID == "" || draft.FolderID == "" || draft.InternetMessageID == "" {
 		return 0, fmt.Errorf("missing draft identity")
 	}
@@ -1151,12 +1193,6 @@ func (db *DB) SaveDraftMessage(ctx context.Context, draft DraftMessageInput) (in
 	}
 	draft.Date = draft.Date.UTC()
 	draftDBDate := formatDBTime(draft.Date)
-
-	tx, err := db.Write().BeginTx(ctx, nil)
-	if err != nil {
-		return 0, fmt.Errorf("begin tx: %w", err)
-	}
-	defer tx.Rollback()
 
 	messageIDNorm := mailmessage.NormalizeMessageID(draft.InternetMessageID)
 	if messageIDNorm == "" {
@@ -1228,14 +1264,9 @@ func (db *DB) SaveDraftMessage(ctx context.Context, draft DraftMessageInput) (in
 		}
 	}
 
-	if err := tx.Commit(); err != nil {
+	if err := db.reindexMessagesSearchTx(ctx, tx, []int64{msgID}); err != nil {
 		return 0, err
 	}
-	if err := db.ReindexMessageSearch(ctx, msgID); err != nil {
-		return 0, err
-	}
-	db.UpsertObservedContactsForMessage(ctx, draft.AccountID, draft.FromName, draft.FromEmail, draft.ToRecipients, draft.CCRecipients, draft.BCCRecipients, draft.Date)
-	db.refreshFolderForMessages(ctx, draft.FolderID, []int64{msgID})
 	return msgID, nil
 }
 
@@ -1394,10 +1425,10 @@ func (db *DB) DeleteDraftMessage(ctx context.Context, accountID, internetMessage
 	if _, err := tx.ExecContext(ctx, `DELETE FROM messages WHERE id = ?`, msgID); err != nil {
 		return "", err
 	}
-	if err := tx.Commit(); err != nil {
+	if err := db.reindexMessagesSearchTx(ctx, tx, []int64{msgID}); err != nil {
 		return "", err
 	}
-	if err := db.deleteMessageSearch(ctx, msgID); err != nil {
+	if err := tx.Commit(); err != nil {
 		return "", err
 	}
 	_, _ = db.UpdateFolderUnreadCount(ctx, folderID)
@@ -1586,16 +1617,14 @@ func (db *DB) UpsertSyncMessages(ctx context.Context, msgs []SyncMessage) error 
 		msgIDs = append(msgIDs, msgID)
 	}
 
+	if err := db.reindexMessagesSearchTx(ctx, tx, msgIDs); err != nil {
+		return err
+	}
 	if err := tx.Commit(); err != nil {
 		return err
 	}
 	for _, m := range msgs {
 		db.UpsertObservedContactsForMessage(ctx, m.AccountID, m.FromName, m.FromEmail, m.ToRecipients, m.CCRecipients, nil, m.DateSent)
-	}
-	for _, msgID := range msgIDs {
-		if err := db.ReindexMessageSearch(ctx, msgID); err != nil {
-			return err
-		}
 	}
 	return nil
 }
@@ -1723,6 +1752,15 @@ func (db *DB) UpsertProviderSyncMessages(ctx context.Context, msgs []ProviderSyn
 		}
 		if m.InternetMessageID == "" {
 			m.InternetMessageID = syntheticProviderMessageID(m.ProviderMessageID)
+		}
+		if m.IsDraft {
+			protected, _, err := db.protectUserProviderDraftTx(ctx, tx, m.AccountID, m.InternetMessageID)
+			if err != nil {
+				return nil, err
+			}
+			if protected {
+				continue
+			}
 		}
 		messageIDNorm := mailmessage.NormalizeMessageID(m.InternetMessageID)
 		if messageIDNorm == "" {
@@ -1907,6 +1945,9 @@ func (db *DB) UpsertProviderSyncMessages(ctx context.Context, msgs []ProviderSyn
 		}
 	}
 
+	if err := db.reindexMessagesSearchTx(ctx, tx, msgIDs); err != nil {
+		return nil, err
+	}
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
@@ -1960,9 +2001,6 @@ func (db *DB) UpsertProviderSyncMessages(ctx context.Context, msgs []ProviderSyn
 		for _, contact := range contacts {
 			_ = db.upsertObservedContact(ctx, userID, contact.name, contact.email, contact.seenAt, contact.count, settings)
 		}
-	}
-	if err := db.ReindexMessagesSearch(ctx, msgIDs); err != nil {
-		return nil, err
 	}
 	for folderID, affectedMessageIDs := range affectedFolderMessages {
 		if err := db.RefreshFolderThreadsForMessages(ctx, folderID, affectedMessageIDs); err != nil {
@@ -2144,7 +2182,7 @@ func (db *DB) ReconcileProviderFolderSeen(ctx context.Context, accountID, folder
 		        SELECT 1 FROM message_mutations mm
 		        WHERE mm.message_id = m.id AND mm.kind = 'move' AND mm.destination_folder_id = ?
 		      )
-		  )`, time.Now().UTC(), folderID, accountID, folderID)
+		  `+db.userProviderDraftProtectionSQL("m")+`)`, time.Now().UTC(), folderID, accountID, folderID)
 	if err != nil {
 		return fmt.Errorf("mark unseen provider folder messages deleted: %w", err)
 	}
@@ -2485,11 +2523,13 @@ func (db *DB) resolveProviderLabelAliasTx(ctx context.Context, tx *sql.Tx, label
 
 	originalName := label.Name
 	var displayName, color string
+	var providerID string
 	err := tx.QueryRowContext(ctx, `
-		SELECT display_name, color
+		SELECT provider_id, display_name, color
 		FROM label_aliases
-		WHERE account_id = ? AND provider_type = ? AND provider_id = ?
-		LIMIT 1`, label.AccountID, label.ProviderType, label.ProviderID).Scan(&displayName, &color)
+		WHERE account_id = ? AND provider_type = ? AND provider_id = ? COLLATE NOCASE
+		ORDER BY CASE source WHEN 'user' THEN 0 WHEN 'default' THEN 1 ELSE 2 END,provider_id
+		LIMIT 1`, label.AccountID, label.ProviderType, label.ProviderID).Scan(&providerID, &displayName, &color)
 	if err == sql.ErrNoRows {
 		displayName = firstNonEmpty(label.Name, label.ProviderID)
 		color = label.Color
@@ -2505,6 +2545,10 @@ func (db *DB) resolveProviderLabelAliasTx(ctx context.Context, tx *sql.Tx, label
 		}
 	} else if err != nil {
 		return label, err
+	} else {
+		// IMAP keywords are case-insensitive; use the selected alias's identity
+		// so server casing cannot create a second label or lose its display name.
+		label.ProviderID = providerID
 	}
 
 	if strings.TrimSpace(displayName) != "" {
@@ -2743,7 +2787,16 @@ func (db *DB) replaceMessageLabelsForProviderTx(ctx context.Context, tx *sql.Tx,
 			labels[i].ProviderType = providerType
 		}
 	}
-	return db.addMessageLabelsTx(ctx, tx, messageID, accountID, labels)
+	if err := db.addMessageLabelsTx(ctx, tx, messageID, accountID, labels); err != nil {
+		return err
+	}
+	// Routed removals remain optimistic during retries. Receiving older metadata
+	// must not resurrect a label while its removal is still durable in the queue.
+	_, err := tx.ExecContext(ctx, `DELETE FROM message_labels WHERE message_id=? AND label_id IN (
+		SELECT l.id FROM labels l JOIN label_mutation_queue q ON q.account_id=l.account_id AND q.provider_type=l.provider_type
+		WHERE q.message_id=? AND l.account_id=? AND l.provider_type=? AND q.operation='remove' AND lower(q.label_name)=lower(l.name))
+		AND EXISTS(SELECT 1 FROM sqlite_schema WHERE name='gofer_user_store')`, messageID, messageID, accountID, providerType)
+	return err
 }
 
 func (db *DB) ReplaceMessageLabelsForProvider(ctx context.Context, messageID int64, accountID, providerType string, labels []LabelInput) error {
@@ -3155,6 +3208,14 @@ func (db *DB) GetGmailPollState(ctx context.Context, accountID string) (GmailPol
 }
 
 func (db *DB) MarkGmailPollCheck(ctx context.Context, state GmailPollState, changed bool, pollErr error) error {
+	return markGmailPollCheck(ctx, db.Write(), state, changed, pollErr)
+}
+
+type gmailPollWriter interface {
+	ExecContext(context.Context, string, ...any) (sql.Result, error)
+}
+
+func markGmailPollCheck(ctx context.Context, writer gmailPollWriter, state GmailPollState, changed bool, pollErr error) error {
 	state.AccountID = strings.TrimSpace(state.AccountID)
 	state.ProfileHistoryID = strings.TrimSpace(state.ProfileHistoryID)
 	if state.AccountID == "" {
@@ -3182,7 +3243,7 @@ func (db *DB) MarkGmailPollCheck(ctx context.Context, state GmailPollState, chan
 			changedAt = formatDBTime(checkedAt)
 		}
 	}
-	_, err := db.Write().ExecContext(ctx, `
+	_, err := writer.ExecContext(ctx, `
 		INSERT INTO gmail_poll_state (
 			account_id, profile_history_id, last_checked_at, last_changed_at, last_error, consecutive_errors, updated_at
 		) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
@@ -3835,9 +3896,9 @@ func (db *DB) MarkProviderMessageRemovedFromFolder(ctx context.Context, accountI
 		SET is_deleted = 1, synced_at = CURRENT_TIMESTAMP
 		WHERE folder_id = ?
 		  AND message_id = (
-			SELECT id FROM messages
-			WHERE account_id = ? AND remote_message_id = ?
-			LIMIT 1
+			SELECT m.id FROM messages m
+			WHERE m.account_id = ? AND m.remote_message_id = ?
+			`+db.userProviderDraftProtectionSQL("m")+`LIMIT 1
 		  )
 		  AND NOT EXISTS (
 			SELECT 1 FROM message_mutations mm
@@ -3906,7 +3967,7 @@ func (db *DB) MarkProviderMessagesMissingFromFolder(ctx context.Context, account
 				SELECT 1 FROM message_mutations mm
 				WHERE mm.message_id = m.id AND mm.kind = 'move' AND mm.destination_folder_id = ?
 			  )
-		  )`, folderID, accountID, folderID)
+		  `+db.userProviderDraftProtectionSQL("m")+`)`, folderID, accountID, folderID)
 	if err != nil {
 		return 0, fmt.Errorf("mark missing provider messages: %w", err)
 	}
@@ -5562,7 +5623,7 @@ func (db *DB) getThreadMessages(ctx context.Context, accountID, threadID, userID
 		if err := rows.Scan(&item.ID, &item.AccountID, &item.AccountColor, &item.Subject, &fromName, &fromEmail, &item.Preview,
 			&dateReceived, &hasAttach, &isRead, &isStarred, &item.FolderName, &item.FolderID, &item.FolderRole,
 			&internetMsgID, &refs, &bodyTextPath); err != nil {
-			continue
+			return nil, err
 		}
 		item.Preview = mailmessage.PreviewFromText(item.Preview)
 		item.From = contactFromSender(fromName, fromEmail)
@@ -5589,6 +5650,15 @@ func (db *DB) getThreadMessages(ctx context.Context, accountID, threadID, userID
 			item.DateFull = formatFullDateTime(dateReceived.Time, loc)
 		}
 		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	for i := range items {
+		db.hydrateContactAvatar(ctx, &items[i].From)
 	}
 	if len(items) > 0 {
 		froms := make([]models.Contact, len(items))
@@ -6283,6 +6353,13 @@ func (db *DB) scanEmailRows(ctx context.Context, rows *sql.Rows) ([]models.Email
 		items = append(items, r)
 	}
 
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	// Release the result cursor before avatar lookups acquire another reader.
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
 	db.persistPreviews(ctx, computed)
 	if len(items) > 0 {
 		// One avatar query for the page instead of one (blob-selecting) query per row.
@@ -6425,8 +6502,16 @@ func (db *DB) getRecipients(ctx context.Context, messageID int64, kind string) (
 		}
 		c.Initials = initials(c.Name)
 		c.AvatarHash = avatarresolver.GravatarHash(c.Email)
-		db.hydrateContactAvatar(ctx, &c)
 		contacts = append(contacts, c)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	for i := range contacts {
+		db.hydrateContactAvatar(ctx, &contacts[i])
 	}
 	return contacts, nil
 }
@@ -6488,6 +6573,10 @@ func (db *DB) batchGetRecipients(ctx context.Context, msgIDs []int64, kind strin
 		contacts = append(contacts, c)
 	}
 	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	// Release the result cursor before the avatar query acquires another reader.
+	if err := rows.Close(); err != nil {
 		return nil, err
 	}
 	db.hydrateContactAvatars(ctx, contacts)
@@ -6597,6 +6686,13 @@ func (db *DB) SearchMessages(ctx context.Context, userID string, query string, l
 		items = append(items, r)
 	}
 
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	// Release the result cursor before avatar lookups acquire another reader.
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
 	db.persistPreviews(ctx, computed)
 	if len(items) > 0 {
 		froms := make([]models.Contact, len(items))
@@ -6825,13 +6921,22 @@ func (db *DB) getEmailOriginalHTMLBody(ctx context.Context, id, userID string) (
 }
 
 func (db *DB) UpdateMessageBodyInternal(ctx context.Context, messageID int64, textPath, htmlPath, rawPath string, snippet string) error {
-	_, err := db.Write().ExecContext(ctx,
+	tx, err := db.Write().BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	_, err = tx.ExecContext(ctx,
 		`UPDATE messages SET body_text_path = ?, body_html_path = ?, raw_path = ?, snippet = ?, preview_text = ?, updated_at = CURRENT_TIMESTAMP
 		 WHERE id = ?`, textPath, htmlPath, rawPath, snippet, snippet, messageID)
 	if err != nil {
 		return err
 	}
-	return db.ReindexMessageSearch(ctx, messageID)
+	if err := db.reindexMessagesSearchTx(ctx, tx, []int64{messageID}); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func (db *DB) UpdateMessageOriginalHTMLPathInternal(ctx context.Context, messageID int64, htmlPath string) error {
@@ -6841,12 +6946,21 @@ func (db *DB) UpdateMessageOriginalHTMLPathInternal(ctx context.Context, message
 }
 
 func (db *DB) ClearEmailBody(ctx context.Context, messageID int64) error {
-	_, err := db.Write().ExecContext(ctx,
+	tx, err := db.Write().BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	_, err = tx.ExecContext(ctx,
 		`UPDATE messages SET body_text_path = NULL, body_html_path = NULL, body_html_original_path = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, messageID)
 	if err != nil {
 		return err
 	}
-	return db.ReindexMessageSearch(ctx, messageID)
+	if err := db.reindexMessagesSearchTx(ctx, tx, []int64{messageID}); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func (db *DB) ClearEmailData(ctx context.Context, messageID int64) error {
@@ -6895,20 +7009,29 @@ func (db *DB) clearEmailData(ctx context.Context, messageID int64, userID string
 		return fmt.Errorf("clear body: %w", err)
 	}
 
-	if err := tx.Commit(); err != nil {
+	if err := db.reindexMessagesSearchTx(ctx, tx, []int64{messageID}); err != nil {
 		return err
 	}
-	return db.ReindexMessageSearch(ctx, messageID)
+	return tx.Commit()
 }
 
 func (db *DB) UpdateMessageHeaders(ctx context.Context, messageID int64, subject, fromName, fromEmail, snippet string) error {
-	_, err := db.Write().ExecContext(ctx,
+	tx, err := db.Write().BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	_, err = tx.ExecContext(ctx,
 		`UPDATE messages SET subject = ?, from_name = ?, from_email = ?, snippet = ?, preview_text = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
 		subject, fromName, fromEmail, snippet, snippet, messageID)
 	if err != nil {
 		return err
 	}
-	return db.ReindexMessageSearch(ctx, messageID)
+	if err := db.reindexMessagesSearchTx(ctx, tx, []int64{messageID}); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 // UpdateMessageListUnsubscribeInternal stores the raw List-Unsubscribe headers captured
@@ -6955,14 +7078,20 @@ func (db *DB) UpdateMessageThreadHeadersInternal(ctx context.Context, messageID 
 	if err := db.reconcileMessageThreadTx(ctx, tx, messageID, accountID, messageIDNorm, inReplyTo, refs, subject, date); err != nil {
 		return err
 	}
-	if err := tx.Commit(); err != nil {
+	if err := db.reindexMessagesSearchTx(ctx, tx, []int64{messageID}); err != nil {
 		return err
 	}
-	return db.ReindexMessageSearch(ctx, messageID)
+	return tx.Commit()
 }
 
 func (db *DB) UpsertRecipientsInternal(ctx context.Context, messageID int64, to, cc []Recipient) error {
-	stmt, err := db.Write().PrepareContext(ctx,
+	tx, err := db.Write().BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.PrepareContext(ctx,
 		`INSERT INTO message_recipients (message_id, kind, name, email) VALUES (?, ?, ?, ?)`)
 	if err != nil {
 		return fmt.Errorf("prepare recip: %w", err)
@@ -6979,7 +7108,10 @@ func (db *DB) UpsertRecipientsInternal(ctx context.Context, messageID int64, to,
 			return err
 		}
 	}
-	return db.ReindexMessageSearch(ctx, messageID)
+	if err := db.reindexMessagesSearchTx(ctx, tx, []int64{messageID}); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func (db *DB) InsertAttachmentsInternal(ctx context.Context, messageID int64, atts []AttachmentRow) error {
@@ -7019,10 +7151,10 @@ func (db *DB) InsertAttachmentsInternal(ctx context.Context, messageID int64, at
 		return fmt.Errorf("update has_attachments: %w", err)
 	}
 
-	if err := tx.Commit(); err != nil {
+	if err := db.reindexMessagesSearchTx(ctx, tx, []int64{messageID}); err != nil {
 		return err
 	}
-	return db.ReindexMessageSearch(ctx, messageID)
+	return tx.Commit()
 }
 
 func (db *DB) ReplaceAttachmentsInternal(ctx context.Context, messageID int64, atts []AttachmentRow) error {
@@ -7088,10 +7220,10 @@ func (db *DB) ReplaceAttachmentsInternal(ctx context.Context, messageID int64, a
 	if _, err := tx.ExecContext(ctx, `UPDATE messages SET has_attachments = ? WHERE id = ?`, hasAttach, messageID); err != nil {
 		return fmt.Errorf("update has_attachments: %w", err)
 	}
-	if err := tx.Commit(); err != nil {
+	if err := db.reindexMessagesSearchTx(ctx, tx, []int64{messageID}); err != nil {
 		return err
 	}
-	return db.ReindexMessageSearch(ctx, messageID)
+	return tx.Commit()
 }
 
 type AttachmentRow struct {
@@ -7983,6 +8115,54 @@ func (db *DB) SetUISettings(ctx context.Context, userID string, settings map[str
 	return db.SetSetting(ctx, userID, "ui_settings", string(val))
 }
 
+// MergeUISettings serializes partial updates in the writer transaction so
+// simultaneous requests cannot overwrite each other's unrelated preferences.
+func (db *DB) MergeUISettings(ctx context.Context, userID string, updates map[string]string) error {
+	tx, err := db.Write().BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	var value string
+	err = tx.QueryRowContext(ctx, `SELECT value FROM app_settings WHERE user_id = ? AND key = 'ui_settings'`, userID).Scan(&value)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+	current := defaultUISettings()
+	var stored map[string]string
+	if value != "" && json.Unmarshal([]byte(value), &stored) == nil {
+		for key, value := range stored {
+			current[key] = value
+		}
+	}
+	if legacy := current["default_compose_view"]; legacy != "" {
+		if stored["default_new_compose_view"] == "" {
+			current["default_new_compose_view"] = legacy
+		}
+		if stored["default_reply_compose_view"] == "" {
+			current["default_reply_compose_view"] = legacy
+		}
+	}
+	// Match GetUISettings: an empty stored preference resolves to its default
+	// before applying this request's explicit updates.
+	for key, value := range defaultUISettings() {
+		if current[key] == "" {
+			current[key] = value
+		}
+	}
+	for key, value := range updates {
+		current[key] = value
+	}
+	payload, err := json.Marshal(current)
+	if err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `INSERT OR REPLACE INTO app_settings (key, user_id, value, updated_at) VALUES ('ui_settings', ?, ?, CURRENT_TIMESTAMP)`, userID, string(payload)); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
 func (db *DB) ListSignatures(ctx context.Context, userID string) ([]models.Signature, error) {
 	rows, err := db.Read().QueryContext(ctx,
 		`SELECT id, name, html_body, text_body, created_at, updated_at
@@ -8004,6 +8184,12 @@ func (db *DB) ListSignatures(ctx context.Context, userID string) ([]models.Signa
 }
 
 func (db *DB) SaveSignature(ctx context.Context, userID string, sig models.Signature) (models.Signature, error) {
+	return db.SaveSignatureGuarded(ctx, userID, sig, nil)
+}
+
+// SaveSignatureGuarded rechecks routed ownership after acquiring the writer
+// and before commit. The shared repository uses the same operation without a guard.
+func (db *DB) SaveSignatureGuarded(ctx context.Context, userID string, sig models.Signature, guard func(*sql.Tx) error) (models.Signature, error) {
 	sig.Name = strings.TrimSpace(sig.Name)
 	if sig.Name == "" {
 		return models.Signature{}, fmt.Errorf("signature name is required")
@@ -8015,7 +8201,17 @@ func (db *DB) SaveSignature(ctx context.Context, userID string, sig models.Signa
 		sig.ID = "sig_" + strings.ReplaceAll(uuid.NewString(), "-", "")
 	}
 
-	res, err := db.Write().ExecContext(ctx,
+	tx, err := db.Write().BeginTx(ctx, nil)
+	if err != nil {
+		return models.Signature{}, err
+	}
+	defer tx.Rollback()
+	if guard != nil {
+		if err := guard(tx); err != nil {
+			return models.Signature{}, err
+		}
+	}
+	res, err := tx.ExecContext(ctx,
 		`INSERT INTO signatures (id, user_id, name, html_body, text_body)
 		 VALUES (?, ?, ?, ?, ?)
 		 ON CONFLICT(id) DO UPDATE SET
@@ -8027,24 +8223,58 @@ func (db *DB) SaveSignature(ctx context.Context, userID string, sig models.Signa
 	if err != nil {
 		return models.Signature{}, fmt.Errorf("save signature: %w", err)
 	}
-	if rows, err := res.RowsAffected(); err == nil && rows == 0 {
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return models.Signature{}, err
+	}
+	if rows == 0 {
 		return models.Signature{}, sql.ErrNoRows
 	}
 
-	return db.GetSignature(ctx, userID, sig.ID)
+	sig, err = signatureFromRow(tx.QueryRowContext(ctx, `SELECT id, name, html_body, text_body, created_at, updated_at
+ FROM signatures WHERE user_id = ? AND id = ?`, userID, sig.ID))
+	if err != nil {
+		return models.Signature{}, err
+	}
+	if guard != nil {
+		if err := guard(tx); err != nil {
+			return models.Signature{}, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return models.Signature{}, err
+	}
+	return sig, nil
 }
 
 func (db *DB) GetSignature(ctx context.Context, userID, signatureID string) (models.Signature, error) {
-	var sig models.Signature
-	err := db.Read().QueryRowContext(ctx,
+	return signatureFromRow(db.Read().QueryRowContext(ctx,
 		`SELECT id, name, html_body, text_body, created_at, updated_at
-		 FROM signatures WHERE user_id = ? AND id = ?`, userID, signatureID).
-		Scan(&sig.ID, &sig.Name, &sig.HTMLBody, &sig.TextBody, &sig.CreatedAt, &sig.UpdatedAt)
+		 FROM signatures WHERE user_id = ? AND id = ?`, userID, signatureID))
+}
+
+func signatureFromRow(row *sql.Row) (models.Signature, error) {
+	var sig models.Signature
+	err := row.Scan(&sig.ID, &sig.Name, &sig.HTMLBody, &sig.TextBody, &sig.CreatedAt, &sig.UpdatedAt)
 	return sig, err
 }
 
 func (db *DB) DeleteSignature(ctx context.Context, userID, signatureID string) error {
-	result, err := db.Write().ExecContext(ctx, `DELETE FROM signatures WHERE user_id = ? AND id = ?`, userID, signatureID)
+	return db.DeleteSignatureGuarded(ctx, userID, signatureID, nil)
+}
+
+func (db *DB) DeleteSignatureGuarded(ctx context.Context, userID, signatureID string, guard func(*sql.Tx) error) error {
+	tx, err := db.Write().BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if guard != nil {
+		if err := guard(tx); err != nil {
+			return err
+		}
+	}
+	result, err := tx.ExecContext(ctx, `DELETE FROM signatures WHERE user_id = ? AND id = ?`, userID, signatureID)
 	if err != nil {
 		return err
 	}
@@ -8053,7 +8283,12 @@ func (db *DB) DeleteSignature(ctx context.Context, userID, signatureID string) e
 	} else if affected != 1 {
 		return sql.ErrNoRows
 	}
-	return nil
+	if guard != nil {
+		if err := guard(tx); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 func (db *DB) GetAccountSignatureSettings(ctx context.Context, userID, accountID string) (models.AccountSignatureSettings, error) {
@@ -8085,6 +8320,10 @@ func (db *DB) GetAccountSignatureSettings(ctx context.Context, userID, accountID
 }
 
 func (db *DB) SaveAccountSignatureSettings(ctx context.Context, userID string, settings models.AccountSignatureSettings) error {
+	return db.SaveAccountSignatureSettingsGuarded(ctx, userID, settings, nil)
+}
+
+func (db *DB) SaveAccountSignatureSettingsGuarded(ctx context.Context, userID string, settings models.AccountSignatureSettings, guard func(*sql.Tx) error) error {
 	if settings.AccountID == "" {
 		return fmt.Errorf("account id is required")
 	}
@@ -8096,8 +8335,18 @@ func (db *DB) SaveAccountSignatureSettings(ctx context.Context, userID string, s
 	settings.NewEnabled = settings.NewEnabled && settings.NewSignatureID != ""
 	settings.ReplyEnabled = settings.ReplyEnabled && settings.ReplySignatureID != ""
 	settings.ForwardEnabled = settings.ForwardEnabled && settings.ForwardSignatureID != ""
+	tx, err := db.Write().BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if guard != nil {
+		if err := guard(tx); err != nil {
+			return err
+		}
+	}
 	var exists int
-	if err := db.Read().QueryRowContext(ctx, `SELECT COUNT(*) FROM accounts WHERE user_id = ? AND id = ?`, userID, settings.AccountID).Scan(&exists); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM accounts WHERE user_id = ? AND id = ?`, userID, settings.AccountID).Scan(&exists); err != nil {
 		return err
 	}
 	if exists == 0 {
@@ -8109,7 +8358,7 @@ func (db *DB) SaveAccountSignatureSettings(ctx context.Context, userID string, s
 			continue
 		}
 		var owned int
-		if err := db.Read().QueryRowContext(ctx, `SELECT COUNT(*) FROM signatures WHERE user_id = ? AND id = ?`, userID, signatureID).Scan(&owned); err != nil {
+		if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM signatures WHERE user_id = ? AND id = ?`, userID, signatureID).Scan(&owned); err != nil {
 			return err
 		}
 		if owned == 0 {
@@ -8124,7 +8373,7 @@ func (db *DB) SaveAccountSignatureSettings(ctx context.Context, userID string, s
 		}
 		return id
 	}
-	_, err := db.Write().ExecContext(ctx, `
+	result, err := tx.ExecContext(ctx, `
 		INSERT INTO account_signature_settings (
 			account_id, new_signature_id, reply_signature_id, forward_signature_id,
 			new_enabled, reply_enabled, forward_enabled, reply_placement, forward_placement, updated_at
@@ -8145,7 +8394,20 @@ func (db *DB) SaveAccountSignatureSettings(ctx context.Context, userID string, s
 		normalizeSignatureID(settings.ForwardSignatureID, settings.ForwardEnabled),
 		boolInt(settings.NewEnabled), boolInt(settings.ReplyEnabled), boolInt(settings.ForwardEnabled),
 		settings.ReplyPlacement, settings.ForwardPlacement)
-	return err
+	if err != nil {
+		return err
+	}
+	if count, err := result.RowsAffected(); err != nil {
+		return err
+	} else if count != 1 {
+		return sql.ErrNoRows
+	}
+	if guard != nil {
+		if err := guard(tx); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 func normalizeSignaturePlacement(v string) string {
@@ -8838,13 +9100,22 @@ func (db *DB) GetMessageSenderEmailForUser(ctx context.Context, messageID int64,
 }
 
 func (db *DB) UpdateMessageBodyHTMLPath(ctx context.Context, messageID int64, htmlPath string) error {
-	_, err := db.Write().ExecContext(ctx,
+	tx, err := db.Write().BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	_, err = tx.ExecContext(ctx,
 		`UPDATE messages SET body_html_path = ? WHERE id = ?`, htmlPath, messageID,
 	)
 	if err != nil {
 		return err
 	}
-	return db.ReindexMessageSearch(ctx, messageID)
+	if err := db.reindexMessagesSearchTx(ctx, tx, []int64{messageID}); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func (db *DB) UpdateMessageBodyHTMLPathForUser(ctx context.Context, messageID int64, htmlPath, userID string) error {
@@ -8852,7 +9123,13 @@ func (db *DB) UpdateMessageBodyHTMLPathForUser(ctx context.Context, messageID in
 	if messageID <= 0 || userID == "" {
 		return sql.ErrNoRows
 	}
-	result, err := db.Write().ExecContext(ctx, `
+	tx, err := db.Write().BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	result, err := tx.ExecContext(ctx, `
 		UPDATE messages
 		SET body_html_path = ?
 		WHERE id = ?
@@ -8875,5 +9152,8 @@ func (db *DB) UpdateMessageBodyHTMLPathForUser(ctx context.Context, messageID in
 	if affected != 1 {
 		return sql.ErrNoRows
 	}
-	return db.ReindexMessageSearch(ctx, messageID)
+	if err := db.reindexMessagesSearchTx(ctx, tx, []int64{messageID}); err != nil {
+		return err
+	}
+	return tx.Commit()
 }

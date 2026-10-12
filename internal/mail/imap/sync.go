@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"slices"
 	"strings"
 	"time"
 
@@ -79,7 +80,7 @@ func (c *Client) SyncFolder(ctx context.Context, folderID, remoteName string, op
 	if err != nil {
 		return nil, fmt.Errorf("select %s: %w", remoteName, err)
 	}
-	defer c.client.Unselect()
+	defer c.unselect()
 
 	if selectData.NumMessages == 0 {
 		if options.OnTotal != nil {
@@ -94,11 +95,10 @@ func (c *Client) SyncFolder(ctx context.Context, folderID, remoteName string, op
 	result := &SyncResult{
 		UIDValidity: uint32(selectData.UIDValidity),
 	}
-	searchData, err := c.client.UIDSearch(&imap.SearchCriteria{}, nil).Wait()
+	uids, err := c.listAllUIDs(remoteName)
 	if err != nil {
-		return result, fmt.Errorf("uid search %s: %w", remoteName, err)
+		return result, err
 	}
-	uids := searchData.AllUIDs()
 	result.NumMessages = uint32(len(uids))
 	if options.OnTotal != nil {
 		options.OnTotal(len(uids))
@@ -253,7 +253,7 @@ func (c *Client) SyncFolderIncremental(ctx context.Context, folderID, remoteName
 	if err != nil {
 		return nil, fmt.Errorf("select %s: %w", remoteName, err)
 	}
-	defer c.client.Unselect()
+	defer c.unselect()
 
 	result := &SyncResult{
 		UIDValidity: uint32(selectData.UIDValidity),
@@ -415,24 +415,59 @@ func (c *Client) FetchAllUIDs(ctx context.Context, remoteName string, expectedUI
 	if err != nil {
 		return nil, 0, false, fmt.Errorf("select %s: %w", remoteName, err)
 	}
-	defer c.client.Unselect()
+	defer c.unselect()
 	currentUIDValidity := uint32(selectData.UIDValidity)
 	if uidValidityChanged(expectedUIDValidity, currentUIDValidity) {
 		return nil, currentUIDValidity, true, nil
 	}
 
-	searchCmd := c.client.UIDSearch(&imap.SearchCriteria{}, nil)
-	searchData, err := searchCmd.Wait()
+	imapUIDs, err := c.listAllUIDs(remoteName)
 	if err != nil {
-		return nil, currentUIDValidity, false, fmt.Errorf("uid search %s: %w", remoteName, err)
+		return nil, currentUIDValidity, false, err
 	}
-
-	imapUIDs := searchData.AllUIDs()
 	uids := make([]uint32, len(imapUIDs))
 	for i, uid := range imapUIDs {
 		uids[i] = uint32(uid)
 	}
 	return uids, currentUIDValidity, false, nil
+}
+
+// listAllUIDs returns every UID in the selected mailbox. Some servers answer
+// UID SEARCH ALL with an empty or partial result while the mailbox holds
+// messages, so a result that disagrees with the latest EXISTS count falls back
+// to fetching every UID.
+func (c *Client) listAllUIDs(remoteName string) ([]imap.UID, error) {
+	searchData, err := c.client.UIDSearch(&imap.SearchCriteria{}, nil).Wait()
+	if err != nil {
+		return nil, fmt.Errorf("uid search %s: %w", remoteName, err)
+	}
+	uids := searchData.AllUIDs()
+	if mailbox := c.client.Mailbox(); mailbox == nil || uint32(len(uids)) == mailbox.NumMessages {
+		return uids, nil
+	}
+
+	cmd := c.client.Fetch(imap.UIDSet{{Start: 1, Stop: 0}}, &imap.FetchOptions{UID: true})
+	uids = uids[:0]
+	for {
+		msg := cmd.Next()
+		if msg == nil {
+			break
+		}
+		for {
+			item := msg.Next()
+			if item == nil {
+				break
+			}
+			if data, ok := item.(imapclient.FetchItemDataUID); ok {
+				uids = append(uids, data.UID)
+			}
+		}
+	}
+	if err := cmd.Close(); err != nil {
+		return nil, fmt.Errorf("uid fetch %s: %w", remoteName, err)
+	}
+	slices.Sort(uids)
+	return uids, nil
 }
 
 func (c *Client) FindUIDByMessageID(ctx context.Context, remoteName, messageID string) (uint32, error) {
@@ -444,7 +479,17 @@ func (c *Client) FindUIDByMessageIDWithValidity(ctx context.Context, remoteName,
 	return c.FindUIDByHeaderWithValidity(ctx, remoteName, "Message-ID", messageID)
 }
 
+// FindUniqueUIDByMessageIDWithValidity refuses an ambiguous header match before
+// a caller mutates mail whose cached UID/epoch is unavailable.
+func (c *Client) FindUniqueUIDByMessageIDWithValidity(ctx context.Context, remoteName, messageID string) (uint32, uint32, error) {
+	return c.findUIDByHeaderWithValidity(ctx, remoteName, "Message-ID", messageID, true)
+}
+
 func (c *Client) FindUIDByHeaderWithValidity(ctx context.Context, remoteName, headerName, headerValue string) (uint32, uint32, error) {
+	return c.findUIDByHeaderWithValidity(ctx, remoteName, headerName, headerValue, false)
+}
+
+func (c *Client) findUIDByHeaderWithValidity(ctx context.Context, remoteName, headerName, headerValue string, unique bool) (uint32, uint32, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -461,7 +506,7 @@ func (c *Client) FindUIDByHeaderWithValidity(ctx context.Context, remoteName, he
 	if err != nil {
 		return 0, 0, fmt.Errorf("select %s: %w", remoteName, err)
 	}
-	defer c.client.Unselect()
+	defer c.unselect()
 	uidValidity := uint32(selectData.UIDValidity)
 
 	searchCmd := c.client.UIDSearch(&imap.SearchCriteria{
@@ -476,6 +521,9 @@ func (c *Client) FindUIDByHeaderWithValidity(ctx context.Context, remoteName, he
 	}
 
 	uids := searchData.AllUIDs()
+	if unique && len(uids) > 1 {
+		return 0, uidValidity, fmt.Errorf("ambiguous IMAP %s match in %s", headerName, remoteName)
+	}
 	if len(uids) == 0 {
 		return 0, uidValidity, nil
 	}
@@ -534,7 +582,7 @@ func (c *Client) FetchFlagChanges(ctx context.Context, remoteName string, uids [
 	if err != nil {
 		return FlagSyncResult{}, fmt.Errorf("select %s: %w", remoteName, err)
 	}
-	defer c.client.Unselect()
+	defer c.unselect()
 	currentUIDValidity := uint32(selectData.UIDValidity)
 	if uidValidityChanged(expectedUIDValidity, currentUIDValidity) {
 		return FlagSyncResult{UIDValidity: currentUIDValidity, UIDValidityChanged: true}, nil

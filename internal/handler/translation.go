@@ -88,7 +88,10 @@ func (h *Handler) handleTranslateMessage(w http.ResponseWriter, r *http.Request)
 	if translatedHTML != "" {
 		translatedText = plainTextFromHTML(translatedHTML)
 	}
+	h.writeTranslationResult(w, result, text, translatedText, translatedHTML)
+}
 
+func (h *Handler) writeTranslationResult(w http.ResponseWriter, result translation.Result, text, translatedText, translatedHTML string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	_ = json.NewEncoder(w).Encode(translateMessageResponse{
@@ -142,16 +145,21 @@ func (h *Handler) handleTranslatedEmailBody(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	loadRemote := r.URL.Query().Get("remote") == "true"
+	if !loadRemote {
+		loadRemote = h.remoteImagesAllowed(ctx, h.userID(ctx), msgID)
+	}
+	h.writeTranslatedBody(w, r, result, translatedHTML, loadRemote)
+}
+
+func (h *Handler) writeTranslatedBody(w http.ResponseWriter, r *http.Request, result translation.Result, translatedHTML string, loadRemote bool) {
+	emailID := r.PathValue("id")
+	msgID, _ := strconv.ParseInt(emailID, 10, 64)
 	var body []byte
 	if translatedHTML != "" {
 		body = []byte(translatedHTML)
 	} else {
 		body = []byte(`<pre style="white-space:pre-wrap;word-wrap:break-word;font-family:inherit;margin:0;padding:8px">` + stdhtml.EscapeString(result.Text) + `</pre>`)
-	}
-
-	loadRemote := r.URL.Query().Get("remote") == "true"
-	if !loadRemote {
-		loadRemote = h.remoteImagesAllowed(ctx, h.userID(ctx), msgID)
 	}
 	if loadRemote {
 		body = mailmessage.RestoreRemoteImages(body)
@@ -165,7 +173,7 @@ func (h *Handler) handleTranslatedEmailBody(w http.ResponseWriter, r *http.Reque
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
-	body = h.withImageGrants(ctx, msgID, body)
+	body = h.withImageGrants(r.Context(), msgID, body)
 	w.Write(emailBodyDocument(w, emailID, body, theme, bg, fg, link, original, loadRemote, !loadRemote))
 }
 
@@ -181,7 +189,7 @@ func (h *Handler) writeTranslatedEmailError(w http.ResponseWriter, emailID, mess
 func (h *Handler) translationProvider(providerName string) (translation.Provider, bool) {
 	switch providerName {
 	case translation.ProviderGoogleWebBasic, translation.ProviderGoogleWebLegacy, "google":
-		return h.googleTranslator, true
+		return h.googleTranslator, h.googleTranslator != nil
 	default:
 		return nil, false
 	}

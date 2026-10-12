@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 	"net/mail"
@@ -170,6 +171,19 @@ func (h *Handler) queueOutgoingMessage(ctx context.Context, accountID string, lo
 
 // queueOutgoingMessageWithID queues with a caller-chosen send id (empty = generate one).
 func (h *Handler) queueOutgoingMessageWithID(ctx context.Context, sendID, accountID string, localMessageID int64, draftID string, msg *message.OutgoingMessage, sendAfter time.Time, scheduled bool) (storage.OutgoingSend, error) {
+	if h.userMutationState != nil && localMessageID > 0 {
+		draft, err := h.db.GetEmailByIDForUser(ctx, fmt.Sprint(localMessageID), h.userMutationState.owner)
+		if err != nil || draft == nil || !draft.IsDraft || draft.AccountID != accountID {
+			return storage.OutgoingSend{}, errors.New("draft not found")
+		}
+		existing, err := h.db.OutgoingSendForMessageInternal(ctx, localMessageID)
+		if err != nil {
+			return storage.OutgoingSend{}, err
+		}
+		if existing != nil && (existing.Status == storage.OutgoingSendSending || existing.Status == storage.OutgoingSendSent || existing.Status == storage.OutgoingSendAmbiguous) {
+			return storage.OutgoingSend{}, errors.New("use outgoing recovery controls for this message")
+		}
+	}
 	cfg, err := h.accountStore.GetConfig(ctx, accountID)
 	if err != nil {
 		return storage.OutgoingSend{}, fmt.Errorf("account not found")
@@ -187,7 +201,7 @@ func (h *Handler) queueOutgoingMessageWithID(ctx context.Context, sendID, accoun
 	if len(recipients) == 0 {
 		return storage.OutgoingSend{}, fmt.Errorf("no recipients")
 	}
-	return h.db.QueueOutgoingSend(ctx, storage.QueueOutgoingSendInput{
+	queued, err := h.db.QueueOutgoingSend(ctx, storage.QueueOutgoingSendInput{
 		ID:                 sendID,
 		AccountID:          accountID,
 		MessageID:          localMessageID,
@@ -200,6 +214,10 @@ func (h *Handler) queueOutgoingMessageWithID(ctx context.Context, sendID, accoun
 		SendAfter:          sendAfter,
 		IsScheduled:        scheduled,
 	})
+	if err == nil && h.userMutationState != nil {
+		h.userMutationState.wake[accountID] = true
+	}
+	return queued, err
 }
 
 // outgoingEnvelopeFrom is the SMTP MAIL FROM: always the account's own address,
@@ -790,6 +808,14 @@ func (h *Handler) deliveredSnapshotMatchesDraft(ctx context.Context, send storag
 	}
 	current.MessageID = delivered.MessageID
 	current.Date = delivered.Date
+	// Text-only compose adds a generated HTML view at delivery. That view is
+	// equivalent to the unchanged draft's text, not a newer unsent edit.
+	if current.HTMLBody == "" && current.TextBody != "" {
+		generated := "<html><body><pre style=\"white-space:pre-wrap;font-family:sans-serif\">" + template.HTMLEscapeString(current.TextBody) + "</pre></body></html>"
+		if delivered.HTMLBody == generated {
+			current.HTMLBody = generated
+		}
+	}
 	currentJSON, err := json.Marshal(snapshotOutgoingMessage(current))
 	if err != nil {
 		return false
@@ -840,6 +866,9 @@ func (h *Handler) outgoingMessageFromDraft(ctx context.Context, localMessageID i
 }
 
 func (h *Handler) refreshPendingOutgoingSend(ctx context.Context, saved composeDraftSaveResult) error {
+	if h.userMutationState != nil {
+		return nil // The routed draft publication updates its waiting snapshot atomically.
+	}
 	existing, err := h.db.OutgoingSendForMessageInternal(ctx, saved.MessageID)
 	if err != nil || existing == nil || existing.Status != storage.OutgoingSendPending {
 		return err

@@ -23,13 +23,15 @@ import (
 var schemaFS embed.FS
 
 type DB struct {
-	write          *sql.DB
-	read           *sql.DB
-	path           string
-	threadingState ThreadingState
-	threadingMu    sync.RWMutex
-	contactHookMu  sync.RWMutex
-	contactHook    func(ContactActivityNotification)
+	write             *sql.DB
+	read              *sql.DB
+	path              string
+	threadingState    ThreadingState
+	threadingMu       sync.RWMutex
+	contactHookMu     sync.RWMutex
+	contactHook       func(ContactActivityNotification)
+	userMailDelivery  bool
+	senderAvatarCache *DB // immutable installation cache reference on owned stores
 }
 
 type ContactActivityNotification struct {
@@ -50,7 +52,7 @@ type ThreadingState struct {
 	Total      int  `json:"total"`
 }
 
-const CurrentSchemaVersion = 119
+const CurrentSchemaVersion = 121
 
 // restrictDatabaseFiles makes the database (message metadata, credential
 // ciphertext, session hashes) and its WAL/SHM readable by the owner only. SQLite
@@ -242,7 +244,7 @@ func openDB(path string) (*sql.DB, error) {
 	return db, nil
 }
 
-func openReadOnlyDB(path string) (*sql.DB, error) {
+func openReadOnlyDB(path string, pragmas ...string) (*sql.DB, error) {
 	absolutePath, err := filepath.Abs(path)
 	if err != nil {
 		return nil, fmt.Errorf("resolve database path: %w", err)
@@ -254,6 +256,9 @@ func openReadOnlyDB(path string) (*sql.DB, error) {
 	query.Add("_pragma", "busy_timeout(5000)")
 	query.Add("_pragma", "query_only(1)")
 	query.Add("_pragma", "temp_store(MEMORY)")
+	for _, pragma := range pragmas {
+		query.Add("_pragma", pragma)
+	}
 	query.Set("_texttotime", "true")
 	databaseURL.RawQuery = query.Encode()
 	db, err := sql.Open("sqlite", databaseURL.String())
@@ -1046,6 +1051,9 @@ func (db *DB) migrate() error {
 		{116, migrateV116ToV117},
 		{117, migrateV117ToV118},
 		{118, migrateV118ToV119},
+		// Upstream v105 to v107 (web push revisions, calendar response claims).
+		{119, migrateV119ToV120},
+		{120, migrateV120ToV121},
 	} {
 		if currentVersion <= step.from {
 			if err := step.migrate(db.write); err != nil {

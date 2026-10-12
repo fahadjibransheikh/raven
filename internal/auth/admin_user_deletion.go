@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/cristianadrielbraun/gofer/internal/storage"
 )
 
 var (
@@ -57,6 +59,7 @@ func (m *Manager) PrepareAdministratorUserDeletion(
 
 	now := m.clock.Now().UTC()
 	result := &PrepareAdministratorUserDeletionResult{TargetUserID: targetUserID}
+	owned := m.userStorage.Load()
 	err := m.runSecurityTransition(ctx, SecurityTransitionUserDeletion, func(tx *sql.Tx) error {
 		if err := requireActiveManagementAdministrator(ctx, tx, actorUserID); err != nil {
 			return err
@@ -135,6 +138,11 @@ func (m *Manager) PrepareAdministratorUserDeletion(
 			}
 		}
 
+		if owned != nil {
+			ids, err := owned.PreparePendingUserDeletionTx(ctx, tx, targetUserID)
+			result.AccountIDs = ids
+			return err
+		}
 		if _, err := tx.ExecContext(ctx, `
 			UPDATE accounts SET is_deleting = 1, updated_at = ? WHERE user_id = ?`, now, targetUserID,
 		); err != nil {
@@ -176,6 +184,7 @@ func (m *Manager) CompleteAdministratorUserDeletion(ctx context.Context, targetU
 
 	now := m.clock.Now().UTC()
 	deleted := false
+	owned := m.userStorage.Load()
 	err := m.runSecurityTransition(ctx, SecurityTransitionUserDeletion, func(tx *sql.Tx) error {
 		var username string
 		var status UserStatus
@@ -202,6 +211,14 @@ func (m *Manager) CompleteAdministratorUserDeletion(ctx context.Context, targetU
 		}
 		if remainingAccounts != 0 {
 			return ErrAdministratorUserDeletionIncomplete
+		}
+		if owned != nil {
+			if err := owned.ValidatePendingUserCleanupTx(ctx, tx, targetUserID); err != nil {
+				if errors.Is(err, storage.ErrUserDeletionIncomplete) {
+					return ErrAdministratorUserDeletionIncomplete
+				}
+				return err
+			}
 		}
 
 		var eventSession any
@@ -277,4 +294,26 @@ func (m *Manager) ListPendingUserDeletionIDs(ctx context.Context) ([]string, err
 		return nil, fmt.Errorf("iterate pending user deletions: %w", err)
 	}
 	return ids, nil
+}
+
+// PendingUserDeletionPage bounds startup/retry discovery by stable identity,
+// without loading registered users or opening any private databases.
+func (m *Manager) PendingUserDeletionPage(ctx context.Context, after string, limit int) ([]string, error) {
+	if limit < 1 || limit > 1000 {
+		return nil, errors.New("user deletion page size must be between 1 and 1000")
+	}
+	rows, err := m.db.Read().QueryContext(ctx, `SELECT id FROM users WHERE deletion_pending=1 AND id>? ORDER BY id LIMIT ?`, after, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
 }

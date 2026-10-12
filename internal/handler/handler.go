@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/a-h/templ"
 	"github.com/cristianadrielbraun/gofer/internal/auth"
 	avatarresolver "github.com/cristianadrielbraun/gofer/internal/avatar"
 	"github.com/cristianadrielbraun/gofer/internal/calendar"
@@ -53,6 +54,24 @@ import (
 
 type Handler struct {
 	db                         *storage.DB
+	userStorage                *storage.AccountRouting
+	ownedMailbox               *Handler
+	userIMAP                   *mail.UserIMAP
+	userCredentials            *mailauth.UserCredentials
+	userMutationState          *userMessageMutationState
+	userIdleStatuses           map[string]map[string]mail.IDLEFolderRuntimeStatus
+	userAccounts               *config.UserAccountStore
+	signatureGuard             func(*sql.Tx) error
+	userAccountHooks           UserAccountHooks
+	userStorageContext         context.Context
+	userDeletions              map[string]*userAccountDeletionJob
+	userBackfillQueue          chan userContactBackfillJob
+	userBackfills              map[string]struct{}
+	userBackfillDone           chan struct{}
+	userBackfillContext        context.Context
+	userBackfillCancel         context.CancelFunc
+	userThreadingMu            sync.Mutex
+	userThreadingWorker        *userThreadingWorker
 	accountStore               *config.AccountStore
 	syncer                     *mail.SyncOrchestrator
 	blobStore                  *store.BlobStore
@@ -65,7 +84,17 @@ type Handler struct {
 	bodyFetches                map[int64]chan struct{}
 	accountDeleteMu            sync.Mutex
 	userDeleteMu               sync.Mutex
-	avatarWarmupQueue          chan storage.SenderAvatarCandidate
+	userRemovalMu              sync.Mutex
+	userRemoval                *userRemovalWorker
+	avatarWarmupQueue          chan avatarWarmupJob
+	avatarWarmupOwner          *Handler
+	avatarRouting              *storage.AccountRouting
+	avatarWorkersOnce          sync.Once
+	avatarSchedulerOnce        sync.Once
+	avatarWorkers              sync.WaitGroup
+	avatarWorkerContext        context.Context
+	avatarWorkerCancel         context.CancelFunc
+	avatarClosed               bool
 	avatarWarmupMu             sync.Mutex
 	avatarWarmupQueued         map[string]struct{}
 	avatarWarmupForced         map[string]time.Time
@@ -78,9 +107,12 @@ type Handler struct {
 	contactSyncMu              sync.Mutex
 	contactSyncRunning         map[string]struct{}
 	contactSyncQueue           chan struct{}
+	userContactWorkers         *userContactWorkers
 	calendarWorkerOnce         sync.Once
 	calendarSyncMu             sync.Mutex
 	calendarSyncRunning        map[string]*calendarSyncRun
+	calendarUserSyncRunning    map[string]*calendarSyncRun
+	userCalendarWorkers        *userCalendarWorkers
 	calendarFetchEvents        func(context.Context, storage.CalendarSource, calendar.EventQuery) (calendar.EventPage, error)
 	calendarIncomingLookupTXT  func(context.Context, string) ([]string, error)
 	calendarCreateEvent        func(context.Context, storage.CalendarSource, calendar.EventDraft) (calendar.RemoteEvent, error)
@@ -100,12 +132,14 @@ type Handler struct {
 	messageMutationWake        chan struct{}
 	messageMutationIMAPFactory messageMutationIMAPClientFactory
 	folderReadIMAPFactory      func(context.Context, *models.AccountConfig, string) (folderReadIMAPClient, error)
-	remoteResourceDownloader   func(string) ([]byte, error)
+	remoteResourceDownloader   func(context.Context, string) ([]byte, error)
 	unsubscribeClient          *http.Client // nil = SSRF-guarded production client; tests inject
 	providerAvatarHTTPClient   *http.Client
 	retentionMu                sync.RWMutex
 	retentionState             models.MailRetentionDiagnostics
+	userRetention              *userRetentionWorker
 	authEventRetentionWake     chan struct{}
+	authEventRetentionWorkers  sync.WaitGroup
 	smtpProfileMu              sync.RWMutex
 	smtpProfile                smtpDeliveryProfileState
 }
@@ -142,7 +176,7 @@ func New(db *storage.DB, accountStore *config.AccountStore, syncer *mail.SyncOrc
 		avatar:                 avatarresolver.NewResolver(),
 		bodyClients:            make(map[string]*imap.Client),
 		bodyFetches:            make(map[int64]chan struct{}),
-		avatarWarmupQueue:      make(chan storage.SenderAvatarCandidate, avatarWarmupQueueSize),
+		avatarWarmupQueue:      make(chan avatarWarmupJob, avatarWarmupQueueSize),
 		avatarWarmupQueued:     make(map[string]struct{}),
 		avatarWarmupForced:     make(map[string]time.Time),
 		contactSyncRunning:     make(map[string]struct{}),
@@ -185,7 +219,6 @@ func New(db *storage.DB, accountStore *config.AccountStore, syncer *mail.SyncOrc
 			Payload:   map[string]any{"event_type": event.EventType},
 		})
 	})
-	h.startAvatarWarmupWorkers()
 	return h
 }
 
@@ -200,6 +233,12 @@ func (h *Handler) mailCredentials() *mailauth.Service {
 }
 
 func (h *Handler) StartAccountDeletionCleanup(ctx context.Context) {
+	if h.ownedMailbox != nil {
+		if err := h.StartUserDeletionCleanup(ctx); err != nil {
+			log.Printf("start owned deletion recovery: %v", err)
+		}
+		return
+	}
 	go func() {
 		h.CleanupPendingAccountDeletions(ctx)
 		h.CleanupPendingUserDeletions(ctx)
@@ -243,6 +282,10 @@ func (h *Handler) CleanupPendingAccountDeletions(ctx context.Context) {
 }
 
 func (h *Handler) CleanupPendingUserDeletions(ctx context.Context) {
+	if h.ownedMailbox != nil {
+		h.ownedMailbox.wakeUserDeletionRecovery()
+		return
+	}
 	if h.auth == nil || !h.auth.IsEnabled() {
 		return
 	}
@@ -284,6 +327,11 @@ func (h *Handler) userID(ctx context.Context) string {
 }
 
 func (h *Handler) ownedAccount(ctx context.Context, accountID string) (*models.Account, error) {
+	if h.userMutationState != nil {
+		if err := h.checkUserMessageMutation(ctx, &storage.MessageMutationInfo{AccountID: accountID, AccountProvider: "imap"}); err != nil {
+			return nil, err
+		}
+	}
 	return h.accountStore.GetAccountByIDForUser(ctx, h.userID(ctx), accountID)
 }
 
@@ -347,93 +395,14 @@ func (h *Handler) resolvePassword(ctx context.Context, cfg *models.AccountConfig
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
-	setupAssetsRoutes(mux)
-	adminRoute := func(pattern string, handler http.HandlerFunc) {
-		mux.Handle(pattern, h.adminOnly(handler))
-	}
+	h.RegisterAuthenticationRoutes(mux)
+	h.registerAdministrationRoutes(mux)
 
-	mux.HandleFunc("GET /login", h.handleLogin)
-	mux.HandleFunc("POST /login", h.handleLoginSubmit)
-	mux.HandleFunc("GET /admin/login", h.handleAdminLogin)
-	mux.HandleFunc("POST /admin/login", h.handleAdminLoginSubmit)
-	mux.HandleFunc("POST "+loginPasskeyStartPath, h.handleLoginPasskeyStart)
-	mux.HandleFunc("POST "+loginPasskeyFinishPath, h.handleLoginPasskeyFinish)
-	mux.HandleFunc("GET /login/mfa", h.handleLoginMFA)
-	mux.HandleFunc("POST /login/mfa", h.handleLoginMFASubmit)
-	mux.HandleFunc("GET /login/mfa/enroll", h.handleMFAEnrollment)
-	mux.HandleFunc("POST /login/mfa/enroll", h.handleMFAEnrollmentSubmit)
-	mux.HandleFunc("GET /login/mfa/enroll/codes", h.handleMFAEnrollmentCodes)
-	mux.HandleFunc("POST /login/mfa/enroll/codes", h.handleMFAEnrollmentCodesSubmit)
-	mux.HandleFunc("GET /login/mfa/recovery", h.handleRecoveryCodeLogin)
-	mux.HandleFunc("POST /login/mfa/recovery", h.handleRecoveryCodeLoginSubmit)
-	mux.HandleFunc("GET /login/recovery/mfa", h.handleRecoveryRepairMFA)
-	mux.HandleFunc("POST /login/recovery/mfa", h.handleRecoveryRepairMFASubmit)
-	mux.HandleFunc("GET /login/recovery/codes", h.handleRecoveryRepairCodes)
-	mux.HandleFunc("POST /login/recovery/codes", h.handleRecoveryRepairCodesSubmit)
-	mux.HandleFunc("GET /setup", h.handleSetup)
-	mux.HandleFunc("POST /setup", h.handleSetupSubmit)
-	mux.HandleFunc("GET /setup/owner", h.handleSetupOwner)
-	mux.HandleFunc("POST /setup/owner", h.handleSetupOwnerSubmit)
-	mux.HandleFunc("GET /setup/password", h.handleSetupPassword)
-	mux.HandleFunc("POST /setup/password", h.handleSetupPasswordSubmit)
-	mux.HandleFunc("GET /setup/mfa", h.handleSetupMFA)
-	mux.HandleFunc("POST /setup/mfa", h.handleSetupMFASubmit)
-	mux.HandleFunc("GET /setup/recovery", h.handleSetupRecovery)
-	mux.HandleFunc("POST /setup/recovery", h.handleSetupRecoverySubmit)
-	mux.HandleFunc("GET /setup/review", h.handleSetupReview)
-	mux.HandleFunc("POST /setup/review", h.handleSetupReviewSubmit)
-	mux.HandleFunc("GET /account/enroll", h.handleInvitationEnrollment)
-	mux.HandleFunc("POST /account/enroll", h.handleInvitationEnrollmentSubmit)
-	mux.HandleFunc("POST /account/enroll/google", h.handleInvitationGoogleEnrollment)
-	mux.HandleFunc("GET /account/enroll/complete", h.handleInvitationEnrollmentComplete)
-	mux.HandleFunc("GET /account/redeem", h.handleCredentialRedemption)
-	mux.HandleFunc("POST /account/redeem", h.handleCredentialRedemptionSubmit)
-	mux.HandleFunc("GET /account/redeem/complete", h.handleCredentialRedemptionComplete)
-	mux.HandleFunc("GET /account/recover", h.handlePasswordResetRequest)
-	mux.HandleFunc("POST /account/recover", h.handlePasswordResetRequestSubmit)
-	mux.HandleFunc("GET /auth/google", h.handleGoogleRedirect)
-	mux.HandleFunc("GET /auth/google/login/callback", h.handleGoogleCallback)
-	mux.HandleFunc("GET /auth/microsoft", h.handleMicrosoftRedirect)
-	mux.HandleFunc("GET /auth/microsoft/login/callback", h.handleMicrosoftCallback)
-	mux.HandleFunc("GET /auth/oidc", h.handleOIDCRedirect)
-	mux.HandleFunc("GET /auth/oidc/callback", h.handleOIDCCallback)
 	mux.HandleFunc("GET /auth/google/mailbox/callback", h.handleGoogleAccountCallback)
 	mux.HandleFunc("GET /auth/microsoft/mailbox/callback", h.handleMicrosoftAccountCallback)
-	mux.HandleFunc("POST /auth/logout", h.handleLogout)
-	mux.HandleFunc("GET "+auth.RequiredPasswordChangePath, h.handleRequiredPasswordChange)
-	mux.HandleFunc("POST "+auth.RequiredPasswordChangePath, h.handleRequiredPasswordChangeSubmit)
 	mux.HandleFunc("POST /api/accounts/oauth2/authorize", h.handleAccountOAuthAuthorize)
 
 	mux.HandleFunc("GET /", h.handleIndex)
-	mux.Handle("GET /admin/account/security", h.managementAccountOnly(http.HandlerFunc(h.handleManagementAccountSecurity)))
-	adminRoute("GET /admin", h.handleAdminRedirect)
-	adminRoute("GET /admin/{$}", h.handleAdminRedirect)
-	adminRoute("GET /admin/avatars", h.handleAdminRedirect)
-	adminRoute("GET /admin/avatars/{$}", h.handleAdmin)
-	adminRoute("GET /admin/avatars/{tab}", h.handleAdmin)
-	adminRoute("GET /admin/contacts", h.handleAdminContacts)
-	adminRoute("GET /admin/contacts/{$}", h.handleAdminContacts)
-	adminRoute("GET /admin/users", h.handleAdminUsers)
-	adminRoute("GET /admin/users/{$}", h.handleAdminUsers)
-	adminRoute("GET /admin/activity", h.handleAdminSecurityActivity)
-	adminRoute("POST /admin/activity/retention", h.handleSetAuthenticationEventRetention)
-	adminRoute("POST /admin/users/invitations", h.handleCreateAdminUserInvitation)
-	adminRoute("POST /admin/users/invitations/{reference}/revoke", h.handleRevokeAdminUserInvitation)
-	adminRoute("POST /admin/users/invitations/{reference}/rotate", h.handleRotateAdminUserInvitation)
-	adminRoute("POST /admin/users/{userID}/mfa-policy", h.handleSetAdminUserMFAPolicy)
-	adminRoute("POST /admin/users/{userID}/status", h.handleSetAdminUserStatus)
-	adminRoute("POST /admin/users/{userID}/credential-reset", h.handleIssueAdminUserCredentialReset)
-	adminRoute("POST /admin/users/{userID}/require-password-change", h.handleRequireUserPasswordChange)
-	adminRoute("POST /admin/users/{userID}/delete", h.handleDeleteAdminUser)
-	adminRoute("GET /admin/labels", h.handleAdminLabels)
-	adminRoute("GET /admin/labels/{$}", h.handleAdminLabels)
-	adminRoute("GET /admin/operations", h.handleAdminOperations)
-	adminRoute("GET /admin/operations/{$}", h.handleAdminOperations)
-	adminRoute("GET /admin/security", h.handleAdminSecurity)
-	adminRoute("POST /admin/security/http-discovery", h.handleAddHTTPDiscoveryException)
-	adminRoute("POST /admin/security/plaintext", h.handleAddPlaintextTransportException)
-	adminRoute("POST /admin/security/private-target", h.handleAddPrivateTargetException)
-	adminRoute("POST /admin/security/exceptions/{id}/delete", h.handleDeleteMailSecurityException)
 	mux.HandleFunc("GET /email/{id}", h.handleEmailPartial)
 	mux.HandleFunc("GET /api/mail/{id}/calendar", h.handleMailCalendarFooter)
 	mux.HandleFunc("GET /email/{id}/body", h.handleEmailBody)
@@ -509,30 +478,9 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/accounts/{id}/deletion-status", h.handleAccountDeletionStatus)
 	mux.HandleFunc("GET /settings", h.handleSettings)
 	mux.HandleFunc("GET /settings/{tab}", h.handleSettingsTab)
-	mux.HandleFunc("GET "+securityActivityPath, h.handleSecurityActivityPage)
-	mux.HandleFunc("GET /settings/security/sessions/history", h.handleSecuritySessionHistory)
-	mux.HandleFunc("POST /settings/security/password", h.handleChangePassword)
-	mux.HandleFunc("POST "+securityStepUpPath, h.handleSecurityStepUp)
-	mux.HandleFunc("POST "+securityTOTPStartPath, h.handleSecurityTOTPStart)
-	mux.HandleFunc("POST "+securityTOTPConfirmPath, h.handleSecurityTOTPConfirm)
-	mux.HandleFunc("POST "+securityTOTPDisablePath, h.handleSecurityTOTPDisable)
-	mux.HandleFunc("POST "+securityRecoveryStartPath, h.handleSecurityRecoveryStart)
-	mux.HandleFunc("POST "+securityRecoveryCompletePath, h.handleSecurityRecoveryComplete)
-	mux.HandleFunc("POST "+securityRecoveryRevokePath, h.handleSecurityRecoveryRevoke)
-	mux.HandleFunc("POST "+securityManagementCancelPath, h.handleSecurityManagementCancel)
-	mux.HandleFunc("POST "+securityPasskeyStartPath, h.handleSecurityPasskeyStart)
-	mux.HandleFunc("POST "+securityPasskeyFinishPath, h.handleSecurityPasskeyFinish)
-	mux.HandleFunc("POST "+securityPasskeyStepUpStartPath, h.handleSecurityPasskeyStepUpStart)
-	mux.HandleFunc("POST "+securityPasskeyStepUpFinishPath, h.handleSecurityPasskeyStepUpFinish)
-	mux.HandleFunc("POST "+securityGoogleIdentityLinkPath, h.handleSecurityGoogleIdentityLink)
-	mux.HandleFunc("POST /settings/security/identities/google/{id}/unlink", h.handleSecurityGoogleIdentityUnlink)
-	mux.HandleFunc("POST "+securityMicrosoftIdentityLinkPath, h.handleSecurityMicrosoftIdentityLink)
-	mux.HandleFunc("POST /settings/security/identities/microsoft/{id}/unlink", h.handleSecurityMicrosoftIdentityUnlink)
-	mux.HandleFunc("POST "+securityOIDCIdentityLinkPath, h.handleSecurityOIDCIdentityLink)
-	mux.HandleFunc("POST /settings/security/identities/oidc/{id}/unlink", h.handleSecurityOIDCIdentityUnlink)
-	mux.HandleFunc("POST "+securitySessionRevokeOthersPath, h.handleSecuritySessionRevokeOthers)
-	mux.HandleFunc("POST /settings/security/sessions/{reference}/revoke", h.handleSecuritySessionRevoke)
-	mux.HandleFunc("POST /settings/security/passkeys/{id}/remove", h.handleSecurityPasskeyRemove)
+	h.registerSecuritySettingsRoutes(func(pattern string, handler http.HandlerFunc) {
+		mux.HandleFunc(pattern, handler)
+	})
 	mux.HandleFunc("GET /settings/operations/content", h.handleSettingsMailOperationsContent)
 	mux.HandleFunc("POST /api/settings/sync", h.handleSaveSyncSettings)
 	mux.HandleFunc("GET /api/settings/signatures/manage", h.handleManageSignaturesSettings)
@@ -555,7 +503,6 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /compose/attachments/{id}/preview", h.handleComposeAttachmentPreview)
 	mux.HandleFunc("DELETE /compose/attachments/{id}", h.handleComposeAttachmentDelete)
 	mux.HandleFunc("GET /api/events", h.handleSSE)
-	adminRoute("GET /api/admin/events", h.handleSSE)
 	mux.HandleFunc("GET /api/outgoing-sends/active", h.handleOutgoingSendList)
 	mux.HandleFunc("GET /api/outgoing-sends/{id}", h.handleOutgoingSendGet)
 	mux.HandleFunc("POST /api/outgoing-sends/{id}/retry", h.handleOutgoingSendRetry)
@@ -563,7 +510,6 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/outgoing-sends/{id}/cancel", h.handleOutgoingSendCancel)
 	mux.HandleFunc("GET /api/mail-operations", h.handleMailOperations)
 	mux.HandleFunc("POST /api/mail-operations/{id}/retry", h.handleRetryMailOperation)
-	adminRoute("GET /api/admin/mail-operations/status", h.handleAdminMailOperationsStatus)
 	mux.HandleFunc("GET /api/sidebar/mail", h.handleMailSidebar)
 	mux.HandleFunc("GET /api/sidebar/accounts/{id}", h.handleSidebarAccount)
 	mux.HandleFunc("POST /hooks/gmail", h.handleGmailPushHook)
@@ -578,7 +524,6 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /ui/add-account-dialog", h.handleLazyAddAccountDialog)
 	mux.HandleFunc("POST /api/folders/{id}/read-all", h.handleMarkFolderRead)
 	mux.HandleFunc("POST /api/folders/{id}/empty", h.handleEmptyFolder)
-	adminRoute("GET /api/system/processing", h.handleProcessingStatus)
 	mux.HandleFunc("POST /api/messages/{id}/prefetch-body", h.handlePrefetchBody)
 	mux.HandleFunc("GET /api/compose/source", h.handleComposeSource)
 	mux.HandleFunc("GET /compose/pane", h.handleComposePane)
@@ -614,19 +559,9 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/messages/{id}/translate", h.handleTranslateMessage)
 	mux.HandleFunc("POST /api/remote-content/{id}/allow", h.handleAllowRemoteContent)
 	mux.HandleFunc("GET /api/remote-assets/{messageID}/{filename}", h.handleRemoteAsset)
-	adminRoute("GET /api/admin/avatars/status", h.handleAvatarStatus)
-	adminRoute("GET /api/admin/contacts/status", h.handleContactAdminStatus)
-	adminRoute("GET /api/admin/labels/status", h.handleLabelAdminStatus)
 	mux.HandleFunc("GET /api/provider-avatar", h.handleProviderAvatarImage)
 	mux.HandleFunc("GET /api/avatars/{hash}", h.handleAvatarImage)
-	adminRoute("GET /api/admin/avatars/attempts", h.handleAvatarAttempts)
-	adminRoute("GET /api/admin/avatars/senders", h.handleAvatarSenders)
-	adminRoute("GET /api/admin/avatars/{hash}", h.handleAdminAvatarImage)
 	mux.HandleFunc("POST /api/avatars/warmup", h.handleAvatarWarmup)
-	adminRoute("POST /api/admin/avatars/senders/{hash}/recheck", h.handleRecheckAvatarSender)
-	adminRoute("POST /admin/avatar-backfill/recheck", h.handleForceAvatarBackfill)
-	adminRoute("POST /admin/avatar-backfill/cancel", h.handleCancelAvatarBackfill)
-	adminRoute("POST /admin/contacts/backfill", h.handleForceContactBackfill)
 }
 
 func setupAssetsRoutes(mux *http.ServeMux) {
@@ -674,64 +609,51 @@ func (h *Handler) handleIndex(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-
-	folderID := r.URL.Query().Get("folder")
-	if folderID == "" {
-		folderID = "inbox"
-	}
-
-	emailID := r.URL.Query().Get("email")
 	ctx := r.Context()
-	userID := h.userID(ctx)
-	var err error
-	folderID, err = h.resolveFolderID(ctx, userID, folderID)
-	if err != nil {
-		http.NotFound(w, r)
-		return
-	}
-
-	accounts, _ := h.db.GetAccounts(ctx, userID)
-	uiSettings := h.db.GetUISettings(ctx, userID)
-	scheduledCount := h.scheduledSidebarCount(ctx, userID)
-	filters := applyEmailSortDefaults(parseEmailFilters(r), r, uiSettings)
-	if r.Header.Get("HX-Request") == "true" && r.Header.Get("HX-Target") == "mail-list" {
-		ctx = h.contextWithUserTimezone(ctx, r, userID)
-		window := h.loadMailWindow(ctx, userID, folderID, filters, emailID, 50)
-		w.Header().Set("Content-Type", "text/html")
-		views.MailAppPartial(accounts, folderID, window.emails, window.selectedEmail, window.totalCount, window.scrollCount, uiSettings, nil, emailID, window.windowStart, scheduledCount, filters).Render(ctx, w)
-		return
-	}
-	if r.Header.Get("HX-Request") == "true" && r.Header.Get("HX-Target") == "app-shell" {
-		w.Header().Set("Content-Type", "text/html")
-		views.MailShell(accounts, folderID, nil, nil, -1, -1, uiSettings, nil, emailID, scheduledCount, filters).Render(ctx, w)
-		return
-	}
-	if emailID == "" {
-		views.Layout(accounts, folderID, nil, nil, -1, -1, uiSettings, nil, "", scheduledCount, filters).Render(ctx, w)
-		return
-	}
-
-	views.Layout(accounts, folderID, nil, nil, -1, -1, uiSettings, nil, emailID, scheduledCount, filters).Render(ctx, w)
+	h.renderMailboxView(w, r, &ctx, func(h *Handler) (templ.Component, error) {
+		userID := h.userID(ctx)
+		folderID, err := h.resolveFolderID(ctx, userID, r.URL.Query().Get("folder"))
+		if err != nil {
+			return nil, err
+		}
+		accounts, err := h.db.GetAccounts(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+		settings := h.db.GetUISettings(ctx, userID)
+		filters := applyEmailSortDefaults(parseEmailFilters(r), r, settings)
+		emailID := r.URL.Query().Get("email")
+		count := h.scheduledSidebarCount(ctx, userID)
+		if r.Header.Get("HX-Request") == "true" && r.Header.Get("HX-Target") == "mail-list" {
+			ctx = storage.WithTimezone(ctx, effectiveTimezone(r, settings["timezone"]))
+			window, err := h.loadMailWindow(ctx, userID, folderID, filters, emailID, 50)
+			if err != nil {
+				return nil, err
+			}
+			return views.MailAppPartial(accounts, folderID, window.emails, window.selectedEmail, window.totalCount, window.scrollCount, settings, nil, emailID, window.windowStart, count, filters), nil
+		}
+		if r.Header.Get("HX-Request") == "true" && r.Header.Get("HX-Target") == "app-shell" {
+			return views.MailShell(accounts, folderID, nil, nil, -1, -1, settings, nil, emailID, count, filters), nil
+		}
+		return views.Layout(accounts, folderID, nil, nil, -1, -1, settings, nil, emailID, count, filters), nil
+	})
 }
 
 func (h *Handler) handleFolderWithEmail(w http.ResponseWriter, r *http.Request) {
-	folderID := r.PathValue("id")
-	emailID := r.PathValue("email")
-	if folderID == "" {
-		folderID = "inbox"
-	}
-
 	ctx := r.Context()
-	userID := h.userID(ctx)
-	var err error
-	folderID, err = h.resolveFolderID(ctx, userID, folderID)
-	if err != nil {
-		http.NotFound(w, r)
-		return
-	}
-	accounts, _ := h.db.GetAccounts(ctx, userID)
-	uiSettings := h.db.GetUISettings(ctx, userID)
-	views.Layout(accounts, folderID, nil, nil, -1, -1, uiSettings, nil, emailID, h.scheduledSidebarCount(ctx, userID), applyEmailSortDefaults(parseEmailFilters(r), r, uiSettings)).Render(ctx, w)
+	h.renderMailboxView(w, r, &ctx, func(h *Handler) (templ.Component, error) {
+		userID := h.userID(ctx)
+		folderID, err := h.resolveFolderID(ctx, userID, r.PathValue("id"))
+		if err != nil {
+			return nil, err
+		}
+		accounts, err := h.db.GetAccounts(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+		settings := h.db.GetUISettings(ctx, userID)
+		return views.Layout(accounts, folderID, nil, nil, -1, -1, settings, nil, r.PathValue("email"), h.scheduledSidebarCount(ctx, userID), applyEmailSortDefaults(parseEmailFilters(r), r, settings)), nil
+	})
 }
 
 func (h *Handler) handleEmailPartial(w http.ResponseWriter, r *http.Request) {
@@ -740,54 +662,61 @@ func (h *Handler) handleEmailPartial(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-
 	ctx := r.Context()
-	userID := h.userID(ctx)
-	ctx = h.contextWithUserTimezone(ctx, r, userID)
-
-	folderID := r.URL.Query().Get("folder_id")
-	if folderID != "" {
-		var err error
-		folderID, err = h.resolveFolderID(ctx, userID, folderID)
-		if err != nil {
-			http.NotFound(w, r)
-			return
-		}
-	}
-	email, err := h.db.GetEmailByIDForFolderForUser(ctx, emailID, folderID, userID)
-	if err != nil || email == nil {
-		http.NotFound(w, r)
-		return
-	}
-	if h.repairCachedCalendarBody(ctx, email.ID, email.AccountID, email.TextBody) {
-		if repaired, err := h.db.GetEmailByIDForFolderForUser(ctx, emailID, folderID, userID); err == nil && repaired != nil {
-			email = repaired
-		}
-	}
-
-	w.Header().Set("Content-Type", "text/html")
-	var thread []models.ThreadItem
-	if r.URL.Query().Get("single") != "1" {
-		thread, _ = h.db.GetThreadMessagesForUser(ctx, email.AccountID, email.ThreadID, userID)
-		repaired := false
-		for _, item := range thread {
-			if h.repairCachedCalendarBody(ctx, item.ID, email.AccountID, item.TextBody) {
-				repaired = true
+	h.repairUserCalendarBodies(ctx, h.userID(ctx), emailID)
+	h.renderMailboxView(w, r, &ctx, func(h *Handler) (templ.Component, error) {
+		userID := h.userID(ctx)
+		ctx = h.contextWithUserTimezone(ctx, r, userID)
+		folderID := r.URL.Query().Get("folder_id")
+		if folderID != "" {
+			var err error
+			folderID, err = h.resolveFolderID(ctx, userID, folderID)
+			if err != nil {
+				return nil, err
 			}
 		}
-		if repaired {
-			thread, _ = h.db.GetThreadMessagesForUser(ctx, email.AccountID, email.ThreadID, userID)
+		email, err := h.db.GetEmailByIDForFolderForUser(ctx, emailID, folderID, userID)
+		if err != nil {
+			return nil, err
 		}
-		_ = h.db.FillThreadListUnsubscribe(ctx, thread)
-	}
-	newestFirst := views.ThreadNewestFirst(h.db.GetUISettings(ctx, userID))
-	if newestFirst {
-		slices.Reverse(thread)
-	}
-	views.MailViewContent(email, thread, newestFirst).Render(ctx, w)
+		if email == nil {
+			return nil, sql.ErrNoRows
+		}
+		if h.repairCachedCalendarBody(ctx, email.ID, email.AccountID, email.TextBody) {
+			if repaired, err := h.db.GetEmailByIDForFolderForUser(ctx, emailID, folderID, userID); err == nil && repaired != nil {
+				email = repaired
+			}
+		}
+		var thread []models.ThreadItem
+		if r.URL.Query().Get("single") != "1" {
+			thread, err = h.db.GetThreadMessagesForUser(ctx, email.AccountID, email.ThreadID, userID)
+			if err != nil {
+				return nil, err
+			}
+			repaired := false
+			for _, item := range thread {
+				if h.repairCachedCalendarBody(ctx, item.ID, email.AccountID, item.TextBody) {
+					repaired = true
+				}
+			}
+			if repaired {
+				thread, _ = h.db.GetThreadMessagesForUser(ctx, email.AccountID, email.ThreadID, userID)
+			}
+			_ = h.db.FillThreadListUnsubscribe(ctx, thread)
+		}
+		newestFirst := views.ThreadNewestFirst(h.db.GetUISettings(ctx, userID))
+		if newestFirst {
+			slices.Reverse(thread)
+		}
+		return views.MailViewContent(email, thread, newestFirst), nil
+	})
 }
 
 func (h *Handler) ensureContactsBackfilled(ctx context.Context) {
+	if h.userStorage != nil {
+		h.ensureUserContactsBackfilled(ctx)
+		return
+	}
 	userID := h.userID(ctx)
 	settings := h.db.GetContactSettings(ctx, userID)
 	if !settings.AutoCreateObserved || (!settings.ObserveSenders && !settings.ObserveRecipients) {
@@ -855,89 +784,71 @@ func (h *Handler) startAutomaticContactBackfill(userID, sourceKey string) {
 func (h *Handler) handleContacts(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	h.ensureContactsBackfilled(ctx)
-	userID := h.userID(ctx)
-	ctx = h.contextWithUserTimezone(ctx, r, userID)
-	switch r.URL.Query().Get("partial") {
-	case "activity":
-		selected, err := h.db.GetContact(ctx, userID, strings.TrimSpace(r.URL.Query().Get("contact")))
-		if err != nil {
-			http.Error(w, "failed to load contact activity", http.StatusInternalServerError)
-			return
-		}
-		if selected == nil {
-			http.NotFound(w, r)
-			return
-		}
-		recentActivity := h.recentContactActivity(ctx, userID, selected)
-		w.Header().Set("Content-Type", "text/html")
-		views.ContactRecentActivity(*selected, recentActivity).Render(ctx, w)
-		return
-	case "detail":
-		var selected *models.Contact
-		var selectedProfile *models.ContactProfile
-		if id := strings.TrimSpace(r.URL.Query().Get("contact")); id != "" {
-			var err error
-			selected, selectedProfile, err = h.db.GetContactWithProfile(ctx, userID, id)
+	h.renderMailboxView(w, r, &ctx, func(local *Handler) (templ.Component, error) {
+		userID := local.userID(ctx)
+		ctx = local.contextWithUserTimezone(ctx, r, userID)
+		switch r.URL.Query().Get("partial") {
+		case "activity":
+			selected, err := local.db.GetContact(ctx, userID, strings.TrimSpace(r.URL.Query().Get("contact")))
 			if err != nil {
-				http.Error(w, "failed to load contact", http.StatusInternalServerError)
-				return
+				return nil, err
 			}
+			if selected == nil {
+				return nil, sql.ErrNoRows
+			}
+			return views.ContactRecentActivity(*selected, local.recentContactActivity(ctx, userID, selected)), nil
+		case "detail":
+			var selected *models.Contact
+			var profile *models.ContactProfile
+			if id := strings.TrimSpace(r.URL.Query().Get("contact")); id != "" {
+				var err error
+				selected, profile, err = local.db.GetContactWithProfile(ctx, userID, id)
+				if err != nil {
+					return nil, err
+				}
+			}
+			accounts, _ := local.db.GetAccounts(ctx, userID)
+			return views.ContactsDetail(selected, profile, false, selected != nil && r.URL.Query().Get("sync") == "queued", accounts), nil
 		}
+		settings := local.db.GetUISettings(ctx, userID)
+		filters := applyContactSortDefaults(local.parseContactFilters(r), r, settings)
+		if filters.View == "" {
+			filters.View = contactViewMode(settings["contacts_list_view"])
+		}
+		if filters.View == "" {
+			filters.View = "cards"
+		}
+		contacts, err := local.db.ListContacts(ctx, userID, filters, 100, 0)
+		if err != nil {
+			return nil, err
+		}
+		total, err := local.db.CountContacts(ctx, userID, filters)
+		if err != nil {
+			return nil, err
+		}
+		var selected *models.Contact
+		var profile *models.ContactProfile
+		if id := strings.TrimSpace(r.URL.Query().Get("contact")); id != "" {
+			selected, profile, _ = local.db.GetContactWithProfile(ctx, userID, id)
+		}
+		showNew := selected == nil && r.URL.Query().Get("new") == "1"
 		syncQueued := selected != nil && r.URL.Query().Get("sync") == "queued"
-		accounts, _ := h.db.GetAccounts(ctx, userID)
-		w.Header().Set("Content-Type", "text/html")
-		views.ContactsDetail(selected, selectedProfile, false, syncQueued, accounts).Render(ctx, w)
-		return
-	}
-	uiSettings := h.db.GetUISettings(ctx, userID)
-	filters := applyContactSortDefaults(h.parseContactFilters(r), r, uiSettings)
-	if filters.View == "" {
-		filters.View = contactViewMode(uiSettings["contacts_list_view"])
-	}
-	if filters.View == "" {
-		filters.View = "cards"
-	}
-	contacts, err := h.db.ListContacts(ctx, userID, filters, 100, 0)
-	if err != nil {
-		http.Error(w, "failed to load contacts", http.StatusInternalServerError)
-		return
-	}
-	totalCount, err := h.db.CountContacts(ctx, userID, filters)
-	if err != nil {
-		http.Error(w, "failed to count contacts", http.StatusInternalServerError)
-		return
-	}
-	var selected *models.Contact
-	var selectedProfile *models.ContactProfile
-	if id := strings.TrimSpace(r.URL.Query().Get("contact")); id != "" {
-		selected, selectedProfile, _ = h.db.GetContactWithProfile(ctx, userID, id)
-	}
-	showNew := selected == nil && r.URL.Query().Get("new") == "1"
-	syncQueued := selected != nil && r.URL.Query().Get("sync") == "queued"
-	accounts, _ := h.db.GetAccounts(ctx, userID)
-
-	if r.Header.Get("HX-Request") == "true" {
-		width := uiSettings["mail_list_width"]
-		if width == "" {
-			width = "30%"
+		accounts, _ := local.db.GetAccounts(ctx, userID)
+		if r.Header.Get("HX-Request") == "true" {
+			switch r.Header.Get("HX-Target") {
+			case "mail-list":
+				return views.ContactsAppPartial(accounts, contacts, selected, profile, showNew, syncQueued, filters, total, settings), nil
+			case "app-shell":
+				return views.ContactsShell(accounts, contacts, selected, profile, showNew, syncQueued, filters, total, settings), nil
+			}
+			width := settings["mail_list_width"]
+			if width == "" {
+				width = "30%"
+			}
+			return views.ContactsPage(contacts, selected, profile, showNew, syncQueued, filters, total, width, accounts), nil
 		}
-		w.Header().Set("Content-Type", "text/html")
-		if r.Header.Get("HX-Target") == "mail-list" {
-			layoutAccounts, _ := h.db.GetAccounts(ctx, userID)
-			views.ContactsAppPartial(layoutAccounts, contacts, selected, selectedProfile, showNew, syncQueued, filters, totalCount, uiSettings).Render(ctx, w)
-			return
-		}
-		if r.Header.Get("HX-Target") == "app-shell" {
-			layoutAccounts, _ := h.db.GetAccounts(ctx, userID)
-			views.ContactsShell(layoutAccounts, contacts, selected, selectedProfile, showNew, syncQueued, filters, totalCount, uiSettings).Render(ctx, w)
-			return
-		}
-		views.ContactsPage(contacts, selected, selectedProfile, showNew, syncQueued, filters, totalCount, width, accounts).Render(ctx, w)
-		return
-	}
-
-	layoutAccounts, _ := h.db.GetAccounts(ctx, userID)
-	views.ContactsLayout(layoutAccounts, contacts, selected, selectedProfile, showNew, syncQueued, filters, totalCount, uiSettings).Render(ctx, w)
+		return views.ContactsLayout(accounts, contacts, selected, profile, showNew, syncQueued, filters, total, settings), nil
+	})
 }
 
 func (h *Handler) recentContactActivity(ctx context.Context, userID string, contact *models.Contact) []models.Email {
@@ -955,37 +866,36 @@ func (h *Handler) recentContactActivity(ctx context.Context, userID string, cont
 func (h *Handler) handleContactItems(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	h.ensureContactsBackfilled(ctx)
-	userID := h.userID(ctx)
-	ctx = h.contextWithUserTimezone(ctx, r, userID)
-	filters := applyContactSortDefaults(h.parseContactFilters(r), r, h.db.GetUISettings(ctx, userID))
-	if filters.View == "" {
-		filters.View = "cards"
-	}
-	start := atoiDefault(r.URL.Query().Get("start"), 0)
-	if start < 0 {
-		start = 0
-	}
-	limit := atoiDefault(r.URL.Query().Get("limit"), 100)
-	if limit <= 0 || limit > 200 {
-		limit = 100
-	}
-	contacts, err := h.db.ListContacts(ctx, userID, filters, limit, start)
-	if err != nil {
-		http.Error(w, "failed to load contacts", http.StatusInternalServerError)
-		return
-	}
-	totalCount, err := h.db.CountContacts(ctx, userID, filters)
-	if err != nil {
-		http.Error(w, "failed to count contacts", http.StatusInternalServerError)
-		return
-	}
-	var selected *models.Contact
-	if id := strings.TrimSpace(r.URL.Query().Get("selected")); id != "" {
-		selected, _ = h.db.GetContact(ctx, userID, id)
-	}
-	accounts, _ := h.db.GetAccounts(ctx, userID)
-	w.Header().Set("Content-Type", "text/html")
-	views.ContactsItemsFragment(contacts, selected, filters, totalCount, start, accounts).Render(ctx, w)
+	h.renderMailboxView(w, r, &ctx, func(local *Handler) (templ.Component, error) {
+		userID := local.userID(ctx)
+		ctx = local.contextWithUserTimezone(ctx, r, userID)
+		filters := applyContactSortDefaults(local.parseContactFilters(r), r, local.db.GetUISettings(ctx, userID))
+		if filters.View == "" {
+			filters.View = "cards"
+		}
+		start := atoiDefault(r.URL.Query().Get("start"), 0)
+		if start < 0 {
+			start = 0
+		}
+		limit := atoiDefault(r.URL.Query().Get("limit"), 100)
+		if limit <= 0 || limit > 200 {
+			limit = 100
+		}
+		contacts, err := local.db.ListContacts(ctx, userID, filters, limit, start)
+		if err != nil {
+			return nil, err
+		}
+		total, err := local.db.CountContacts(ctx, userID, filters)
+		if err != nil {
+			return nil, err
+		}
+		var selected *models.Contact
+		if id := strings.TrimSpace(r.URL.Query().Get("selected")); id != "" {
+			selected, _ = local.db.GetContact(ctx, userID, id)
+		}
+		accounts, _ := local.db.GetAccounts(ctx, userID)
+		return views.ContactsItemsFragment(contacts, selected, filters, total, start, accounts), nil
+	})
 }
 
 func (h *Handler) parseContactFilters(r *http.Request) models.ContactFilters {
@@ -1055,31 +965,10 @@ func (h *Handler) handleSaveContact(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	userID := h.userID(ctx)
-	additionalEmails, additionalEmailLabels := contactListFields(r.Form["additional_emails"], r.Form["additional_email_labels"])
-	additionalPhones, additionalPhoneLabels := contactListFields(r.Form["additional_phones"], r.Form["additional_phone_labels"])
-	avatarURL, removeAvatar, err := contactAvatarFromForm(r.FormValue("avatar_action"), r.FormValue("avatar_data_url"))
+	contact, err := contactFromForm(r, h.contactSaveTargets(ctx, r.FormValue("save_targets")))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
-	}
-	contact := models.Contact{
-		ID:                    strings.TrimSpace(r.URL.Query().Get("id")),
-		Name:                  strings.TrimSpace(r.FormValue("name")),
-		Email:                 strings.TrimSpace(r.FormValue("email")),
-		EmailLabel:            contactFieldLabel(r.FormValue("email_label"), "primary"),
-		AdditionalEmails:      additionalEmails,
-		AdditionalEmailLabels: additionalEmailLabels,
-		Phone:                 strings.TrimSpace(r.FormValue("phone")),
-		PhoneLabel:            contactFieldLabel(r.FormValue("phone_label"), "primary"),
-		AdditionalPhones:      additionalPhones,
-		AdditionalPhoneLabels: additionalPhoneLabels,
-		Organization:          strings.TrimSpace(r.FormValue("organization")),
-		Title:                 strings.TrimSpace(r.FormValue("title")),
-		Notes:                 strings.TrimSpace(r.FormValue("notes")),
-		GoferSyncEnabled:      r.FormValue("sync_enabled") == "on",
-		SaveTargets:           h.contactSaveTargets(ctx, r.FormValue("save_targets")),
-		AvatarURL:             avatarURL,
-		RemoveAvatar:          removeAvatar,
 	}
 	var previous *models.Contact
 	if contact.ID != "" {
@@ -1130,6 +1019,35 @@ func (h *Handler) handleSaveContact(w http.ResponseWriter, r *http.Request) {
 		location += "&sync_setup=1"
 	}
 	http.Redirect(w, r, location, http.StatusSeeOther)
+}
+
+func contactFromForm(r *http.Request, targets []string) (models.Contact, error) {
+	additionalEmails, additionalEmailLabels := contactListFields(r.Form["additional_emails"], r.Form["additional_email_labels"])
+	additionalPhones, additionalPhoneLabels := contactListFields(r.Form["additional_phones"], r.Form["additional_phone_labels"])
+	avatarURL, removeAvatar, err := contactAvatarFromForm(r.FormValue("avatar_action"), r.FormValue("avatar_data_url"))
+	if err != nil {
+		return models.Contact{}, err
+	}
+	contact := models.Contact{
+		ID:                    strings.TrimSpace(r.URL.Query().Get("id")),
+		Name:                  strings.TrimSpace(r.FormValue("name")),
+		Email:                 strings.TrimSpace(r.FormValue("email")),
+		EmailLabel:            contactFieldLabel(r.FormValue("email_label"), "primary"),
+		AdditionalEmails:      additionalEmails,
+		AdditionalEmailLabels: additionalEmailLabels,
+		Phone:                 strings.TrimSpace(r.FormValue("phone")),
+		PhoneLabel:            contactFieldLabel(r.FormValue("phone_label"), "primary"),
+		AdditionalPhones:      additionalPhones,
+		AdditionalPhoneLabels: additionalPhoneLabels,
+		Organization:          strings.TrimSpace(r.FormValue("organization")),
+		Title:                 strings.TrimSpace(r.FormValue("title")),
+		Notes:                 strings.TrimSpace(r.FormValue("notes")),
+		GoferSyncEnabled:      r.FormValue("sync_enabled") == "on",
+		SaveTargets:           targets,
+		AvatarURL:             avatarURL,
+		RemoveAvatar:          removeAvatar,
+	}
+	return contact, nil
 }
 
 func contactAvatarFromForm(action, rawDataURL string) (string, bool, error) {
@@ -1269,7 +1187,13 @@ func (h *Handler) contactSaveTargets(ctx context.Context, raw string) []string {
 }
 
 func (h *Handler) handleExportContacts(w http.ResponseWriter, r *http.Request) {
-	contacts, err := h.db.ListContactsForExport(r.Context(), h.userID(r.Context()))
+	userID := h.userID(r.Context())
+	var contacts []models.Contact
+	err := h.withUserDB(r.Context(), userID, func(db *storage.DB) error {
+		var err error
+		contacts, err = db.ListContactsForExport(r.Context(), userID)
+		return err
+	})
 	if err != nil {
 		http.Error(w, "failed to export contacts", http.StatusInternalServerError)
 		return
@@ -1278,7 +1202,13 @@ func (h *Handler) handleExportContacts(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleExportContact(w http.ResponseWriter, r *http.Request) {
-	contact, err := h.db.GetContact(r.Context(), h.userID(r.Context()), r.PathValue("id"))
+	userID := h.userID(r.Context())
+	var contact *models.Contact
+	err := h.withUserDB(r.Context(), userID, func(db *storage.DB) error {
+		var err error
+		contact, err = db.GetContact(r.Context(), userID, r.PathValue("id"))
+		return err
+	})
 	if err != nil {
 		http.Error(w, "failed to export contact", http.StatusInternalServerError)
 		return
@@ -1417,7 +1347,13 @@ func (h *Handler) handleDeleteContact(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handleContactSearch(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	h.ensureContactsBackfilled(ctx)
-	contacts, err := h.db.SearchContacts(ctx, h.userID(ctx), r.URL.Query().Get("q"), 12)
+	userID := h.userID(ctx)
+	var contacts []models.Contact
+	err := h.withUserDB(ctx, userID, func(db *storage.DB) error {
+		var err error
+		contacts, err = db.SearchContacts(ctx, userID, r.URL.Query().Get("q"), 12)
+		return err
+	})
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -2192,69 +2128,56 @@ func (h *Handler) closeBodyClient(accountID string) {
 }
 
 func (h *Handler) handleFolderPartial(w http.ResponseWriter, r *http.Request) {
-	folderID := r.PathValue("id")
-	if folderID == "" {
-		folderID = "inbox"
-	}
-
 	ctx := r.Context()
-	userID := h.userID(ctx)
-	var err error
-	folderID, err = h.resolveFolderID(ctx, userID, folderID)
-	if err != nil {
-		http.NotFound(w, r)
-		return
-	}
-	ctx = h.contextWithUserTimezone(ctx, r, userID)
-	accounts, _ := h.db.GetAccounts(ctx, userID)
-	uiSettings := h.db.GetUISettings(ctx, userID)
-	filters := applyEmailSortDefaults(parseEmailFilters(r), r, uiSettings)
-	if r.Header.Get("HX-Request") != "true" {
-		views.Layout(accounts, folderID, nil, nil, -1, -1, uiSettings, nil, "", h.scheduledSidebarCount(ctx, userID), filters).Render(ctx, w)
-		return
-	}
-
-	totalCount, _ := h.db.GetFolderEmailCountFilteredForUser(ctx, userID, folderID, filters)
-
-	page, _ := h.db.GetEmailsRangeFilteredForUser(ctx, userID, folderID, 0, 50, filters)
-	var emails []models.Email
-	scrollCount := totalCount
-	if page != nil {
-		emails = page.Emails
-		scrollCount = page.TotalCount
-		totalCount = page.DisplayTotalCount
-	}
-
-	var selectedEmail *models.Email
-	var selectedThread []models.ThreadItem
-
-	w.Header().Set("Content-Type", "text/html")
-	views.FolderPartial(accounts, emails, folderID, selectedEmail, totalCount, scrollCount, selectedThread, uiSettings, filters).Render(ctx, w)
+	h.renderMailboxView(w, r, &ctx, func(h *Handler) (templ.Component, error) {
+		userID := h.userID(ctx)
+		folderID, err := h.resolveFolderID(ctx, userID, r.PathValue("id"))
+		if err != nil {
+			return nil, err
+		}
+		settings := h.db.GetUISettings(ctx, userID)
+		ctx = storage.WithTimezone(ctx, effectiveTimezone(r, settings["timezone"]))
+		accounts, err := h.db.GetAccounts(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+		filters := applyEmailSortDefaults(parseEmailFilters(r), r, settings)
+		if r.Header.Get("HX-Request") != "true" {
+			return views.Layout(accounts, folderID, nil, nil, -1, -1, settings, nil, "", h.scheduledSidebarCount(ctx, userID), filters), nil
+		}
+		page, err := h.db.GetEmailsRangeFilteredForUser(ctx, userID, folderID, 0, 50, filters)
+		if err != nil {
+			return nil, err
+		}
+		if page == nil {
+			page = &models.EmailPage{}
+		}
+		return views.FolderPartial(accounts, page.Emails, folderID, nil, page.DisplayTotalCount, page.TotalCount, nil, settings, filters), nil
+	})
 }
 
 func (h *Handler) handleFolderFull(w http.ResponseWriter, r *http.Request) {
-	folderID := r.PathValue("id")
-	if folderID == "" {
-		folderID = "inbox"
-	}
-
 	ctx := r.Context()
-	userID := h.userID(ctx)
-	var err error
-	folderID, err = h.resolveFolderID(ctx, userID, folderID)
-	if err != nil {
-		http.NotFound(w, r)
-		return
-	}
-	ctx = h.contextWithUserTimezone(ctx, r, userID)
-	accounts, _ := h.db.GetAccounts(ctx, userID)
-	uiSettings := h.db.GetUISettings(ctx, userID)
-	filters := applyEmailSortDefaults(parseEmailFilters(r), r, uiSettings)
-	selectedEmailID := r.URL.Query().Get("selected")
-	window := h.loadMailWindow(ctx, h.userID(ctx), folderID, filters, selectedEmailID, 50)
-
-	w.Header().Set("Content-Type", "text/html")
-	views.MailContentPartial(accounts, window.emails, folderID, window.selectedEmail, window.totalCount, window.scrollCount, nil, uiSettings, selectedEmailID, window.windowStart, filters).Render(ctx, w)
+	h.renderMailboxView(w, r, &ctx, func(h *Handler) (templ.Component, error) {
+		userID := h.userID(ctx)
+		folderID, err := h.resolveFolderID(ctx, userID, r.PathValue("id"))
+		if err != nil {
+			return nil, err
+		}
+		settings := h.db.GetUISettings(ctx, userID)
+		ctx = storage.WithTimezone(ctx, effectiveTimezone(r, settings["timezone"]))
+		accounts, err := h.db.GetAccounts(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+		filters := applyEmailSortDefaults(parseEmailFilters(r), r, settings)
+		selected := r.URL.Query().Get("selected")
+		window, err := h.loadMailWindow(ctx, userID, folderID, filters, selected, 50)
+		if err != nil {
+			return nil, err
+		}
+		return views.MailContentPartial(accounts, window.emails, folderID, window.selectedEmail, window.totalCount, window.scrollCount, nil, settings, selected, window.windowStart, filters), nil
+	})
 }
 
 type mailWindow struct {
@@ -2274,19 +2197,28 @@ func (h *Handler) scheduledSidebarCount(ctx context.Context, userID string) int 
 	return count
 }
 
-func (h *Handler) loadMailWindow(ctx context.Context, userID, folderID string, filters models.EmailFilters, selectedEmailID string, limit int) mailWindow {
+func (h *Handler) loadMailWindow(ctx context.Context, userID, folderID string, filters models.EmailFilters, selectedEmailID string, limit int) (mailWindow, error) {
 	if limit <= 0 {
 		limit = 50
 	}
 
-	totalCount, _ := h.db.GetFolderEmailCountFilteredForUser(ctx, userID, folderID, filters)
+	totalCount, err := h.db.GetFolderEmailCountFilteredForUser(ctx, userID, folderID, filters)
+	if err != nil {
+		return mailWindow{}, err
+	}
 
 	var page *models.EmailPage
 	if selectedEmailID != "" && !emailFiltersActive(filters) {
-		page, _ = h.db.GetEmailsAroundEmailForUser(ctx, userID, folderID, selectedEmailID, limit)
+		page, err = h.db.GetEmailsAroundEmailForUser(ctx, userID, folderID, selectedEmailID, limit)
+		if err != nil {
+			return mailWindow{}, err
+		}
 	}
 	if page == nil {
-		page, _ = h.db.GetEmailsRangeFilteredForUser(ctx, userID, folderID, 0, limit, filters)
+		page, err = h.db.GetEmailsRangeFilteredForUser(ctx, userID, folderID, 0, limit, filters)
+		if err != nil {
+			return mailWindow{}, err
+		}
 	}
 
 	window := mailWindow{totalCount: totalCount, scrollCount: totalCount}
@@ -2303,7 +2235,7 @@ func (h *Handler) loadMailWindow(ctx context.Context, userID, folderID string, f
 	if selectedEmailID != "" {
 		window.selectedEmail = &models.Email{ID: h.visibleMailListSelectionID(ctx, userID, window.emails, selectedEmailID)}
 	}
-	return window
+	return window, nil
 }
 
 func (h *Handler) visibleMailListSelectionID(ctx context.Context, userID string, emails []models.Email, selectedEmailID string) string {
@@ -2328,74 +2260,54 @@ func (h *Handler) visibleMailListSelectionID(ctx context.Context, userID string,
 }
 
 func (h *Handler) handleMailItems(w http.ResponseWriter, r *http.Request) {
-	folderID := r.PathValue("id")
-	if folderID == "" {
-		folderID = "inbox"
-	}
-
 	limit := 50
-	if l, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && l > 0 && l <= 200 {
-		limit = l
+	if n, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && n > 0 && n <= 200 {
+		limit = n
 	}
-
-	selectedEmailId := r.URL.Query().Get("selected")
 	knownTotal := -1
-	if kt, err := strconv.Atoi(r.URL.Query().Get("known_total")); err == nil && kt >= 0 {
-		knownTotal = kt
+	if n, err := strconv.Atoi(r.URL.Query().Get("known_total")); err == nil && n >= 0 {
+		knownTotal = n
 	}
 	ctx := r.Context()
-	userID := h.userID(ctx)
-	var resolveErr error
-	folderID, resolveErr = h.resolveFolderID(ctx, userID, folderID)
-	if resolveErr != nil {
-		http.NotFound(w, r)
-		return
-	}
-	uiSettings := h.db.GetUISettings(ctx, userID)
-	ctx = storage.WithTimezone(ctx, effectiveTimezone(r, uiSettings["timezone"]))
-	filters := applyEmailSortDefaults(parseEmailFilters(r), r, uiSettings)
-
-	var page *models.EmailPage
-	var pageErr error
-
-	if around := r.URL.Query().Get("around"); around != "" && !emailFiltersActive(filters) {
-		page, pageErr = h.db.GetEmailsAroundEmailForUser(ctx, h.userID(ctx), folderID, around, limit)
-	} else if startStr := r.URL.Query().Get("start"); startStr != "" {
-		start, err := strconv.Atoi(startStr)
-		if err != nil || start < 0 {
-			start = 0
+	h.renderMailboxView(w, r, &ctx, func(h *Handler) (templ.Component, error) {
+		userID := h.userID(ctx)
+		folderID, err := h.resolveFolderID(ctx, userID, r.PathValue("id"))
+		if err != nil {
+			return nil, err
 		}
-		page, pageErr = h.db.GetEmailsRangeFilteredForUserWithTotal(ctx, h.userID(ctx), folderID, start, limit, filters, knownTotal)
-	} else if cursor := r.URL.Query().Get("after"); cursor != "" && !emailFiltersActive(filters) {
-		page, pageErr = h.db.GetEmailsAfterCursorForUser(ctx, h.userID(ctx), folderID, cursor, limit)
-	} else {
-		page, pageErr = h.db.GetEmailsRangeFilteredForUser(ctx, h.userID(ctx), folderID, 0, limit, filters)
-	}
-
-	if pageErr != nil {
-		log.Printf("mail items %s: %v", folderID, pageErr)
-		http.Error(w, "mail items unavailable", http.StatusServiceUnavailable)
-		return
-	}
-
-	if page == nil {
-		page = &models.EmailPage{}
-	}
-
-	w.Header().Set("Content-Type", "text/html")
-	accounts, _ := h.db.GetAccounts(ctx, h.userID(ctx))
-	viewMode := r.URL.Query().Get("view")
-	if viewMode == "" {
-		viewMode = uiSettings["mail_list_view"]
-	}
-	views.MailListItemsFragment(
-		accounts, page.Emails, folderID,
-		page.WindowStart, page.WindowEnd, page.TotalCount, page.DisplayTotalCount,
-		page.NextCursor, page.HasMore,
-		selectedEmailId,
-		uiSettings["sender_display"],
-		viewMode,
-	).Render(ctx, w)
+		settings := h.db.GetUISettings(ctx, userID)
+		ctx = storage.WithTimezone(ctx, effectiveTimezone(r, settings["timezone"]))
+		filters := applyEmailSortDefaults(parseEmailFilters(r), r, settings)
+		var page *models.EmailPage
+		if around := r.URL.Query().Get("around"); around != "" && !emailFiltersActive(filters) {
+			page, err = h.db.GetEmailsAroundEmailForUser(ctx, userID, folderID, around, limit)
+		} else if startStr := r.URL.Query().Get("start"); startStr != "" {
+			start, parseErr := strconv.Atoi(startStr)
+			if parseErr != nil || start < 0 {
+				start = 0
+			}
+			page, err = h.db.GetEmailsRangeFilteredForUserWithTotal(ctx, userID, folderID, start, limit, filters, knownTotal)
+		} else if cursor := r.URL.Query().Get("after"); cursor != "" && !emailFiltersActive(filters) {
+			page, err = h.db.GetEmailsAfterCursorForUser(ctx, userID, folderID, cursor, limit)
+		} else {
+			page, err = h.db.GetEmailsRangeFilteredForUser(ctx, userID, folderID, 0, limit, filters)
+		}
+		if err != nil {
+			return nil, err
+		}
+		if page == nil {
+			page = &models.EmailPage{}
+		}
+		accounts, err := h.db.GetAccounts(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+		view := r.URL.Query().Get("view")
+		if view == "" {
+			view = settings["mail_list_view"]
+		}
+		return views.MailListItemsFragment(accounts, page.Emails, folderID, page.WindowStart, page.WindowEnd, page.TotalCount, page.DisplayTotalCount, page.NextCursor, page.HasMore, r.URL.Query().Get("selected"), settings["sender_display"], view), nil
+	})
 }
 
 func parseEmailFilters(r *http.Request) models.EmailFilters {
@@ -2546,52 +2458,52 @@ func (h *Handler) handleThreadSubItems(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-
 	ctx := r.Context()
-	userID := h.userID(ctx)
-	ctx = h.contextWithUserTimezone(ctx, r, userID)
-
-	accountID, err := h.db.GetThreadAccountIDForUser(ctx, threadID, userID)
-	if err != nil || accountID == "" {
-		http.NotFound(w, r)
-		return
-	}
-
-	items, err := h.db.GetThreadMessagesForUser(ctx, accountID, threadID, userID)
-	if err != nil || len(items) == 0 {
-		http.NotFound(w, r)
-		return
-	}
-
-	w.Header().Set("Content-Type", "text/html")
-	uiSettings := h.db.GetUISettings(ctx, h.userID(ctx))
-	views.MailListThreadSubItems(items, uiSettings["sender_display"]).Render(ctx, w)
+	h.renderMailboxView(w, r, &ctx, func(h *Handler) (templ.Component, error) {
+		userID := h.userID(ctx)
+		ctx = h.contextWithUserTimezone(ctx, r, userID)
+		accountID, err := h.db.GetThreadAccountIDForUser(ctx, threadID, userID)
+		if err != nil {
+			return nil, err
+		}
+		if accountID == "" {
+			return nil, sql.ErrNoRows
+		}
+		items, err := h.db.GetThreadMessagesForUser(ctx, accountID, threadID, userID)
+		if err != nil {
+			return nil, err
+		}
+		if len(items) == 0 {
+			return nil, sql.ErrNoRows
+		}
+		settings := h.db.GetUISettings(ctx, userID)
+		return views.MailListThreadSubItems(items, settings["sender_display"]), nil
+	})
 }
 
 func (h *Handler) handleSearch(w http.ResponseWriter, r *http.Request) {
-	q := r.URL.Query().Get("q")
-	ctx := h.contextWithUserTimezone(r.Context(), r, h.userID(r.Context()))
-	if q == "" {
-		w.Header().Set("Content-Type", "text/html")
-		uiSettings := h.db.GetUISettings(ctx, h.userID(ctx))
-		accounts, _ := h.db.GetAccounts(ctx, h.userID(ctx))
-		views.MailListEmails(accounts, nil, "", nil, 0, 0, 0, uiSettings["sender_display"], uiSettings["mail_list_view"], uiSettings["mail_list_navigation"]).Render(ctx, w)
-		return
-	}
-
-	emails, err := h.db.SearchMessages(ctx, h.userID(ctx), q, 50)
-	if err != nil {
-		http.Error(w, "search failed", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "text/html")
-	uiSettings := h.db.GetUISettings(ctx, h.userID(ctx))
-	accounts, _ := h.db.GetAccounts(ctx, h.userID(ctx))
-	views.MailListEmails(accounts, emails, "", nil, len(emails), len(emails), 0, uiSettings["sender_display"], uiSettings["mail_list_view"], uiSettings["mail_list_navigation"]).Render(ctx, w)
+	ctx := r.Context()
+	h.renderMailboxView(w, r, &ctx, func(h *Handler) (templ.Component, error) {
+		userID := h.userID(ctx)
+		settings := h.db.GetUISettings(ctx, userID)
+		ctx = storage.WithTimezone(ctx, effectiveTimezone(r, settings["timezone"]))
+		accounts, err := h.db.GetAccounts(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+		var emails []models.Email
+		if q := r.URL.Query().Get("q"); q != "" {
+			emails, err = h.db.SearchMessages(ctx, userID, q, 50)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return views.MailListEmails(accounts, emails, "", nil, len(emails), len(emails), 0, settings["sender_display"], settings["mail_list_view"], settings["mail_list_navigation"]), nil
+	})
 }
 
 func (h *Handler) handleDiscoverAccount(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 64<<10)
 	if err := r.ParseForm(); err != nil {
 		writeJSONError(w, http.StatusBadRequest, "Invalid discovery request.")
 		return
@@ -2649,22 +2561,7 @@ func (h *Handler) handleCreateAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req := models.CreateAccountRequest{
-		Provider:     r.FormValue("provider"),
-		EmailAddress: r.FormValue("email_address"),
-		DisplayName:  r.FormValue("display_name"),
-		IMAPHost:     r.FormValue("imap_host"),
-		IMAPPort:     atoiDefault(r.FormValue("imap_port"), 993),
-		IMAPTLSMode:  r.FormValue("imap_tls_mode"),
-		SMTPHost:     r.FormValue("smtp_host"),
-		SMTPPort:     atoiDefault(r.FormValue("smtp_port"), 465),
-		SMTPTLSMode:  r.FormValue("smtp_tls_mode"),
-		Username:     r.FormValue("username"),
-		Password:     r.FormValue("password"),
-		AuthMethod:   r.FormValue("auth_method"),
-		SmtpUsername: r.FormValue("smtp_username"),
-		SmtpPassword: r.FormValue("smtp_password"),
-	}
+	req := accountRequestFromForm(r)
 
 	if req.EmailAddress == "" || req.IMAPHost == "" || req.SMTPHost == "" || req.Username == "" {
 		w.Header().Set("Content-Type", "application/html")
@@ -2746,22 +2643,7 @@ func (h *Handler) handleUpdateAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req := models.CreateAccountRequest{
-		Provider:     r.FormValue("provider"),
-		EmailAddress: r.FormValue("email_address"),
-		DisplayName:  r.FormValue("display_name"),
-		IMAPHost:     r.FormValue("imap_host"),
-		IMAPPort:     atoiDefault(r.FormValue("imap_port"), 993),
-		IMAPTLSMode:  r.FormValue("imap_tls_mode"),
-		SMTPHost:     r.FormValue("smtp_host"),
-		SMTPPort:     atoiDefault(r.FormValue("smtp_port"), 465),
-		SMTPTLSMode:  r.FormValue("smtp_tls_mode"),
-		Username:     r.FormValue("username"),
-		Password:     r.FormValue("password"),
-		AuthMethod:   r.FormValue("auth_method"),
-		SmtpUsername: r.FormValue("smtp_username"),
-		SmtpPassword: r.FormValue("smtp_password"),
-	}
+	req := accountRequestFromForm(r)
 
 	if r.Form.Has("label") {
 		label, ok := normalizeAccountLabel(r.FormValue("label"))
@@ -3062,12 +2944,12 @@ func (h *Handler) handleSaveSignature(w http.ResponseWriter, r *http.Request) {
 	if textBody == "" {
 		textBody = signatureHTMLToText(htmlBody)
 	}
-	sig, err := h.db.SaveSignature(r.Context(), h.userID(r.Context()), models.Signature{
+	sig, err := h.db.SaveSignatureGuarded(r.Context(), h.userID(r.Context()), models.Signature{
 		ID:       strings.TrimSpace(r.FormValue("id")),
 		Name:     r.FormValue("name"),
 		HTMLBody: htmlBody,
 		TextBody: textBody,
-	})
+	}, h.signatureGuard)
 	if errors.Is(err, sql.ErrNoRows) {
 		http.NotFound(w, r)
 		return
@@ -3088,7 +2970,7 @@ func (h *Handler) handleDeleteSignature(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "signature id required", http.StatusBadRequest)
 		return
 	}
-	if err := h.db.DeleteSignature(r.Context(), h.userID(r.Context()), signatureID); err != nil {
+	if err := h.db.DeleteSignatureGuarded(r.Context(), h.userID(r.Context()), signatureID, h.signatureGuard); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			http.NotFound(w, r)
 			return
@@ -3121,7 +3003,7 @@ func (h *Handler) handleSaveAccountSignatureSettings(w http.ResponseWriter, r *h
 		ReplyPlacement:     r.FormValue("reply_placement"),
 		ForwardPlacement:   r.FormValue("forward_placement"),
 	}
-	if err := h.db.SaveAccountSignatureSettings(r.Context(), h.userID(r.Context()), settings); err != nil {
+	if err := h.db.SaveAccountSignatureSettingsGuarded(r.Context(), h.userID(r.Context()), settings, h.signatureGuard); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			http.NotFound(w, r)
 			return
@@ -3337,6 +3219,10 @@ func (h *Handler) handleSettingsTab(w http.ResponseWriter, r *http.Request) {
 		h.renderPasswordSecurityTab(w, r, http.StatusOK, nil)
 		return
 	}
+	if h.userStorage != nil {
+		h.handleUserSyncSettingsView(w, r, tab)
+		return
+	}
 	ctx := r.Context()
 	accounts, _ := h.db.GetAccounts(ctx, h.userID(ctx))
 	displayAccounts := accounts
@@ -3405,7 +3291,12 @@ func (h *Handler) renderPasswordSecurityTab(w http.ResponseWriter, r *http.Reque
 			data.MessageIsError = true
 		}
 
-		uiSettings := h.db.GetUISettings(ctx, h.userID(ctx))
+		uiSettings, err := h.securityUISettings(ctx, h.userID(ctx))
+		if err != nil {
+			log.Printf("load security display preferences: %v", err)
+			http.Error(w, "user settings unavailable", http.StatusServiceUnavailable)
+			return
+		}
 		var page bytes.Buffer
 		if managementSurface {
 			err = views.ManagementSecurityLayout(uiSettings, views.PasswordSecurityVerification(data)).Render(ctx, &page)
@@ -3617,7 +3508,12 @@ func (h *Handler) renderPasswordSecurityTab(w http.ResponseWriter, r *http.Reque
 		}
 	}
 
-	uiSettings := h.db.GetUISettings(ctx, h.userID(ctx))
+	uiSettings, err := h.securityUISettings(ctx, h.userID(ctx))
+	if err != nil {
+		log.Printf("load security display preferences: %v", err)
+		http.Error(w, "user settings unavailable", http.StatusServiceUnavailable)
+		return
+	}
 	var page bytes.Buffer
 	if managementSurface {
 		err = views.ManagementSecurityLayout(uiSettings, views.PasswordSecuritySettings(data)).Render(ctx, &page)
@@ -3669,7 +3565,9 @@ func (h *Handler) buildSyncSettings(ctx context.Context, accounts []models.Accou
 
 		idleFolderIDs := h.db.GetIdleFolderIDsForAccount(ctx, h.userID(ctx), account.ID)
 		var idleRuntime map[string]mail.IDLEFolderRuntimeStatus
-		if h.syncer != nil {
+		if h.userIdleStatuses != nil {
+			idleRuntime = h.userIdleStatuses[account.ID]
+		} else if h.syncer != nil {
 			idleRuntime = h.syncer.IDLEFolderStatuses(account.ID)
 		}
 
@@ -3697,6 +3595,10 @@ func (h *Handler) buildSyncSettings(ctx context.Context, accounts []models.Accou
 
 			configuredIDLE := idleFolderIDs[f.ID]
 			runtime, hasRuntime := idleRuntime[f.ID]
+			if h.userIdleStatuses != nil && configuredIDLE && !hasRuntime {
+				runtime.Reason = "Real-time notifications are unavailable; periodic polling is active."
+				hasRuntime = true
+			}
 			effectiveIDLE, fallbackReason, retryAt := effectiveIDLEFolderStatus(configuredIDLE, runtime, hasRuntime)
 
 			folderStatuses = append(folderStatuses, models.FolderSyncStatus{
@@ -3827,7 +3729,15 @@ func (h *Handler) handleSaveSyncSettings(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *Handler) handleGetUISettings(w http.ResponseWriter, r *http.Request) {
-	settings := h.db.GetUISettings(r.Context(), h.userID(r.Context()))
+	userID := h.userID(r.Context())
+	var settings map[string]string
+	if err := h.withUserDB(r.Context(), userID, func(db *storage.DB) error {
+		settings = db.GetUISettings(r.Context(), userID)
+		return nil
+	}); err != nil {
+		http.Error(w, "settings unavailable", http.StatusServiceUnavailable)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(settings)
 }
@@ -3839,12 +3749,10 @@ func (h *Handler) handleSaveUISettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	current := h.db.GetUISettings(r.Context(), h.userID(r.Context()))
-	for k, v := range updates {
-		current[k] = v
-	}
-
-	if err := h.db.SetUISettings(r.Context(), h.userID(r.Context()), current); err != nil {
+	userID := h.userID(r.Context())
+	if err := h.withUserDB(r.Context(), userID, func(db *storage.DB) error {
+		return db.MergeUISettings(r.Context(), userID, updates)
+	}); err != nil {
 		http.Error(w, "save failed", http.StatusInternalServerError)
 		return
 	}
@@ -4116,7 +4024,9 @@ func (h *Handler) handleAttachmentPreview(w http.ResponseWriter, r *http.Request
 }
 
 func (h *Handler) handleComposeAttachmentUpload(w http.ResponseWriter, r *http.Request) {
-	h.cleanupUnreferencedComposeAttachments(r.Context())
+	if h.userMutationState == nil {
+		h.cleanupUnreferencedComposeAttachments(r.Context())
+	}
 	// Cap the whole body: ParseMultipartForm spills oversized parts to temp files.
 	r.Body = http.MaxBytesReader(w, r.Body, composeAttachmentMaxBytes+multipartOverheadBytes)
 	if err := r.ParseMultipartForm(composeAttachmentMaxBytes); err != nil {
@@ -4149,6 +4059,14 @@ func (h *Handler) handleComposeAttachmentUpload(w http.ResponseWriter, r *http.R
 	contentType := header.Header.Get("Content-Type")
 	if contentType == "" {
 		contentType = http.DetectContentType(data)
+	}
+	if h.userStorage != nil {
+		// Reading a multipart body may outlive owner access. The file pin
+		// prevents removal, but does not authorize publishing new bytes.
+		if err := h.userStorage.ValidateUser(r.Context(), h.userID(r.Context())); err != nil {
+			http.Error(w, "user storage unavailable", http.StatusForbidden)
+			return
+		}
 	}
 	id, path, err := h.blobStore.StoreComposeAttachment(r.Context(), h.userID(r.Context()), header.Filename, bytes.NewReader(data))
 	if err != nil {
@@ -4419,7 +4337,7 @@ func (h *Handler) handleAllowRemoteContent(w http.ResponseWriter, r *http.Reques
 		if download == nil {
 			download = downloadRemoteResource
 		}
-		data, err := download(remoteURL)
+		data, err := download(ctx, remoteURL)
 		if err != nil || len(data) == 0 {
 			continue
 		}
@@ -4471,8 +4389,20 @@ func (h *Handler) handleAllowRemoteContent(w http.ResponseWriter, r *http.Reques
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }
 
-func downloadRemoteResource(url string) ([]byte, error) {
-	return netguard.Fetch(url, 5*1024*1024)
+// remoteFetch is the SSRF-guarded fetcher behind downloadRemoteResource.
+var remoteFetch = netguard.FetchContext
+
+// SetRemoteFetchForTest swaps the fetcher so other packages' tests can serve
+// remote content from loopback fixtures, which the guard refuses by design.
+// It returns a function that restores the previous fetcher.
+func SetRemoteFetchForTest(fetch func(ctx context.Context, rawURL string, maxBytes int64) ([]byte, error)) (restore func()) {
+	previous := remoteFetch
+	remoteFetch = fetch
+	return func() { remoteFetch = previous }
+}
+
+func downloadRemoteResource(ctx context.Context, url string) ([]byte, error) {
+	return remoteFetch(ctx, url, 5*1024*1024)
 }
 
 func validRemoteAssetFilename(filename string) bool {
@@ -4567,44 +4497,7 @@ func (h *Handler) handleSSE(w http.ResponseWriter, r *http.Request) {
 		if !sseEventVisible(event, userID, accountSet, isAdmin) {
 			return false
 		}
-		m := map[string]any{
-			"type":       string(event.Type),
-			"account_id": event.AccountID,
-			"folder_id":  event.FolderID,
-		}
-		for key, value := range event.Payload {
-			m[key] = value
-		}
-		if event.FolderRole != "" {
-			m["folder_role"] = event.FolderRole
-		}
-		if event.Status != "" {
-			m["status"] = event.Status
-		}
-		if event.Error != "" {
-			m["error"] = event.Error
-		}
-		includeProgress := event.Type == mail.EventSyncStarted || event.Type == mail.EventSyncProgress || event.Type == mail.EventSyncComplete ||
-			event.Type == mail.EventManualSyncStarted || event.Type == mail.EventManualSyncProgress || event.Type == mail.EventManualSyncComplete ||
-			event.Type == mail.EventScheduledSyncStarted || event.Type == mail.EventScheduledSyncProgress || event.Type == mail.EventScheduledSyncComplete
-		if event.Current > 0 || includeProgress {
-			m["current"] = event.Current
-		}
-		if event.Total > 0 || includeProgress {
-			m["total"] = event.Total
-		}
-		if event.AvatarHash != "" {
-			m["avatar_hash"] = event.AvatarHash
-		}
-		if event.AvatarURL != "" {
-			m["avatar_url"] = event.AvatarURL
-		}
-		if event.AvatarDataURL != "" {
-			m["avatar_data_url"] = event.AvatarDataURL
-		}
-		data, _ := json.Marshal(m)
-		fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event.Type, data)
-		flusher.Flush()
+		writeSSEEvent(w, flusher, event)
 		return true
 	}
 
@@ -4719,29 +4612,31 @@ func sseEventVisible(event mail.Event, userID string, accountSet map[string]bool
 }
 
 func (h *Handler) handleFolderUnreadCounts(w http.ResponseWriter, r *http.Request) {
-	counts, err := h.db.GetAllFolderUnreadCounts(r.Context(), h.userID(r.Context()))
+	var counts map[string]int
+	err := h.withUserDB(r.Context(), h.userID(r.Context()), func(db *storage.DB) error {
+		var err error
+		counts, err = db.GetAllFolderUnreadCounts(r.Context(), h.userID(r.Context()))
+		return err
+	})
 	if err != nil {
-		http.Error(w, "failed to get unread counts", http.StatusInternalServerError)
+		http.Error(w, "failed to get unread counts", http.StatusServiceUnavailable)
 		return
 	}
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(counts)
 }
 
 func (h *Handler) handleMailSidebar(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID := h.userID(ctx)
-	accounts, err := h.db.GetAccounts(ctx, userID)
-	if err != nil {
-		http.Error(w, "failed to load sidebar", http.StatusInternalServerError)
-		return
-	}
-	activeFolder := strings.TrimSpace(r.URL.Query().Get("active_folder"))
-	uiSettings := h.db.GetUISettings(ctx, userID)
-	filters := applyEmailSortDefaults(parseEmailFilters(r), r, uiSettings)
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	views.MailSidebarBody(accounts, activeFolder, uiSettings, h.scheduledSidebarCount(ctx, userID), filters).Render(ctx, w)
+	h.renderMailboxView(w, r, &ctx, func(h *Handler) (templ.Component, error) {
+		userID := h.userID(ctx)
+		accounts, err := h.db.GetAccounts(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+		settings := h.db.GetUISettings(ctx, userID)
+		return views.MailSidebarBody(accounts, strings.TrimSpace(r.URL.Query().Get("active_folder")), settings, h.scheduledSidebarCount(ctx, userID), applyEmailSortDefaults(parseEmailFilters(r), r, settings)), nil
+	})
 }
 
 func (h *Handler) handleSidebarAccount(w http.ResponseWriter, r *http.Request) {
@@ -4750,27 +4645,22 @@ func (h *Handler) handleSidebarAccount(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-
 	ctx := r.Context()
-	userID := h.userID(ctx)
-	accounts, err := h.db.GetAccounts(ctx, userID)
-	if err != nil {
-		http.Error(w, "failed to load account", http.StatusInternalServerError)
-		return
-	}
-
-	for _, account := range accounts {
-		if account.ID != accountID || account.IsDeleting || !account.EmailSyncEnabled {
-			continue
+	h.renderMailboxView(w, r, &ctx, func(h *Handler) (templ.Component, error) {
+		userID := h.userID(ctx)
+		accounts, err := h.db.GetAccounts(ctx, userID)
+		if err != nil {
+			return nil, err
 		}
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		activeFolder := strings.TrimSpace(r.URL.Query().Get("active_folder"))
-		uiSettings := h.db.GetUISettings(ctx, userID)
-		views.SidebarAccountSection(account, activeFolder, uiSettings, applyEmailSortDefaults(parseEmailFilters(r), r, uiSettings)).Render(ctx, w)
-		return
-	}
-
-	http.NotFound(w, r)
+		for _, account := range accounts {
+			if account.ID != accountID || account.IsDeleting || !account.EmailSyncEnabled {
+				continue
+			}
+			settings := h.db.GetUISettings(ctx, userID)
+			return views.SidebarAccountSection(account, strings.TrimSpace(r.URL.Query().Get("active_folder")), settings, applyEmailSortDefaults(parseEmailFilters(r), r, settings)), nil
+		}
+		return nil, sql.ErrNoRows
+	})
 }
 
 func (h *Handler) handleSyncMail(w http.ResponseWriter, r *http.Request) {
@@ -4903,9 +4793,40 @@ func (h *Handler) handleCancelSyncMail(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleProcessingStatus(w http.ResponseWriter, r *http.Request) {
+	if h.ownedMailbox != nil {
+		ctx, cancel := h.ownedAdminDiagnosticContext(r.Context())
+		defer cancel()
+		user := auth.GetCurrentUser(ctx)
+		if user == nil {
+			http.Error(w, "admin access required", http.StatusForbidden)
+			return
+		}
+		actor := storage.DiagnosticsActor{ID: user.ID, AuthVersion: user.AuthVersion}
+		validate := func() bool {
+			if err := h.ownedMailbox.userStorage.ValidateDiagnosticsAdministrator(ctx, actor); err != nil {
+				status := http.StatusServiceUnavailable
+				if errors.Is(err, storage.ErrUserDiagnosticsAccess) {
+					status = http.StatusForbidden
+				}
+				http.Error(w, "processing status unavailable", status)
+				return false
+			}
+			return true
+		}
+		if !validate() {
+			return
+		}
+		state := h.ownedMailbox.getUserThreadingStatus()
+		if !validate() {
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(state)
+		return
+	}
 	state := h.db.GetThreadingState()
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(state)
+	_ = json.NewEncoder(w).Encode(state)
 }
 
 func (h *Handler) handleComposePane(w http.ResponseWriter, r *http.Request) {
@@ -4954,6 +4875,9 @@ func writeComposeJSONError(w http.ResponseWriter, status int, message string) {
 }
 
 func (h *Handler) saveComposeDraftFromForm(ctx context.Context, r *http.Request) (composeDraftSaveResult, *composeRequestError) {
+	if h.userMutationState != nil {
+		return h.saveUserComposeDraft(ctx, r)
+	}
 	accountID := r.FormValue("account_id")
 	if accountID == "" {
 		accountID = h.accountStore.GetFirstAccountID(ctx, h.userID(ctx))
@@ -5853,6 +5777,9 @@ func (h *Handler) getMessageInfo(ctx context.Context, idStr string) (int64, *sto
 	if info == nil {
 		return 0, nil, errMessageTargetNotFound
 	}
+	if err := h.checkUserMessageMutation(ctx, info); err != nil {
+		return 0, nil, err
+	}
 	return msgID, info, nil
 }
 
@@ -5877,6 +5804,9 @@ func (h *Handler) getMessageInfoForFolder(ctx context.Context, idStr, folderID s
 	if info == nil {
 		return 0, nil, errMessageTargetNotFound
 	}
+	if err := h.checkUserMessageMutation(ctx, info); err != nil {
+		return 0, nil, err
+	}
 	return msgID, info, nil
 }
 
@@ -5886,6 +5816,8 @@ func writeMessageTargetError(w http.ResponseWriter, r *http.Request, err error) 
 		http.Error(w, "invalid message id", http.StatusBadRequest)
 	case errors.Is(err, errMessageTargetNotFound), errors.Is(err, sql.ErrNoRows):
 		http.NotFound(w, r)
+	case errors.Is(err, errUserMessageMutationUnsupported):
+		http.Error(w, "Mail changes for this account are not available yet.", http.StatusNotImplemented)
 	default:
 		log.Printf("message target lookup failed: %v", err)
 		http.Error(w, "failed to load message", http.StatusInternalServerError)
@@ -5905,6 +5837,12 @@ func (h *Handler) connectIMAP(ctx context.Context, accountID string) (*imap.Clie
 }
 
 func (h *Handler) publishMutation(accountID, folderID string) {
+	if h.userMutationState != nil {
+		h.userMutationState.events = append(h.userMutationState.events, mail.Event{
+			Type: mail.EventMutation, UserID: h.userMutationState.owner, AccountID: accountID, FolderID: folderID,
+		})
+		return
+	}
 	h.syncer.Events().Publish(mail.Event{
 		Type:      mail.EventMutation,
 		AccountID: accountID,
@@ -5953,6 +5891,9 @@ type ownedMessageTarget struct {
 
 func (h *Handler) resolveOwnedMessageTargets(ctx context.Context, targets []messageBulkTarget, sourceFolderID string, wholeThread bool) ([]ownedMessageTarget, error) {
 	if len(targets) == 0 {
+		return nil, errInvalidMessageTarget
+	}
+	if h.userMutationState != nil && len(targets) > 256 {
 		return nil, errInvalidMessageTarget
 	}
 
@@ -6069,7 +6010,7 @@ func (h *Handler) handleMarkMessagesRead(w http.ResponseWriter, r *http.Request)
 	// Absent/"read" marks read; "unread"/"false" marks unread (mirrors the starred handler).
 	targetRead := payload.State != "unread" && payload.State != "false"
 
-	ctx := context.WithoutCancel(r.Context())
+	ctx := h.messageMutationContext(r.Context())
 	targets, err := h.resolveOwnedMessageTargets(ctx, messageBulkTargets(payload), strings.TrimSpace(payload.FolderID), true)
 	if err != nil {
 		writeMessageTargetError(w, r, err)
@@ -6106,7 +6047,7 @@ func (h *Handler) handleMarkMessagesStarred(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	targetStarred := payload.State != "unstarred" && payload.State != "false"
-	ctx := context.WithoutCancel(r.Context())
+	ctx := h.messageMutationContext(r.Context())
 	targets, err := h.resolveOwnedMessageTargets(ctx, messageBulkTargets(payload), strings.TrimSpace(payload.FolderID), true)
 	if err != nil {
 		writeMessageTargetError(w, r, err)
@@ -6143,7 +6084,7 @@ func (h *Handler) handleArchiveMessages(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
-	ctx := context.WithoutCancel(r.Context())
+	ctx := h.messageMutationContext(r.Context())
 	targets, err := h.resolveOwnedMessageTargets(ctx, messageBulkTargets(payload), strings.TrimSpace(payload.FolderID), false)
 	if err != nil {
 		writeMessageTargetError(w, r, err)
@@ -6182,7 +6123,7 @@ func (h *Handler) handleDeleteMessages(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
-	ctx := context.WithoutCancel(r.Context())
+	ctx := h.messageMutationContext(r.Context())
 	sourceFolderID := strings.TrimSpace(payload.FolderID)
 	targets, err := h.resolveOwnedMessageTargets(ctx, messageBulkTargets(payload), sourceFolderID, false)
 	if err != nil {
@@ -6231,7 +6172,7 @@ func (h *Handler) handleMoveMessages(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "folder_id required", http.StatusBadRequest)
 		return
 	}
-	ctx := context.WithoutCancel(r.Context())
+	ctx := h.messageMutationContext(r.Context())
 	destFolderID, err = h.resolveFolderID(ctx, h.userID(ctx), destFolderID)
 	if err != nil {
 		http.Error(w, "destination folder not found", http.StatusBadRequest)
@@ -7102,6 +7043,9 @@ func (h *Handler) cleanupDeletingAccountWithPolicy(ctx context.Context, accountI
 }
 
 func (h *Handler) cleanupDeletingUser(ctx context.Context, userID, actorSessionID string) error {
+	if h.ownedMailbox != nil {
+		return h.ownedMailbox.cleanupOwnedDeletingUser(ctx, userID, actorSessionID)
+	}
 	h.userDeleteMu.Lock()
 	defer h.userDeleteMu.Unlock()
 	if h.auth == nil || !h.auth.IsEnabled() {

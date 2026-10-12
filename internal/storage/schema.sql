@@ -1391,6 +1391,7 @@ CREATE TABLE IF NOT EXISTS calendar_response_requests (
     remote_id TEXT NOT NULL,
     version TEXT NOT NULL,
     response TEXT NOT NULL CHECK (response IN ('accepted', 'tentative', 'declined')),
+    claim_id TEXT NOT NULL DEFAULT '',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (user_id, source_id, remote_id, version)
 );
@@ -1415,6 +1416,7 @@ CREATE TABLE IF NOT EXISTS web_push_subscriptions (
     auth TEXT NOT NULL,
     user_agent TEXT NOT NULL DEFAULT '',
     last_error TEXT NOT NULL DEFAULT '',
+    revision TEXT NOT NULL DEFAULT '',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -1605,4 +1607,11 @@ CREATE TABLE IF NOT EXISTS account_identity_dismissals (
     PRIMARY KEY (account_id, email)
 );
 
-INSERT OR REPLACE INTO schema_version (version) VALUES (119);
+CREATE TABLE IF NOT EXISTS raven_calendar_carryover (
+    account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    remote_id TEXT NOT NULL,
+    selected INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (account_id, remote_id)
+);
+
+INSERT OR REPLACE INTO schema_version (version) VALUES (121);

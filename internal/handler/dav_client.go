@@ -79,10 +79,15 @@ func davHTTPClient(ctx context.Context, timeout time.Duration) *http.Client {
 		}
 		return d.DialContext(ctx, network, address)
 	}
+	// No proxy: it would be dialled instead of the target, defeating the check.
+	transport := &http.Transport{DialContext: dialer, TLSHandshakeTimeout: 10 * time.Second, MaxResponseHeaderBytes: 64 << 10, DisableKeepAlives: true}
+	// Keep the process-wide trust roots (only the TLS settings, never the dialer).
+	if base, ok := http.DefaultTransport.(*http.Transport); ok && base.TLSClientConfig != nil {
+		transport.TLSClientConfig = base.TLSClientConfig.Clone()
+	}
 	return &http.Client{
-		Timeout: timeout,
-		// No proxy: it would be dialled instead of the target, defeating the check.
-		Transport: &http.Transport{DialContext: dialer, TLSHandshakeTimeout: 10 * time.Second, MaxResponseHeaderBytes: 64 << 10, DisableKeepAlives: true},
+		Timeout:   timeout,
+		Transport: transport,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			if len(via) >= 5 {
 				return fmt.Errorf("stopped after 5 redirects")
