@@ -157,6 +157,8 @@ func runServer() {
 	notificationService.Start(ctx)
 	log.Printf("boot: notification worker started")
 
+	syncer.StartPush(ctx, mail.LoadPushConfig())
+
 	mux := http.NewServeMux()
 	h := handler.New(db, accountStore, syncer, blobStore, authManager, vapidPublicKey, mailCredentials)
 

@@ -4051,6 +4051,30 @@ func (db *DB) GetAllEmailSyncAccountIDs(ctx context.Context) ([]string, error) {
 	return ids, rows.Err()
 }
 
+// GetEmailSyncAccountIDsByEmail returns the sync-enabled accounts of a provider
+// whose mailbox address matches email, ignoring case and surrounding space.
+func (db *DB) GetEmailSyncAccountIDsByEmail(ctx context.Context, provider, email string) ([]string, error) {
+	rows, err := db.Read().QueryContext(ctx, `
+		SELECT a.id FROM accounts a JOIN users u ON u.id = a.user_id
+		WHERE a.provider = ? AND LOWER(TRIM(a.email_address)) = ?
+		  AND COALESCE(a.is_deleting, 0) = 0 AND COALESCE(a.email_sync_enabled, 1) = 1
+		  AND u.status = 'active' ORDER BY a.id`, provider, strings.ToLower(strings.TrimSpace(email)))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
 func (db *DB) IsEmailSyncEnabled(ctx context.Context, accountID string) bool {
 	var enabled int
 	err := db.Read().QueryRowContext(ctx, `

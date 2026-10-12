@@ -23,6 +23,19 @@ func TestAccountOAuthCallbacksRequireAuthentication(t *testing.T) {
 	}
 }
 
+func TestOnlyProviderPushWebhooksArePublic(t *testing.T) {
+	for _, path := range []string{"/hooks/gmail", "/hooks/graph"} {
+		if !isPublicPath(path) {
+			t.Fatalf("push webhook %q must be public", path)
+		}
+	}
+	for _, path := range []string{"/hooks/other", "/hooks/gmail/", "/hooks"} {
+		if isPublicPath(path) {
+			t.Fatalf("%q must not be public", path)
+		}
+	}
+}
+
 func newAccountOAuthFlowTestManager(t *testing.T, enabled bool) (*Manager, *storage.DB) {
 	t.Helper()
 	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))

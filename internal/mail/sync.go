@@ -151,6 +151,7 @@ type SyncOrchestrator struct {
 	gmailPollMu         sync.Mutex
 	activeUsers         map[string]int
 	gmailPollRuntime    map[string]gmailPollRuntimeState
+	push                PushConfig
 	interval            int
 	intervalMu          sync.RWMutex
 	intervalChanged     chan struct{}
@@ -2049,7 +2050,11 @@ func (o *SyncOrchestrator) SyncAccount(ctx context.Context, accountID string) bo
 	go func() {
 		defer finish()
 
-		if err := o.syncAccount(syncCtx, accountID, false); err != nil {
+		syncAccount := o.syncAccount
+		if o.syncAccountOverride != nil {
+			syncAccount = o.syncAccountOverride
+		}
+		if err := syncAccount(syncCtx, accountID, false); err != nil {
 			log.Printf("sync account %s: %v", accountID, err)
 			o.markAccountSyncError(syncCtx, accountID, err)
 		} else {

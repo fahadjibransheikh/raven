@@ -538,6 +538,8 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	adminRoute("GET /api/admin/mail-operations/status", h.handleAdminMailOperationsStatus)
 	mux.HandleFunc("GET /api/sidebar/mail", h.handleMailSidebar)
 	mux.HandleFunc("GET /api/sidebar/accounts/{id}", h.handleSidebarAccount)
+	mux.HandleFunc("POST /hooks/gmail", h.handleGmailPushHook)
+	mux.HandleFunc("POST /hooks/graph", h.handleGraphPushHook)
 	mux.HandleFunc("POST /api/mail/sync", h.handleSyncMail)
 	mux.HandleFunc("POST /api/mail/sync/accounts/{id}", h.handleSyncMailAccount)
 	mux.HandleFunc("POST /api/mail/sync/accounts/{id}/repair", h.handleRepairMailAccount)

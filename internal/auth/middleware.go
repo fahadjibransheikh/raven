@@ -222,6 +222,8 @@ func isPublicPath(path string) bool {
 		"/account/enroll", "/account/enroll/google", "/account/enroll/complete",
 		"/account/redeem", "/account/redeem/complete", "/account/recover",
 		"/auth/google", "/auth/google/login/callback", "/auth/microsoft", "/auth/microsoft/login/callback", "/auth/oidc", "/auth/oidc/callback", "/sw.js",
+		// Provider push webhooks (Google Pub/Sub, Microsoft Graph); each handler checks its own shared secret.
+		"/hooks/gmail", "/hooks/graph",
 	}
 	for _, p := range public {
 		if path == p {

@@ -33,6 +33,10 @@ func isEmailImageRoute(path string) bool {
 }
 
 func requiresSameOrigin(r *http.Request) bool {
+	// Provider push webhooks are server-to-server POSTs with no browser origin.
+	if r.URL.Path == "/hooks/gmail" || r.URL.Path == "/hooks/graph" {
+		return false
+	}
 	if r.URL.Path == "/api/events" || r.URL.Path == "/api/admin/events" {
 		return true
 	}
