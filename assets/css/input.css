@@ -3428,6 +3428,27 @@ html[data-platform="other"] .hint-other {
     display: none;
   }
 
+  /* Card gutter: the corner (thread count, star) reserved ~56px on every row. Drop the
+     empty slots and the hover-only star, let the body run under the corner column, and
+     keep the gutter only on rows that show a thread count or a starred star. :root so
+     the airy preview-padding rule (higher specificity by one class) loses by order. */
+  :root[data-phone] #mail-list-scroll[data-view-mode="cards"] .mail-list-card:not(.mail-card-layout-preview-card) .mail-list-card-zone-corner .mail-list-card-empty-icon-slot,
+  :root[data-phone] #mail-list-scroll[data-view-mode="cards"] .mail-list-card:not(.mail-card-layout-preview-card) .mail-list-card-zone-corner button[data-mail-card-field="starred"] {
+    display: none;
+  }
+
+  :root[data-phone] #mail-list-scroll[data-view-mode="cards"] .mail-list-card:not(.mail-card-layout-preview-card):not(:has(.mail-list-card-zone-footer:not(:empty), .mail-list-card-zone-status:not(:empty))) .mail-list-card-zone-body {
+    grid-column: 2 / -1;
+  }
+
+  :root[data-phone] #mail-list-scroll[data-view-mode="cards"] .mail-list-card:not(.mail-card-layout-preview-card):not(:has(.mail-list-card-zone-footer:not(:empty), .mail-list-card-zone-status:not(:empty))) .mail-list-card-zone-body > [data-mail-card-field="preview"] {
+    padding-right: 0;
+  }
+
+  :root[data-phone] #mail-list-scroll[data-view-mode="cards"] .mail-list-card:not(.mail-card-layout-preview-card):not(:has(.mail-list-card-zone-footer:not(:empty), .mail-list-card-zone-status:not(:empty))):has(.mail-list-thread-pill, span[data-mail-card-field="starred"]) .mail-list-card-zone-body {
+    padding-right: 3.5rem;
+  }
+
   .resize-handle {
     display: none !important;
   }
