@@ -2,8 +2,9 @@
 
 ![Old logo, then every colourway](preview.png)
 
-A solid two-tone raven (body + wing) with an `@` for the eye. Every colourway
-is three colours: tile, body, wing.
+A raven whose whole head is an `@`: the outer ring is the skull, the bowl is
+the eye, and the beak grows out of the ring. One crescent in a second colour is
+the body. Every colourway is a tile colour plus head and body colours.
 
 | File | Use |
 | --- | --- |
@@ -14,9 +15,10 @@ is three colours: tile, body, wing.
 | `mark-white.svg` | Bird only, transparent, for dark surfaces. |
 
 The SVGs are generated; edit `scripts/logo/generate.py` and rerun it rather than
-editing them by hand:
+editing them by hand. It needs `shapely` to merge the strokes into clean outlines:
 
 ```sh
+pip install shapely
 python3 scripts/logo/generate.py
 ```
 
