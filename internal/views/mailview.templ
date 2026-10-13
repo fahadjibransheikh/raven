@@ -252,7 +252,7 @@ templ MailViewContent(email *models.Email, thread []models.ThreadItem, newestFir
 						</div>
 						for i, item := range thread {
 							@MailViewThreadItemSender(email, &item, !newestFirst && threadItemOpen(thread, i, false))
-							@MailViewThreadItemMiniHeader(&item)
+							@MailViewThreadItemMiniHeader(&item, threadItemIsNewest(thread, i, newestFirst))
 							if len(item.Attachments) > 0 {
 								@MailViewThreadItemAttachments(&item)
 							}
@@ -426,7 +426,7 @@ templ MailViewThreadItemAttachments(item *models.ThreadItem) {
 	</div>
 }
 
-templ MailViewThreadItemMiniHeader(item *models.ThreadItem) {
+templ MailViewThreadItemMiniHeader(item *models.ThreadItem, isNewest bool) {
 	<div class="flex items-center gap-0.5 mt-2 -ml-1">
 		@tooltip.Tooltip() {
 			@tooltip.Trigger() {
@@ -498,7 +498,48 @@ templ MailViewThreadItemMiniHeader(item *models.ThreadItem) {
 				}
 			}
 		}
+		if !item.IsDraft {
+			@MailViewThreadItemQuickReply(item, isNewest)
+		}
 	</div>
+}
+
+// Reply, reply all and forward stay reachable while a thread message is
+// collapsed. handleReply reads the message and account ids from this element;
+// data-thread-newest marks the newest message for the keyboard shortcuts.
+templ MailViewThreadItemQuickReply(item *models.ThreadItem, isNewest bool) {
+	<div class="mail-view-thread-quick-reply ml-auto flex items-center gap-0.5" data-thread-reply-data data-thread-newest?={ isNewest } data-message-id={ item.InternetMessageID } data-account-id={ item.AccountID }>
+		@mailViewThreadQuickReplyButton("reply", "Reply") {
+			@icon.Reply(icon.Props{Class: "size-3.5"})
+		}
+		@mailViewThreadQuickReplyButton("reply-all", "Reply all") {
+			@icon.ReplyAll(icon.Props{Class: "size-3.5"})
+		}
+		@mailViewThreadQuickReplyButton("forward", "Forward") {
+			@icon.Forward(icon.Props{Class: "size-3.5"})
+		}
+	</div>
+}
+
+templ mailViewThreadQuickReplyButton(mode string, label string) {
+	@tooltip.Tooltip() {
+		@tooltip.Trigger() {
+			@button.Button(button.Props{
+				Variant:    button.VariantGhost,
+				Size:       button.SizeIcon,
+				Class:      "h-7 w-7 text-subtle-foreground hover:text-foreground hover:bg-row-hover",
+				Attributes: templ.Attributes{"data-on-click": onAction("handleReply", actionElement, mode), "aria-label": label},
+			}) {
+				{ children... }
+			}
+		}
+		@tooltip.Content(tooltip.ContentProps{
+			Position:  tooltip.PositionBottom,
+			ShowArrow: true,
+		}) {
+			{ label }
+		}
+	}
 }
 
 templ EmailBodyStyleTabs(emailID string, global bool, listHeight string, triggerHeight string) {
@@ -550,74 +591,30 @@ templ MailViewThreadItemActions(item *models.ThreadItem, isNewest bool, showUnsu
 				}
 			</div>
 		</div>
-	} else {
-	<div class="mt-4 pt-3 border-t border-ink/6"
-		data-thread-reply-data
-		data-thread-newest?={ isNewest }
-		data-message-id={ item.InternetMessageID }
-		data-references={ item.References }
-		data-subject={ item.Subject }
-		data-from-email={ item.From.Email }
-		data-from-name={ item.From.Name }
-		data-account-id={ item.AccountID }
-		data-date={ item.DateFull }
-		data-to={ formatContacts(item.To) }
-		data-cc={ formatContacts(item.CC) }
-		data-body={ item.TextBody }>
-		<div class="mail-view-reply-actions flex items-center gap-2">
-			@button.Button(button.Props{
-				Variant:    button.VariantOutline,
-				Class:      "flex-1 h-8 border-ink/10 text-subtle-foreground hover:text-ink hover:border-ink/20",
-				Attributes: templ.Attributes{"data-on-click": onAction("handleReply", actionElement, "reply")},
-			}) {
-				<span class="flex items-center gap-1.5 text-xs">
-					@icon.Reply(icon.Props{Class: "size-3.5"})
-					Reply
-				</span>
-			}
-			@button.Button(button.Props{
-				Variant:    button.VariantOutline,
-				Class:      "flex-1 h-8 border-ink/10 text-subtle-foreground hover:text-ink hover:border-ink/20",
-				Attributes: templ.Attributes{"data-on-click": onAction("handleReply", actionElement, "reply-all")},
-			}) {
-				<span class="flex items-center gap-1.5 text-xs">
-					@icon.ReplyAll(icon.Props{Class: "size-3.5"})
-					Reply All
-				</span>
-			}
-			if showUnsubscribe {
-				// Hidden when the headers are not stored yet; app.js reveals it once the body is fetched.
-				if method, target := UnsubscribeAction(threadItemEmail(item)); method != "" || item.ListUnsubscribe == "" {
-					@button.Button(button.Props{
-						Variant: button.VariantOutline,
-						Class:   threadUnsubscribeButtonClass(method),
-						Attributes: templ.Attributes{
-							"data-on-click":           onAction("unsubscribeFromMessage", actionElement),
-							"data-unsubscribe-id":     item.ID,
-							"data-unsubscribe-method": method,
-							"data-unsubscribe-target": target,
-							"data-unsubscribe-sender": contactDisplay(item.From),
-						},
-					}) {
-						<span class="flex items-center gap-1.5 text-xs">
-							@icon.MailX(icon.Props{Class: "size-3.5"})
-							Unsubscribe
-						</span>
-					}
+	} else if showUnsubscribe {
+		// Reply, reply all and forward live in the message's header row, so unsubscribe is the
+		// only action left down here. The bar shows only while its button does; app.js reveals
+		// the button once the body is fetched and the headers are stored.
+		<div class="mail-view-reply-actions hidden has-[button:not(.hidden)]:flex items-center gap-2 mt-4 pt-3 border-t border-ink/6">
+			if method, target := UnsubscribeAction(threadItemEmail(item)); method != "" || item.ListUnsubscribe == "" {
+				@button.Button(button.Props{
+					Variant: button.VariantOutline,
+					Class:   threadUnsubscribeButtonClass(method),
+					Attributes: templ.Attributes{
+						"data-on-click":           onAction("unsubscribeFromMessage", actionElement),
+						"data-unsubscribe-id":     item.ID,
+						"data-unsubscribe-method": method,
+						"data-unsubscribe-target": target,
+						"data-unsubscribe-sender": contactDisplay(item.From),
+					},
+				}) {
+					<span class="flex items-center gap-1.5 text-xs">
+						@icon.MailX(icon.Props{Class: "size-3.5"})
+						Unsubscribe
+					</span>
 				}
 			}
-			@button.Button(button.Props{
-				Variant:    button.VariantOutline,
-				Class:      "flex-1 h-8 border-ink/10 text-subtle-foreground hover:text-ink hover:border-ink/20",
-				Attributes: templ.Attributes{"data-on-click": onAction("handleReply", actionElement, "forward")},
-			}) {
-				<span class="flex items-center gap-1.5 text-xs">
-					@icon.Forward(icon.Props{Class: "size-3.5"})
-					Forward
-				</span>
-			}
 		</div>
-	</div>
 	}
 }
 
