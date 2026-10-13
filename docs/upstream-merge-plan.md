@@ -109,8 +109,49 @@ Each stage ends with: `templ generate`, `tailwindcss` build, `go build ./...`, `
     cramped and the next step's panel peeks at the right edge.
   - **Verify on the desktop app**: Tauri-injected scripts under the new
     `script-src 'self'` policy (dock badge, notifications, updater).
-- [ ] Stage 4
-- [ ] Stage 5
+- [ ] Stage 4 (needs decisions, see Handoff)
+- [ ] Stage 5 (partly done, see Handoff)
+
+## Handoff (2026-10-13)
+
+Branch `upstream-merge` (not pushed): level with upstream gofer `5b08c5d`
+(v0.6.0). All Go tests (`task test`, which now resolves TMPDIR on macOS), JS
+tests (157/157), vet and the Tailwind build pass.
+
+Verified without credentials:
+- Desktop data copy and alexis data copy (alexis: personal mode, at `4ca1a1b`)
+  both migrate v106 -> v121; schema identical to a fresh install; messages
+  intact; integrity ok; carry-over keeps 14 calendars (8 selected) each.
+- Smoke runs of the embedded release build on an offline copy: mail, reader,
+  calendar, contacts, settings, search, add/edit account dialogs render in
+  Raven's design; no script-policy violations logged.
+- Signed message-file links: valid -> 200 with sandbox CSP and nosniff;
+  tampered signature, retargeted URL, expired link, other message -> 404.
+- `/hooks/gmail` and `/hooks/graph` still registered and exempt from sign-in.
+
+Needs Fahad (real accounts / devices):
+1. Desktop app from this branch against a **backup** of the real data dir:
+   - watch the log for `calendar carryover: ... restored Raven selection` for
+     all four accounts, then check 8 calendars are selected;
+   - Google: discovery should work without reconnecting (Raven's narrower
+     `calendarlist.readonly` + `calendar.events` grant is accepted);
+   - Outlook: the calendar token refresh now asks for `Calendars.Read`
+     (upstream) where Raven asked for `Calendars.ReadWrite`; if discovery
+     logs a consent error, point `GetMicrosoftGraphCalendarTokenForAccount`
+     at the write scope;
+   - iCloud: CalDAV autodiscovery with the mailbox app password;
+   - Tauri-injected scripts (dock badge, status, compose shortcut) under the
+     new `script-src 'self'` page policy.
+2. Decisions: which deferred upstream UI to port in Raven's style (stage 3
+   notes); whether to restyle the calendar page beyond the shell; the
+   pre-existing edit-account wizard layout; private-LAN DAV now needing a
+   "Mail security" exception even in personal mode.
+3. Release path: merge to `master` -> `release` skill -> on alexis back up
+   `~/raven-server/data` (gofer.db, accounts/, secret.key, VAPID key) before
+   `update.sh`. First start migrates 106 -> 121 and runs calendar carry-over.
+
+Known leftovers: Express theme fonts/icons (~570 KB) are embedded but unused
+(left to avoid a merge-conflict spot).
 
 ## Post-merge feature backlog (added 2026-10-12)
 
