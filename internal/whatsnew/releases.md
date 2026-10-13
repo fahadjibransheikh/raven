@@ -7,6 +7,27 @@ Then an optional hero line, then "### New", "### Improved", "### Fixed" or
 replaces it with the real version number. GitHub release notes use the same text.
 -->
 
+## 0.3.4 | 2026-10-13 | A new calendar, a new logo, and a faster reader
+A rebuilt calendar, a new Raven logo you can recolour, and email that opens faster.
+
+### New
+- A new calendar for Google, Outlook and iCloud: month and week views, an agenda, recurring events, and creating, editing and answering events. The calendars you had selected carry over (Outlook needs one tick under Settings, then your Microsoft account, then Calendar).
+- Answer meeting invitations with Yes, Maybe or No right from the email, even before the event reaches your calendar.
+- A new Raven logo. Choose Raven, Classic or Minimal under Settings, Appearance, App icon; the Dock and browser tab icon switch with your light or dark theme.
+- Select every message in a folder at once, not only the ones on screen, and expand or collapse a whole conversation with one click.
+- Account setup tests the connection before saving, so a typo in a server name shows up right away.
+
+### Improved
+- Emails with many pictures open much faster: pictures are kept after the first view and fetched ahead when you hover over a message.
+- Reply, Reply all and Forward sit on every message in a conversation, even collapsed ones, and quoted text folds behind a tidier toggle.
+- Settings pages share one card layout with their own titles; mail, contacts and calendar each remember their own column width.
+- On phones: swipe mail rows, a calendar with its own top bar and agenda screen, and a step bar in account setup.
+- Press ? on the calendar to see its shortcuts: T for today, J and K to move, M and W for month and week, C for a new event.
+
+### Security
+- Pictures in emails now load through Raven instead of straight into the reader, and pages inside Raven run only Raven's own scripts.
+- Contacts and calendar servers on your own network work as before; any other private address needs an exception under Settings, Mail security.
+
 ## 0.3.0 | 2026-10-09 | A quieter inbox, keyboard-first
 A cleaner, quieter look, a command bar for everything, and one-click unsubscribe.
 
