@@ -2268,9 +2268,12 @@ document.addEventListener("DOMContentLoaded", function () {
       })
 
       document.addEventListener("keydown", function (e) {
-        if (document.getElementById("calendar-main") || isShortcutIgnored(e)) return
+        if (isShortcutIgnored(e)) return
         // Shift+/ is "?" on layouts that report the base key.
         var key = e.key === "/" && e.shiftKey ? "?" : String(e.key || "").toLowerCase()
+        // The calendar has its own keys (calendar-keys.js); of the mail shortcuts
+        // only "?" works there, plus Esc to close the help it opened.
+        if (document.getElementById("calendar-main") && key !== "?" && !(key === "escape" && document.getElementById("mail-shortcut-help"))) return
         var entry = shortcutForKey(key)
         if (!entry) return
         e.preventDefault()
@@ -2529,12 +2532,35 @@ document.addEventListener("DOMContentLoaded", function () {
       '</div>'
     }
 
+    // The calendar's keys are handled in calendar-keys.js, which clicks the marked controls;
+    // this list only describes them for the help overlay.
+    var CALENDAR_SHORTCUTS = [
+      { label: "Today", keys: ["t"] },
+      { label: "Next", keys: ["j", "\u2192"] },
+      { label: "Previous", keys: ["k", "\u2190"] },
+      { label: "Month", keys: ["m"] },
+      { label: "Week", keys: ["w"] },
+      { label: "New event", keys: ["c"] },
+      { label: "Edit open event", keys: ["e"] },
+      { label: "Save event", keys: ["\u2318/Ctrl", "Enter"] },
+      { label: "Close", keys: ["Esc"] }
+    ]
+
+    function shortcutHelpHeading(text) {
+      return '<h3 class="mt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground sm:col-span-2" data-shortcut-help-section>' + text + '</h3>'
+    }
+
     function shortcutHelpHTML() {
+      var onCalendar = !!document.getElementById("calendar-main")
       var groups = ["Navigation", "Message", "Compose", "App"]
-      var rows = groups.map(function (group) {
+      var mailRows = onCalendar ? "" : groups.map(function (group) {
         return MAIL_SHORTCUTS.filter(function (s) { return s.group === group && s.keys.length }).map(function (s) {
           return shortcutHelpRow(s.keys, s.label)
         }).join('')
+      }).join('')
+      // On a mail page the calendar keys are listed last, and say where they work.
+      var rows = mailRows + shortcutHelpHeading(onCalendar ? "Calendar" : "Calendar page") + CALENDAR_SHORTCUTS.map(function (s) {
+        return shortcutHelpRow(s.keys, s.label)
       }).join('')
       return '<div id="mail-shortcut-help" class="fixed inset-0 z-[1000] flex items-center justify-center bg-background/70 px-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">' +
         '<div class="w-full max-w-lg rounded-2xl border border-border bg-card p-5 shadow-menu animate-fade-in">' +

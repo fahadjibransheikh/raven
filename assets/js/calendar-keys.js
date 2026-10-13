@@ -24,6 +24,8 @@
 
   document.addEventListener("keydown", function (e) {
     if (e.defaultPrevented || !document.getElementById("calendar-main")) return
+    // The shortcut help overlay (app.js) is up: keys belong to it, not the page behind.
+    if (document.getElementById("mail-shortcut-help")) return
     var el = null
     if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && e.key === "Enter") {
       el = document.querySelector("[data-calendar-create-form] [data-calendar-create-submit]")
