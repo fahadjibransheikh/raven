@@ -19,6 +19,8 @@
 //! ../frontend/index.html that this window shows for the second or two
 //! before the navigate() call below replaces it.
 
+mod app_icon;
+
 use std::collections::VecDeque;
 use std::io::{Read, Write};
 use std::net::TcpStream;
@@ -698,7 +700,7 @@ pub fn run() {
                 .build(),
         )
         .manage(SidecarState::new())
-        .invoke_handler(tauri::generate_handler![startup_state, retry_startup])
+        .invoke_handler(tauri::generate_handler![startup_state, retry_startup, app_icon::set_app_icon])
         .setup(|app| {
             let app_handle = app.handle().clone();
 

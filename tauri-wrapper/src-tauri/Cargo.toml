@@ -19,7 +19,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["tray-icon"] }
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
 tauri-plugin-shell = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -36,6 +36,13 @@ tauri-plugin-notification = "2"
 # to the running app instead of starting another sidecar.
 tauri-plugin-deep-link = "2"
 tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
+
+# Dock icon (set_app_icon in src/app_icon.rs). Already built for tauri/wry; the
+# versions match Cargo.lock and only the features this uses are enabled.
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6.4"
+objc2-app-kit = { version = "0.3.2", default-features = false, features = ["NSApplication", "NSResponder", "NSImage"] }
+objc2-foundation = { version = "0.3.2", default-features = false, features = ["NSData"] }
 
 [profile.release]
 panic = "abort"
