@@ -160,6 +160,12 @@ Needs Fahad (real accounts / devices):
 3. Release path: merge to `master` -> `release` skill -> on alexis back up
    `~/raven-server/data` (gofer.db, accounts/, secret.key, VAPID key) before
    `update.sh`. First start migrates 106 -> 121 and runs calendar carry-over.
+   alexis already runs the merge branch (deployed by bundle, 2026-10-13; data
+   backed up to `~/raven-server/backup-0.3.3-2026-10-13-data`). Its
+   `update.sh` does `git pull --ff-only` on the checked-out branch, which has
+   no upstream, so it fails until switched back: after the merge is pushed,
+   `git -C ~/raven-server/src checkout master && git -C ~/raven-server/src pull --ff-only`,
+   then `update.sh`, and confirm `git log -1` matches the release.
 
 Known leftovers: Express theme fonts/icons (~570 KB) are embedded but unused
 (left to avoid a merge-conflict spot).
