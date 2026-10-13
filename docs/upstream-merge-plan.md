@@ -103,9 +103,11 @@ Each stage ends with: `templ generate`, `tailwindcss` build, `go build ./...`, `
     typed or saved server (exact host:port, the "anchor") works without an
     exception; hosts learned from responses stay public-only. Managed mode
     still needs an admin "Mail security" exception.
-  - Deferred upstream UI (needs design): select-all banner, wizard
-    "test before saving", settings card structure, collapsed-message reply
-    buttons, thread sheets, quote-collapse toggle UI. Express theme assets
+  - Deferred upstream UI, ported 2026-10-13 in Raven's style: select-all menu
+    and whole-list banner, wizard "test before saving", settings card
+    structure, reply buttons on every thread message header, quote toggle
+    styling, Expand/Collapse all. Per-message thread sheets skipped (would
+    replace Raven's reader layout). Calendar restyled for desktop and phone. Express theme assets
     are in the tree but unused.
   - Edit-account wizard layout (pre-existing): its CSS lived in the lazily
     loaded Add Account dialog, so Edit opened unstyled. Fixed 2026-10-13 by
