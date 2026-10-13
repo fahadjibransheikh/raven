@@ -32,3 +32,4 @@ node_modules/
 
 # Local build output (air, scratch binaries)
 /tmp/
+__pycache__/
