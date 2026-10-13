@@ -47,9 +47,11 @@ var wrap=document.createElement('div');wrap.setAttribute('data-gofer-quote-toggl
 var b=document.createElement('button');b.type='button';b.title='Show quoted text';b.setAttribute('aria-expanded','false');
 // Drawn dots, unlike a text ellipsis, sit in the exact middle of the button.
 b.innerHTML='<svg width="16" height="4" viewBox="0 0 16 4" aria-hidden="true" style="display:block"><circle cx="2" cy="2" r="1.75" fill="currentColor"/><circle cx="8" cy="2" r="1.75" fill="currentColor"/><circle cx="14" cy="2" r="1.75" fill="currentColor"/></svg>';
-b.style.cssText='display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;height:18px;padding:0 8px;margin:0;border-radius:6px;border:1px solid currentColor;background:transparent;color:inherit;opacity:.5;cursor:pointer';
+b.style.cssText='display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;height:20px;padding:0 9px;margin:0;border-radius:6px;border:1px solid color-mix(in srgb,currentColor 28%,transparent);background:color-mix(in srgb,currentColor 7%,transparent);color:inherit;opacity:.7;cursor:pointer;transition:opacity .12s ease';
+b.setAttribute('aria-label','Show quoted text');
+['mouseenter','focus'].forEach(function(n){b.addEventListener(n,function(){b.style.opacity='1'})});['mouseleave','blur'].forEach(function(n){b.addEventListener(n,function(){b.style.opacity='.7'})});
 wrap.appendChild(b);el.parentNode.insertBefore(wrap,el);
-function set(open){hidden.forEach(function(n){if(open)n.style.removeProperty('display');else n.style.setProperty('display','none','important')});b.setAttribute('aria-expanded',open?'true':'false');b.title=open?'Hide quoted text':'Show quoted text'}
+function set(open){hidden.forEach(function(n){if(open)n.style.removeProperty('display');else n.style.setProperty('display','none','important')});b.setAttribute('aria-expanded',open?'true':'false');b.title=open?'Hide quoted text':'Show quoted text';b.setAttribute('aria-label',b.title)}
 b.addEventListener('click',function(){set(b.getAttribute('aria-expanded')!=='true')});set(false)}
 function marked(){var m=body.querySelector('[data-gofer-quote-start]');if(!m)return false;collapse(m,[m].concat(siblings(m,'nextSibling')));return true}
 function html(){var found=body.querySelectorAll(MARKERS),seen=[];for(var j=0;j<found.length;j++){var s=start(found[j]);if(seen.indexOf(s)!==-1)continue;seen.push(s);if(usable(s,found[j].matches(HEADERS))){collapse(s,[s].concat(siblings(s,'nextSibling')));return true}}return false}
