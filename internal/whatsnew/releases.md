@@ -8,7 +8,17 @@ replaces it with the real version number. GitHub release notes use the same text
 -->
 
 ## 1.0.0 | 2026-10-13 | Raven 1.0
-Raven reaches 1.0: mail, contacts and calendar for Gmail, Outlook, iCloud and any IMAP account, on your desktop and your phone.
+Raven reaches 1.0: one place for your mail, contacts and calendar, on your desktop and your phone. Here is what that covers.
+
+### New
+- Mail for Gmail, Outlook, iCloud and any IMAP account in one inbox, or one account at a time.
+- A calendar for Google, Outlook and iCloud with month and week views, an agenda, and creating, editing and answering events.
+- Answer meeting invitations with Yes, Maybe or No right from the email.
+- Contacts from all your accounts in one list, kept in sync.
+- A command bar (Cmd+K, or Ctrl+K on Windows and Linux) and keyboard shortcuts for mail and calendar; press ? to see them.
+- One-click unsubscribe, scheduled sending, send-as addresses and Undo for archive, delete and move.
+- Use Raven from your phone's browser with a layout built for touch, swipe actions and notifications.
+- Choose your app icon and accent colour under Settings, Appearance.
 
 ### Fixed
 - On Mac, the top of emails with pictures could turn blank right after opening, leaving empty space above the message until you scrolled. Emails now stay fully visible when they open.
