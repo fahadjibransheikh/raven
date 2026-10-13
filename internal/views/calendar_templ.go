@@ -2229,7 +2229,7 @@ func CalendarMainContent(month CalendarMonthData) templ.Component {
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
-							var templ_7745c5c3_Var119 = []any{"flex min-w-0 flex-1 items-center gap-1.5", templ.KV("invisible", continuesBefore && dayIndex > 0)}
+							var templ_7745c5c3_Var119 = []any{"flex min-w-0 flex-1 items-center gap-1", templ.KV("invisible", continuesBefore && dayIndex > 0)}
 							templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var119...)
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err

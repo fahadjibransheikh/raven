@@ -4360,6 +4360,13 @@ html[data-desktop="macos"] body > div.h-screen {
     display: none;
   }
 
+  /* "+2 more" is wider than a phone cell at the default size. */
+  html[data-phone] [data-calendar-day-overflow] {
+    padding-inline: 0;
+    font-size: 9px;
+    letter-spacing: -0.02em;
+  }
+
   /* Cells are ~55px wide: events become colour bars and a tap on the cell opens its day. */
   html[data-phone] [data-calendar-month-event-list] {
     grid-auto-rows: 6px !important;
