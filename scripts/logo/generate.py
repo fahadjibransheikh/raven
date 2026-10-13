@@ -36,7 +36,7 @@ RING_IN = RING_OUT - CUT_W     # inner counter radius (final px)
 EXIT = np.array([480., 866.])  # where the sweep leaves the hull (spec)
 BILL_TIP = np.array([1120., 445.])
 TAIL = [(18., 968.), (78., 1004.)]
-TAIL_ANG = (165., 112.)        # attach angles on body circle (screen deg, 90 = down)
+TAIL_TOP_ANG = 165.            # where the tail's upper edge leaves the back (screen deg)
 HOOK = 18.
 FIT_R = 452.
 OFFSET = (6., -10.)
@@ -45,6 +45,14 @@ OFFSET = (6., -10.)
 def pt(c, r, deg):
     a = math.radians(deg)
     return np.array([c[0] + r * math.cos(a), c[1] + r * math.sin(a)])
+
+
+def body_tangent(p, upper):
+    """Point where a line from p touches the body circle, on its upper or lower side."""
+    d = np.asarray(p) - BODY_C
+    phi, alpha = math.atan2(d[1], d[0]), math.acos(BODY_R / np.linalg.norm(d))
+    a, b = pt(BODY_C, BODY_R, math.degrees(phi + alpha)), pt(BODY_C, BODY_R, math.degrees(phi - alpha))
+    return min(a, b, key=lambda q: q[1]) if upper else max(a, b, key=lambda q: q[1])
 
 
 def circle(c, r):
@@ -118,7 +126,10 @@ for _ in range(8):
         bill_pts.append((1 - tt) ** 2 * tip + 2 * tt * (1 - tt) * mid + tt ** 2 * B)
     bill_pts.append(HEAD_C)
     bill = Polygon(bill_pts)
-    TA, TB = pt(BODY_C, BODY_R, TAIL_ANG[0]), pt(BODY_C, BODY_R, TAIL_ANG[1])
+    # The tail's upper edge meets the round back at a fixed angle (keeps the
+    # hump); its lower edge runs tangent to the body circle so it blends in.
+    TA = pt(BODY_C, BODY_R, TAIL_TOP_ANG)
+    TB = body_tangent(TAIL[1], upper=False)
     tail = Polygon([TA, TAIL[0], TAIL[1], TB, BODY_C])
     sil = unary_union([hull, bill, tail])
     F = 60
