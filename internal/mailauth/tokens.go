@@ -192,7 +192,13 @@ func (m *Manager) GetMicrosoftGraphContactsTokenForAccount(ctx context.Context, 
 // GetMicrosoftGraphCalendarTokenForAccount returns a Graph token carrying only
 // the calendar scope. A grant without it yields ErrMicrosoftCalendarConsentRequired.
 func (m *Manager) GetMicrosoftGraphCalendarTokenForAccount(ctx context.Context, accountID string) (string, error) {
-	token, err := m.getMicrosoftGraphTokenForAccount(ctx, accountID, "calendar", microsoftGraphCalendarScope)
+	// Raven's grants consented to Calendars.ReadWrite only; refreshing for
+	// Calendars.Read asks Microsoft for a scope that grant never covered.
+	scope := microsoftGraphCalendarScope
+	if record, err := m.outlookOAuthRecord(ctx, accountID); err == nil && recordHasExactScope(record.Scopes, microsoftGraphCalendarWriteScope) && !recordHasExactScope(record.Scopes, microsoftGraphCalendarScope) {
+		scope = microsoftGraphCalendarWriteScope
+	}
+	token, err := m.getMicrosoftGraphTokenForAccount(ctx, accountID, "calendar", scope)
 	var tokenErr *OAuthTokenError
 	if errors.As(err, &tokenErr) && smtpConsentMissing(tokenErr) {
 		return "", fmt.Errorf("%w: %w", ErrMicrosoftCalendarConsentRequired, err)
@@ -569,4 +575,13 @@ func (m *Manager) refreshToken(ctx context.Context, oauthProvider, oauthAccountI
 	}
 
 	return token.AccessToken, nil
+}
+
+func recordHasExactScope(recordScopes, scope string) bool {
+	for _, granted := range strings.Fields(recordScopes) {
+		if strings.EqualFold(granted, scope) {
+			return true
+		}
+	}
+	return false
 }

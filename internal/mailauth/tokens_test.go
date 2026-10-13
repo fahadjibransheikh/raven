@@ -579,3 +579,27 @@ func TestMicrosoftCalendarTokenTransientFailureIsNotConsentError(t *testing.T) {
 		t.Fatalf("error = %v, want a non-consent failure", err)
 	}
 }
+
+func TestMicrosoftCalendarTokenRefreshesWithTheConsentedWriteScope(t *testing.T) {
+	var gotScope string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = r.ParseForm()
+		gotScope = r.FormValue("scope")
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"access_token":"calendar-token","token_type":"Bearer","expires_in":3600}`))
+	}))
+	defer server.Close()
+	manager := newOutlookSMTPTokenManager(t, server.URL, microsoftGraphContactsScope+" "+microsoftGraphCalendarWriteScope)
+	expired := time.Now().Add(-time.Hour)
+	if err := manager.UpsertOAuthAccount(context.Background(), "acc", providers.OAuthMicrosoft, "subject-id", "expired-token", "refresh-token", "Bearer", &expired, microsoftGraphContactsScope+" "+microsoftGraphCalendarWriteScope); err != nil {
+		t.Fatal(err)
+	}
+
+	token, err := manager.GetMicrosoftGraphCalendarTokenForAccount(context.Background(), "acc")
+	if err != nil || token != "calendar-token" {
+		t.Fatalf("token = %q, %v", token, err)
+	}
+	if gotScope != microsoftGraphCalendarWriteScope {
+		t.Fatalf("refresh scope = %q, want the consented %q", gotScope, microsoftGraphCalendarWriteScope)
+	}
+}
