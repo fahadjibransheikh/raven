@@ -11,33 +11,25 @@
 
 <br>
 
-Raven is a local-first email client. I maintain it as a fork of [Gofer](https://github.com/cristianadrielbraun/gofer), built by Cristián Braun, and use it under the MIT License. Raven isn't affiliated with or endorsed by the Gofer project. Most of the mail engine, sync and UI is Cristián's work. I follow upstream closely and send general fixes back to Gofer.
+Raven is a local-first email client with a built-in calendar and contacts. It runs on your own machine, keeps mail and related data local, and talks directly to mail, calendar and contact providers. Generic accounts use IMAP/SMTP, CalDAV and CardDAV. Gmail uses the Gmail, Google Calendar and Google People APIs. Outlook uses Microsoft Graph.
 
-It's built with Go, templ views, HTMX-style interactions, and SQLite storage. It runs on your own machine, keeps mail and related data local, and talks directly to mail and contact providers. Generic accounts use IMAP/SMTP. Gmail uses the Gmail API and Google People API. Outlook uses Microsoft Graph.
-
-## what Raven adds
-
-- **Raven branding:** name, logo, and app manifest.
-- **Desktop app:** a Tauri wrapper in [`tauri-wrapper/`](./tauri-wrapper) that runs the server in its own native window on macOS, Windows, and Linux. It adds an unread count on the Dock/taskbar icon, Compose and Check for Updates in the macOS menu bar (a tray menu on Windows and Linux), a global compose shortcut (`Cmd/Ctrl+Shift+M`), links that open in your browser, and a window that reopens at the size and position you left it.
-- **Automatic updates:** the desktop app checks for new versions on launch and from **Check for Updates…** (in the Raven menu on macOS, the tray menu on Windows and Linux), and installs them after asking.
-- **Releases and Homebrew:** pushing a version tag builds and publishes a GitHub release for all three platforms and updates the Homebrew cask.
+It's built with Go, templ views, HTMX-style interactions, and SQLite storage.
 
 ## features
 
-Everything below comes from Gofer and works in Raven:
-
-- **Users and access:** multiple users with separate administrators, invitations, and security policies; personal mode for one protected profile; and a no-login mode for local use.
-- **Accounts and sync:** multiple IMAP/SMTP, Gmail, and Outlook accounts, with mail cached in the instance's SQLite database.
-- **Reading and sending:** threads, attachments, drafts with autosave, signatures, scheduled send, and translation.
-- **Organization and search:** folders, stars, archive, spam controls, and advanced search filters.
-- **Contacts:** local address books, vCard import/export, Google, Outlook, and CardDAV sync, plus automatic contact syncing between accounts.
-- **Security:** encrypted stored credentials, remote content blocked by default, and optional authentication with passwords, TOTP, passkeys, or external sign-in.
+- **Mail:** multiple IMAP/SMTP, Gmail, and Outlook accounts, with real-time sync, threads, attachments, drafts with autosave, signatures, sending identities, scheduled send, one-click unsubscribe, and translation.
+- **Organization and search:** folders, labels, stars, archive, spam controls, select-all across a whole folder, and advanced search filters.
+- **Calendar:** Google, Outlook, and CalDAV (including iCloud) calendars in month, week, and agenda views, with event creation, invitations, and replies from the inbox.
+- **Contacts:** local address books, vCard import/export, and Google, Outlook, and CardDAV sync.
+- **Desktop app:** a Tauri app in [`tauri-wrapper/`](./tauri-wrapper) for macOS, Windows, and Linux, with an unread count on the Dock/taskbar icon, a global compose shortcut (`Cmd/Ctrl+Shift+M`), and automatic updates.
+- **Phone:** a phone layout and Web Push notifications, for use as an installed web app when Raven runs on a server you can reach.
+- **Security:** encrypted stored credentials, remote content blocked by default and loaded through Raven when allowed, and optional sign-in with passwords, TOTP, passkeys, or external providers.
 - **Access modes:** no-login local use, one protected personal profile, or managed users with separate administrators.
-- **Customization:** themes, layouts, account colors, regional settings, and browser/Web Push notifications.
+- **Customization:** themes, layouts, account colors, and regional settings.
 
 ## status
 
-Raven is alpha software, like Gofer. Expect things to change. For upstream plans, see the [Gofer repository](https://github.com/cristianadrielbraun/gofer).
+Raven is alpha software. Expect things to change.
 
 ## installing the desktop app
 
@@ -99,7 +91,7 @@ In managed mode, `/admin` provides user administration, invitations, security po
 
 ## built with
 
-Raven and Gofer are built on these libraries and tools:
+Raven is built on these libraries and tools:
 
 - [templ](https://templ.guide/) for Go-based views
 - [templUI](https://templui.io/) for several UI components
@@ -110,3 +102,7 @@ Raven and Gofer are built on these libraries and tools:
 - [golang.org/x/oauth2](https://pkg.go.dev/golang.org/x/oauth2) for OAuth flows
 - [webpush-go](https://github.com/SherClockHolmes/webpush-go) for Web Push notifications
 - [Lucide](https://lucide.dev/) icons through templUI's icon component
+
+## license
+
+Raven is released under the [MIT License](./LICENSE). The license file carries the copyright notices of the code Raven builds on.

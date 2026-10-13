@@ -194,3 +194,20 @@ upstream merges small. Re-check upstream before starting each one.
 | – | AI summaries/rewrite/suggested replies | Skip | Needs an LLM provider and keys; conflicts with local-first. |
 
 Order: 1–3 together, then 4 and 5, then 6, then 7 and 8.
+
+## Decision 2026-10-13: stop tracking upstream after this release
+
+The owner decided Raven stops merging gofer after the v0.6.0 merge is released.
+After the release:
+- Rename the Go module away from `github.com/cristianadrielbraun/gofer`.
+- Detach the GitHub fork (owner does this in GitHub settings).
+- Keep the `upstream` remote read-only, as a reference only.
+- Port wanted upstream changes by hand, with a test each. Security fixes
+  always, mail fixes usually, features on request. Review upstream's log
+  about every two weeks.
+- New schema migrations follow Raven's own numbering from v122.
+- The README presents Raven as its own project. LICENSE keeps both MIT
+  copyright notices, as the license requires.
+- Possible later cleanup: remove unused managed-mode / per-user storage code.
+- `GOFER_*` environment variable names stay for now (existing `.env` files
+  depend on them); renaming them needs a compatibility shim.
