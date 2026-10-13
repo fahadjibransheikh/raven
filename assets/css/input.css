@@ -4396,3 +4396,20 @@ html[data-desktop="macos"] body > div.h-screen {
     border-radius: 9999px;
   }
 }
+
+/* === SETTINGS: CARD STRUCTURE (ported from upstream gofer) ===
+   Each settings page is section cards (settings-card). Settings inside a card are rows
+   split by thin lines (settings-row); repeated items (accounts, per-account sync,
+   background operations, sign-in methods) are boxes that share one tint (settings-item).
+   On a phone the cards, rows and boxes give up some of their desktop padding. */
+html[data-phone] #settings-content .settings-card {
+  padding: 1rem;
+}
+
+html[data-phone] #settings-content .settings-row {
+  padding-top: 1rem;
+}
+
+html[data-phone] #settings-content .settings-item {
+  padding: 0.75rem;
+}
