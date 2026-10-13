@@ -105,8 +105,15 @@ Each stage ends with: `templ generate`, `tailwindcss` build, `go build ./...`, `
     "test before saving", settings card structure, collapsed-message reply
     buttons, thread sheets, quote-collapse toggle UI. Express theme assets
     are in the tree but unused.
-  - Pre-existing (not merge-caused): the edit-account wizard's step sidebar is
-    cramped and the next step's panel peeks at the right edge.
+  - Edit-account wizard layout (pre-existing): its CSS lived in the lazily
+    loaded Add Account dialog, so Edit opened unstyled. Fixed 2026-10-13 by
+    moving the rules into input.css; phone layout ported from upstream.
+  - 2026-10-13 owner decisions: port the deferred upstream UI in Raven's
+    style; restyle the calendar; fix the edit wizard (done).
+  - History cleanup pending owner approval: merge commit a413724 swept 482 MB
+    of local tmp/ build output into history (untracked since 22c11d8, but the
+    blobs remain). Rewrite before any push: rebuild that one merge commit
+    without tmp/ and replay the commits after it; keep upstream hashes.
   - **Verify on the desktop app**: Tauri-injected scripts under the new
     `script-src 'self'` policy (dock badge, notifications, updater).
 - [ ] Stage 4 (needs decisions, see Handoff)
