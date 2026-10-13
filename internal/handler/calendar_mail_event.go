@@ -338,10 +338,16 @@ func (h *Handler) handleMailCalendarFooter(w http.ResponseWriter, r *http.Reques
 	var cards []views.MailCalendarEventData
 	for _, item := range items {
 		event, matched := h.matchMailCalendarEvent(ctx, accountID, item)
+		if !matched && mailInvitationNeedsLookup(item) && h.syncMailInvitation(ctx, accountID, item) {
+			event, matched = h.matchMailCalendarEvent(ctx, accountID, item)
+		}
 		card := mailCalendarEventCard(item, event, matched, location, r.PathValue("id"), func(event storage.CalendarEvent) bool {
 			_, err := h.calendarResponseAccess(ctx, event)
 			return err == nil
 		})
+		if !matched && card.Note != "" && !h.mailAccountHasSelectedCalendar(ctx, accountID) {
+			card.Note = "No calendar is selected for this account. Select one in Settings to answer invitations here."
+		}
 		cards = append(cards, card)
 	}
 	_ = views.MailCalendarFooter(r.PathValue("id"), cards).Render(ctx, w)
@@ -361,7 +367,7 @@ func matchMailCalendarEvents(events []storage.CalendarEvent, item mailCalendarEv
 				if !event.AllDay || event.StartDate != item.Recurrence.Format("2006-01-02") {
 					continue
 				}
-			} else if event.StartAt == nil || !event.StartAt.Equal(*item.Recurrence) {
+			} else if (event.StartAt == nil || !event.StartAt.Equal(*item.Recurrence)) && !mailCalendarMovedOccurrence(event, *item.Recurrence) {
 				continue
 			}
 		} else if len(events) > 1 {
