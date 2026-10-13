@@ -51,5 +51,7 @@ tasks:
   test:
     desc: Run Go and JS tests
     cmds:
-      - go test ./...
+      # Upstream's per-user storage tests compare temp paths lexically; on
+      # macOS $TMPDIR is under /var, a symlink to /private/var, so resolve it.
+      - TMPDIR="$(cd "${TMPDIR:-/tmp}" && pwd -P)" go test ./...
       - pnpm test
