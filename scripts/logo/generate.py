@@ -3,7 +3,8 @@
 
 A solid, hunched raven built from two circles (head, body), their common
 tangent, a wedge bill and a wedge tail. The @ is carved out of the mass as a
-single cut: a ring round the eye plus one sweeping arc down the breast. That
+single cut: a ring round the eye plus one sweeping arc down the breast, and the
+eye itself is the @'s lowercase 'a' (a counter and a stem on its right). That
 cut is also the colour boundary, so the two-colour split costs no extra line:
 the head, bill and breast are the bird colour, the back, wing and tail are the
 accent colour.
@@ -40,6 +41,8 @@ TAIL_ANG = (165., 112.)        # attach angles on body circle (screen deg, 90 = 
 HOOK = 18.
 FIT_R = 452.
 OFFSET = (6., -10.)
+STEM_W = 0.62                  # 'a' stem width, as a fraction of the cut width
+COUNTER = 0.42                 # 'a' counter radius, as a fraction of the eye radius
 
 
 def pt(c, r, deg):
@@ -149,6 +152,17 @@ ring = circle(HEAD_C, r_c + W / 2).difference(circle(HEAD_C, r_c - W / 2))
 cut = unary_union([band, ring])
 G = 50
 cut = cut.buffer(G, quad_segs=32).buffer(-G, quad_segs=32)
+
+# Turn the eye into the @'s lowercase 'a': a counter inside the eye (it doubles
+# as a catchlight) and a stem on its right that bridges the ring down into the
+# breast, so ring + bowl + stem read as an @ rather than a dot in a circle.
+r_in = r_c - W / 2
+stem_w = STEM_W * W
+stem_x = HEAD_C[0] + r_in - stem_w
+stem = Polygon([(stem_x, HEAD_C[1]), (stem_x + stem_w, HEAD_C[1]),
+                (stem_x + stem_w, HEAD_C[1] + r_c + W), (stem_x, HEAD_C[1] + r_c + W)])
+counter = circle(HEAD_C + np.array([-0.12 * r_in, 0]), COUNTER * r_in)
+cut = unary_union([cut.difference(stem), counter])
 
 disc = circle(SW_C, SW_R)   # colour split follows the sweep circle
 front = unary_union([disc, circle(HEAD_C, HEAD_R + 2)])

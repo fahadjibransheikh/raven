@@ -4,7 +4,9 @@
 
 A solid, hunched raven built from two circles (head and body), their common
 tangent, a wedge bill and a wedge tail. The `@` is carved out of the bird as a
-single cut: a ring round the eye plus one sweeping arc down the breast. That
+single cut: a ring round the eye plus one sweeping arc down the breast, and the
+eye is the @'s lowercase "a" (a counter, which doubles as a catchlight, and a
+stem on its right). That
 cut is also the colour boundary, so the two-colour split needs no extra line:
 head, bill and breast are the bird colour; back, wing and tail are the accent.
 
