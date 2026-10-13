@@ -57,7 +57,7 @@ func (r *AccountRouting) RecordUserAvatarInterests(ctx context.Context, owner st
 		if _, err := tx.ExecContext(ctx, `INSERT INTO sender_avatars(email_hash,email,status) VALUES(?,?,'pending') ON CONFLICT(email_hash) DO NOTHING`, hash, email); err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO gofer_avatar_interests(email_hash,user_id) SELECT ?,id FROM users WHERE id=? AND status='active' AND deletion_pending=0 AND user_type='webmail' AND is_admin=0`, hash, owner); err != nil {
+		if _, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO raven_avatar_interests(email_hash,user_id) SELECT ?,id FROM users WHERE id=? AND status='active' AND deletion_pending=0 AND user_type='webmail' AND is_admin=0`, hash, owner); err != nil {
 			return err
 		}
 	}
@@ -68,7 +68,7 @@ func (r *AccountRouting) ListAvatarInterestedUsers(ctx context.Context, hash, af
 	if limit <= 0 || limit > 64 {
 		limit = 64
 	}
-	rows, err := r.System().Read().QueryContext(ctx, `SELECT i.user_id FROM gofer_avatar_interests i JOIN users u ON u.id=i.user_id WHERE i.email_hash=? AND i.user_id>? AND u.status='active' AND u.deletion_pending=0 AND u.user_type='webmail' AND u.is_admin=0 ORDER BY i.user_id LIMIT ?`, hash, after, limit)
+	rows, err := r.System().Read().QueryContext(ctx, `SELECT i.user_id FROM raven_avatar_interests i JOIN users u ON u.id=i.user_id WHERE i.email_hash=? AND i.user_id>? AND u.status='active' AND u.deletion_pending=0 AND u.user_type='webmail' AND u.is_admin=0 ORDER BY i.user_id LIMIT ?`, hash, after, limit)
 	if err != nil {
 		return nil, err
 	}

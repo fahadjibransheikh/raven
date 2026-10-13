@@ -130,7 +130,7 @@ func TestUserStorageMigrationStageCopiesAndReopensWithOneCachedStore(t *testing.
 		}
 	}
 	var deleting, hints, private, knownStores int
-	if err := central.Read().QueryRow(`SELECT (SELECT count(*) FROM gofer_account_directory WHERE account_id='bob-mail' AND state='deleting'),(SELECT count(*) FROM gofer_account_service_schedule),(SELECT count(*) FROM accounts),(SELECT count(*) FROM gofer_user_store_directory WHERE state='present')`).Scan(&deleting, &hints, &private, &knownStores); err != nil || deleting != 1 || hints != 2 || private != 0 || knownStores != 3 {
+	if err := central.Read().QueryRow(`SELECT (SELECT count(*) FROM raven_account_directory WHERE account_id='bob-mail' AND state='deleting'),(SELECT count(*) FROM raven_account_service_schedule),(SELECT count(*) FROM accounts),(SELECT count(*) FROM raven_user_store_directory WHERE state='present')`).Scan(&deleting, &hints, &private, &knownStores); err != nil || deleting != 1 || hints != 2 || private != 0 || knownStores != 3 {
 		t.Fatal("central directory/scheduling boundary", deleting, hints, private, knownStores, err)
 	}
 	ctx, cancel := context.WithCancel(t.Context())
@@ -546,7 +546,7 @@ func TestUserStorageMigrationStageRebuildsEligibleAvatarHintsWithoutChangingCach
 	}
 	defer central.Close()
 	var interests, foreign, cacheRows int
-	if err := central.Read().QueryRow(`SELECT (SELECT count(*) FROM gofer_avatar_interests),(SELECT count(*) FROM gofer_avatar_interests WHERE user_id NOT IN ('alice','charlie')),(SELECT count(*) FROM sender_avatars)`).Scan(&interests, &foreign, &cacheRows); err != nil || interests != 3 || foreign != 0 || cacheRows != 2 {
+	if err := central.Read().QueryRow(`SELECT (SELECT count(*) FROM raven_avatar_interests),(SELECT count(*) FROM raven_avatar_interests WHERE user_id NOT IN ('alice','charlie')),(SELECT count(*) FROM sender_avatars)`).Scan(&interests, &foreign, &cacheRows); err != nil || interests != 3 || foreign != 0 || cacheRows != 2 {
 		t.Fatal("avatar hint ownership", interests, foreign, cacheRows, err)
 	}
 	var email, status, retained string
@@ -610,18 +610,18 @@ func TestUserStorageMigrationStageFinalAuditRejectsLateChangesToEarlierStores(t 
 func TestUserStorageMigrationStageFinalCentralAuditRejectsLateChanges(t *testing.T) {
 	for _, damage := range []struct{ name, query string }{
 		{"authentication", `UPDATE users SET status='active',deletion_pending=0 WHERE id='bob'`},
-		{"account-owner", `DROP TRIGGER gofer_account_directory_identity; UPDATE gofer_account_directory SET user_id='charlie' WHERE account_id='alice-mail'`},
-		{"directory-timestamp", `UPDATE gofer_account_directory SET updated_at='2000-01-01' WHERE account_id='alice-mail'`},
-		{"missing-store-history", `DELETE FROM gofer_user_store_directory WHERE user_id='charlie'`},
-		{"poll-deadline", `UPDATE gofer_account_poll_schedule SET next_due_ms=123`},
-		{"missing-service", `DELETE FROM gofer_account_service_schedule WHERE service='calendar'`},
+		{"account-owner", `DROP TRIGGER raven_account_directory_identity; UPDATE raven_account_directory SET user_id='charlie' WHERE account_id='alice-mail'`},
+		{"directory-timestamp", `UPDATE raven_account_directory SET updated_at='2000-01-01' WHERE account_id='alice-mail'`},
+		{"missing-store-history", `DELETE FROM raven_user_store_directory WHERE user_id='charlie'`},
+		{"poll-deadline", `UPDATE raven_account_poll_schedule SET next_due_ms=123`},
+		{"missing-service", `DELETE FROM raven_account_service_schedule WHERE service='calendar'`},
 		{"private-data", `INSERT INTO contact_profiles(id,user_id,display_name) VALUES('foreign-profile','alice','must stay local')`},
-		{"avatar-hint", `INSERT INTO sender_avatars(email_hash,email) VALUES('foreign-hash','foreign@example.com'); INSERT INTO gofer_avatar_interests(email_hash,user_id) VALUES('foreign-hash','alice')`},
+		{"avatar-hint", `INSERT INTO sender_avatars(email_hash,email) VALUES('foreign-hash','foreign@example.com'); INSERT INTO raven_avatar_interests(email_hash,user_id) VALUES('foreign-hash','alice')`},
 		{"orphan-avatar", `INSERT INTO sender_avatars(email_hash,email) VALUES('foreign-hash','foreign@example.com')`},
-		{"credential-metadata", `UPDATE gofer_mailbox_credentials SET granted_scopes='expanded'`},
-		{"credential-token", `UPDATE gofer_mailbox_credentials SET access_token_ciphertext=x'010203'`},
-		{"credential-guard", `DROP TRIGGER gofer_mailbox_credential_owner_insert`},
-		{"credential-extra-guard", `CREATE TRIGGER extra_guard BEFORE INSERT ON gofer_mailbox_credentials BEGIN SELECT 1; END`},
+		{"credential-metadata", `UPDATE raven_mailbox_credentials SET granted_scopes='expanded'`},
+		{"credential-token", `UPDATE raven_mailbox_credentials SET access_token_ciphertext=x'010203'`},
+		{"credential-guard", `DROP TRIGGER raven_mailbox_credential_owner_insert`},
+		{"credential-extra-guard", `CREATE TRIGGER extra_guard BEFORE INSERT ON raven_mailbox_credentials BEGIN SELECT 1; END`},
 		{"unknown-column", `ALTER TABLE users ADD COLUMN unknown_private_data TEXT`},
 		{"unknown-table", `CREATE TABLE unclassified(payload TEXT)`},
 	} {

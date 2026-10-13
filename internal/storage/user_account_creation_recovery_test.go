@@ -86,7 +86,7 @@ func TestPendingAccountCreationRecoveryReopensBothFilesAndPreservesDisabledOwner
 	}
 	var status string
 	var hint int
-	if err := system.Read().QueryRow(`SELECT status,(SELECT COUNT(*) FROM gofer_contact_queue_schedule WHERE user_id='alice') FROM users WHERE id='alice'`).Scan(&status, &hint); err != nil || status != "disabled" || hint != 1 {
+	if err := system.Read().QueryRow(`SELECT status,(SELECT COUNT(*) FROM raven_contact_queue_schedule WHERE user_id='alice') FROM users WHERE id='alice'`).Scan(&status, &hint); err != nil || status != "disabled" || hint != 1 {
 		t.Fatal("owner lifecycle/discovery changed", status, hint, err)
 	}
 	if err := r.WithAccount(t.Context(), a.AccountID, func(*DB, string) error { t.Error("disabled account dispatched"); return nil }); !errors.Is(err, ErrUserStoreOwner) {
@@ -109,7 +109,7 @@ func TestPendingAccountCreationRecoveryRefusesMissingCorruptAndDeletingData(t *t
 						return err
 					}
 					// Corrupt legacy rows must not activate through a filtered lookup.
-					_, err := db.Write().Exec(`DROP TRIGGER gofer_store_owner_insert; DROP TRIGGER gofer_store_owner_accounts_update; INSERT INTO users(id,username,username_normalized) VALUES('foreign','foreign','foreign'); UPDATE accounts SET user_id='foreign' WHERE id=?`, entry.AccountID)
+					_, err := db.Write().Exec(`DROP TRIGGER raven_store_owner_insert; DROP TRIGGER raven_store_owner_accounts_update; INSERT INTO users(id,username,username_normalized) VALUES('foreign','foreign','foreign'); UPDATE accounts SET user_id='foreign' WHERE id=?`, entry.AccountID)
 					return err
 				}); err != nil {
 					t.Fatal(err)
@@ -121,7 +121,7 @@ func TestPendingAccountCreationRecoveryRefusesMissingCorruptAndDeletingData(t *t
 				}
 			}
 			if mode == "credentials" {
-				if _, err := system.Write().Exec(`CREATE TABLE gofer_mailbox_credentials(account_id TEXT,user_id TEXT); INSERT INTO gofer_mailbox_credentials VALUES(?,'alice')`, entry.AccountID); err != nil {
+				if _, err := system.Write().Exec(`CREATE TABLE raven_mailbox_credentials(account_id TEXT,user_id TEXT); INSERT INTO raven_mailbox_credentials VALUES(?,'alice')`, entry.AccountID); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -208,12 +208,12 @@ func TestPendingAccountCreationRecoveryRechecksCentralWriterWaitAndTriggerEffect
 			} else {
 				effect := `UPDATE users SET status='disabled',deletion_pending=1 WHERE id=NEW.user_id;`
 				if mode == "trigger-state" {
-					effect = `UPDATE gofer_account_directory SET state='creating' WHERE account_id=NEW.account_id;`
+					effect = `UPDATE raven_account_directory SET state='creating' WHERE account_id=NEW.account_id;`
 				}
 				if mode == "trigger-hint" {
-					effect = `DELETE FROM gofer_contact_queue_schedule WHERE user_id=NEW.user_id;`
+					effect = `DELETE FROM raven_contact_queue_schedule WHERE user_id=NEW.user_id;`
 				}
-				if _, err := system.Write().Exec(`CREATE TRIGGER disturb_creation AFTER UPDATE OF state ON gofer_account_directory WHEN NEW.state='active' BEGIN ` + effect + ` END`); err != nil {
+				if _, err := system.Write().Exec(`CREATE TRIGGER disturb_creation AFTER UPDATE OF state ON raven_account_directory WHEN NEW.state='active' BEGIN ` + effect + ` END`); err != nil {
 					t.Fatal(err)
 				}
 				if result, err := r.RecoverPendingAccountCreation(t.Context(), "alice", entry.AccountID); err == nil || result.Changed {
@@ -258,7 +258,7 @@ func TestPendingAccountCreationRecoveryCancellationAndCreationSerialization(t *t
 		t.Fatal("serialized retry", result, err)
 	}
 	var n int
-	if err := system.Read().QueryRow(`SELECT COUNT(*) FROM gofer_account_directory WHERE account_id=? AND state='active'`, entry.AccountID).Scan(&n); err != nil || n != 1 {
+	if err := system.Read().QueryRow(`SELECT COUNT(*) FROM raven_account_directory WHERE account_id=? AND state='active'`, entry.AccountID).Scan(&n); err != nil || n != 1 {
 		t.Fatal(n, err)
 	}
 }
@@ -273,7 +273,7 @@ func TestPendingAccountCreationRecoveryPagesExcludeManagementAndUserDeletion(t *
 	if _, err := r.ReserveAccount(t.Context(), "bob"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := system.Write().Exec(`UPDATE users SET status='disabled' WHERE id='alice'; UPDATE users SET status='disabled',deletion_pending=1 WHERE id='bob'; INSERT INTO gofer_account_directory(account_id,user_id,state) VALUES('management-reservation','admin','creating')`); err != nil {
+	if _, err := system.Write().Exec(`UPDATE users SET status='disabled' WHERE id='alice'; UPDATE users SET status='disabled',deletion_pending=1 WHERE id='bob'; INSERT INTO raven_account_directory(account_id,user_id,state) VALUES('management-reservation','admin','creating')`); err != nil {
 		t.Fatal(err)
 	}
 	after, count := "", 0

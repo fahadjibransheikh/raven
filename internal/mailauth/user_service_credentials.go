@@ -135,7 +135,7 @@ func (s *UserCredentials) publishServiceRefresh(ctx context.Context, record user
 		}
 		observed, _ := token.Extra("scope").(string)
 		granted := mergeKnownScopes(record.grantedScopes, observed)
-		result, err := s.routing.System().Write().ExecContext(ctx, `UPDATE gofer_mailbox_credentials
+		result, err := s.routing.System().Write().ExecContext(ctx, `UPDATE raven_mailbox_credentials
    SET refresh_token_ciphertext=CASE WHEN ? IS NULL THEN refresh_token_ciphertext ELSE ? END,
    granted_scopes=?,revision=revision+1,updated_at=CURRENT_TIMESTAMP
    WHERE id=? AND account_id=? AND user_id=? AND provider=? AND provider_account_id=? AND revision=?`, refresh, refresh, granted, record.ID, record.AccountID, record.owner, record.Provider, record.ProviderAccountID, record.revision)

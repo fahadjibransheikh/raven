@@ -226,7 +226,7 @@ func TestUserStorageMigrationLayoutRefusesMissingStoresAndWrongIdentity(t *testi
 				if openErr != nil {
 					t.Fatal(openErr)
 				}
-				_, err = db.Write().Exec(`UPDATE gofer_storage_layout SET layout_id='00000000000000000000000000000000'`)
+				_, err = db.Write().Exec(`UPDATE raven_storage_layout SET layout_id='00000000000000000000000000000000'`)
 				err = errors.Join(err, db.Close())
 			case "trailing-manifest":
 				file, openErr := os.OpenFile(layout.CentralPath+".layout.json", os.O_APPEND|os.O_WRONLY, 0)
@@ -298,7 +298,7 @@ func TestUserStorageMigrationInspectionRejectsManagedLayoutMarkerEvenWithoutRows
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = source.Write().Exec(`CREATE TABLE gofer_storage_layout(singleton INTEGER,layout_version INTEGER,layout_id TEXT)`)
+	_, err = source.Write().Exec(`CREATE TABLE raven_storage_layout(singleton INTEGER,layout_version INTEGER,layout_id TEXT)`)
 	if err := errors.Join(err, source.Close()); err != nil {
 		t.Fatal(err)
 	}

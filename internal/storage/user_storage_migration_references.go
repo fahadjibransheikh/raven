@@ -24,7 +24,7 @@ var userStorageMigrationOptionalLinks = []migrationLink{
 	{"message_mutations", "folders", []string{"destination_folder_id"}, []string{"id"}},
 	{"label_mutation_queue", "folders", []string{"folder_id"}, []string{"id"}},
 	{"imap_draft_states", "folders", []string{"folder_id"}, []string{"id"}},
-	{"gofer_provider_draft_states", "folders", []string{"folder_id"}, []string{"id"}},
+	{"raven_provider_draft_states", "folders", []string{"folder_id"}, []string{"id"}},
 }
 
 // Streaming inspection does not canonicalize, repair or adopt queued payloads.

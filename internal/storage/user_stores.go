@@ -420,7 +420,7 @@ func (m *UserStores) lookupOwner(ctx context.Context, userID string) (userStoreO
 	var owner userStoreOwner
 	err := m.system.Read().QueryRowContext(ctx, `SELECT id, username, username_normalized, name, avatar_url
 		FROM users WHERE id = ? AND user_type = 'webmail' AND is_admin = 0
- AND NOT EXISTS(SELECT 1 FROM gofer_user_store_directory d WHERE d.user_id=users.id AND d.state<>'present')`, userID).
+ AND NOT EXISTS(SELECT 1 FROM raven_user_store_directory d WHERE d.user_id=users.id AND d.state<>'present')`, userID).
 		Scan(&owner.id, &owner.username, &owner.normalized, &owner.name, &owner.avatar)
 	if errors.Is(err, sql.ErrNoRows) {
 		return owner, ErrUserStoreOwner
@@ -469,7 +469,7 @@ func (m *UserStores) openUserStore(ctx context.Context, owner userStoreOwner, cr
 		return nil, fmt.Errorf("existing user database is missing: %w", err)
 	}
 	var known bool
-	if queryErr := m.system.Read().QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM gofer_user_store_directory WHERE user_id=?)`, owner.id).Scan(&known); queryErr != nil {
+	if queryErr := m.system.Read().QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM raven_user_store_directory WHERE user_id=?)`, owner.id).Scan(&known); queryErr != nil {
 		return nil, queryErr
 	}
 	if known {
@@ -543,7 +543,12 @@ func checkUserStoreFile(path, owner string, currentSchema bool) error {
 func checkUserStoreOwner(db *sql.DB, owner string) error {
 	var version int
 	var actual string
-	if err := db.QueryRow(`SELECT layout_version, user_id FROM gofer_user_store WHERE singleton = 1`).Scan(&version, &actual); err != nil {
+	// A database that has not been upgraded yet still has the old table name.
+	table, err := firstExistingTable(context.Background(), db, "raven_user_store", legacyTableName("raven_user_store"))
+	if err != nil || table == "" {
+		return fmt.Errorf("%w: %v", ErrUserStoreIdentity, err)
+	}
+	if err := db.QueryRow(`SELECT layout_version, user_id FROM `+table+` WHERE singleton = 1`).Scan(&version, &actual); err != nil {
 		return fmt.Errorf("%w: %v", ErrUserStoreIdentity, err)
 	}
 	if version != 1 || actual != owner {

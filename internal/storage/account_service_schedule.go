@@ -23,10 +23,10 @@ func (r *AccountRouting) ListDueServiceAccounts(ctx context.Context, service Sch
 	if !validScheduledService(service) || limit < 1 || limit > 64 {
 		return nil, errors.New("service discovery needs a known service and a page of at most 64 accounts")
 	}
-	rows, err := r.System().Read().QueryContext(ctx, `SELECT d.account_id,d.user_id,d.state FROM gofer_account_directory d
+	rows, err := r.System().Read().QueryContext(ctx, `SELECT d.account_id,d.user_id,d.state FROM raven_account_directory d
  JOIN users u ON u.id=d.user_id
- LEFT JOIN gofer_account_service_schedule p ON p.account_id=d.account_id AND p.service=?
- LEFT JOIN gofer_account_provider_retry retry ON retry.account_id=d.account_id
+ LEFT JOIN raven_account_service_schedule p ON p.account_id=d.account_id AND p.service=?
+ LEFT JOIN raven_account_provider_retry retry ON retry.account_id=d.account_id
  WHERE d.state='active' AND d.account_id>? AND (? OR COALESCE(p.next_due_ms,0)<=?)
  AND COALESCE(retry.retry_until_ms,0)<=? AND u.status='active' AND u.deletion_pending=0
  AND u.user_type='webmail' AND u.is_admin=0 ORDER BY d.account_id LIMIT ?`, service, after, startup, now.UnixMilli(), now.UnixMilli(), limit)
@@ -63,13 +63,13 @@ func (r *AccountRouting) ReserveServiceAccountWithWake(ctx context.Context, owne
 	}
 	defer tx.Rollback()
 	var forced bool
-	if err := tx.QueryRowContext(ctx, `SELECT COALESCE((SELECT next_due_ms FROM gofer_account_service_schedule WHERE account_id=? AND service=?),0)=0`, id, service).Scan(&forced); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT COALESCE((SELECT next_due_ms FROM raven_account_service_schedule WHERE account_id=? AND service=?),0)=0`, id, service).Scan(&forced); err != nil {
 		return 0, false, false, err
 	}
 
-	result, err := tx.ExecContext(ctx, `INSERT INTO gofer_account_service_schedule(account_id,service,next_due_ms,revision)
- SELECT d.account_id,?,?,1 FROM gofer_account_directory d JOIN users u ON u.id=d.user_id
- LEFT JOIN gofer_account_provider_retry retry ON retry.account_id=d.account_id
+	result, err := tx.ExecContext(ctx, `INSERT INTO raven_account_service_schedule(account_id,service,next_due_ms,revision)
+ SELECT d.account_id,?,?,1 FROM raven_account_directory d JOIN users u ON u.id=d.user_id
+ LEFT JOIN raven_account_provider_retry retry ON retry.account_id=d.account_id
  WHERE d.account_id=? AND d.user_id=? AND d.state='active' AND u.status='active' AND u.deletion_pending=0
  AND u.user_type='webmail' AND u.is_admin=0 AND COALESCE(retry.retry_until_ms,0)<=?
  ON CONFLICT(account_id,service) DO UPDATE SET next_due_ms=excluded.next_due_ms,revision=revision+1
@@ -82,7 +82,7 @@ func (r *AccountRouting) ReserveServiceAccountWithWake(ctx context.Context, owne
 		return 0, false, false, err
 	}
 	var revision int64
-	if err := tx.QueryRowContext(ctx, `SELECT revision FROM gofer_account_service_schedule WHERE account_id=? AND service=?`, id, service).Scan(&revision); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT revision FROM raven_account_service_schedule WHERE account_id=? AND service=?`, id, service).Scan(&revision); err != nil {
 		return 0, false, false, err
 	}
 	err = tx.Commit()
@@ -93,8 +93,8 @@ func (r *AccountRouting) CompleteServiceAccount(ctx context.Context, owner, id s
 	if !validScheduledService(service) || next.IsZero() {
 		return false, errors.New("service completion needs a known service and a deadline")
 	}
-	result, err := r.System().Write().ExecContext(ctx, `UPDATE gofer_account_service_schedule SET next_due_ms=?
- WHERE account_id=? AND service=? AND revision=? AND EXISTS(SELECT 1 FROM gofer_account_directory d JOIN users u ON u.id=d.user_id
+	result, err := r.System().Write().ExecContext(ctx, `UPDATE raven_account_service_schedule SET next_due_ms=?
+ WHERE account_id=? AND service=? AND revision=? AND EXISTS(SELECT 1 FROM raven_account_directory d JOIN users u ON u.id=d.user_id
  WHERE d.account_id=? AND d.user_id=? AND d.state='active' AND u.status='active' AND u.deletion_pending=0 AND u.user_type='webmail' AND u.is_admin=0)`, next.UnixMilli(), id, service, revision, id, owner)
 	if err != nil {
 		return false, err
@@ -112,8 +112,8 @@ func (r *AccountRouting) ResetServiceAccounts(ctx context.Context, owner, id str
 	if err := r.ValidateUser(ctx, owner); err != nil {
 		return err
 	}
-	result, err := r.System().Write().ExecContext(ctx, `INSERT INTO gofer_account_service_schedule(account_id,service,next_due_ms,revision)
- SELECT d.account_id,?,0,1 FROM gofer_account_directory d JOIN users u ON u.id=d.user_id
+	result, err := r.System().Write().ExecContext(ctx, `INSERT INTO raven_account_service_schedule(account_id,service,next_due_ms,revision)
+ SELECT d.account_id,?,0,1 FROM raven_account_directory d JOIN users u ON u.id=d.user_id
  WHERE d.user_id=? AND (?='' OR d.account_id=?) AND d.state='active' AND u.status='active' AND u.deletion_pending=0 AND u.user_type='webmail' AND u.is_admin=0
  ON CONFLICT(account_id,service) DO UPDATE SET next_due_ms=0,revision=revision+1`, service, owner, id, id)
 	if err != nil {
@@ -132,9 +132,9 @@ func (r *AccountRouting) ListDueContactQueueOwners(ctx context.Context, after st
 	if limit < 1 || limit > 64 {
 		return nil, errors.New("contact queue discovery pages must contain at most 64 owners")
 	}
-	rows, err := r.System().Read().QueryContext(ctx, `SELECT u.id FROM users u LEFT JOIN gofer_contact_queue_schedule p ON p.user_id=u.id
+	rows, err := r.System().Read().QueryContext(ctx, `SELECT u.id FROM users u LEFT JOIN raven_contact_queue_schedule p ON p.user_id=u.id
  WHERE u.id>? AND u.status='active' AND u.deletion_pending=0 AND u.user_type='webmail' AND u.is_admin=0
- AND (p.user_id IS NOT NULL OR EXISTS(SELECT 1 FROM gofer_account_directory d WHERE d.user_id=u.id AND d.state='active'))
+ AND (p.user_id IS NOT NULL OR EXISTS(SELECT 1 FROM raven_account_directory d WHERE d.user_id=u.id AND d.state='active'))
  AND (? OR COALESCE(p.next_due_ms,0)<=?) ORDER BY u.id LIMIT ?`, after, startup, now.UnixMilli(), limit)
 	if err != nil {
 		return nil, err
@@ -160,7 +160,7 @@ func (r *AccountRouting) ReserveContactQueue(ctx context.Context, owner string, 
 		return 0, false, err
 	}
 	defer tx.Rollback()
-	result, err := tx.ExecContext(ctx, `INSERT INTO gofer_contact_queue_schedule(user_id,next_due_ms,revision)
+	result, err := tx.ExecContext(ctx, `INSERT INTO raven_contact_queue_schedule(user_id,next_due_ms,revision)
  SELECT id,?,1 FROM users WHERE id=? AND status='active' AND deletion_pending=0 AND user_type='webmail' AND is_admin=0
  ON CONFLICT(user_id) DO UPDATE SET next_due_ms=excluded.next_due_ms,revision=revision+1
  WHERE ? OR next_due_ms<=?`, until.UnixMilli(), owner, startup, now.UnixMilli())
@@ -172,7 +172,7 @@ func (r *AccountRouting) ReserveContactQueue(ctx context.Context, owner string, 
 		return 0, false, err
 	}
 	var revision int64
-	if err := tx.QueryRowContext(ctx, `SELECT revision FROM gofer_contact_queue_schedule WHERE user_id=?`, owner).Scan(&revision); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT revision FROM raven_contact_queue_schedule WHERE user_id=?`, owner).Scan(&revision); err != nil {
 		return 0, false, err
 	}
 	err = tx.Commit()
@@ -183,7 +183,7 @@ func (r *AccountRouting) CompleteContactQueue(ctx context.Context, owner string,
 	if next.IsZero() {
 		return false, errors.New("contact queue completion needs a deadline")
 	}
-	result, err := r.System().Write().ExecContext(ctx, `UPDATE gofer_contact_queue_schedule SET next_due_ms=? WHERE user_id=? AND revision=?
+	result, err := r.System().Write().ExecContext(ctx, `UPDATE raven_contact_queue_schedule SET next_due_ms=? WHERE user_id=? AND revision=?
  AND EXISTS(SELECT 1 FROM users WHERE id=? AND status='active' AND deletion_pending=0 AND user_type='webmail' AND is_admin=0)`, next.UnixMilli(), owner, revision, owner)
 	if err != nil {
 		return false, err
@@ -193,7 +193,7 @@ func (r *AccountRouting) CompleteContactQueue(ctx context.Context, owner string,
 }
 
 func (r *AccountRouting) ResetContactQueue(ctx context.Context, owner string) error {
-	result, err := r.System().Write().ExecContext(ctx, `INSERT INTO gofer_contact_queue_schedule(user_id,next_due_ms,revision)
+	result, err := r.System().Write().ExecContext(ctx, `INSERT INTO raven_contact_queue_schedule(user_id,next_due_ms,revision)
  SELECT id,0,1 FROM users WHERE id=? AND status='active' AND deletion_pending=0 AND user_type='webmail' AND is_admin=0
  ON CONFLICT(user_id) DO UPDATE SET next_due_ms=0,revision=revision+1`, owner)
 	if err != nil {
@@ -214,16 +214,16 @@ func (r *AccountRouting) ResetContactSchedulesForStartup(ctx context.Context) er
 		return err
 	}
 	defer tx.Rollback()
-	if _, err := tx.ExecContext(ctx, `UPDATE gofer_account_service_schedule SET next_due_ms=0,revision=revision+1 WHERE service='contacts'`); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE raven_account_service_schedule SET next_due_ms=0,revision=revision+1 WHERE service='contacts'`); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE gofer_contact_queue_schedule SET next_due_ms=0,revision=revision+1`); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE raven_contact_queue_schedule SET next_due_ms=0,revision=revision+1`); err != nil {
 		return err
 	}
 	return tx.Commit()
 }
 
 func (r *AccountRouting) ResetCalendarSchedulesForStartup(ctx context.Context) error {
-	_, err := r.System().Write().ExecContext(ctx, `UPDATE gofer_account_service_schedule SET next_due_ms=0,revision=revision+1 WHERE service='calendar'`)
+	_, err := r.System().Write().ExecContext(ctx, `UPDATE raven_account_service_schedule SET next_due_ms=0,revision=revision+1 WHERE service='calendar'`)
 	return err
 }

@@ -38,7 +38,7 @@ func TestAccountServiceScheduleActivationHintFailureRecoversLocalAccount(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := system.Write().Exec(`CREATE TRIGGER reject_activation_hint BEFORE INSERT ON gofer_contact_queue_schedule BEGIN SELECT RAISE(ABORT,'synthetic queue hint failure'); END`); err != nil {
+	if _, err := system.Write().Exec(`CREATE TRIGGER reject_activation_hint BEFORE INSERT ON raven_contact_queue_schedule BEGIN SELECT RAISE(ABORT,'synthetic queue hint failure'); END`); err != nil {
 		t.Fatal(err)
 	}
 	creates := 0
@@ -55,7 +55,7 @@ func TestAccountServiceScheduleActivationHintFailureRecoversLocalAccount(t *test
 		t.Fatal("failed hint escaped account activation", state, err)
 	}
 	var hints int
-	if err := system.Read().QueryRow(`SELECT COUNT(*) FROM gofer_contact_queue_schedule WHERE user_id='alice'`).Scan(&hints); err != nil || hints != 0 {
+	if err := system.Read().QueryRow(`SELECT COUNT(*) FROM raven_contact_queue_schedule WHERE user_id='alice'`).Scan(&hints); err != nil || hints != 0 {
 		t.Fatal("failed activation left hint", hints, err)
 	}
 	if _, err := system.Write().Exec(`DROP TRIGGER reject_activation_hint`); err != nil {
@@ -67,7 +67,7 @@ func TestAccountServiceScheduleActivationHintFailureRecoversLocalAccount(t *test
 	if creates != 1 {
 		t.Fatal("hint recovery recreated committed account", creates)
 	}
-	if err := system.Read().QueryRow(`SELECT COUNT(*) FROM gofer_contact_queue_schedule WHERE user_id='alice' AND next_due_ms=0`).Scan(&hints); err != nil || hints != 1 {
+	if err := system.Read().QueryRow(`SELECT COUNT(*) FROM raven_contact_queue_schedule WHERE user_id='alice' AND next_due_ms=0`).Scan(&hints); err != nil || hints != 1 {
 		t.Fatal("activation did not retain discoverable owner", hints, err)
 	}
 }
@@ -81,7 +81,7 @@ func TestAccountServiceScheduleOlderLayoutSeedsHintsWithoutOpeningStores(t *test
 	if err != nil || !reserved {
 		t.Fatal("reserve", err)
 	}
-	if _, err := system.Write().Exec(`DELETE FROM gofer_contact_queue_schedule WHERE user_id='bob'`); err != nil {
+	if _, err := system.Write().Exec(`DELETE FROM raven_contact_queue_schedule WHERE user_id='bob'`); err != nil {
 		t.Fatal(err)
 	}
 	if err := stores.Close(t.Context()); err != nil {
@@ -99,7 +99,7 @@ func TestAccountServiceScheduleOlderLayoutSeedsHintsWithoutOpeningStores(t *test
 		t.Fatal("metadata bootstrap opened user stores", opened)
 	}
 	var due, got int64
-	if err := system.Read().QueryRow(`SELECT next_due_ms,revision FROM gofer_contact_queue_schedule WHERE user_id='alice'`).Scan(&due, &got); err != nil || due != now.Add(time.Hour).UnixMilli() || got != revision {
+	if err := system.Read().QueryRow(`SELECT next_due_ms,revision FROM raven_contact_queue_schedule WHERE user_id='alice'`).Scan(&due, &got); err != nil || due != now.Add(time.Hour).UnixMilli() || got != revision {
 		t.Fatal("bootstrap replaced established deadline", due, got, err)
 	}
 	owners, err := r.ListDueContactQueueOwners(t.Context(), "", now, 64, false)
@@ -209,7 +209,7 @@ func TestAccountServiceScheduleRejectsInvalidAndFailedReservations(t *testing.T)
 	if _, ok, err := r.ReserveContactQueue(t.Context(), "alice", now, now, false); err == nil || ok {
 		t.Fatal("invalid reservation accepted")
 	}
-	if _, err := system.Write().Exec(`CREATE TRIGGER reject_service_reservation BEFORE INSERT ON gofer_account_service_schedule BEGIN SELECT RAISE(ABORT,'reservation failure'); END`); err != nil {
+	if _, err := system.Write().Exec(`CREATE TRIGGER reject_service_reservation BEFORE INSERT ON raven_account_service_schedule BEGIN SELECT RAISE(ABORT,'reservation failure'); END`); err != nil {
 		t.Fatal(err)
 	}
 	if revision, ok, err := r.ReserveServiceAccount(t.Context(), "alice", alice.AccountID, ScheduledContacts, now, now.Add(time.Hour), false); err == nil || ok || revision != 0 {
@@ -225,7 +225,7 @@ func TestAccountServiceScheduleRejectsInvalidAndFailedReservations(t *testing.T)
 		t.Fatal("queue metadata blocked user removal", err)
 	}
 	var count int
-	if err := system.Read().QueryRow(`SELECT COUNT(*) FROM gofer_contact_queue_schedule WHERE user_id='empty-owner'`).Scan(&count); err != nil || count != 0 {
+	if err := system.Read().QueryRow(`SELECT COUNT(*) FROM raven_contact_queue_schedule WHERE user_id='empty-owner'`).Scan(&count); err != nil || count != 0 {
 		t.Fatal("owner queue metadata survived deletion", count, err)
 	}
 }

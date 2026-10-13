@@ -1,6 +1,7 @@
 package imap
 
 import (
+	"github.com/fahadjibransheikh/raven/internal/mail/message"
 	"testing"
 	"time"
 
@@ -119,7 +120,7 @@ func TestFinalizeSyncMessageUsesIMAPDatePrecedence(t *testing.T) {
 			if !msg.DateSent.Equal(tt.want) || msg.DateSentFallback != tt.wantFallback {
 				t.Fatalf("finalized date=%v fallback=%v, want date=%v fallback=%v", msg.DateSent, msg.DateSentFallback, tt.want, tt.wantFallback)
 			}
-			if msg.MessageID != "<folder-42@sync.gofer>" || msg.Subject != "(no subject)" || msg.Snippet != "(no subject)" {
+			if msg.MessageID != message.SyntheticID("folder-42") || msg.Subject != "(no subject)" || msg.Snippet != "(no subject)" {
 				t.Fatalf("finalized metadata = %#v, want synthetic defaults", msg)
 			}
 		})

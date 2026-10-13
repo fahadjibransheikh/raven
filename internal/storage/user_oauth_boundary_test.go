@@ -10,7 +10,7 @@ func removeUserOAuthGuards(t *testing.T, db *DB) {
 	t.Helper()
 	for _, table := range []string{"oauth_accounts", "oauth_account_flows"} {
 		for _, action := range []string{"insert", "update", "delete"} {
-			if _, err := db.Write().Exec(`DROP TRIGGER ` + quoteStoreIdentifier("gofer_store_central_"+table+"_"+action)); err != nil {
+			if _, err := db.Write().Exec(`DROP TRIGGER ` + quoteStoreIdentifier("raven_store_central_"+table+"_"+action)); err != nil {
 				t.Fatal(err)
 			}
 		}

@@ -146,8 +146,8 @@ func TestUserStoreRejectsForeignAndNullOwners(t *testing.T) {
 		`UPDATE users SET id = 'bob' WHERE id = 'alice'`,
 		`UPDATE users SET user_type = 'management', is_admin = 1 WHERE id = 'alice'`,
 		`DELETE FROM users WHERE id = 'alice'`,
-		`UPDATE gofer_user_store SET user_id = 'bob'`,
-		`DELETE FROM gofer_user_store`,
+		`UPDATE raven_user_store SET user_id = 'bob'`,
+		`DELETE FROM raven_user_store`,
 	} {
 		if _, err := db.Write().Exec(query); err == nil {
 			t.Fatalf("accepted foreign ownership mutation: %s", query)

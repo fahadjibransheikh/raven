@@ -178,7 +178,7 @@ func TestUserStorageMigrationPreflightRejectsAmbiguousSchemaAndCrossOwnerData(t 
 		"unknown-column":                `ALTER TABLE accounts ADD COLUMN forgotten_configuration TEXT`,
 		"unknown-generated-column":      `ALTER TABLE accounts ADD COLUMN generated_configuration TEXT GENERATED ALWAYS AS(email_address) VIRTUAL`,
 		"missing-table":                 `DROP TABLE contact_conflicts`,
-		"mixed-layout":                  `CREATE TABLE gofer_user_cleanup_receipts(user_id TEXT PRIMARY KEY,completed_at DATETIME); INSERT INTO gofer_user_cleanup_receipts VALUES('alice',CURRENT_TIMESTAMP)`,
+		"mixed-layout":                  `CREATE TABLE raven_user_cleanup_receipts(user_id TEXT PRIMARY KEY,completed_at DATETIME); INSERT INTO raven_user_cleanup_receipts VALUES('alice',CURRENT_TIMESTAMP)`,
 		"no-account-owner":              `INSERT INTO accounts(id,user_id,email_address) VALUES('orphan',NULL,'orphan@example.com')`,
 		"upload-owner-alias":            `INSERT INTO users(id,username,username_normalized) VALUES(' alice ','alias','alias')`,
 		"message-folder-owner":          `UPDATE message_folder_state SET folder_id='bob-folder',remote_uid=2 WHERE message_id=(SELECT id FROM messages WHERE account_id='alice-mail')`,
@@ -283,11 +283,17 @@ func TestUserStorageMigrationPreflightHonorsRuntimeLockCancellationAndMissingFil
 
 func TestUserStorageMigrationPreflightAcceptsMainSchemaAndKeepsHistoricalClaimsUnchanged(t *testing.T) {
 	// Modes keep upstream's names; versions are Raven's (upstream 105/106/107 = 119/120/121).
-	for _, mode := range []string{"main-105", "main-105-no-push-table", "partial-105-claim", "shared-106", "shared-107"} {
+	for _, mode := range []string{"main-105", "main-105-no-push-table", "partial-105-claim", "shared-106", "shared-107-before-rename", "shared-107"} {
 		t.Run(mode, func(t *testing.T) {
 			db := sharedMigrationFixture(t)
-			version := 121
-			if mode != "shared-107" {
+			version := CurrentSchemaVersion
+			if mode == "shared-107-before-rename" {
+				// Only totp_credentials' column default differs from the current schema.
+				version = 121
+				if _, err := db.Write().Exec(`DELETE FROM schema_version; INSERT INTO schema_version(version) VALUES(?)`, version); err != nil {
+					t.Fatal(err)
+				}
+			} else if mode != "shared-107" {
 				version = 120
 				if mode != "shared-106" {
 					version = 119
@@ -305,7 +311,7 @@ func TestUserStorageMigrationPreflightAcceptsMainSchemaAndKeepsHistoricalClaimsU
 				}
 			}
 			migrationFixtureSQL(t, db, `INSERT INTO calendar_response_requests(user_id,source_id,remote_id,version,response) VALUES('alice','alice-calendar','original-resource','original-etag','accepted')`)
-			if mode == "partial-105-claim" || mode == "shared-107" {
+			if mode == "partial-105-claim" || mode == "shared-107" || mode == "shared-107-before-rename" {
 				migrationFixtureSQL(t, db, `UPDATE calendar_response_requests SET claim_id='original-nonce'`)
 			}
 			path := db.Path()
@@ -320,7 +326,7 @@ func TestUserStorageMigrationPreflightAcceptsMainSchemaAndKeepsHistoricalClaimsU
 			if err != nil || report.SchemaVersion != version || report.TargetSchemaVersion != CurrentSchemaVersion {
 				t.Fatal("supported shared schema rejected", report, err)
 			}
-			wantClaim := mode == "partial-105-claim" || mode == "shared-107"
+			wantClaim := mode == "partial-105-claim" || mode == "shared-107" || mode == "shared-107-before-rename"
 			foundResponse := false
 			for _, table := range report.Tables {
 				if table.Name == "calendar_response_requests" {
@@ -361,7 +367,7 @@ func TestUserStorageMigrationPreflightAcceptsMainSchemaAndKeepsHistoricalClaimsU
 func TestUserStorageMigrationPreflightRejectsUnknownVersionsAndFalseUpgradeMarkers(t *testing.T) {
 	for _, query := range []string{
 		`DELETE FROM schema_version; INSERT INTO schema_version(version) VALUES(118)`,
-		`DELETE FROM schema_version; INSERT INTO schema_version(version) VALUES(122)`,
+		`DELETE FROM schema_version; INSERT INTO schema_version(version) VALUES(123)`,
 		`ALTER TABLE calendar_response_requests DROP COLUMN claim_id`,
 		`DELETE FROM schema_version; INSERT INTO schema_version(version) VALUES(120); ALTER TABLE web_push_subscriptions DROP COLUMN revision`,
 		`DELETE FROM schema_version; INSERT INTO schema_version(version) VALUES(120); ALTER TABLE calendar_response_requests DROP COLUMN claim_id; ALTER TABLE calendar_response_requests ADD COLUMN claim_id TEXT`,

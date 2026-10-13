@@ -122,7 +122,7 @@ func TestUserCalendarResponseReservationRealGraphSequenceAndNoAmbiguousReplay(t 
 						case <-tick.C:
 						}
 					}
-					if _, err := f.system.Write().Exec(`UPDATE gofer_mailbox_credentials SET revision=revision+1 WHERE account_id=?`, f.accounts["alice"].ID); err != nil {
+					if _, err := f.system.Write().Exec(`UPDATE raven_mailbox_credentials SET revision=revision+1 WHERE account_id=?`, f.accounts["alice"].ID); err != nil {
 						return err
 					}
 					if err := tx.Rollback(); err != nil {

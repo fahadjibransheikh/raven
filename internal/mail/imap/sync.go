@@ -56,7 +56,7 @@ func (c messageDateCandidates) resolve(fallback time.Time) (time.Time, bool) {
 func finalizeSyncMessage(syncMsg *storage.SyncMessage, folderID string, dates messageDateCandidates, fallback time.Time) {
 	syncMsg.DateSent, syncMsg.DateSentFallback = dates.resolve(fallback)
 	if syncMsg.MessageID == "" {
-		syncMsg.MessageID = fmt.Sprintf("<%s-%d@sync.gofer>", folderID, syncMsg.RemoteUID)
+		syncMsg.MessageID = message.SyntheticID(fmt.Sprintf("%s-%d", folderID, syncMsg.RemoteUID))
 	}
 	if syncMsg.Subject == "" {
 		syncMsg.Subject = "(no subject)"

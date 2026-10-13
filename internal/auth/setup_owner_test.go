@@ -69,7 +69,7 @@ func TestSetupOwnerTopologyDistinguishesFreshLegacyAndExistingUsers(t *testing.T
 
 	t.Run("legacy default", func(t *testing.T) {
 		manager, _ := setupOwnerTestManager(t)
-		insertSetupOwnerUser(t, manager, "default", "local@gofer.local", "", "Local User", UserStatusActive, false)
+		insertSetupOwnerUser(t, manager, "default", "local@raven.local", "", "Local User", UserStatusActive, false)
 		if _, err := manager.db.Write().ExecContext(t.Context(), `
 			INSERT INTO accounts (id, user_id, email_address) VALUES ('mailbox', 'default', 'mail@example.com')`); err != nil {
 			t.Fatal(err)

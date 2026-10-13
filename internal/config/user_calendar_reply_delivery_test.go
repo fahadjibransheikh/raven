@@ -130,7 +130,7 @@ func TestUserCalendarReplyDeliveryWriterWaitRejectsSupersededAttempt(t *testing.
 				case "disabled":
 					_, err = f.system.Write().Exec(`UPDATE users SET status='disabled' WHERE id='alice'`)
 				case "deleting":
-					_, err = f.system.Write().Exec(`UPDATE gofer_account_directory SET state='deleting' WHERE account_id=?`, snapshot.send.AccountID)
+					_, err = f.system.Write().Exec(`UPDATE raven_account_directory SET state='deleting' WHERE account_id=?`, snapshot.send.AccountID)
 				case "input":
 					send := snapshot.Send()
 					send.MIMEData[0] = 'X'

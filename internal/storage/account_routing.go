@@ -70,7 +70,7 @@ func NewAccountRouting(stores *UserStores) (*AccountRouting, error) {
 	}
 	defer tx.Rollback()
 	var isUserStore int
-	if err := tx.QueryRow(`SELECT COUNT(*) FROM sqlite_schema WHERE name = 'gofer_user_store'`).Scan(&isUserStore); err != nil {
+	if err := tx.QueryRow(`SELECT COUNT(*) FROM sqlite_schema WHERE name IN (` + TableNameList("raven_user_store") + `)`).Scan(&isUserStore); err != nil {
 		return nil, err
 	}
 	if isUserStore != 0 {
@@ -83,8 +83,8 @@ func NewAccountRouting(stores *UserStores) (*AccountRouting, error) {
 	// Future user deletion must finish every account before deleting its owner.
 	// Older opt-in layouts may predate queue hints. Seed existing mailbox owners
 	// centrally, without opening every store or rewriting established deadlines.
-	if _, err := tx.Exec(`INSERT INTO gofer_contact_queue_schedule(user_id,next_due_ms,revision)
- SELECT DISTINCT d.user_id,0,0 FROM gofer_account_directory d JOIN users u ON u.id=d.user_id
+	if _, err := tx.Exec(`INSERT INTO raven_contact_queue_schedule(user_id,next_due_ms,revision)
+ SELECT DISTINCT d.user_id,0,0 FROM raven_account_directory d JOIN users u ON u.id=d.user_id
  WHERE d.state='active' AND u.user_type='webmail' AND u.is_admin=0
  ON CONFLICT(user_id) DO NOTHING`); err != nil {
 		return nil, err
@@ -112,7 +112,7 @@ func (r *AccountRouting) AccountStateForUser(ctx context.Context, userID, accoun
 		return "", ErrAccountRoute
 	}
 	var state AccountRouteState
-	err := r.System().Read().QueryRowContext(ctx, `SELECT state FROM gofer_account_directory WHERE account_id = ? AND user_id = ?`, accountID, userID).Scan(&state)
+	err := r.System().Read().QueryRowContext(ctx, `SELECT state FROM raven_account_directory WHERE account_id = ? AND user_id = ?`, accountID, userID).Scan(&state)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", ErrAccountRoute
 	}
@@ -168,7 +168,7 @@ func (r *AccountRouting) withUserStore(ctx context.Context, userID string, exist
 	if !existing {
 		// A durable historical account means this owner already had storage.
 		// Deleting/deleted accounts must not make a lost store look unused.
-		if err := r.System().Read().QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM gofer_account_directory WHERE user_id = ? AND state IN ('active','deleting','deleted'))`, userID).Scan(&existing); err != nil {
+		if err := r.System().Read().QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM raven_account_directory WHERE user_id = ? AND state IN ('active','deleting','deleted'))`, userID).Scan(&existing); err != nil {
 			return err
 		}
 	}
@@ -190,7 +190,7 @@ func (r *AccountRouting) withUserStore(ctx context.Context, userID string, exist
 func (r *AccountRouting) route(ctx context.Context, accountID, userID string, state AccountRouteState) (AccountRoute, error) {
 	var entry AccountRoute
 	err := r.System().Read().QueryRowContext(ctx, `SELECT account_id, user_id, state
-		FROM gofer_account_directory WHERE account_id = ?`, accountID).Scan(&entry.AccountID, &entry.UserID, &entry.State)
+		FROM raven_account_directory WHERE account_id = ?`, accountID).Scan(&entry.AccountID, &entry.UserID, &entry.State)
 	if errors.Is(err, sql.ErrNoRows) || (err == nil && (entry.State != state || (userID != "" && entry.UserID != userID))) {
 		return AccountRoute{}, ErrAccountRoute
 	}
@@ -275,7 +275,7 @@ func (r *AccountRouting) withAccount(ctx context.Context, userID, accountID stri
 // written. New IDs are opaque UUIDs, globally unique even for the same email.
 func (r *AccountRouting) ReserveAccount(ctx context.Context, userID string) (AccountRoute, error) {
 	entry := AccountRoute{AccountID: uuid.NewString(), UserID: userID, State: AccountCreating}
-	result, err := r.System().Write().ExecContext(ctx, `INSERT INTO gofer_account_directory(account_id, user_id, state)
+	result, err := r.System().Write().ExecContext(ctx, `INSERT INTO raven_account_directory(account_id, user_id, state)
 		SELECT ?, id, 'creating' FROM users WHERE id = ? AND user_type = 'webmail' AND is_admin = 0
 		AND status = 'active' AND deletion_pending = 0`, entry.AccountID, userID)
 	if err != nil {
@@ -339,12 +339,12 @@ func (r *AccountRouting) CompleteAccountCreation(ctx context.Context, userID, ac
 			// A successful account activation guarantees a durable owner queue
 			// hint before any producer can accept local contact work. If its first
 			// postcommit wake fails, removing the last account cannot hide that work.
-			if _, err := tx.ExecContext(ctx, `INSERT INTO gofer_contact_queue_schedule(user_id,next_due_ms,revision)
+			if _, err := tx.ExecContext(ctx, `INSERT INTO raven_contact_queue_schedule(user_id,next_due_ms,revision)
  SELECT id,0,0 FROM users WHERE id=? AND status='active' AND deletion_pending=0 AND user_type='webmail' AND is_admin=0
  ON CONFLICT(user_id) DO NOTHING`, userID); err != nil {
 				return err
 			}
-			result, err := tx.ExecContext(ctx, `UPDATE gofer_account_directory
+			result, err := tx.ExecContext(ctx, `UPDATE raven_account_directory
  SET state='active',updated_at=CURRENT_TIMESTAMP WHERE account_id=? AND state='creating'
  AND EXISTS(SELECT 1 FROM users u WHERE u.id=? AND u.status='active' AND u.deletion_pending=0 AND u.user_type='webmail' AND u.is_admin=0)`, accountID, userID)
 			if err != nil {
@@ -378,7 +378,7 @@ func (r *AccountRouting) RequestAccountDeletion(ctx context.Context, userID, acc
 		return err
 	}
 	return r.transition(ctx, accountID, func(*accountRouteScope) error {
-		result, err := r.System().Write().ExecContext(ctx, `UPDATE gofer_account_directory
+		result, err := r.System().Write().ExecContext(ctx, `UPDATE raven_account_directory
 			SET state = CASE WHEN state = 'deleted' THEN 'deleted' ELSE 'deleting' END,
 			updated_at = CURRENT_TIMESTAMP WHERE account_id = ? AND user_id = ?
 			AND EXISTS(SELECT 1 FROM users WHERE id=? AND status='active' AND deletion_pending=0 AND user_type='webmail' AND is_admin=0)`, accountID, userID, userID)
@@ -404,7 +404,7 @@ func (r *AccountRouting) BeginAccountDeletion(ctx context.Context, userID, accou
 	return r.transition(ctx, accountID, func(scope *accountRouteScope) error {
 		var owner string
 		var state AccountRouteState
-		if err := r.System().Read().QueryRowContext(ctx, `SELECT user_id, state FROM gofer_account_directory WHERE account_id = ?`, accountID).Scan(&owner, &state); err != nil {
+		if err := r.System().Read().QueryRowContext(ctx, `SELECT user_id, state FROM raven_account_directory WHERE account_id = ?`, accountID).Scan(&owner, &state); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return ErrAccountRoute
 			}
@@ -416,7 +416,7 @@ func (r *AccountRouting) BeginAccountDeletion(ctx context.Context, userID, accou
 		if state == AccountDeleted {
 			return nil
 		}
-		if _, err := r.System().Write().ExecContext(ctx, `UPDATE gofer_account_directory SET state = 'deleting', updated_at = CURRENT_TIMESTAMP WHERE account_id = ?`, accountID); err != nil {
+		if _, err := r.System().Write().ExecContext(ctx, `UPDATE raven_account_directory SET state = 'deleting', updated_at = CURRENT_TIMESTAMP WHERE account_id = ?`, accountID); err != nil {
 			return err
 		}
 		r.mu.Lock()
@@ -474,7 +474,7 @@ func (r *AccountRouting) CompleteAccountDeletion(ctx context.Context, userID, ac
 			if count != 0 {
 				return ErrAccountRoute
 			}
-			_, err := r.System().Write().ExecContext(ctx, `UPDATE gofer_account_directory SET state = 'deleted', updated_at = CURRENT_TIMESTAMP WHERE account_id = ? AND state = 'deleting'`, accountID)
+			_, err := r.System().Write().ExecContext(ctx, `UPDATE raven_account_directory SET state = 'deleted', updated_at = CURRENT_TIMESTAMP WHERE account_id = ? AND state = 'deleting'`, accountID)
 			return err
 		})
 	})
@@ -491,7 +491,7 @@ func (r *AccountRouting) ListAccounts(ctx context.Context, userID string, state 
 		return nil, errors.New("account page size must be between 1 and 1000")
 	}
 	rows, err := r.System().Read().QueryContext(ctx, `SELECT d.account_id, d.user_id, d.state
-		FROM gofer_account_directory d LEFT JOIN users u ON u.id = d.user_id
+		FROM raven_account_directory d LEFT JOIN users u ON u.id = d.user_id
 		WHERE d.state = ? AND d.account_id > ? AND (? = '' OR d.user_id = ?)
 		AND (? != 'active' OR (u.status = 'active' AND u.deletion_pending = 0 AND u.user_type = 'webmail' AND u.is_admin = 0))
 		ORDER BY d.account_id LIMIT ?`, state, after, userID, userID, state, limit)
@@ -560,58 +560,58 @@ func (r *AccountRouting) transition(ctx context.Context, id string, fn func(*acc
 }
 
 const accountRoutingSchema = `
-		CREATE TABLE IF NOT EXISTS gofer_account_directory (
+		CREATE TABLE IF NOT EXISTS raven_account_directory (
 			account_id TEXT PRIMARY KEY CHECK (account_id != ''),
 			user_id TEXT NOT NULL CHECK (user_id != ''),
 			state TEXT NOT NULL CHECK (state IN ('creating', 'active', 'deleting', 'deleted')),
 			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 		);
-		CREATE INDEX IF NOT EXISTS gofer_account_directory_state ON gofer_account_directory(state, account_id);
-		CREATE INDEX IF NOT EXISTS gofer_account_directory_owner ON gofer_account_directory(user_id, state, account_id);
-		CREATE TABLE IF NOT EXISTS gofer_avatar_interests (
+		CREATE INDEX IF NOT EXISTS raven_account_directory_state ON raven_account_directory(state, account_id);
+		CREATE INDEX IF NOT EXISTS raven_account_directory_owner ON raven_account_directory(user_id, state, account_id);
+		CREATE TABLE IF NOT EXISTS raven_avatar_interests (
 			email_hash TEXT NOT NULL REFERENCES sender_avatars(email_hash) ON DELETE CASCADE,
 			user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 			PRIMARY KEY(email_hash,user_id)
 		);
-		CREATE TABLE IF NOT EXISTS gofer_account_poll_schedule (
-			account_id TEXT PRIMARY KEY REFERENCES gofer_account_directory(account_id),
+		CREATE TABLE IF NOT EXISTS raven_account_poll_schedule (
+			account_id TEXT PRIMARY KEY REFERENCES raven_account_directory(account_id),
 			next_due_ms INTEGER NOT NULL DEFAULT 0,
 			revision INTEGER NOT NULL DEFAULT 0
 		);
-		CREATE INDEX IF NOT EXISTS gofer_account_poll_due ON gofer_account_poll_schedule(next_due_ms, account_id);
-		CREATE TABLE IF NOT EXISTS gofer_account_provider_retry (
-			account_id TEXT PRIMARY KEY REFERENCES gofer_account_directory(account_id),
+		CREATE INDEX IF NOT EXISTS raven_account_poll_due ON raven_account_poll_schedule(next_due_ms, account_id);
+		CREATE TABLE IF NOT EXISTS raven_account_provider_retry (
+			account_id TEXT PRIMARY KEY REFERENCES raven_account_directory(account_id),
 			retry_until_ms INTEGER NOT NULL
 		);
 
-        CREATE TABLE IF NOT EXISTS gofer_account_active_poll (
-            account_id TEXT PRIMARY KEY REFERENCES gofer_account_directory(account_id),
+        CREATE TABLE IF NOT EXISTS raven_account_active_poll (
+            account_id TEXT PRIMARY KEY REFERENCES raven_account_directory(account_id),
             next_due_ms INTEGER NOT NULL DEFAULT 0,
             last_attempt_ns INTEGER NOT NULL DEFAULT 0,
             failures INTEGER NOT NULL DEFAULT 0 CHECK(failures BETWEEN 0 AND 4),
             revision INTEGER NOT NULL DEFAULT 0
         );
-		CREATE INDEX IF NOT EXISTS gofer_account_active_poll_due ON gofer_account_active_poll(next_due_ms,account_id);
-		CREATE TABLE IF NOT EXISTS gofer_account_service_schedule (
-			account_id TEXT NOT NULL REFERENCES gofer_account_directory(account_id),
+		CREATE INDEX IF NOT EXISTS raven_account_active_poll_due ON raven_account_active_poll(next_due_ms,account_id);
+		CREATE TABLE IF NOT EXISTS raven_account_service_schedule (
+			account_id TEXT NOT NULL REFERENCES raven_account_directory(account_id),
 			service TEXT NOT NULL CHECK(service IN ('contacts','calendar')),
 			next_due_ms INTEGER NOT NULL DEFAULT 0,
 			revision INTEGER NOT NULL DEFAULT 0,
 			PRIMARY KEY(account_id,service)
 		);
-		CREATE INDEX IF NOT EXISTS gofer_account_service_due ON gofer_account_service_schedule(service,next_due_ms,account_id);
-		CREATE TABLE IF NOT EXISTS gofer_contact_queue_schedule (
+		CREATE INDEX IF NOT EXISTS raven_account_service_due ON raven_account_service_schedule(service,next_due_ms,account_id);
+		CREATE TABLE IF NOT EXISTS raven_contact_queue_schedule (
 			user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
 			next_due_ms INTEGER NOT NULL DEFAULT 0,
 			revision INTEGER NOT NULL DEFAULT 0
 		);
-		CREATE INDEX IF NOT EXISTS gofer_contact_queue_due ON gofer_contact_queue_schedule(next_due_ms,user_id);
-		CREATE TABLE IF NOT EXISTS gofer_user_cleanup_receipts (
+		CREATE INDEX IF NOT EXISTS raven_contact_queue_due ON raven_contact_queue_schedule(next_due_ms,user_id);
+		CREATE TABLE IF NOT EXISTS raven_user_cleanup_receipts (
 			user_id TEXT PRIMARY KEY CHECK(user_id<>''),
 			completed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 		);
-		CREATE TRIGGER IF NOT EXISTS gofer_account_directory_identity BEFORE UPDATE OF account_id, user_id ON gofer_account_directory
+		CREATE TRIGGER IF NOT EXISTS raven_account_directory_identity BEFORE UPDATE OF account_id, user_id ON raven_account_directory
 		WHEN NEW.account_id IS NOT OLD.account_id OR NEW.user_id IS NOT OLD.user_id
 		BEGIN SELECT RAISE(ABORT, 'account ownership is immutable'); END;
 `

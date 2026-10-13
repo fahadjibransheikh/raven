@@ -925,7 +925,7 @@ func TestUserContactPushScopedRefreshPreservesRotationAndOwnerIsolation(t *testi
 			f := newUserContactPushFixture(t, provider, api)
 			id := seedUserContactPush(t, f, "alice", provider)
 			var accessBefore []byte
-			if err := f.system.Read().QueryRow(`SELECT access_token_ciphertext FROM gofer_mailbox_credentials WHERE account_id=? AND user_id=?`, f.accounts["alice"].ID, "alice").Scan(&accessBefore); err != nil {
+			if err := f.system.Read().QueryRow(`SELECT access_token_ciphertext FROM raven_mailbox_credentials WHERE account_id=? AND user_id=?`, f.accounts["alice"].ID, "alice").Scan(&accessBefore); err != nil {
 				t.Fatal(err)
 			}
 			if n, err := f.h.ProcessUserContactSyncOperations(t.Context(), "alice", 1); err != nil || n != 1 {
@@ -947,7 +947,7 @@ func TestUserContactPushScopedRefreshPreservesRotationAndOwnerIsolation(t *testi
 				t.Fatal("rotated refresh", token, err)
 			}
 			var accessAfter []byte
-			if err := f.system.Read().QueryRow(`SELECT access_token_ciphertext FROM gofer_mailbox_credentials WHERE account_id=? AND user_id=?`, f.accounts["alice"].ID, "alice").Scan(&accessAfter); err != nil {
+			if err := f.system.Read().QueryRow(`SELECT access_token_ciphertext FROM raven_mailbox_credentials WHERE account_id=? AND user_id=?`, f.accounts["alice"].ID, "alice").Scan(&accessAfter); err != nil {
 				t.Fatal(err)
 			}
 			if provider == "outlook" && string(accessBefore) != string(accessAfter) {

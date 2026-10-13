@@ -68,11 +68,11 @@ func TestUserContactWorkersStartupCadenceAndDurableWake(t *testing.T) {
 	}
 	waitUserContactWorkers(t, func() bool {
 		var scheduled int
-		if err := f.system.Read().QueryRow(`SELECT COUNT(*) FROM gofer_account_service_schedule WHERE service='contacts' AND next_due_ms>?`, time.Now().Add(4*time.Minute).UnixMilli()).Scan(&scheduled); err != nil {
+		if err := f.system.Read().QueryRow(`SELECT COUNT(*) FROM raven_account_service_schedule WHERE service='contacts' AND next_due_ms>?`, time.Now().Add(4*time.Minute).UnixMilli()).Scan(&scheduled); err != nil {
 			t.Fatal(err)
 		}
 		var queues int
-		if err := f.system.Read().QueryRow(`SELECT COUNT(*) FROM gofer_contact_queue_schedule WHERE next_due_ms>?`, time.Now().Add(30*time.Minute).UnixMilli()).Scan(&queues); err != nil {
+		if err := f.system.Read().QueryRow(`SELECT COUNT(*) FROM raven_contact_queue_schedule WHERE next_due_ms>?`, time.Now().Add(30*time.Minute).UnixMilli()).Scan(&queues); err != nil {
 			t.Fatal(err)
 		}
 		mu.Lock()
@@ -96,7 +96,7 @@ func TestUserContactWorkersStartupCadenceAndDurableWake(t *testing.T) {
 		mu.Lock()
 		defer mu.Unlock()
 		var queues int
-		if err := f.system.Read().QueryRow(`SELECT COUNT(*) FROM gofer_contact_queue_schedule WHERE user_id='alice' AND next_due_ms>?`, time.Now().Add(30*time.Minute).UnixMilli()).Scan(&queues); err != nil {
+		if err := f.system.Read().QueryRow(`SELECT COUNT(*) FROM raven_contact_queue_schedule WHERE user_id='alice' AND next_due_ms>?`, time.Now().Add(30*time.Minute).UnixMilli()).Scan(&queues); err != nil {
 			t.Fatal(err)
 		}
 		return queues == 1 && counts["alice|write"] == 2
@@ -108,7 +108,7 @@ func TestUserContactWorkersStartupCadenceAndDurableWake(t *testing.T) {
 		mu.Lock()
 		defer mu.Unlock()
 		var scheduled int
-		if err := f.system.Read().QueryRow(`SELECT COUNT(*) FROM gofer_account_service_schedule WHERE account_id=? AND service='contacts' AND next_due_ms>?`, f.accounts["alice"].ID, time.Now().Add(4*time.Minute).UnixMilli()).Scan(&scheduled); err != nil {
+		if err := f.system.Read().QueryRow(`SELECT COUNT(*) FROM raven_account_service_schedule WHERE account_id=? AND service='contacts' AND next_due_ms>?`, f.accounts["alice"].ID, time.Now().Add(4*time.Minute).UnixMilli()).Scan(&scheduled); err != nil {
 			t.Fatal(err)
 		}
 		return scheduled == 1 && counts["alice|pull"] == 2

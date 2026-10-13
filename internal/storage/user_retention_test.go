@@ -38,8 +38,8 @@ func TestRetainedUserMailRetentionIsolationDisabledAndRecoveryBarriers(t *testin
 		_, err := db.Write().Exec(`INSERT INTO calendar_sources(id,user_id,account_id,provider,remote_id,name,is_selected) VALUES('source','alice',?,'caldav','/primary/','Calendar',1);
  INSERT INTO calendar_reply_jobs(id,user_id,source_id,resource_id,remote_id,version,response,payload,state) VALUES('same-send-1','alice','source','resource','remote','v1','accepted','{}','pending'),('same-send-2','alice','source','resource2','remote2','v1','accepted','{}','conflict');
  INSERT INTO calendar_response_requests(user_id,source_id,remote_id,version,response,claim_id) VALUES('alice','source','remote','v1','accepted','preserved-claim');
- INSERT INTO gofer_provider_draft_states(account_id,draft_key,provider,mailbox_subject,folder_id) VALUES(?,'provider-draft','gmail','original-subject','drafts');
- INSERT INTO gofer_provider_draft_operations(account_id,draft_key,kind,status) VALUES(?,'provider-draft','delete','blocked');
+ INSERT INTO raven_provider_draft_states(account_id,draft_key,provider,mailbox_subject,folder_id) VALUES(?,'provider-draft','gmail','original-subject','drafts');
+ INSERT INTO raven_provider_draft_operations(account_id,draft_key,kind,status) VALUES(?,'provider-draft','delete','blocked');
  UPDATE outgoing_sends SET draft_id='provider-draft' WHERE id='same-send-3';
  UPDATE outgoing_sends SET status='ambiguous' WHERE id='same-send-4';
  UPDATE outgoing_sends SET sent_copy_status='pending' WHERE id='same-send-5';

@@ -138,7 +138,7 @@ func TestUserCalendarReplyProducerWriterWaitRechecksOriginalAuthority(t *testing
 				case "disabled":
 					_, err = f.system.Write().Exec(`UPDATE users SET status='disabled' WHERE id='alice'`)
 				case "deleting":
-					_, err = f.system.Write().Exec(`UPDATE gofer_account_directory SET state='deleting' WHERE account_id=?`, f.claims["alice"].event.service.id)
+					_, err = f.system.Write().Exec(`UPDATE raven_account_directory SET state='deleting' WHERE account_id=?`, f.claims["alice"].event.service.id)
 				case "nonce":
 					_, err = tx.Exec(`UPDATE calendar_response_requests SET claim_id='replacement'`)
 				case "input-copy":

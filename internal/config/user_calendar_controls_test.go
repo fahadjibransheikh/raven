@@ -69,7 +69,7 @@ func TestUserCalendarControlsWriterWaitRechecksLifecycleAndSource(t *testing.T) 
 					case "owner-deleting":
 						_, err = system.Write().Exec(`UPDATE users SET status='disabled',deletion_pending=1 WHERE id='alice'`)
 					case "account-deleting":
-						_, err = system.Write().Exec(`UPDATE gofer_account_directory SET state='deleting' WHERE account_id=?`, owners["alice"].ID)
+						_, err = system.Write().Exec(`UPDATE raven_account_directory SET state='deleting' WHERE account_id=?`, owners["alice"].ID)
 					case "local-account-deleting":
 						_, err = tx.Exec(`UPDATE accounts SET is_deleting=1 WHERE id=?`, owners["alice"].ID)
 					case "source-deleted":

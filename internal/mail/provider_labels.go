@@ -17,6 +17,7 @@ import (
 
 	goimap "github.com/emersion/go-imap/v2"
 	mailimap "github.com/fahadjibransheikh/raven/internal/mail/imap"
+	"github.com/fahadjibransheikh/raven/internal/mail/message"
 	"github.com/fahadjibransheikh/raven/internal/providerquota"
 	"github.com/fahadjibransheikh/raven/internal/providers"
 	"github.com/fahadjibransheikh/raven/internal/retry"
@@ -1065,7 +1066,7 @@ func outlookCategoryBatchRequestURL(msg storage.ProviderLabelSyncMessage) (strin
 		return "/me/messages/" + url.PathEscape(providerMessageID) + "?$select=id,categories", false, true
 	}
 	internetMessageID := strings.TrimSpace(msg.InternetMessageID)
-	if internetMessageID == "" || isSyntheticRavenMessageID(internetMessageID) {
+	if internetMessageID == "" || message.IsSyntheticID(internetMessageID) {
 		return "", false, false
 	}
 	values := url.Values{}
@@ -1094,11 +1095,6 @@ func outlookMessageStateFromBatchResponse(raw json.RawMessage, lookup bool) (out
 		return outlookMessageState{}, false, nil
 	}
 	return state, true, nil
-}
-
-func isSyntheticRavenMessageID(messageID string) bool {
-	normalized := strings.Trim(strings.ToLower(strings.TrimSpace(messageID)), "<>")
-	return strings.HasSuffix(normalized, "@sync.gofer")
 }
 
 func outlookMessageIDForInternetID(ctx context.Context, token, internetMessageID string) (string, error) {

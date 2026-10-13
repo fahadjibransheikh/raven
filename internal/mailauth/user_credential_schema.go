@@ -3,9 +3,9 @@ package mailauth
 // Absent access tokens are valid for existing refresh-only authorizations.
 // New grants still require an access token at the public Upsert boundary.
 const userMailboxCredentialSchema = `
-		CREATE TABLE IF NOT EXISTS gofer_mailbox_credentials (
+		CREATE TABLE IF NOT EXISTS raven_mailbox_credentials (
 			id TEXT PRIMARY KEY,
-			account_id TEXT NOT NULL UNIQUE REFERENCES gofer_account_directory(account_id),
+			account_id TEXT NOT NULL UNIQUE REFERENCES raven_account_directory(account_id),
 			user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 			provider TEXT NOT NULL CHECK(provider IN ('google','microsoft')),
 			provider_account_id TEXT NOT NULL CHECK(provider_account_id<>''),
@@ -20,16 +20,16 @@ const userMailboxCredentialSchema = `
 		);`
 
 const userMailboxCredentialGuards = `
-		CREATE TRIGGER IF NOT EXISTS gofer_mailbox_credential_owner_insert BEFORE INSERT ON gofer_mailbox_credentials
-		WHEN NOT EXISTS(SELECT 1 FROM gofer_account_directory d JOIN users u ON u.id=d.user_id
+		CREATE TRIGGER IF NOT EXISTS raven_mailbox_credential_owner_insert BEFORE INSERT ON raven_mailbox_credentials
+		WHEN NOT EXISTS(SELECT 1 FROM raven_account_directory d JOIN users u ON u.id=d.user_id
 		 WHERE d.account_id=NEW.account_id AND d.user_id=NEW.user_id AND d.state='active'
 		 AND u.status='active' AND u.deletion_pending=0 AND u.user_type='webmail' AND u.is_admin=0)
 		BEGIN SELECT RAISE(ABORT,'mailbox credential owner is unavailable'); END;
-		CREATE TRIGGER IF NOT EXISTS gofer_mailbox_credential_identity BEFORE UPDATE OF id,account_id,user_id ON gofer_mailbox_credentials
+		CREATE TRIGGER IF NOT EXISTS raven_mailbox_credential_identity BEFORE UPDATE OF id,account_id,user_id ON raven_mailbox_credentials
 		WHEN NEW.id IS NOT OLD.id OR NEW.account_id IS NOT OLD.account_id OR NEW.user_id IS NOT OLD.user_id
 		BEGIN SELECT RAISE(ABORT,'mailbox credential ownership is immutable'); END;
-		CREATE TRIGGER IF NOT EXISTS gofer_mailbox_credential_owner_update BEFORE UPDATE ON gofer_mailbox_credentials
-		WHEN NOT EXISTS(SELECT 1 FROM gofer_account_directory d JOIN users u ON u.id=d.user_id
+		CREATE TRIGGER IF NOT EXISTS raven_mailbox_credential_owner_update BEFORE UPDATE ON raven_mailbox_credentials
+		WHEN NOT EXISTS(SELECT 1 FROM raven_account_directory d JOIN users u ON u.id=d.user_id
 		 WHERE d.account_id=NEW.account_id AND d.user_id=NEW.user_id AND d.state='active'
 		 AND u.status='active' AND u.deletion_pending=0 AND u.user_type='webmail' AND u.is_admin=0)
 		BEGIN SELECT RAISE(ABORT,'mailbox credential owner is unavailable'); END;

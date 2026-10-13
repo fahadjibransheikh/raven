@@ -105,7 +105,7 @@ func TestUserProviderSendHTTPAndSentCacheOwnedEvents(t *testing.T) {
 						t.Fatal("owned Sent cache incomplete")
 					}
 					var retained int
-					if err := db.Read().QueryRow(`SELECT (SELECT count(*) FROM outgoing_sends WHERE length(mime_data)>0)+(SELECT count(*) FROM gofer_provider_send_receipts)`).Scan(&retained); err != nil {
+					if err := db.Read().QueryRow(`SELECT (SELECT count(*) FROM outgoing_sends WHERE length(mime_data)>0)+(SELECT count(*) FROM raven_provider_send_receipts)`).Scan(&retained); err != nil {
 						return err
 					}
 					if retained != 0 {
@@ -137,7 +137,7 @@ func TestUserProviderSendSentPublicationFailureNeverResends(t *testing.T) {
 			})
 			if err := f.routing.WithUser(t.Context(), "alice", func(db *storage.DB) error {
 				var receipts int
-				if err := db.Read().QueryRow(`SELECT count(*) FROM gofer_provider_send_receipts WHERE send_id=?`, id).Scan(&receipts); err != nil {
+				if err := db.Read().QueryRow(`SELECT count(*) FROM raven_provider_send_receipts WHERE send_id=?`, id).Scan(&receipts); err != nil {
 					return err
 				}
 				if receipts != 1 {
@@ -225,7 +225,7 @@ func TestUserProviderSendRetryCooldownAnd401Refresh(t *testing.T) {
 			if before != after {
 				t.Fatal("cooldown called provider")
 			}
-			if _, err := f.system.Write().Exec(`UPDATE gofer_account_provider_retry SET retry_until_ms=0`); err != nil {
+			if _, err := f.system.Write().Exec(`UPDATE raven_account_provider_retry SET retry_until_ms=0`); err != nil {
 				t.Fatal(err)
 			}
 			if err := f.routing.WithUser(t.Context(), "alice", func(db *storage.DB) error {
@@ -375,7 +375,7 @@ func TestUserProviderSendBackgroundHonorsDurableRetryDeadline(t *testing.T) {
 			})
 			// Leave unrelated fixture accounts asleep, including the original plain
 			// IMAP placeholders. No test can reach an external provider endpoint.
-			if _, err := f.system.Write().Exec(`INSERT INTO gofer_account_poll_schedule(account_id,next_due_ms) SELECT account_id,9999999999999 FROM gofer_account_directory WHERE account_id!=? ON CONFLICT(account_id) DO UPDATE SET next_due_ms=excluded.next_due_ms`, f.accounts["alice"].ID); err != nil {
+			if _, err := f.system.Write().Exec(`INSERT INTO raven_account_poll_schedule(account_id,next_due_ms) SELECT account_id,9999999999999 FROM raven_account_directory WHERE account_id!=? ON CONFLICT(account_id) DO UPDATE SET next_due_ms=excluded.next_due_ms`, f.accounts["alice"].ID); err != nil {
 				t.Fatal(err)
 			}
 			due := time.Now().UTC().Add(2 * time.Second).Truncate(time.Millisecond)
@@ -396,7 +396,7 @@ func TestUserProviderSendBackgroundHonorsDurableRetryDeadline(t *testing.T) {
 			}
 			waitUserIMAP(t, func() bool {
 				var next int64
-				if err := f.system.Read().QueryRow(`SELECT next_due_ms FROM gofer_account_poll_schedule WHERE account_id=?`, f.accounts["alice"].ID).Scan(&next); err != nil {
+				if err := f.system.Read().QueryRow(`SELECT next_due_ms FROM raven_account_poll_schedule WHERE account_id=?`, f.accounts["alice"].ID).Scan(&next); err != nil {
 					t.Fatal(err)
 				}
 				return next == due.UnixMilli()
@@ -424,7 +424,7 @@ func TestUserProviderSendBacklogBeyondOnePass(t *testing.T) {
 			}
 			bob := f.queueProviderMessage(t, "bob")
 			waitUserIMAP(t, func() bool { _, copy, _ := f.providerSendStatus(t, "bob", bob); return copy == "complete" })
-			if _, err := f.system.Write().Exec(`INSERT INTO gofer_account_poll_schedule(account_id,next_due_ms) SELECT account_id,9999999999999 FROM gofer_account_directory WHERE account_id!=? ON CONFLICT(account_id) DO UPDATE SET next_due_ms=excluded.next_due_ms`, f.accounts["alice"].ID); err != nil {
+			if _, err := f.system.Write().Exec(`INSERT INTO raven_account_poll_schedule(account_id,next_due_ms) SELECT account_id,9999999999999 FROM raven_account_directory WHERE account_id!=? ON CONFLICT(account_id) DO UPDATE SET next_due_ms=excluded.next_due_ms`, f.accounts["alice"].ID); err != nil {
 				t.Fatal(err)
 			}
 			if err := f.imap.Start(mail.UserIMAPBackgroundOptions{PollInterval: 24 * time.Hour, ScanInterval: 20 * time.Millisecond, DisableIDLE: true}); err != nil {
@@ -470,7 +470,7 @@ func TestUserProviderSendMailboxChangeRejectsLateAcceptance(t *testing.T) {
 			}
 			if err := f.routing.WithUser(t.Context(), "alice", func(db *storage.DB) error {
 				var count int
-				if err := db.Read().QueryRow(`SELECT (SELECT count(*) FROM gofer_provider_send_receipts)+(SELECT count(*) FROM messages m JOIN message_folder_state s ON s.message_id=m.id JOIN folders f ON f.id=s.folder_id WHERE f.role='sent')`).Scan(&count); err != nil {
+				if err := db.Read().QueryRow(`SELECT (SELECT count(*) FROM raven_provider_send_receipts)+(SELECT count(*) FROM messages m JOIN message_folder_state s ON s.message_id=m.id JOIN folders f ON f.id=s.folder_id WHERE f.role='sent')`).Scan(&count); err != nil {
 					return err
 				}
 				if count != 0 {

@@ -69,7 +69,7 @@ func (h *Handler) ensureAvatarCandidates(ctx context.Context) error {
 				})
 				if errors.Is(err, os.ErrNotExist) {
 					var hasAccounts bool
-					if err := h.db.Read().QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM gofer_account_directory WHERE user_id=? AND state<>'deleted')`, owner).Scan(&hasAccounts); err != nil {
+					if err := h.db.Read().QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM raven_account_directory WHERE user_id=? AND state<>'deleted')`, owner).Scan(&hasAccounts); err != nil {
 						return err
 					}
 					if !hasAccounts {

@@ -328,7 +328,7 @@ func TestManagedStorageUpgradesOlderLayoutSchemas(t *testing.T) {
 	// release left them, and drop a guard the way a rebuilt table loses it.
 	downgrade := []string{`ALTER TABLE calendar_response_requests DROP COLUMN claim_id`, `DELETE FROM schema_version WHERE version>=120`, `INSERT INTO schema_version(version) VALUES(120)`}
 	exec(path, downgrade...)
-	exec(userPath("alice"), append(downgrade, `DROP TRIGGER gofer_store_owner_contact_profiles_insert`)...)
+	exec(userPath("alice"), append(downgrade, `DROP TRIGGER raven_store_owner_contact_profiles_insert`)...)
 
 	s, err := openManagedStorage(t.Context(), path, 1)
 	if err != nil {
@@ -342,7 +342,7 @@ func TestManagedStorageUpgradesOlderLayoutSchemas(t *testing.T) {
 		var version, claim, guard int
 		err = lease.DB().Read().QueryRowContext(t.Context(), `SELECT (SELECT max(version) FROM schema_version),
  (SELECT count(*) FROM pragma_table_info('calendar_response_requests') WHERE name='claim_id'),
- (SELECT count(*) FROM sqlite_schema WHERE type='trigger' AND name='gofer_store_owner_contact_profiles_insert')`).Scan(&version, &claim, &guard)
+ (SELECT count(*) FROM sqlite_schema WHERE type='trigger' AND name='raven_store_owner_contact_profiles_insert')`).Scan(&version, &claim, &guard)
 		lease.Release()
 		if err != nil || version != storage.CurrentSchemaVersion || claim != 1 || guard != 1 {
 			t.Fatal("user database not upgraded", owner, version, claim, guard, err)
@@ -688,7 +688,7 @@ func TestManagedStorageVersionsLayoutOnlyTables(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if layoutVersion(path) != 1 || layoutVersion(alice) != 1 {
+	if layoutVersion(path) != 2 || layoutVersion(alice) != 2 {
 		t.Fatal("migration did not record the layout schema", layoutVersion(path), layoutVersion(alice))
 	}
 	// Layouts published before versioning adopt version 1 on startup.
@@ -699,7 +699,7 @@ func TestManagedStorageVersionsLayoutOnlyTables(t *testing.T) {
 		t.Fatal(err)
 	}
 	s.Close()
-	if layoutVersion(path) != 1 || layoutVersion(alice) != 1 {
+	if layoutVersion(path) != 2 || layoutVersion(alice) != 2 {
 		t.Fatal("startup did not adopt the layout schema", layoutVersion(path), layoutVersion(alice))
 	}
 	setLayoutVersion(alice, 99)

@@ -86,7 +86,7 @@ func TestUserCalendarWorkersStartupWakeRecoveryAndCadence(t *testing.T) {
 	}
 	waitUserContactWorkers(t, func() bool {
 		var scheduled int
-		if err := f.system.Read().QueryRow(`SELECT COUNT(*) FROM gofer_account_service_schedule WHERE service='calendar' AND next_due_ms>?`, time.Now().Add(time.Minute).UnixMilli()).Scan(&scheduled); err != nil {
+		if err := f.system.Read().QueryRow(`SELECT COUNT(*) FROM raven_account_service_schedule WHERE service='calendar' AND next_due_ms>?`, time.Now().Add(time.Minute).UnixMilli()).Scan(&scheduled); err != nil {
 			t.Fatal(err)
 		}
 		mu.Lock()
@@ -140,7 +140,7 @@ func TestUserCalendarWorkersStartupWakeRecoveryAndCadence(t *testing.T) {
 	}
 	waitUserContactWorkers(t, func() bool {
 		var scheduled int
-		if err := f.system.Read().QueryRow(`SELECT COUNT(*) FROM gofer_account_service_schedule WHERE service='calendar' AND account_id=? AND next_due_ms>?`, f.accounts["alice"].ID, time.Now().Add(30*time.Minute).UnixMilli()).Scan(&scheduled); err != nil {
+		if err := f.system.Read().QueryRow(`SELECT COUNT(*) FROM raven_account_service_schedule WHERE service='calendar' AND account_id=? AND next_due_ms>?`, f.accounts["alice"].ID, time.Now().Add(30*time.Minute).UnixMilli()).Scan(&scheduled); err != nil {
 			t.Fatal(err)
 		}
 		return scheduled == 1

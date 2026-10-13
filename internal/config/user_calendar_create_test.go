@@ -286,7 +286,7 @@ func TestUserCalendarCreateWriterWaitAndAtomicRollback(t *testing.T) {
 					case "owner":
 						_, err = system.Write().Exec(`UPDATE users SET status='disabled' WHERE id='alice'`)
 					case "account":
-						_, err = system.Write().Exec(`UPDATE gofer_account_directory SET state='deleting' WHERE account_id=?`, owners["alice"].ID)
+						_, err = system.Write().Exec(`UPDATE raven_account_directory SET state='deleting' WHERE account_id=?`, owners["alice"].ID)
 					case "grant":
 						grantChanged.Store(true)
 					case "replacement-nonce":

@@ -15,6 +15,8 @@ import (
 
 const (
 	passkeyCredentialKeyVersion = 1
+	// Key-derivation label. Stored ciphertext is bound to this exact string, so it
+	// keeps the name from before the rename; changing it makes existing data unreadable.
 	passkeyCredentialKeyContext = "gofer/auth/passkey-credential/v1"
 )
 

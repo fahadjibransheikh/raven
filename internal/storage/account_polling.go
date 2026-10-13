@@ -10,14 +10,14 @@ import (
 // Polling deadlines are worker metadata. Preferences remain authoritative in
 // the user store; a revision prevents a running sync undoing a settings reset.
 func (r *AccountRouting) PollRevision(ctx context.Context, owner, id string) (int64, error) {
-	_, err := r.System().Write().ExecContext(ctx, `INSERT OR IGNORE INTO gofer_account_poll_schedule(account_id)
-		SELECT account_id FROM gofer_account_directory WHERE account_id=? AND user_id=? AND state='active'`, id, owner)
+	_, err := r.System().Write().ExecContext(ctx, `INSERT OR IGNORE INTO raven_account_poll_schedule(account_id)
+		SELECT account_id FROM raven_account_directory WHERE account_id=? AND user_id=? AND state='active'`, id, owner)
 	if err != nil {
 		return 0, err
 	}
 	var revision int64
-	err = r.System().Read().QueryRowContext(ctx, `SELECT p.revision FROM gofer_account_poll_schedule p
-		JOIN gofer_account_directory d ON d.account_id=p.account_id
+	err = r.System().Read().QueryRowContext(ctx, `SELECT p.revision FROM raven_account_poll_schedule p
+		JOIN raven_account_directory d ON d.account_id=p.account_id
 		WHERE d.account_id=? AND d.user_id=? AND d.state='active'`, id, owner).Scan(&revision)
 	if errors.Is(err, sql.ErrNoRows) {
 		err = ErrAccountRoute
@@ -26,8 +26,8 @@ func (r *AccountRouting) PollRevision(ctx context.Context, owner, id string) (in
 }
 
 func (r *AccountRouting) DeferAccountPoll(ctx context.Context, owner, id string, revision int64, next time.Time) (bool, error) {
-	result, err := r.System().Write().ExecContext(ctx, `UPDATE gofer_account_poll_schedule SET next_due_ms=?
-		WHERE account_id=? AND revision=? AND EXISTS (SELECT 1 FROM gofer_account_directory d
+	result, err := r.System().Write().ExecContext(ctx, `UPDATE raven_account_poll_schedule SET next_due_ms=?
+		WHERE account_id=? AND revision=? AND EXISTS (SELECT 1 FROM raven_account_directory d
 		JOIN users u ON u.id=d.user_id WHERE d.account_id=? AND d.user_id=? AND d.state='active'
 		AND u.status='active' AND u.deletion_pending=0 AND u.user_type='webmail' AND u.is_admin=0)`, next.UnixMilli(), id, revision, id, owner)
 	if err != nil {
@@ -41,8 +41,8 @@ func (r *AccountRouting) ResetUserPolling(ctx context.Context, owner string) err
 	if err := r.ValidateUser(ctx, owner); err != nil {
 		return err
 	}
-	_, err := r.System().Write().ExecContext(ctx, `INSERT INTO gofer_account_poll_schedule(account_id, next_due_ms, revision)
-		SELECT d.account_id,0,1 FROM gofer_account_directory d JOIN users u ON u.id=d.user_id
+	_, err := r.System().Write().ExecContext(ctx, `INSERT INTO raven_account_poll_schedule(account_id, next_due_ms, revision)
+		SELECT d.account_id,0,1 FROM raven_account_directory d JOIN users u ON u.id=d.user_id
 		WHERE d.user_id=? AND d.state='active' AND u.status='active' AND u.deletion_pending=0 AND u.user_type='webmail' AND u.is_admin=0
 		ON CONFLICT(account_id) DO UPDATE SET next_due_ms=0, revision=revision+1`, owner)
 	return err
@@ -54,8 +54,8 @@ func (r *AccountRouting) ResetAccountPolling(ctx context.Context, owner, id stri
 	if err := r.ValidateUser(ctx, owner); err != nil {
 		return err
 	}
-	result, err := r.System().Write().ExecContext(ctx, `INSERT INTO gofer_account_poll_schedule(account_id, next_due_ms, revision)
-		SELECT account_id,0,1 FROM gofer_account_directory WHERE account_id=? AND user_id=? AND state='active'
+	result, err := r.System().Write().ExecContext(ctx, `INSERT INTO raven_account_poll_schedule(account_id, next_due_ms, revision)
+		SELECT account_id,0,1 FROM raven_account_directory WHERE account_id=? AND user_id=? AND state='active'
 		ON CONFLICT(account_id) DO UPDATE SET next_due_ms=0, revision=revision+1`, id, owner)
 	if err != nil {
 		return err
@@ -72,9 +72,9 @@ func (r *AccountRouting) ListDueAccounts(ctx context.Context, after string, now 
 	if limit < 1 || limit > 1000 {
 		return nil, errors.New("account page size must be between 1 and 1000")
 	}
-	rows, err := r.System().Read().QueryContext(ctx, `SELECT d.account_id,d.user_id,d.state FROM gofer_account_directory d
-		JOIN users u ON u.id=d.user_id LEFT JOIN gofer_account_poll_schedule p ON p.account_id=d.account_id
-		LEFT JOIN gofer_account_provider_retry retry ON retry.account_id=d.account_id
+	rows, err := r.System().Read().QueryContext(ctx, `SELECT d.account_id,d.user_id,d.state FROM raven_account_directory d
+		JOIN users u ON u.id=d.user_id LEFT JOIN raven_account_poll_schedule p ON p.account_id=d.account_id
+		LEFT JOIN raven_account_provider_retry retry ON retry.account_id=d.account_id
 		WHERE d.state='active' AND d.account_id>? AND COALESCE(p.next_due_ms,0)<=?
 		AND COALESCE(retry.retry_until_ms,0)<=?
 		AND u.status='active' AND u.deletion_pending=0 AND u.user_type='webmail' AND u.is_admin=0
@@ -98,8 +98,8 @@ func (r *AccountRouting) ListDueAccounts(ctx context.Context, after string, now 
 // A newly saved action remains durable without bypassing a provider cooldown.
 func (r *AccountRouting) ProviderRetryUntil(ctx context.Context, owner, id string) (time.Time, error) {
 	var millis int64
-	err := r.System().Read().QueryRowContext(ctx, `SELECT COALESCE(p.retry_until_ms,0) FROM gofer_account_directory d
-		LEFT JOIN gofer_account_provider_retry p ON p.account_id=d.account_id
+	err := r.System().Read().QueryRowContext(ctx, `SELECT COALESCE(p.retry_until_ms,0) FROM raven_account_directory d
+		LEFT JOIN raven_account_provider_retry p ON p.account_id=d.account_id
 		JOIN users u ON u.id=d.user_id WHERE d.account_id=? AND d.user_id=? AND d.state='active'
 		AND u.status='active' AND u.deletion_pending=0 AND u.user_type='webmail' AND u.is_admin=0`, id, owner).Scan(&millis)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -112,8 +112,8 @@ func (r *AccountRouting) ProviderRetryUntil(ctx context.Context, owner, id strin
 }
 
 func (r *AccountRouting) DeferProviderRetry(ctx context.Context, owner, id string, until time.Time) error {
-	result, err := r.System().Write().ExecContext(ctx, `INSERT INTO gofer_account_provider_retry(account_id,retry_until_ms)
-		SELECT d.account_id,? FROM gofer_account_directory d JOIN users u ON u.id=d.user_id
+	result, err := r.System().Write().ExecContext(ctx, `INSERT INTO raven_account_provider_retry(account_id,retry_until_ms)
+		SELECT d.account_id,? FROM raven_account_directory d JOIN users u ON u.id=d.user_id
 		WHERE d.account_id=? AND d.user_id=? AND d.state='active' AND u.status='active'
 		AND u.deletion_pending=0 AND u.user_type='webmail' AND u.is_admin=0
 		ON CONFLICT(account_id) DO UPDATE SET retry_until_ms=max(retry_until_ms,excluded.retry_until_ms)`, until.UnixMilli(), id, owner)

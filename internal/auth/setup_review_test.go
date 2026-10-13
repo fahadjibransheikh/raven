@@ -143,7 +143,7 @@ func TestSetupReviewFreshOwnerIsSecretFreeReadOnlyAndExact(t *testing.T) {
 
 func TestSetupReviewLegacyDefaultCreatesSeparateOwnerAndPreservesMail(t *testing.T) {
 	manager, clock := setupOwnerTestManager(t)
-	insertSetupOwnerUser(t, manager, "default", "local@gofer.local", "", "Local User", UserStatusActive, false)
+	insertSetupOwnerUser(t, manager, "default", "local@raven.local", "", "Local User", UserStatusActive, false)
 	if _, err := manager.db.Write().Exec(`
 		INSERT INTO accounts (id, user_id, email_address) VALUES
 			('mailbox-a', 'default', 'a@example.com'),

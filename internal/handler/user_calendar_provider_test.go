@@ -263,7 +263,7 @@ func TestUserCalendarProviderRechecksAuthorityAfterResponseWithoutStoreLease(t *
 					t.Fatal(err)
 				}
 			case "central-account":
-				if _, err := f.system.Write().Exec(`UPDATE gofer_account_directory SET state='deleting' WHERE account_id=?`, f.accounts["alice"].ID); err != nil {
+				if _, err := f.system.Write().Exec(`UPDATE raven_account_directory SET state='deleting' WHERE account_id=?`, f.accounts["alice"].ID); err != nil {
 					t.Fatal(err)
 				}
 			case "owner":

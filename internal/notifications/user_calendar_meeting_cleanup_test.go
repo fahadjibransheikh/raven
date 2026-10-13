@@ -28,7 +28,7 @@ func waitOwnedMeetingCleanup(t *testing.T, f *userStorageFixture, check func() b
 	defer tick.Stop()
 	for {
 		var next int64
-		err := f.system.Read().QueryRowContext(ctx, `SELECT next_due_ms FROM gofer_account_service_schedule WHERE account_id=? AND service='calendar'`, f.accounts["alice"].ID).Scan(&next)
+		err := f.system.Read().QueryRowContext(ctx, `SELECT next_due_ms FROM raven_account_service_schedule WHERE account_id=? AND service='calendar'`, f.accounts["alice"].ID).Scan(&next)
 		if err == nil && next > time.Now().Add(30*time.Minute).UnixMilli() && check() {
 			return
 		}
@@ -80,7 +80,7 @@ func TestUserCalendarMeetingCleanupRegisteredWorkerNativeSafetyAndPublication(t 
 						}
 					}
 					if mode == "changed-grant" {
-						if _, err := f.system.Write().Exec(`UPDATE gofer_mailbox_credentials SET revision=revision+1 WHERE account_id=?`, f.accounts["alice"].ID); err != nil {
+						if _, err := f.system.Write().Exec(`UPDATE raven_mailbox_credentials SET revision=revision+1 WHERE account_id=?`, f.accounts["alice"].ID); err != nil {
 							t.Error(err)
 						}
 					}
@@ -284,7 +284,7 @@ func TestUserCalendarMeetingCleanupRegisteredWorkerPreservesAcceptedAndUncertain
 				t.Fatal(err)
 			}
 			if mode == "completed" {
-				if _, err := f.system.Write().Exec(`UPDATE gofer_mailbox_credentials SET expires_at=? WHERE account_id=?`, time.Now().Add(-time.Hour), f.accounts["alice"].ID); err != nil {
+				if _, err := f.system.Write().Exec(`UPDATE raven_mailbox_credentials SET expires_at=? WHERE account_id=?`, time.Now().Add(-time.Hour), f.accounts["alice"].ID); err != nil {
 					t.Fatal(err)
 				}
 			}

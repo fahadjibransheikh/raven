@@ -221,7 +221,7 @@ func TestUserMailCalendarHTTPProviderWaitRejectsChangesAndFreesStore(t *testing.
 					t.Fatal(err)
 				}
 			case "deleting":
-				if _, err := f.system.Write().Exec(`UPDATE gofer_account_directory SET state='deleting' WHERE account_id=?`, f.accounts["alice"].ID); err != nil {
+				if _, err := f.system.Write().Exec(`UPDATE raven_account_directory SET state='deleting' WHERE account_id=?`, f.accounts["alice"].ID); err != nil {
 					t.Fatal(err)
 				}
 			case "root-stop":
@@ -396,7 +396,7 @@ func TestUserMailCalendarHTTPForcedRefreshAfterAcceptedMailRead(t *testing.T) {
 	}
 	// The mail token is cached; the known Calendar grant requires a separate
 	// scoped refresh, which legitimately advances the central revision afterward.
-	if _, err := f.system.Write().Exec(`UPDATE gofer_mailbox_credentials SET scopes=? WHERE account_id=?`, userOutlookHTTPScopes, account); err != nil {
+	if _, err := f.system.Write().Exec(`UPDATE raven_mailbox_credentials SET scopes=? WHERE account_id=?`, userOutlookHTTPScopes, account); err != nil {
 		t.Fatal(err)
 	}
 	if err := f.routing.WithUser(t.Context(), "alice", func(db *storage.DB) error {

@@ -17,8 +17,10 @@ import (
 const (
 	mailboxCredentialLegacyKeyVersion = 1
 	mailboxCredentialKeyVersion       = 2
-	mailboxCredentialKeyContext       = "gofer/mailauth/oauth-account-credential/v1"
-	minimumMailboxCredentialKey       = 32
+	// Key-derivation label. Stored ciphertext is bound to this exact string, so it
+	// keeps the name from before the rename; changing it makes existing data unreadable.
+	mailboxCredentialKeyContext = "gofer/mailauth/oauth-account-credential/v1"
+	minimumMailboxCredentialKey = 32
 )
 
 type oauthCredentialContext struct {

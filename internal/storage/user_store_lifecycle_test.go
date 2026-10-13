@@ -19,7 +19,7 @@ func pendingStoreOwner(t *testing.T, system *DB, owner string) {
 func storeDirectoryState(t *testing.T, system *DB, owner string) string {
 	t.Helper()
 	var state string
-	if err := system.Read().QueryRow(`SELECT state FROM gofer_user_store_directory WHERE user_id=?`, owner).Scan(&state); err != nil {
+	if err := system.Read().QueryRow(`SELECT state FROM raven_user_store_directory WHERE user_id=?`, owner).Scan(&state); err != nil {
 		t.Fatal(err)
 	}
 	return state

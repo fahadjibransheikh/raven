@@ -45,7 +45,7 @@ DELETE FROM schema_version; INSERT INTO schema_version(version) VALUES(120)`); e
 	if owner != "owner" || source != "source" || remote != "remote" || oldVersion != "old-version" || response != "accepted" || created != "2024-10-02T10:00:00Z" || claim != "" {
 		t.Fatal("legacy reservation changed or adopted", owner, source, remote, oldVersion, response, created, claim)
 	}
-	if err := db.Read().QueryRow(`SELECT MAX(version) FROM schema_version`).Scan(&version); err != nil || version != 121 {
+	if err := db.Read().QueryRow(`SELECT MAX(version) FROM schema_version`).Scan(&version); err != nil || version != CurrentSchemaVersion {
 		t.Fatal("upgraded schema marker", version, err)
 	}
 	if err := db.BeginCalendarResponse(t.Context(), "owner", "source", "remote", "old-version", "declined"); !errors.Is(err, ErrCalendarResponsePending) {

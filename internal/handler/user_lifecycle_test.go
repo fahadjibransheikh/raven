@@ -59,17 +59,17 @@ func TestOwnedUserStatusHTTPStopsWorkAndResumesSchedules(t *testing.T) {
 	for _, owner := range []string{"alice", "bob"} {
 		id := f.accounts[owner].ID
 		for _, query := range []string{
-			`INSERT OR REPLACE INTO gofer_account_poll_schedule(account_id,next_due_ms,revision) VALUES(?,?,2)`,
-			`INSERT OR REPLACE INTO gofer_account_active_poll(account_id,next_due_ms,revision) VALUES(?,?,2)`,
+			`INSERT OR REPLACE INTO raven_account_poll_schedule(account_id,next_due_ms,revision) VALUES(?,?,2)`,
+			`INSERT OR REPLACE INTO raven_account_active_poll(account_id,next_due_ms,revision) VALUES(?,?,2)`,
 		} {
 			if _, err := f.system.Write().Exec(query, id, future); err != nil {
 				t.Fatal(err)
 			}
 		}
-		if _, err := f.system.Write().Exec(`INSERT OR REPLACE INTO gofer_account_service_schedule(account_id,service,next_due_ms,revision) VALUES(?,'contacts',?,2),(?,'calendar',?,2)`, id, future, id, future); err != nil {
+		if _, err := f.system.Write().Exec(`INSERT OR REPLACE INTO raven_account_service_schedule(account_id,service,next_due_ms,revision) VALUES(?,'contacts',?,2),(?,'calendar',?,2)`, id, future, id, future); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := f.system.Write().Exec(`INSERT OR REPLACE INTO gofer_contact_queue_schedule(user_id,next_due_ms,revision) VALUES(?,?,2)`, owner, future); err != nil {
+		if _, err := f.system.Write().Exec(`INSERT OR REPLACE INTO raven_contact_queue_schedule(user_id,next_due_ms,revision) VALUES(?,?,2)`, owner, future); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -120,17 +120,17 @@ func TestOwnedUserStatusHTTPStopsWorkAndResumesSchedules(t *testing.T) {
 		t.Fatal("disable erased private data", data, err)
 	}
 	var state string
-	if err := f.system.Read().QueryRow(`SELECT state FROM gofer_user_store_directory WHERE user_id='alice'`).Scan(&state); err != nil || state != "present" {
+	if err := f.system.Read().QueryRow(`SELECT state FROM raven_user_store_directory WHERE user_id='alice'`).Scan(&state); err != nil || state != "present" {
 		t.Fatal("disable changed store lifecycle", state, err)
 	}
 	if w := ownedStatusPost(t, f, "alice", "active", true); w.Code != http.StatusSeeOther {
 		t.Fatal(w.Code, w.Body.String())
 	}
 	for _, query := range []string{
-		`SELECT next_due_ms FROM gofer_account_poll_schedule WHERE account_id=?`,
-		`SELECT next_due_ms FROM gofer_account_active_poll WHERE account_id=?`,
-		`SELECT next_due_ms FROM gofer_account_service_schedule WHERE account_id=? AND service='contacts'`,
-		`SELECT next_due_ms FROM gofer_account_service_schedule WHERE account_id=? AND service='calendar'`,
+		`SELECT next_due_ms FROM raven_account_poll_schedule WHERE account_id=?`,
+		`SELECT next_due_ms FROM raven_account_active_poll WHERE account_id=?`,
+		`SELECT next_due_ms FROM raven_account_service_schedule WHERE account_id=? AND service='contacts'`,
+		`SELECT next_due_ms FROM raven_account_service_schedule WHERE account_id=? AND service='calendar'`,
 	} {
 		var next int64
 		if err := f.system.Read().QueryRow(query, f.accounts["alice"].ID).Scan(&next); err != nil || next != 0 {
@@ -141,7 +141,7 @@ func TestOwnedUserStatusHTTPStopsWorkAndResumesSchedules(t *testing.T) {
 		}
 	}
 	var next int64
-	if err := f.system.Read().QueryRow(`SELECT next_due_ms FROM gofer_contact_queue_schedule WHERE user_id='alice'`).Scan(&next); err != nil || next != 0 {
+	if err := f.system.Read().QueryRow(`SELECT next_due_ms FROM raven_contact_queue_schedule WHERE user_id='alice'`).Scan(&next); err != nil || next != 0 {
 		t.Fatal(next, err)
 	}
 	if err := f.h.userIMAP.RunUserServiceWork(t.Context(), "alice", func(context.Context) error { return nil }); err != nil {
@@ -169,7 +169,7 @@ func TestOwnedUserStatusHTTPStopsWorkAndResumesSchedules(t *testing.T) {
 func TestOwnedUserStatusRetriesFailedPostcommitWake(t *testing.T) {
 	f := verifiedOwnedStatusFixture(t)
 	id := f.accounts["bob"].ID
-	if _, err := f.system.Write().Exec(`CREATE TRIGGER reject_status_wake BEFORE INSERT ON gofer_account_poll_schedule WHEN NEW.account_id='` + id + `' BEGIN SELECT RAISE(ABORT,'wake unavailable'); END`); err != nil {
+	if _, err := f.system.Write().Exec(`CREATE TRIGGER reject_status_wake BEFORE INSERT ON raven_account_poll_schedule WHEN NEW.account_id='` + id + `' BEGIN SELECT RAISE(ABORT,'wake unavailable'); END`); err != nil {
 		t.Fatal(err)
 	}
 	if w := ownedStatusPost(t, f, "bob", "active", true); w.Code != http.StatusServiceUnavailable || !strings.Contains(w.Body.String(), "User access changed") {
@@ -190,7 +190,7 @@ func TestOwnedUserStatusRetriesFailedPostcommitWake(t *testing.T) {
 		t.Fatal("retry duplicated auth transition", count, err)
 	}
 	var due int64
-	if err := f.system.Read().QueryRow(`SELECT next_due_ms FROM gofer_account_poll_schedule WHERE account_id=?`, id).Scan(&due); err != nil || due != 0 {
+	if err := f.system.Read().QueryRow(`SELECT next_due_ms FROM raven_account_poll_schedule WHERE account_id=?`, id).Scan(&due); err != nil || due != 0 {
 		t.Fatal("unchanged status retry did not repair wake", due, err)
 	}
 }

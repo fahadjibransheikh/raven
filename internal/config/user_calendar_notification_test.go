@@ -149,7 +149,7 @@ func TestUserCalendarNotificationWriterWaitAndTriggerRollback(t *testing.T) {
 				case "disabled":
 					_, err = system.Write().Exec(`UPDATE users SET status='disabled' WHERE id='alice'`)
 				case "deleting":
-					_, err = system.Write().Exec(`UPDATE gofer_account_directory SET state='deleting' WHERE account_id=?`, snapshot.send.AccountID)
+					_, err = system.Write().Exec(`UPDATE raven_account_directory SET state='deleting' WHERE account_id=?`, snapshot.send.AccountID)
 				case "trigger-ignore":
 					_, err = tx.Exec(`CREATE TRIGGER reject_notification BEFORE UPDATE OF status ON outgoing_sends BEGIN SELECT RAISE(IGNORE); END`)
 				case "trigger-status":
@@ -385,7 +385,7 @@ func TestUserCalendarNotificationRetryEventWriterWaitAndRollback(t *testing.T) {
 				case "disabled":
 					_, err = system.Write().Exec(`UPDATE users SET status='disabled' WHERE id='alice'`)
 				case "deleting":
-					_, err = system.Write().Exec(`UPDATE gofer_account_directory SET state='deleting' WHERE account_id=?`, control.send.AccountID)
+					_, err = system.Write().Exec(`UPDATE raven_account_directory SET state='deleting' WHERE account_id=?`, control.send.AccountID)
 				case "trigger-ignore":
 					_, err = tx.Exec(`CREATE TRIGGER reject_retry BEFORE UPDATE OF status ON outgoing_sends BEGIN SELECT RAISE(IGNORE); END`)
 				case "trigger-event":

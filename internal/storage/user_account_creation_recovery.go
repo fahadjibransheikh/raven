@@ -19,7 +19,7 @@ func (r *AccountRouting) PendingAccountCreationPage(ctx context.Context, after s
 		return nil, ErrAccountRoute
 	}
 	rows, err := r.System().Read().QueryContext(ctx, `SELECT d.account_id,d.user_id,d.state
- FROM gofer_account_directory d JOIN users u ON u.id=d.user_id
+ FROM raven_account_directory d JOIN users u ON u.id=d.user_id
  WHERE d.state='creating' AND d.account_id>?
  AND u.user_type='webmail' AND u.is_admin=0 AND u.deletion_pending=0
  ORDER BY d.account_id LIMIT ?`, after, limit)
@@ -73,7 +73,7 @@ func (r *AccountRouting) reconcileAccountCreation(ctx context.Context, owner, id
 			}
 			defer local.Rollback()
 			var actualOwner string
-			if err := local.QueryRowContext(ctx, `SELECT user_id FROM gofer_user_store WHERE singleton=1 AND layout_version=1`).Scan(&actualOwner); err != nil {
+			if err := local.QueryRowContext(ctx, `SELECT user_id FROM raven_user_store WHERE singleton=1 AND layout_version=1`).Scan(&actualOwner); err != nil {
 				return err
 			}
 			if actualOwner != owner {
@@ -107,11 +107,11 @@ func (r *AccountRouting) reconcileAccountCreation(ctx context.Context, owner, id
 				if err := noPendingUserCredentials(ctx, tx, owner, id); err != nil {
 					return err
 				}
-			} else if _, err := tx.ExecContext(ctx, `INSERT INTO gofer_contact_queue_schedule(user_id,next_due_ms,revision) VALUES(?,0,0) ON CONFLICT(user_id) DO NOTHING`, owner); err != nil {
+			} else if _, err := tx.ExecContext(ctx, `INSERT INTO raven_contact_queue_schedule(user_id,next_due_ms,revision) VALUES(?,0,0) ON CONFLICT(user_id) DO NOTHING`, owner); err != nil {
 				return err
 			}
 			if state == AccountCreating {
-				changed, err := tx.ExecContext(ctx, `UPDATE gofer_account_directory SET state=?,updated_at=CURRENT_TIMESTAMP WHERE account_id=? AND user_id=? AND state='creating'`, next, id, owner)
+				changed, err := tx.ExecContext(ctx, `UPDATE raven_account_directory SET state=?,updated_at=CURRENT_TIMESTAMP WHERE account_id=? AND user_id=? AND state='creating'`, next, id, owner)
 				if err != nil {
 					return err
 				}
@@ -128,7 +128,7 @@ func (r *AccountRouting) reconcileAccountCreation(ctx context.Context, owner, id
 			}
 			if next == AccountActive {
 				var hint bool
-				if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM gofer_contact_queue_schedule WHERE user_id=?)`, owner).Scan(&hint); err != nil {
+				if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM raven_contact_queue_schedule WHERE user_id=?)`, owner).Scan(&hint); err != nil {
 					return err
 				}
 				if !hint {
@@ -155,7 +155,7 @@ func retainedCreationRoute(ctx context.Context, tx *sql.Tx, owner, id string, st
 	if !allowed {
 		return ErrUserStoreOwner
 	}
-	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM gofer_account_directory WHERE account_id=? AND user_id=? AND state=?) AND EXISTS(SELECT 1 FROM gofer_user_store_directory WHERE user_id=? AND state='present')`, id, owner, state, owner).Scan(&allowed); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM raven_account_directory WHERE account_id=? AND user_id=? AND state=?) AND EXISTS(SELECT 1 FROM raven_user_store_directory WHERE user_id=? AND state='present')`, id, owner, state, owner).Scan(&allowed); err != nil {
 		return err
 	}
 	if !allowed {

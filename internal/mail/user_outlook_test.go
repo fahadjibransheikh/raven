@@ -530,7 +530,7 @@ func TestUserOutlookMetadataFailureRetainsCheckpointForRetry(t *testing.T) {
 		return err
 	})
 	var next int64
-	if err := f.system.Read().QueryRow(`SELECT next_due_ms FROM gofer_account_poll_schedule WHERE account_id=?`, f.ids["alice"]).Scan(&next); err != nil {
+	if err := f.system.Read().QueryRow(`SELECT next_due_ms FROM raven_account_poll_schedule WHERE account_id=?`, f.ids["alice"]).Scan(&next); err != nil {
 		t.Fatal(err)
 	}
 	if time.UnixMilli(next).After(time.Now().Add(time.Minute)) {
@@ -687,7 +687,7 @@ func TestUserOutlookDeletionCancelsBodyAndCleansCredentials(t *testing.T) {
 		t.Fatal("deleted body fetch succeeded")
 	}
 	var count int
-	if err := f.system.Read().QueryRow(`SELECT COUNT(*) FROM gofer_mailbox_credentials WHERE account_id=?`, f.ids["alice"]).Scan(&count); err != nil || count != 0 {
+	if err := f.system.Read().QueryRow(`SELECT COUNT(*) FROM raven_mailbox_credentials WHERE account_id=?`, f.ids["alice"]).Scan(&count); err != nil || count != 0 {
 		t.Fatalf("deleted grant remains: %d %v", count, err)
 	}
 	if _, err := os.Stat(filepath.Join(f.blobs, f.ids["alice"])); !os.IsNotExist(err) {
@@ -756,7 +756,7 @@ func TestUserOutlookThrottlingDefersAccountAndStopsFurtherRequests(t *testing.T)
 		t.Fatal("Graph requests continued after Retry-After")
 	}
 	var due int64
-	if err := f.system.Read().QueryRow(`SELECT next_due_ms FROM gofer_account_poll_schedule WHERE account_id=?`, f.ids["alice"]).Scan(&due); err != nil {
+	if err := f.system.Read().QueryRow(`SELECT next_due_ms FROM raven_account_poll_schedule WHERE account_id=?`, f.ids["alice"]).Scan(&due); err != nil {
 		t.Fatal(err)
 	}
 	if time.UnixMilli(due).Before(time.Now().Add(4 * time.Minute)) {
@@ -771,7 +771,7 @@ func TestUserOutlookThrottlingDefersAccountAndStopsFurtherRequests(t *testing.T)
 		t.Fatal("manual sync bypassed durable provider cooldown")
 	}
 	// Advance the disposable store's deadline rather than waiting five minutes.
-	if _, err := f.system.Write().Exec(`UPDATE gofer_account_provider_retry SET retry_until_ms=0 WHERE account_id=?`, f.ids["alice"]); err != nil {
+	if _, err := f.system.Write().Exec(`UPDATE raven_account_provider_retry SET retry_until_ms=0 WHERE account_id=?`, f.ids["alice"]); err != nil {
 		t.Fatal(err)
 	}
 	if err := f.worker.Sync(t.Context(), "alice", f.ids["alice"]); err != nil {
@@ -833,7 +833,7 @@ func TestUserOutlookTokenThrottlingDefersAccountWithoutGraphRequests(t *testing.
 		t.Fatal("Graph called without a token")
 	}
 	var due int64
-	if err := f.system.Read().QueryRow(`SELECT next_due_ms FROM gofer_account_poll_schedule WHERE account_id=?`, f.ids["alice"]).Scan(&due); err != nil {
+	if err := f.system.Read().QueryRow(`SELECT next_due_ms FROM raven_account_poll_schedule WHERE account_id=?`, f.ids["alice"]).Scan(&due); err != nil {
 		t.Fatal(err)
 	}
 	if time.UnixMilli(due).Before(time.Now().Add(4 * time.Minute)) {

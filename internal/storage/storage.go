@@ -52,7 +52,7 @@ type ThreadingState struct {
 	Total      int  `json:"total"`
 }
 
-const CurrentSchemaVersion = 121
+const CurrentSchemaVersion = 122
 
 // restrictDatabaseFiles makes the database (message metadata, credential
 // ciphertext, session hashes) and its WAL/SHM readable by the owner only. SQLite
@@ -1054,6 +1054,8 @@ func (db *DB) migrate() error {
 		// Upstream v105 to v107 (web push revisions, calendar response claims).
 		{119, migrateV119ToV120},
 		{120, migrateV120ToV121},
+		// Raven's own numbering from here: the rename away from the project it began as.
+		{121, migrateV121ToV122},
 	} {
 		if currentVersion <= step.from {
 			if err := step.migrate(db.write); err != nil {
@@ -4164,7 +4166,7 @@ func migrateV77ToV78(tx *sql.Tx) error {
 			algorithm TEXT NOT NULL DEFAULT 'SHA1' CHECK (algorithm IN ('SHA1', 'SHA256', 'SHA512')),
 			digits INTEGER NOT NULL DEFAULT 6 CHECK (digits IN (6, 8)),
 			period INTEGER NOT NULL DEFAULT 30 CHECK (period > 0),
-			issuer TEXT NOT NULL DEFAULT 'Gofer' CHECK (issuer <> ''),
+			issuer TEXT NOT NULL DEFAULT 'Raven' CHECK (issuer <> ''),
 			last_accepted_step INTEGER CHECK (last_accepted_step IS NULL OR last_accepted_step >= 0),
 			enabled INTEGER NOT NULL DEFAULT 0 CHECK (enabled IN (0, 1)),
 			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

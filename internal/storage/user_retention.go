@@ -18,7 +18,7 @@ func (r *AccountRouting) PruneRetainedUserMailJobs(ctx context.Context, owner st
 				return err
 			}
 			var actual string
-			if err := tx.QueryRowContext(ctx, `SELECT user_id FROM gofer_user_store WHERE singleton=1 AND layout_version=1`).Scan(&actual); err != nil {
+			if err := tx.QueryRowContext(ctx, `SELECT user_id FROM raven_user_store WHERE singleton=1 AND layout_version=1`).Scan(&actual); err != nil {
 				return err
 			}
 			if actual != owner {

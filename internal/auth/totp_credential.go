@@ -12,6 +12,8 @@ import (
 
 const (
 	totpCredentialKeyVersion = 1
+	// Key-derivation label. Stored ciphertext is bound to this exact string, so it
+	// keeps the name from before the rename; changing it makes existing data unreadable.
 	totpCredentialKeyContext = "gofer/auth/totp-credential/v1"
 	setupTOTPIssuer          = "Raven"
 )

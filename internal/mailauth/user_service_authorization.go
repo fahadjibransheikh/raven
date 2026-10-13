@@ -133,8 +133,8 @@ func (s *UserCredentials) ValidateServiceAuthorization(ctx context.Context, snap
 		return errors.New("mailbox credentials are shutting down")
 	}
 	var found int
-	err := s.routing.System().Read().QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM gofer_mailbox_credentials c
- JOIN gofer_account_directory d ON d.account_id=c.account_id JOIN users u ON u.id=c.user_id
+	err := s.routing.System().Read().QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM raven_mailbox_credentials c
+ JOIN raven_account_directory d ON d.account_id=c.account_id JOIN users u ON u.id=c.user_id
  WHERE c.id=? AND c.account_id=? AND c.user_id=? AND c.provider=? AND c.provider_account_id=? AND c.revision=?
  AND d.user_id=c.user_id AND d.state='active' AND u.status='active' AND u.deletion_pending=0 AND u.user_type='webmail' AND u.is_admin=0)`,
 		snapshot.id, snapshot.account, snapshot.owner, snapshot.provider, snapshot.subject, snapshot.revision).Scan(&found)

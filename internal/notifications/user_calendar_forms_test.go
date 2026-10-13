@@ -275,7 +275,7 @@ func TestUserCalendarFormsHTTPRejectsInFlightChangesAndJoinsRoot(t *testing.T) {
 			case "source-selection":
 				err = f.accountStore.SetCalendarSourcesSelected(ctx, "alice", f.accounts["alice"].ID, nil)
 			case "write-grant":
-				_, err = f.system.Write().Exec(`UPDATE gofer_mailbox_credentials SET revision=revision+1 WHERE account_id=?`, f.accounts["alice"].ID)
+				_, err = f.system.Write().Exec(`UPDATE raven_mailbox_credentials SET revision=revision+1 WHERE account_id=?`, f.accounts["alice"].ID)
 			case "dav-config":
 				err = f.accountStore.WithAccountForUser(ctx, "alice", f.accounts["alice"].ID, func(local *config.AccountStore, _ *storage.DB) error {
 					return local.SaveCalDAVConfig(ctx, "alice", f.accounts["alice"].ID, "https://replaced.test/dav", "other", "other-secret", false)

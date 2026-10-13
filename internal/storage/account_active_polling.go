@@ -42,9 +42,9 @@ func (r *AccountRouting) ListActivePollAccounts(ctx context.Context, owners []Ac
 	}
 	args = append(args, after, now.UnixMilli(), now.UnixMilli(), limit)
 	rows, err := r.System().Read().QueryContext(ctx, `WITH connected(user_id,since_ns) AS (VALUES `+strings.Join(values, ",")+`)
- SELECT d.account_id,d.user_id,d.state FROM connected c JOIN gofer_account_directory d ON d.user_id=c.user_id
- JOIN users u ON u.id=d.user_id LEFT JOIN gofer_account_active_poll p ON p.account_id=d.account_id
- LEFT JOIN gofer_account_provider_retry retry ON retry.account_id=d.account_id
+ SELECT d.account_id,d.user_id,d.state FROM connected c JOIN raven_account_directory d ON d.user_id=c.user_id
+ JOIN users u ON u.id=d.user_id LEFT JOIN raven_account_active_poll p ON p.account_id=d.account_id
+ LEFT JOIN raven_account_provider_retry retry ON retry.account_id=d.account_id
  WHERE d.state='active' AND d.account_id>?
  AND (COALESCE(p.next_due_ms,0)<=? OR (COALESCE(p.failures,0)=0 AND COALESCE(p.last_attempt_ns,0)<c.since_ns))
  AND COALESCE(retry.retry_until_ms,0)<=? AND u.status='active' AND u.deletion_pending=0 AND u.user_type='webmail' AND u.is_admin=0
@@ -72,9 +72,9 @@ func (r *AccountRouting) ReserveActivePoll(ctx context.Context, owner, id string
 		return ActivePollReservation{}, false, err
 	}
 	defer tx.Rollback()
-	result, err := tx.ExecContext(ctx, `INSERT INTO gofer_account_active_poll(account_id,next_due_ms,last_attempt_ns,revision)
- SELECT d.account_id,?,?,1 FROM gofer_account_directory d JOIN users u ON u.id=d.user_id
- LEFT JOIN gofer_account_provider_retry retry ON retry.account_id=d.account_id
+	result, err := tx.ExecContext(ctx, `INSERT INTO raven_account_active_poll(account_id,next_due_ms,last_attempt_ns,revision)
+ SELECT d.account_id,?,?,1 FROM raven_account_directory d JOIN users u ON u.id=d.user_id
+ LEFT JOIN raven_account_provider_retry retry ON retry.account_id=d.account_id
  WHERE d.account_id=? AND d.user_id=? AND d.state='active' AND u.status='active' AND u.deletion_pending=0
  AND u.user_type='webmail' AND u.is_admin=0 AND COALESCE(retry.retry_until_ms,0)<=?
  ON CONFLICT(account_id) DO UPDATE SET next_due_ms=excluded.next_due_ms,last_attempt_ns=excluded.last_attempt_ns,revision=revision+1
@@ -90,7 +90,7 @@ func (r *AccountRouting) ReserveActivePoll(ctx context.Context, owner, id string
 		return ActivePollReservation{}, false, nil
 	}
 	var reservation ActivePollReservation
-	if err := tx.QueryRowContext(ctx, `SELECT revision,failures FROM gofer_account_active_poll WHERE account_id=?`, id).Scan(&reservation.Revision, &reservation.Failures); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT revision,failures FROM raven_account_active_poll WHERE account_id=?`, id).Scan(&reservation.Revision, &reservation.Failures); err != nil {
 		return reservation, false, err
 	}
 	err = tx.Commit()
@@ -101,8 +101,8 @@ func (r *AccountRouting) CompleteActivePoll(ctx context.Context, owner, id strin
 	if failures < 0 || failures > 4 {
 		return false, errors.New("active polling backoff must be between zero and four")
 	}
-	result, err := r.System().Write().ExecContext(ctx, `UPDATE gofer_account_active_poll SET next_due_ms=?,failures=?
- WHERE account_id=? AND revision=? AND EXISTS(SELECT 1 FROM gofer_account_directory d JOIN users u ON u.id=d.user_id
+	result, err := r.System().Write().ExecContext(ctx, `UPDATE raven_account_active_poll SET next_due_ms=?,failures=?
+ WHERE account_id=? AND revision=? AND EXISTS(SELECT 1 FROM raven_account_directory d JOIN users u ON u.id=d.user_id
  WHERE d.account_id=? AND d.user_id=? AND d.state='active' AND u.status='active' AND u.deletion_pending=0 AND u.user_type='webmail' AND u.is_admin=0)`, next.UnixMilli(), failures, id, revision, id, owner)
 	if err != nil {
 		return false, err
@@ -117,8 +117,8 @@ func (r *AccountRouting) ResetActivePolling(ctx context.Context, owner, id strin
 	if err := r.ValidateUser(ctx, owner); err != nil {
 		return err
 	}
-	result, err := r.System().Write().ExecContext(ctx, `INSERT INTO gofer_account_active_poll(account_id,next_due_ms,last_attempt_ns,failures,revision)
- SELECT account_id,0,0,0,1 FROM gofer_account_directory WHERE user_id=? AND state='active' AND (?='' OR account_id=?)
+	result, err := r.System().Write().ExecContext(ctx, `INSERT INTO raven_account_active_poll(account_id,next_due_ms,last_attempt_ns,failures,revision)
+ SELECT account_id,0,0,0,1 FROM raven_account_directory WHERE user_id=? AND state='active' AND (?='' OR account_id=?)
  ON CONFLICT(account_id) DO UPDATE SET next_due_ms=0,last_attempt_ns=0,failures=0,revision=revision+1`, owner, id, id)
 	if err != nil {
 		return err
@@ -133,7 +133,7 @@ func (r *AccountRouting) ResetActivePolling(ctx context.Context, owner, id strin
 // ResetActivePollingForAccount is for trusted account lifecycle hooks.
 func (r *AccountRouting) ResetActivePollingForAccount(ctx context.Context, id string) error {
 	var owner string
-	err := r.System().Read().QueryRowContext(ctx, `SELECT user_id FROM gofer_account_directory WHERE account_id=? AND state='active'`, id).Scan(&owner)
+	err := r.System().Read().QueryRowContext(ctx, `SELECT user_id FROM raven_account_directory WHERE account_id=? AND state='active'`, id).Scan(&owner)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrAccountRoute
 	}

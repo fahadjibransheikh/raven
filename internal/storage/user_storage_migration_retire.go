@@ -79,7 +79,7 @@ func sharedDatabaseVersion(ctx context.Context, path string) (version int, err e
 	}
 	defer func() { err = errors.Join(err, db.Close()) }()
 	var owned bool
-	if err := db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM sqlite_schema WHERE name IN ('gofer_storage_layout','gofer_user_store','gofer_account_directory'))`).Scan(&owned); err != nil {
+	if err := db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM sqlite_schema WHERE name IN (`+TableNameList("raven_storage_layout", "raven_user_store", "raven_account_directory")+`))`).Scan(&owned); err != nil {
 		return 0, err
 	}
 	if owned {

@@ -206,7 +206,7 @@ func TestUserCalendarReplyControlsWriterWaitAndTriggerRollback(t *testing.T) {
 					case "disabled":
 						_, err = f.system.Write().Exec(`UPDATE users SET status='disabled' WHERE id='alice'`)
 					case "account-deleting":
-						_, err = f.system.Write().Exec(`UPDATE gofer_account_directory SET state='deleting' WHERE account_id=?`, snapshot.AccountID())
+						_, err = f.system.Write().Exec(`UPDATE raven_account_directory SET state='deleting' WHERE account_id=?`, snapshot.AccountID())
 					case "local-deleting":
 						_, err = tx.Exec(`UPDATE accounts SET is_deleting=1`)
 					case "trigger-ignore":

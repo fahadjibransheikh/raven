@@ -229,7 +229,7 @@ func TestOwnedUserDeletionHTTPDrainsNativeWorkAndUploads(t *testing.T) {
 	if _, err := os.Stat(paths["alice"]); err != nil {
 		t.Fatal("database removed before HTTP file pin drained", err)
 	}
-	if n := deletionSQLInt(t, f, `SELECT COUNT(*) FROM gofer_mailbox_credentials WHERE user_id='alice'`); n != 1 {
+	if n := deletionSQLInt(t, f, `SELECT COUNT(*) FROM raven_mailbox_credentials WHERE user_id='alice'`); n != 1 {
 		t.Fatal("credentials removed before file drain", n)
 	}
 	if w := f.request("bob", http.MethodGet, "/api/settings/ui", ""); w.Code != http.StatusOK {
@@ -285,13 +285,13 @@ func TestOwnedUserDeletionHTTPDrainsNativeWorkAndUploads(t *testing.T) {
 	if token, err := f.credentials.GetOAuthTokenForUser(t.Context(), "bob", grants["bob"]); err != nil || token != "bob-access" {
 		t.Fatal("other owner credential damaged", err)
 	}
-	if n := deletionSQLInt(t, f, `SELECT COUNT(*) FROM gofer_mailbox_credentials WHERE user_id='alice'`); n != 0 {
+	if n := deletionSQLInt(t, f, `SELECT COUNT(*) FROM raven_mailbox_credentials WHERE user_id='alice'`); n != 0 {
 		t.Fatal("owned credential retained", n)
 	}
-	if n := deletionSQLInt(t, f, `SELECT COUNT(*) FROM gofer_account_directory WHERE user_id='alice' AND state='deleted'`); n != 2 {
+	if n := deletionSQLInt(t, f, `SELECT COUNT(*) FROM raven_account_directory WHERE user_id='alice' AND state='deleted'`); n != 2 {
 		t.Fatal("account tombstones missing", n)
 	}
-	if n := deletionSQLInt(t, f, `SELECT COUNT(*) FROM gofer_user_cleanup_receipts WHERE user_id='alice'`); n != 1 {
+	if n := deletionSQLInt(t, f, `SELECT COUNT(*) FROM raven_user_cleanup_receipts WHERE user_id='alice'`); n != 1 {
 		t.Fatal("final receipt missing", n)
 	}
 	if w := f.request("alice", http.MethodGet, "/api/settings/ui", ""); w.Code == http.StatusOK {
@@ -395,14 +395,14 @@ func TestOwnedUserDeletionRestartRecoversPartialCleanup(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := f.system.Write().Exec(`UPDATE users SET status='disabled' WHERE id='alice';
- CREATE TRIGGER interrupt_user_cleanup BEFORE UPDATE OF state ON gofer_account_directory WHEN NEW.user_id='alice' AND NEW.state='deleted' BEGIN SELECT RAISE(ABORT,'injected cleanup interruption'); END`); err != nil {
+ CREATE TRIGGER interrupt_user_cleanup BEFORE UPDATE OF state ON raven_account_directory WHEN NEW.user_id='alice' AND NEW.state='deleted' BEGIN SELECT RAISE(ABORT,'injected cleanup interruption'); END`); err != nil {
 		t.Fatal(err)
 	}
 	if w := b.delete(t, "alice", "alice", true); w.Code != http.StatusSeeOther {
 		t.Fatal(w.Code, w.Body.String())
 	}
 	waitUserIMAP(t, func() bool {
-		return deletionSQLInt(t, f, `SELECT COUNT(*) FROM gofer_user_store_directory WHERE user_id='alice' AND state='removed'`) == 1
+		return deletionSQLInt(t, f, `SELECT COUNT(*) FROM raven_user_store_directory WHERE user_id='alice' AND state='removed'`) == 1
 	})
 	f.stopIMAP()
 	f.imap.Wait()
@@ -412,7 +412,7 @@ func TestOwnedUserDeletionRestartRecoversPartialCleanup(t *testing.T) {
 	if n := deletionSQLInt(t, f, `SELECT deletion_pending FROM users WHERE id='alice'`); n != 1 {
 		t.Fatal("interrupted cleanup lost identity intent", n)
 	}
-	if n := deletionSQLInt(t, f, `SELECT COUNT(*) FROM gofer_user_cleanup_receipts WHERE user_id='alice'`); n != 0 {
+	if n := deletionSQLInt(t, f, `SELECT COUNT(*) FROM raven_user_cleanup_receipts WHERE user_id='alice'`); n != 0 {
 		t.Fatal("partial cleanup published final receipt", n)
 	}
 	if _, err := os.Stat(upload); err != nil {
@@ -511,7 +511,7 @@ func TestOwnedUserDeletionRecoveryPagesBeyondQueueCapacity(t *testing.T) {
 	waitUserIMAPFor(t, time.Minute, func() bool {
 		return deletionSQLInt(t, f, `SELECT COUNT(*) FROM users WHERE id LIKE 'recovery-%'`) == 0
 	})
-	if n := deletionSQLInt(t, f, `SELECT COUNT(*) FROM gofer_user_cleanup_receipts WHERE user_id LIKE 'recovery-%'`); n != 65 {
+	if n := deletionSQLInt(t, f, `SELECT COUNT(*) FROM raven_user_cleanup_receipts WHERE user_id LIKE 'recovery-%'`); n != 65 {
 		t.Fatal("recovery skipped intents", n)
 	}
 	if w := f.request("bob", http.MethodGet, "/api/settings/ui", ""); w.Code != http.StatusOK {

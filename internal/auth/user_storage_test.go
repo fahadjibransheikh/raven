@@ -116,7 +116,7 @@ func TestOwnedAdministratorDeletionMarkFailureRollsBackIntentAndAudit(t *testing
 	if err := m.SetUserStorage(r); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := m.db.Write().Exec(`CREATE TRIGGER reject_owned_delete BEFORE UPDATE OF state ON gofer_account_directory WHEN NEW.state='deleting' BEGIN SELECT RAISE(ABORT,'injected directory failure'); END`); err != nil {
+	if _, err := m.db.Write().Exec(`CREATE TRIGGER reject_owned_delete BEFORE UPDATE OF state ON raven_account_directory WHEN NEW.state='deleting' BEGIN SELECT RAISE(ABORT,'injected directory failure'); END`); err != nil {
 		t.Fatal(err)
 	}
 	if result, err := m.PrepareAdministratorUserDeletion(t.Context(), ownedDeletionOptions(s)); err == nil || result != nil {
@@ -127,7 +127,7 @@ func TestOwnedAdministratorDeletionMarkFailureRollsBackIntentAndAudit(t *testing
 	if err := m.db.Read().QueryRow(`SELECT deletion_pending FROM users WHERE id='person'`).Scan(&pending); err != nil {
 		t.Fatal(err)
 	}
-	if err := m.db.Read().QueryRow(`SELECT state FROM gofer_user_store_directory WHERE user_id='person'`).Scan(&state); err != nil {
+	if err := m.db.Read().QueryRow(`SELECT state FROM raven_user_store_directory WHERE user_id='person'`).Scan(&state); err != nil {
 		t.Fatal(err)
 	}
 	if err := m.db.Read().QueryRow(`SELECT COUNT(*) FROM auth_events WHERE event_type=?`, AuthEventUserDeletionStarted).Scan(&starts); err != nil {

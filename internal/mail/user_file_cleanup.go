@@ -55,7 +55,7 @@ func (s *UserIMAP) CleanupUserFiles(ctx context.Context, owner string) (result s
 		// Uploads can exist before a user ever opens a mailbox/store. Only an
 		// owner with no account reservations can have no durable references.
 		var accounts bool
-		err = s.Routing().System().Read().QueryRowContext(work, `SELECT EXISTS(SELECT 1 FROM gofer_account_directory WHERE user_id=? AND state<>'deleted')`, owner).Scan(&accounts)
+		err = s.Routing().System().Read().QueryRowContext(work, `SELECT EXISTS(SELECT 1 FROM raven_account_directory WHERE user_id=? AND state<>'deleted')`, owner).Scan(&accounts)
 		if err == nil && accounts {
 			return result, storage.ErrAccountRoute
 		}

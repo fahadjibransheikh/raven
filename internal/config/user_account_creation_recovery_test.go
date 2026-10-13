@@ -55,7 +55,7 @@ func TestUserAccountCreationStartupRecoveryAfterPhysicalRestart(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if _, err := system.Write().Exec(`CREATE TRIGGER reject_activation BEFORE UPDATE OF state ON gofer_account_directory WHEN NEW.state='active' BEGIN SELECT RAISE(ABORT,'interrupted publication'); END`); err != nil {
+	if _, err := system.Write().Exec(`CREATE TRIGGER reject_activation BEFORE UPDATE OF state ON raven_account_directory WHEN NEW.state='active' BEGIN SELECT RAISE(ABORT,'interrupted publication'); END`); err != nil {
 		t.Fatal(err)
 	}
 	req := secureAccountStoreTestRequest("alice@example.com")

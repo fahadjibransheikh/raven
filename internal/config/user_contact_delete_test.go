@@ -126,7 +126,7 @@ func TestUserContactDeleteRevalidatesAfterWriterWait(t *testing.T) {
 					_, err = system.Write().Exec(`UPDATE users SET status='disabled' WHERE id='alice'`)
 					expected = storage.ErrUserStoreOwner
 				case "deleting":
-					_, err = system.Write().Exec(`UPDATE gofer_account_directory SET state='deleting' WHERE account_id=?`, owners["alice"].ID)
+					_, err = system.Write().Exec(`UPDATE raven_account_directory SET state='deleting' WHERE account_id=?`, owners["alice"].ID)
 					expected = storage.ErrAccountRoute
 				case "settings":
 					_, err = tx.Exec(`UPDATE account_contact_sync_configs SET username='replacement' WHERE user_id='alice'`)

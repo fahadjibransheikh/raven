@@ -87,7 +87,7 @@ func presentUserStores(ctx context.Context, central string) (owners []string, er
 		return nil, err
 	}
 	defer func() { err = errors.Join(err, db.Close()) }()
-	rows, err := db.QueryContext(ctx, `SELECT user_id FROM gofer_user_store_directory WHERE state='present' ORDER BY user_id`)
+	rows, err := db.QueryContext(ctx, `SELECT user_id FROM raven_user_store_directory WHERE state='present' ORDER BY user_id`)
 	if err != nil {
 		return nil, err
 	}

@@ -58,7 +58,7 @@ func TestUserContactUnifyHTTPAtomicQueueAndOwnerIsolation(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := f.system.Write().Exec(`CREATE TRIGGER reject_unify_wake BEFORE INSERT ON gofer_contact_queue_schedule BEGIN SELECT RAISE(ABORT,'synthetic wake failure'); END`); err != nil {
+	if _, err := f.system.Write().Exec(`CREATE TRIGGER reject_unify_wake BEFORE INSERT ON raven_contact_queue_schedule BEGIN SELECT RAISE(ABORT,'synthetic wake failure'); END`); err != nil {
 		t.Fatal(err)
 	}
 	response := requestContactEditor(t.Context(), f, "alice", path, form)

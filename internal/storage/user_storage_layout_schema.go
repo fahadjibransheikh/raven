@@ -13,24 +13,30 @@ import (
 // so earlier layouts adopt the version. Later steps hold actual changes.
 type layoutSchemaStep func(context.Context, *sql.Tx) error
 
-// gofer_mailbox_credentials is not part of these steps: mailauth creates it at
+// raven_mailbox_credentials is not part of these steps: mailauth creates it at
 // startup, and the migration's credential import requires it to be absent
 // until then. Steps must not reference it.
-var centralLayoutSchema = []layoutSchemaStep{
-	func(ctx context.Context, tx *sql.Tx) error {
-		_, err := tx.ExecContext(ctx, userStoreDirectorySchema+";"+accountRoutingSchema)
-		return err
-	},
+//
+// Step 2 follows the rename from the project Raven began as. Before any step
+// runs, applyLayoutSchemaTx renames the old-prefixed tables and drops their
+// old-named indexes and triggers (legacy_rename.go); step 2 creates them again
+// under the new names. Both steps are the same create-if-missing statements, so
+// a new database ends up in the same place either way.
+func centralLayoutStep(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, userStoreDirectorySchema+";"+accountRoutingSchema)
+	return err
 }
 
-var userLayoutSchema = []layoutSchemaStep{
-	func(ctx context.Context, tx *sql.Tx) error {
-		if _, err := tx.ExecContext(ctx, providerSendReceiptSchema); err != nil {
-			return err
-		}
-		return ensureUserProviderDraftSchema(ctx, tx)
-	},
+func userLayoutStep(ctx context.Context, tx *sql.Tx) error {
+	if _, err := tx.ExecContext(ctx, providerSendReceiptSchema); err != nil {
+		return err
+	}
+	return ensureUserProviderDraftSchema(ctx, tx)
 }
+
+var centralLayoutSchema = []layoutSchemaStep{centralLayoutStep, centralLayoutStep}
+
+var userLayoutSchema = []layoutSchemaStep{userLayoutStep, userLayoutStep}
 
 // ensureLayoutSchema only reads the version when the database is current.
 func ensureLayoutSchema(ctx context.Context, db *DB, steps []layoutSchemaStep) error {
@@ -62,6 +68,9 @@ func applyLayoutSchemaTx(ctx context.Context, tx *sql.Tx, steps []layoutSchemaSt
 	}
 	if version == len(steps) {
 		return nil
+	}
+	if err := renameLegacyLayoutObjects(ctx, tx); err != nil {
+		return err
 	}
 	for _, step := range steps[version:] {
 		if err := step(ctx, tx); err != nil {

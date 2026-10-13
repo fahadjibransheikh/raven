@@ -237,7 +237,7 @@ func TestUserCalendarPublicationWriterWaitRechecksEventConfigLifecycleAndGrant(t
 				case "service":
 					_, err = tx.Exec(`UPDATE account_caldav_configs SET base_url='https://replaced.test/' WHERE account_id=?`, owners["alice"].ID)
 				case "account":
-					_, err = system.Write().Exec(`UPDATE gofer_account_directory SET state='deleting' WHERE account_id=?`, owners["alice"].ID)
+					_, err = system.Write().Exec(`UPDATE raven_account_directory SET state='deleting' WHERE account_id=?`, owners["alice"].ID)
 				case "owner":
 					_, err = system.Write().Exec(`UPDATE users SET status='disabled' WHERE id='alice'`)
 				case "grant":

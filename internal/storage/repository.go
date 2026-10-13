@@ -693,7 +693,7 @@ type threadingRepairMessage struct {
 func (db *DB) reconcileThreadingRepairMessageTx(ctx context.Context, tx *sql.Tx, m threadingRepairMessage) error {
 	messageID := mailmessage.NormalizeMessageID(m.msgID)
 	if messageID == "" {
-		messageID = fmt.Sprintf("local-%d@gofer.local", m.id)
+		messageID = mailmessage.LocalID(m.id)
 	}
 	inReplyTo := ""
 	if ids := mailmessage.ParseMessageIDs(m.inReplyTo); len(ids) > 0 {
@@ -1308,7 +1308,7 @@ func (db *DB) ListProviderMessageIDBackfillCandidates(ctx context.Context, accou
 		  AND COALESCE(m.remote_message_id, '') = ''
 		  AND mfs.is_deleted = 0
 		  AND COALESCE(m.internet_message_id, '') != ''
-		  AND lower(trim(COALESCE(m.internet_message_id, ''), '<>')) NOT LIKE '%@sync.gofer'
+		  AND lower(trim(COALESCE(m.internet_message_id, ''), '<>')) NOT LIKE '%@`+mailmessage.SyntheticIDDomain+`'
 		ORDER BY m.date_received DESC, m.id DESC
 		LIMIT ?`, accountID, limit)
 	if err != nil {
@@ -1512,7 +1512,7 @@ func (db *DB) UpsertSyncMessages(ctx context.Context, msgs []SyncMessage) error 
 		m := &msgs[i]
 		messageIDNorm := mailmessage.NormalizeMessageID(m.MessageID)
 		if messageIDNorm == "" {
-			messageIDNorm = mailmessage.NormalizeMessageID(fmt.Sprintf("<%s-%d@sync.gofer>", m.FolderID, m.RemoteUID))
+			messageIDNorm = mailmessage.NormalizeMessageID(mailmessage.SyntheticID(fmt.Sprintf("%s-%d", m.FolderID, m.RemoteUID)))
 			m.MessageID = "<" + messageIDNorm + ">"
 		}
 		inReplyTo := ""
@@ -2377,7 +2377,7 @@ func syntheticProviderMessageID(providerMessageID string) string {
 	if normalized == "" {
 		normalized = uuid.NewString()
 	}
-	return "<graph-" + normalized + "@sync.gofer>"
+	return mailmessage.SyntheticID("graph-" + normalized)
 }
 
 func (db *DB) GetMessageLocalIDByInternetIDInternal(ctx context.Context, accountID, internetMessageID string) (int64, error) {
@@ -2799,7 +2799,7 @@ func (db *DB) replaceMessageLabelsForProviderTx(ctx context.Context, tx *sql.Tx,
 	_, err := tx.ExecContext(ctx, `DELETE FROM message_labels WHERE message_id=? AND label_id IN (
 		SELECT l.id FROM labels l JOIN label_mutation_queue q ON q.account_id=l.account_id AND q.provider_type=l.provider_type
 		WHERE q.message_id=? AND l.account_id=? AND l.provider_type=? AND q.operation='remove' AND lower(q.label_name)=lower(l.name))
-		AND EXISTS(SELECT 1 FROM sqlite_schema WHERE name='gofer_user_store')`, messageID, messageID, accountID, providerType)
+		AND EXISTS(SELECT 1 FROM sqlite_schema WHERE name='raven_user_store')`, messageID, messageID, accountID, providerType)
 	return err
 }
 
@@ -3418,7 +3418,7 @@ func (db *DB) populateLabelAccountMessageStats(ctx context.Context, account *mod
 			           AND NOT (l.provider_type = 'imap_keyword' AND (lower(trim(l.name)) IN ('junk', 'notjunk', 'nonjunk', 'non-junk', '$junk', '$notjunk', '$nonjunk') OR lower(trim(l.provider_id)) IN ('junk', 'notjunk', 'nonjunk', 'non-junk', '$junk', '$notjunk', '$nonjunk')))
 			       ) THEN 1 ELSE 0 END), 0),
 		       COALESCE(SUM(CASE WHEN ? = 1 AND remote_message_id = '' THEN 1 ELSE 0 END), 0),
-		       COALESCE(SUM(CASE WHEN internet_message_id = '' OR lower(trim(internet_message_id, '<>')) LIKE '%@sync.gofer' THEN 1 ELSE 0 END), 0)
+		       COALESCE(SUM(CASE WHEN internet_message_id = '' OR lower(trim(internet_message_id, '<>')) LIKE '%@`+mailmessage.SyntheticIDDomain+`' THEN 1 ELSE 0 END), 0)
 		FROM visible`,
 		account.AccountID,
 		account.AccountID,
@@ -3459,10 +3459,10 @@ func (db *DB) populateOutlookGraphDiagnostics(ctx context.Context, account *mode
 		       COALESCE(SUM(CASE WHEN remote_message_id = '' THEN 1 ELSE 0 END), 0),
 		       COALESCE(SUM(CASE WHEN remote_message_id = ''
 		                          AND internet_message_id != ''
-		                          AND lower(trim(internet_message_id, '<>')) NOT LIKE '%@sync.gofer'
+		                          AND lower(trim(internet_message_id, '<>')) NOT LIKE '%@`+mailmessage.SyntheticIDDomain+`'
 		                         THEN 1 ELSE 0 END), 0),
 		       COALESCE(SUM(CASE WHEN remote_message_id = ''
-		                          AND (internet_message_id = '' OR lower(trim(internet_message_id, '<>')) LIKE '%@sync.gofer')
+		                          AND (internet_message_id = '' OR lower(trim(internet_message_id, '<>')) LIKE '%@`+mailmessage.SyntheticIDDomain+`')
 		                         THEN 1 ELSE 0 END), 0),
 		       COALESCE(SUM(CASE WHEN remote_message_id = '' AND folder_provider_remote_id = '' THEN 1 ELSE 0 END), 0)
 		FROM visible`, account.AccountID,
@@ -3513,10 +3513,10 @@ func (db *DB) populateGmailAPIDiagnostics(ctx context.Context, account *models.L
 		       COALESCE(SUM(CASE WHEN remote_message_id = '' THEN 1 ELSE 0 END), 0),
 		       COALESCE(SUM(CASE WHEN remote_message_id = ''
 		                          AND internet_message_id != ''
-		                          AND lower(trim(internet_message_id, '<>')) NOT LIKE '%@sync.gofer'
+		                          AND lower(trim(internet_message_id, '<>')) NOT LIKE '%@`+mailmessage.SyntheticIDDomain+`'
 		                         THEN 1 ELSE 0 END), 0),
 		       COALESCE(SUM(CASE WHEN remote_message_id = ''
-		                          AND (internet_message_id = '' OR lower(trim(internet_message_id, '<>')) LIKE '%@sync.gofer')
+		                          AND (internet_message_id = '' OR lower(trim(internet_message_id, '<>')) LIKE '%@`+mailmessage.SyntheticIDDomain+`')
 		                         THEN 1 ELSE 0 END), 0),
 		       COALESCE(SUM(CASE WHEN remote_message_id = '' AND folder_provider_remote_id = '' THEN 1 ELSE 0 END), 0)
 		FROM visible`, account.AccountID,
@@ -7106,7 +7106,7 @@ func (db *DB) UpdateMessageThreadHeadersInternal(ctx context.Context, messageID 
 	}
 	messageIDNorm := mailmessage.NormalizeMessageID(messageIDRaw)
 	if messageIDNorm == "" {
-		messageIDNorm = fmt.Sprintf("local-%d@gofer.local", messageID)
+		messageIDNorm = mailmessage.LocalID(messageID)
 	}
 	if ids := mailmessage.ParseMessageIDs(inReplyTo); len(ids) > 0 {
 		inReplyTo = ids[0]

@@ -18,6 +18,8 @@ import (
 // so a password copied into another account's row does not decrypt there.
 const (
 	accountPasswordVersion = 2
+	// Key-derivation label. Stored ciphertext is bound to this exact string, so it
+	// keeps the name from before the rename; changing it makes existing data unreadable.
 	accountPasswordContext = "gofer/account-password/v2"
 
 	passwordKindIMAP    = "imap"

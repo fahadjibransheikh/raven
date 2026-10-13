@@ -65,9 +65,9 @@ func TestUserStorageMigrationCopyPreservesPartitionedRowsSearchAndPendingWork(t 
  INSERT INTO outgoing_sends(id,account_id,transport,envelope_from,send_after,status,mime_data,message_json) VALUES('reply','alice-mail','smtp','alice@example.com','2026-10-08T09:10:11.123400+03:30','ambiguous',x'000102FF','{"original":"snapshot"}');
  INSERT INTO calendar_reply_jobs(id,user_id,source_id,resource_id,remote_id,version,response,payload,state) VALUES('reply','alice','alice-calendar','event','original-resource','original-version','accepted','{"event":{"UserID":"alice","ID":"alice-event","SourceID":"alice-calendar"}}','conflict');
  INSERT INTO calendar_response_requests(user_id,source_id,remote_id,version,response,claim_id) VALUES('alice','alice-calendar','original-resource','original-version','accepted','original-claim');
- INSERT INTO gofer_provider_draft_states(account_id,draft_key,provider,mailbox_subject,local_message_id,folder_id,remote_id,remote_revision) SELECT 'alice-mail','draft','gmail','old-original-principal',id,'alice-folder','original-draft','original-etag' FROM messages WHERE account_id='alice-mail';
- INSERT INTO gofer_provider_draft_operations(id,account_id,draft_key,kind,revision_token,mime_data,status,create_attempted,candidate_id) VALUES(42,'alice-mail','draft','upsert','original-revision',x'000102FF','ambiguous',1,'original-candidate');
- UPDATE sqlite_sequence SET seq=10000 WHERE name IN ('messages','gofer_provider_draft_operations');`)
+ INSERT INTO raven_provider_draft_states(account_id,draft_key,provider,mailbox_subject,local_message_id,folder_id,remote_id,remote_revision) SELECT 'alice-mail','draft','gmail','old-original-principal',id,'alice-folder','original-draft','original-etag' FROM messages WHERE account_id='alice-mail';
+ INSERT INTO raven_provider_draft_operations(id,account_id,draft_key,kind,revision_token,mime_data,status,create_attempted,candidate_id) VALUES(42,'alice-mail','draft','upsert','original-revision',x'000102FF','ambiguous',1,'original-candidate');
+ UPDATE sqlite_sequence SET seq=10000 WHERE name IN ('messages','raven_provider_draft_operations');`)
 	report := migrationCopyReport(t, source)
 	path := source.Path()
 	if err := source.Close(); err != nil {
@@ -139,7 +139,7 @@ func TestUserStorageMigrationCopyPreservesPartitionedRowsSearchAndPendingWork(t 
 			if err := local.Read().QueryRow(`SELECT status,payload_json FROM contact_sync_operations`).Scan(&state, &payload); err != nil || state != "running" || !strings.Contains(payload, "account:bob-mail") {
 				t.Fatal("historic pending snapshot rewritten", state, payload, err)
 			}
-			if err := local.Read().QueryRow(`SELECT mailbox_subject,hex(mime_data) FROM gofer_provider_draft_states JOIN gofer_provider_draft_operations USING(account_id,draft_key)`).Scan(&binding, &mime); err != nil || binding != "old-original-principal" || mime != "000102FF" {
+			if err := local.Read().QueryRow(`SELECT mailbox_subject,hex(mime_data) FROM raven_provider_draft_states JOIN raven_provider_draft_operations USING(account_id,draft_key)`).Scan(&binding, &mime); err != nil || binding != "old-original-principal" || mime != "000102FF" {
 				t.Fatal("provider draft binding/blob changed", binding, mime, err)
 			}
 			if err := local.Read().QueryRow(`SELECT claim_id FROM calendar_response_requests`).Scan(&claim); err != nil || claim != "original-claim" {

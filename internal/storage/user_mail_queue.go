@@ -24,7 +24,7 @@ func (db *DB) RecoverAccountMailQueue(ctx context.Context, accountID string) err
 		}
 	}
 	if db.userMailDelivery {
-		if _, err := tx.ExecContext(ctx, `UPDATE gofer_provider_draft_operations SET status='ambiguous',last_error='Raven stopped during provider draft sync.',next_attempt_at=CURRENT_TIMESTAMP WHERE account_id=? AND status='syncing'`, accountID); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE raven_provider_draft_operations SET status='ambiguous',last_error='Raven stopped during provider draft sync.',next_attempt_at=CURRENT_TIMESTAMP WHERE account_id=? AND status='syncing'`, accountID); err != nil {
 			return err
 		}
 	}

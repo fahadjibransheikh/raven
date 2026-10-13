@@ -1398,7 +1398,7 @@ func gmailAPIMessageToProviderSyncs(accountID string, msg gmailAPIMessage, label
 	header := gmailAPIHeaders(msg.Payload.Headers)
 	internetMessageID := strings.TrimSpace(header["message-id"])
 	if internetMessageID == "" {
-		internetMessageID = "<gmail-" + providerID + "@sync.gofer>"
+		internetMessageID = message.SyntheticID("gmail-" + providerID)
 	}
 	dateSent := gmailAPIMessageDate(msg, header)
 	recipients := func(key string) []storage.Recipient {

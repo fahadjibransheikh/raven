@@ -65,6 +65,8 @@ func InspectUserStorageMigrationFiles(ctx context.Context, source *DB, workingDi
 		return result, err
 	}
 	references := sha256.New()
+	// Digest label recorded in storage-migration evidence; it keeps the name from
+	// before the rename so published layouts still verify.
 	migrationDigestFields(references, "gofer-migration-file-references-v1")
 	check := func(owner, path, checksum string, avatar bool) error {
 		if path == "" {
@@ -242,6 +244,8 @@ func InspectUserStorageMigrationFiles(ctx context.Context, source *DB, workingDi
 	}
 	result.ReferenceDigest = hex.EncodeToString(references.Sum(nil))
 	tree := sha256.New()
+	// Digest label recorded in storage-migration evidence; it keeps the name from
+	// before the rename so published layouts still verify.
 	migrationDigestFields(tree, "gofer-migration-blob-tree-v1")
 	err = filepath.WalkDir(base, func(path string, entry fs.DirEntry, walkErr error) error {
 		if errors.Is(walkErr, os.ErrNotExist) && path == base {

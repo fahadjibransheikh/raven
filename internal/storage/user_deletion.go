@@ -10,7 +10,7 @@ var ErrUserDeletionIncomplete = errors.New("user deletion cleanup is incomplete"
 
 func pendingUserDeletion(ctx context.Context, tx *sql.Tx, owner string, removed bool) error {
 	var valid bool
-	err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM users u JOIN gofer_user_store_directory s ON s.user_id=u.id
+	err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM users u JOIN raven_user_store_directory s ON s.user_id=u.id
  WHERE u.id=? AND u.status='disabled' AND u.deletion_pending=1 AND u.user_type='webmail' AND u.is_admin=0
  AND s.state IN ('removing','removed') AND (?=0 OR s.state='removed'))`, owner, removed).Scan(&valid)
 	if err != nil {
@@ -29,7 +29,7 @@ func (r *AccountRouting) PreparePendingUserDeletionTx(ctx context.Context, tx *s
 	if err := markPendingUserDeletion(ctx, tx, owner); err != nil {
 		return nil, err
 	}
-	rows, err := tx.QueryContext(ctx, `SELECT account_id FROM gofer_account_directory WHERE user_id=? AND state!='deleted' ORDER BY account_id`, owner)
+	rows, err := tx.QueryContext(ctx, `SELECT account_id FROM raven_account_directory WHERE user_id=? AND state!='deleted' ORDER BY account_id`, owner)
 	if err != nil {
 		return nil, err
 	}
@@ -53,11 +53,11 @@ func markPendingUserDeletion(ctx context.Context, tx *sql.Tx, owner string) erro
 	if !valid {
 		return ErrUserStoreOwner
 	}
-	if _, err := tx.ExecContext(ctx, `INSERT INTO gofer_user_store_directory(user_id,state) VALUES(?,'removing')
- ON CONFLICT(user_id) DO UPDATE SET state='removing',updated_at=CURRENT_TIMESTAMP WHERE gofer_user_store_directory.state='present'`, owner); err != nil {
+	if _, err := tx.ExecContext(ctx, `INSERT INTO raven_user_store_directory(user_id,state) VALUES(?,'removing')
+ ON CONFLICT(user_id) DO UPDATE SET state='removing',updated_at=CURRENT_TIMESTAMP WHERE raven_user_store_directory.state='present'`, owner); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE gofer_account_directory SET state='deleting',updated_at=CURRENT_TIMESTAMP WHERE user_id=? AND state!='deleted'`, owner); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE raven_account_directory SET state='deleting',updated_at=CURRENT_TIMESTAMP WHERE user_id=? AND state!='deleted'`, owner); err != nil {
 		return err
 	}
 	return nil
@@ -99,8 +99,8 @@ func (r *AccountRouting) PendingUserAccounts(ctx context.Context, owner, after s
 	if owner == "" || limit < 1 || limit > 1000 {
 		return nil, ErrAccountRoute
 	}
-	rows, err := r.System().Read().QueryContext(ctx, `SELECT d.account_id,d.user_id,d.state FROM gofer_account_directory d
- JOIN users u ON u.id=d.user_id JOIN gofer_user_store_directory s ON s.user_id=u.id
+	rows, err := r.System().Read().QueryContext(ctx, `SELECT d.account_id,d.user_id,d.state FROM raven_account_directory d
+ JOIN users u ON u.id=d.user_id JOIN raven_user_store_directory s ON s.user_id=u.id
  WHERE d.user_id=? AND d.account_id>? AND d.state IN ('deleting','deleted')
  AND u.status='disabled' AND u.deletion_pending=1 AND u.user_type='webmail' AND u.is_admin=0
  AND s.state IN ('removing','removed') ORDER BY d.account_id LIMIT ?`, owner, after, limit)
@@ -126,7 +126,7 @@ func (r *AccountRouting) PendingAccountCleanupPage(ctx context.Context, after st
 	if limit < 1 || limit > 1000 {
 		return nil, ErrAccountRoute
 	}
-	rows, err := r.System().Read().QueryContext(ctx, `SELECT d.account_id,d.user_id,d.state FROM gofer_account_directory d JOIN users u ON u.id=d.user_id
+	rows, err := r.System().Read().QueryContext(ctx, `SELECT d.account_id,d.user_id,d.state FROM raven_account_directory d JOIN users u ON u.id=d.user_id
  WHERE d.state='deleting' AND d.account_id>? AND u.deletion_pending=0
  AND u.user_type='webmail' AND u.is_admin=0 AND u.status IN ('active','disabled') ORDER BY d.account_id LIMIT ?`, after, limit)
 	if err != nil {
@@ -154,7 +154,7 @@ func (r *AccountRouting) pendingAccountDeletion(ctx context.Context, owner, id s
 		return err
 	}
 	var valid bool
-	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM gofer_account_directory WHERE account_id=? AND user_id=? AND state IN ('deleting','deleted'))`, id, owner).Scan(&valid); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM raven_account_directory WHERE account_id=? AND user_id=? AND state IN ('deleting','deleted'))`, id, owner).Scan(&valid); err != nil {
 		return err
 	}
 	if !valid {
@@ -222,7 +222,7 @@ func (r *AccountRouting) RemovePendingUserAccount(ctx context.Context, owner, id
 		if err := noPendingUserCredentials(ctx, tx, owner, id); err != nil {
 			return err
 		}
-		result, err := tx.ExecContext(ctx, `UPDATE gofer_account_directory SET state='deleted',updated_at=CURRENT_TIMESTAMP WHERE account_id=? AND user_id=? AND state IN ('deleting','deleted')`, id, owner)
+		result, err := tx.ExecContext(ctx, `UPDATE raven_account_directory SET state='deleted',updated_at=CURRENT_TIMESTAMP WHERE account_id=? AND user_id=? AND state IN ('deleting','deleted')`, id, owner)
 		if err != nil {
 			return err
 		}
@@ -232,10 +232,10 @@ func (r *AccountRouting) RemovePendingUserAccount(ctx context.Context, owner, id
 			return ErrAccountRoute
 		}
 		for _, query := range []string{
-			`DELETE FROM gofer_account_poll_schedule WHERE account_id=?`,
-			`DELETE FROM gofer_account_active_poll WHERE account_id=?`,
-			`DELETE FROM gofer_account_provider_retry WHERE account_id=?`,
-			`DELETE FROM gofer_account_service_schedule WHERE account_id=?`,
+			`DELETE FROM raven_account_poll_schedule WHERE account_id=?`,
+			`DELETE FROM raven_account_active_poll WHERE account_id=?`,
+			`DELETE FROM raven_account_provider_retry WHERE account_id=?`,
+			`DELETE FROM raven_account_service_schedule WHERE account_id=?`,
 		} {
 			if _, err := tx.ExecContext(ctx, query, id); err != nil {
 				return err
@@ -250,14 +250,14 @@ func noPendingUserCredentials(ctx context.Context, tx *sql.Tx, owner, account st
 	// IMAP-only installations have no such table, but any existing credentials
 	// must be explicitly cleaned before account or identity completion.
 	var exists bool
-	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM sqlite_schema WHERE name='gofer_mailbox_credentials' AND type='table')`).Scan(&exists); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM sqlite_schema WHERE name='raven_mailbox_credentials' AND type='table')`).Scan(&exists); err != nil {
 		return err
 	}
 	if !exists {
 		return nil
 	}
 	var remaining bool
-	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM gofer_mailbox_credentials WHERE (?='' AND user_id=?) OR (?<>'' AND account_id=?))`, account, owner, account, account).Scan(&remaining); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM raven_mailbox_credentials WHERE (?='' AND user_id=?) OR (?<>'' AND account_id=?))`, account, owner, account, account).Scan(&remaining); err != nil {
 		return err
 	}
 	if remaining {
@@ -271,7 +271,7 @@ func pendingUserAccountsRemoved(ctx context.Context, tx *sql.Tx, owner string) e
 		return err
 	}
 	var remaining bool
-	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM gofer_account_directory WHERE user_id=? AND state!='deleted')`, owner).Scan(&remaining); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM raven_account_directory WHERE user_id=? AND state!='deleted')`, owner).Scan(&remaining); err != nil {
 		return err
 	}
 	if remaining {
@@ -309,7 +309,7 @@ func (r *AccountRouting) CompletePendingUserCleanup(ctx context.Context, owner s
 	if err := pendingUserAccountsRemoved(ctx, tx, owner); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `INSERT INTO gofer_user_cleanup_receipts(user_id) VALUES(?) ON CONFLICT(user_id) DO NOTHING`, owner); err != nil {
+	if _, err := tx.ExecContext(ctx, `INSERT INTO raven_user_cleanup_receipts(user_id) VALUES(?) ON CONFLICT(user_id) DO NOTHING`, owner); err != nil {
 		return err
 	}
 	return tx.Commit()
@@ -322,7 +322,7 @@ func (r *AccountRouting) ValidatePendingUserCleanupTx(ctx context.Context, tx *s
 		return err
 	}
 	var complete bool
-	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM gofer_user_cleanup_receipts WHERE user_id=?)`, owner).Scan(&complete); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM raven_user_cleanup_receipts WHERE user_id=?)`, owner).Scan(&complete); err != nil {
 		return err
 	}
 	if !complete {

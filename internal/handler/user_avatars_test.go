@@ -151,7 +151,7 @@ func TestOwnedAvatarDiscoveryUsesLocalSourcesAndNoEmptyReplacement(t *testing.T)
 		t.Fatal(err)
 	}
 	var interests int
-	if err := f.system.Read().QueryRow(`SELECT COUNT(*) FROM gofer_avatar_interests`).Scan(&interests); err != nil || interests != 2 {
+	if err := f.system.Read().QueryRow(`SELECT COUNT(*) FROM raven_avatar_interests`).Scan(&interests); err != nil || interests != 2 {
 		t.Fatal("wrong interested owners", interests, err)
 	}
 	var accounts int

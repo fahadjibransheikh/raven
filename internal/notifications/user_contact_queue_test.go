@@ -18,10 +18,10 @@ func TestUserContactQueueHTTPPrototypeStartsOwnedScheduling(t *testing.T) {
 	defer tick.Stop()
 	for {
 		var accounts, owners int
-		if err := f.system.Read().QueryRow(`SELECT COUNT(*) FROM gofer_account_service_schedule WHERE service='contacts' AND next_due_ms>?`, time.Now().Add(4*time.Minute).UnixMilli()).Scan(&accounts); err != nil {
+		if err := f.system.Read().QueryRow(`SELECT COUNT(*) FROM raven_account_service_schedule WHERE service='contacts' AND next_due_ms>?`, time.Now().Add(4*time.Minute).UnixMilli()).Scan(&accounts); err != nil {
 			t.Fatal(err)
 		}
-		if err := f.system.Read().QueryRow(`SELECT COUNT(*) FROM gofer_contact_queue_schedule WHERE next_due_ms>?`, time.Now().Add(30*time.Minute).UnixMilli()).Scan(&owners); err != nil {
+		if err := f.system.Read().QueryRow(`SELECT COUNT(*) FROM raven_contact_queue_schedule WHERE next_due_ms>?`, time.Now().Add(30*time.Minute).UnixMilli()).Scan(&owners); err != nil {
 			t.Fatal(err)
 		}
 		if accounts == 2 && owners == 2 {
@@ -86,7 +86,7 @@ func TestUserContactQueueHTTPManualOwnerScopeAndDisabledProfile(t *testing.T) {
 	if err := f.system.Read().QueryRow(`SELECT COUNT(*) FROM contact_sync_operations`).Scan(&central); err != nil || central != 0 {
 		t.Fatal("manual queue used shared storage", central, err)
 	}
-	if err := f.system.Read().QueryRow(`SELECT COUNT(*) FROM gofer_contact_queue_schedule WHERE user_id='alice' AND next_due_ms=0`).Scan(&central); err != nil || central != 1 {
+	if err := f.system.Read().QueryRow(`SELECT COUNT(*) FROM raven_contact_queue_schedule WHERE user_id='alice' AND next_due_ms=0`).Scan(&central); err != nil || central != 1 {
 		t.Fatal("manual wake not durable", central, err)
 	}
 }

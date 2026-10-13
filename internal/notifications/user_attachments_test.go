@@ -149,10 +149,10 @@ func TestUserAttachmentRecoverySavedMIMEWorksDuringDraftAndCooldown(t *testing.T
 				if _, err := db.Write().Exec(`UPDATE messages SET raw_path=?,remote_message_id='' WHERE id=1`, path); err != nil {
 					return err
 				}
-				if _, err := db.Write().Exec(`INSERT INTO gofer_provider_draft_states(account_id,draft_key,provider,mailbox_subject,local_message_id,folder_id,local_revision) VALUES(?, '<alice@provider.test>',?,'same-subject',1,?,'pending')`, f.accounts["alice"].ID, provider, f.accounts["alice"].ID+"-inbox"); err != nil {
+				if _, err := db.Write().Exec(`INSERT INTO raven_provider_draft_states(account_id,draft_key,provider,mailbox_subject,local_message_id,folder_id,local_revision) VALUES(?, '<alice@provider.test>',?,'same-subject',1,?,'pending')`, f.accounts["alice"].ID, provider, f.accounts["alice"].ID+"-inbox"); err != nil {
 					return err
 				}
-				_, err := db.Write().Exec(`INSERT INTO gofer_provider_draft_operations(account_id,draft_key,kind,revision_token,mime_data) VALUES(?,'<alice@provider.test>','upsert','pending','pending')`, f.accounts["alice"].ID)
+				_, err := db.Write().Exec(`INSERT INTO raven_provider_draft_operations(account_id,draft_key,kind,revision_token,mime_data) VALUES(?,'<alice@provider.test>','upsert','pending','pending')`, f.accounts["alice"].ID)
 				return err
 			}); err != nil {
 				t.Fatal(err)
@@ -252,7 +252,7 @@ func TestUserAttachmentRecoveryCooldownAndRefresh(t *testing.T) {
 				if after != before {
 					t.Fatal("cooldown made attachment request")
 				}
-				if _, err := f.system.Write().Exec(`UPDATE gofer_account_provider_retry SET retry_until_ms=0 WHERE account_id=?`, f.accounts["alice"].ID); err != nil {
+				if _, err := f.system.Write().Exec(`UPDATE raven_account_provider_retry SET retry_until_ms=0 WHERE account_id=?`, f.accounts["alice"].ID); err != nil {
 					t.Fatal(err)
 				}
 				if rec := f.request("alice", "GET", "/api/attachments/1/download", ""); rec.Code != 200 || rec.Body.String() != "alice report" {

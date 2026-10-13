@@ -136,10 +136,11 @@ const (
 	migrationVersionBeforePushRevision = 119 // upstream 105: no web_push_subscriptions.revision
 	migrationVersionPushRevision       = 120 // upstream 106: adds web_push_subscriptions.revision
 	migrationVersionResponseClaim      = 121 // upstream 107: adds calendar_response_requests.claim_id
+	migrationVersionRenamed            = 122 // Raven only: totp_credentials' column default (see legacy_rename.go)
 )
 
 func migrationSharedVersionSupported(version int) bool {
-	return version == migrationVersionBeforePushRevision || version == migrationVersionPushRevision || version == migrationVersionResponseClaim
+	return version == migrationVersionBeforePushRevision || version == migrationVersionPushRevision || version == migrationVersionResponseClaim || version == migrationVersionRenamed
 }
 
 // These recognized shared schemas differ only in the explicitly handled push
@@ -208,11 +209,11 @@ func inspectUserStorageMigration(ctx context.Context, source *DB) (report UserSt
 		return report, err
 	}
 	rows.Close()
-	if present["gofer_storage_layout"] {
-		return report, migrationSourceError("gofer_storage_layout", "source is already a managed layout")
+	if present["raven_storage_layout"] {
+		return report, migrationSourceError("raven_storage_layout", "source is already a managed layout")
 	}
-	if present["gofer_user_store"] {
-		return report, migrationSourceError("gofer_user_store", "source is already a user store")
+	if present["raven_user_store"] {
+		return report, migrationSourceError("raven_user_store", "source is already a user store")
 	}
 	if err := requireSharedMigrationTables(ctx, present, report.SchemaVersion); err != nil {
 		return report, err

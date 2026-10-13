@@ -126,8 +126,8 @@ func TestPendingUserDeletionCompletesAccountsWithSeparateCredentials(t *testing.
 	two := createRoutingTestAccount(t, r, "alice")
 	// The storage boundary needs only ownership and account IDs, not ciphertext.
 	// Actual repository encryption and credential cleanup have separate coverage.
-	if _, err := system.Write().Exec(`CREATE TABLE gofer_mailbox_credentials(account_id TEXT PRIMARY KEY,user_id TEXT NOT NULL);
- INSERT INTO gofer_mailbox_credentials SELECT account_id,user_id FROM gofer_account_directory WHERE user_id='alice'`); err != nil {
+	if _, err := system.Write().Exec(`CREATE TABLE raven_mailbox_credentials(account_id TEXT PRIMARY KEY,user_id TEXT NOT NULL);
+ INSERT INTO raven_mailbox_credentials SELECT account_id,user_id FROM raven_account_directory WHERE user_id='alice'`); err != nil {
 		t.Fatal(err)
 	}
 	prepareRoutingUserDeletion(t, r, "alice")
@@ -139,7 +139,7 @@ func TestPendingUserDeletionCompletesAccountsWithSeparateCredentials(t *testing.
 	}
 	for _, entry := range []AccountRoute{one, two} {
 		if err := r.RemovePendingUserAccount(t.Context(), "alice", entry.AccountID, func(ctx context.Context) error {
-			_, err := system.Write().ExecContext(ctx, `DELETE FROM gofer_mailbox_credentials WHERE account_id=?`, entry.AccountID)
+			_, err := system.Write().ExecContext(ctx, `DELETE FROM raven_mailbox_credentials WHERE account_id=?`, entry.AccountID)
 			return err
 		}); err != nil {
 			t.Fatal("per-account cleanup was blocked by sibling credentials", err)

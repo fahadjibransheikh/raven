@@ -60,7 +60,7 @@ func (db *DB) pruneDurableMailJobs(ctx context.Context, now time.Time, batch int
 	}
 	providerDraftBarrier := ""
 	if db.userMailDelivery {
-		providerDraftBarrier = ` AND NOT EXISTS (SELECT 1 FROM gofer_provider_draft_operations draft_op WHERE draft_op.account_id=os.account_id AND draft_op.draft_key=os.draft_id)`
+		providerDraftBarrier = ` AND NOT EXISTS (SELECT 1 FROM raven_provider_draft_operations draft_op WHERE draft_op.account_id=os.account_id AND draft_op.draft_key=os.draft_id)`
 	}
 
 	deleteResult, err := tx.ExecContext(ctx, `

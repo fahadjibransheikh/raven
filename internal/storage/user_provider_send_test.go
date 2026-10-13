@@ -31,7 +31,7 @@ func TestUserProviderSendAcceptanceAtomicAndRecoveryNeverRequeues(t *testing.T) 
 		t.Fatal("failed publication accepted")
 	}
 	var count int
-	if err := db.Read().QueryRow(`SELECT count(*) FROM gofer_provider_send_receipts`).Scan(&count); err != nil || count != 0 {
+	if err := db.Read().QueryRow(`SELECT count(*) FROM raven_provider_send_receipts`).Scan(&count); err != nil || count != 0 {
 		t.Fatal("partial acceptance receipt", count, err)
 	}
 	if _, err := db.Write().Exec(`DROP TRIGGER reject_send_acceptance`); err != nil {
@@ -73,7 +73,7 @@ func TestUserProviderSendRejectsStaleAttemptAndMailboxIdentity(t *testing.T) {
 				t.Fatal("stale acceptance published", err)
 			}
 			var count int
-			if err := db.Read().QueryRow(`SELECT count(*) FROM gofer_provider_send_receipts`).Scan(&count); err != nil || count != 0 {
+			if err := db.Read().QueryRow(`SELECT count(*) FROM raven_provider_send_receipts`).Scan(&count); err != nil || count != 0 {
 				t.Fatal("stale receipt published", count, err)
 			}
 		})
@@ -95,7 +95,7 @@ func TestUserProviderSendCacheCompletionRollsBackIdentityAndPayload(t *testing.T
 	if err := db.UpsertSyncMessages(t.Context(), []SyncMessage{{AccountID: "acc", FolderID: "sent", MessageID: "<sent@test.invalid>", Subject: "Sent", FromEmail: "alice@test.invalid", DateSent: time.Now()}}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.Write().Exec(`CREATE TRIGGER reject_cache_completion BEFORE DELETE ON gofer_provider_send_receipts BEGIN SELECT RAISE(ABORT,'injected cache completion failure'); END`); err != nil {
+	if _, err := db.Write().Exec(`CREATE TRIGGER reject_cache_completion BEFORE DELETE ON raven_provider_send_receipts BEGIN SELECT RAISE(ABORT,'injected cache completion failure'); END`); err != nil {
 		t.Fatal(err)
 	}
 	if err := db.CompleteUserProviderSentCache(t.Context(), claimed[0], "subject", "<sent@test.invalid>", "sent", "remote"); err == nil {
@@ -132,7 +132,7 @@ func TestUserProviderSendReceiptRemainsBoundToAcceptedMailbox(t *testing.T) {
 		t.Fatal("accepted mail was attached to a replacement mailbox", err)
 	}
 	var retained int
-	if err := db.Read().QueryRow(`SELECT count(*) FROM gofer_provider_send_receipts`).Scan(&retained); err != nil || retained != 1 {
+	if err := db.Read().QueryRow(`SELECT count(*) FROM raven_provider_send_receipts`).Scan(&retained); err != nil || retained != 1 {
 		t.Fatal("mailbox mismatch destroyed acceptance proof", err)
 	}
 }

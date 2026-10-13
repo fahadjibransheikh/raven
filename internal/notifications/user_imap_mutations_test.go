@@ -335,7 +335,7 @@ func TestUserIMAPMutationsRetryMetadataRecoveryAndDisabledReceiving(t *testing.T
 	// Wait for the serialized pass/deadline commit, then check central scheduling.
 	_ = f.imap.Sync(t.Context(), "alice", id)
 	var deadline int64
-	if err := f.system.Read().QueryRow("SELECT next_due_ms FROM gofer_account_poll_schedule WHERE account_id=?", id).Scan(&deadline); err != nil || deadline != next.UnixMilli() {
+	if err := f.system.Read().QueryRow("SELECT next_due_ms FROM raven_account_poll_schedule WHERE account_id=?", id).Scan(&deadline); err != nil || deadline != next.UnixMilli() {
 		t.Fatalf("retry hidden behind daily poll: %d vs %d (%v)", deadline, next.UnixMilli(), err)
 	}
 	server.mu.Lock()
@@ -535,7 +535,7 @@ func TestUserIMAPMutationsAtomicQueueRollbackAndSavedResultAfterWakeFailure(t *t
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := f.system.Write().Exec(`CREATE TRIGGER reject_mail_wake BEFORE INSERT ON gofer_account_poll_schedule
+	if _, err := f.system.Write().Exec(`CREATE TRIGGER reject_mail_wake BEFORE INSERT ON raven_account_poll_schedule
 		WHEN NEW.revision=1
 		BEGIN SELECT RAISE(ABORT,'injected wake failure'); END`); err != nil {
 		t.Fatal(err)

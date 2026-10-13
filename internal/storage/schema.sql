@@ -1,4 +1,4 @@
--- Gofer schema
+-- Raven schema
 -- Version 1: Initial schema
 
 CREATE TABLE IF NOT EXISTS schema_version (
@@ -770,7 +770,7 @@ CREATE TABLE IF NOT EXISTS totp_credentials (
     algorithm TEXT NOT NULL DEFAULT 'SHA1' CHECK (algorithm IN ('SHA1', 'SHA256', 'SHA512')),
     digits INTEGER NOT NULL DEFAULT 6 CHECK (digits IN (6, 8)),
     period INTEGER NOT NULL DEFAULT 30 CHECK (period > 0),
-    issuer TEXT NOT NULL DEFAULT 'Gofer' CHECK (issuer <> ''),
+    issuer TEXT NOT NULL DEFAULT 'Raven' CHECK (issuer <> ''),
     last_accepted_step INTEGER CHECK (last_accepted_step IS NULL OR last_accepted_step >= 0),
     enabled INTEGER NOT NULL DEFAULT 0 CHECK (enabled IN (0, 1)),
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -1614,4 +1614,4 @@ CREATE TABLE IF NOT EXISTS raven_calendar_carryover (
     PRIMARY KEY (account_id, remote_id)
 );
 
-INSERT OR REPLACE INTO schema_version (version) VALUES (121);
+INSERT OR REPLACE INTO schema_version (version) VALUES (122);

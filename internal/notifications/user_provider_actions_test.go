@@ -538,7 +538,7 @@ func TestUserProviderActionsDeletionCancelsHTTP(t *testing.T) {
 				t.Fatal(err)
 			}
 			var grants int
-			if err := f.system.Read().QueryRow(`SELECT count(*) FROM gofer_mailbox_credentials WHERE account_id=?`, f.accounts["alice"].ID).Scan(&grants); err != nil || grants != 0 {
+			if err := f.system.Read().QueryRow(`SELECT count(*) FROM raven_mailbox_credentials WHERE account_id=?`, f.accounts["alice"].ID).Scan(&grants); err != nil || grants != 0 {
 				t.Fatalf("deletion retained grant: %d %v", grants, err)
 			}
 			if rec := f.request("bob", "POST", "/api/messages/1/read?state=read", ""); rec.Code != 200 {

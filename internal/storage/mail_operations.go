@@ -176,8 +176,8 @@ const userProviderDraftOperationProjection = `
                 COALESCE(a.provider_account_id,'')=s.mailbox_subject AND
                 COALESCE(a.is_deleting,0)=0 THEN 1 ELSE 0 END,
            0, CASE WHEN o.status='ambiguous' THEN 1 ELSE 0 END
-    FROM gofer_provider_draft_operations o
-    JOIN gofer_provider_draft_states s ON s.account_id=o.account_id AND s.draft_key=o.draft_key
+    FROM raven_provider_draft_operations o
+    JOIN raven_provider_draft_states s ON s.account_id=o.account_id AND s.draft_key=o.draft_key
     JOIN accounts a ON a.id=o.account_id
     LEFT JOIN folders f ON f.id=s.folder_id
 `
@@ -433,11 +433,11 @@ func (db *DB) RetryMailOperationForUserGuarded(ctx context.Context, userID, oper
 			return models.MailOperationSummary{}, ErrMailOperationNotRetryable
 		}
 		result, err = tx.ExecContext(ctx, `
-			UPDATE gofer_provider_draft_operations AS o
+			UPDATE raven_provider_draft_operations AS o
 			SET status=CASE WHEN status='blocked' THEN 'failed' ELSE status END,
 			    next_attempt_at=CURRENT_TIMESTAMP
 			WHERE id=? AND status IN ('failed','ambiguous','blocked') AND EXISTS(
-			 SELECT 1 FROM gofer_provider_draft_states s JOIN accounts a ON a.id=s.account_id
+			 SELECT 1 FROM raven_provider_draft_states s JOIN accounts a ON a.id=s.account_id
 			 WHERE s.account_id=o.account_id AND s.draft_key=o.draft_key AND a.user_id=?
 			 AND a.provider=s.provider AND a.auth_method='oauth2'
 			 AND COALESCE(a.provider_account_id,'')=s.mailbox_subject AND COALESCE(a.is_deleting,0)=0)`, id, userID)

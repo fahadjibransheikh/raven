@@ -250,7 +250,7 @@ func TestUserCalendarMeetingDraftHTTPNativePreparationRecoveryAndIsolation(t *te
 				if mode == "changed-after-create" {
 					api.beforePost = func(r *http.Request) {
 						if strings.HasPrefix(r.Header.Get("Authorization"), "Bearer alice-") {
-							if _, err := f.system.Write().Exec(`UPDATE gofer_mailbox_credentials SET revision=revision+1 WHERE account_id=?`, f.accounts["alice"].ID); err != nil {
+							if _, err := f.system.Write().Exec(`UPDATE raven_mailbox_credentials SET revision=revision+1 WHERE account_id=?`, f.accounts["alice"].ID); err != nil {
 								t.Error(err)
 							}
 						}

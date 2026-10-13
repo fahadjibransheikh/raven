@@ -234,7 +234,7 @@ func TestUserCalendarIncomingMessageWriterWaitRechecksIdentityAndLifecycle(t *te
 				case "owner":
 					_, err = system.Write().Exec(`UPDATE users SET status='disabled' WHERE id='alice'`)
 				case "account":
-					_, err = system.Write().Exec(`UPDATE gofer_account_directory SET state='deleting' WHERE account_id=?`, candidates["alice"].AccountID)
+					_, err = system.Write().Exec(`UPDATE raven_account_directory SET state='deleting' WHERE account_id=?`, candidates["alice"].AccountID)
 				}
 				if err != nil {
 					return err

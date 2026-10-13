@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/fahadjibransheikh/raven/internal/mail/message"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -527,7 +528,7 @@ func TestSyncOutlookCategoriesBatchesInternetMessageLookupsAndSkipsMissing(t *te
 	db := newLabelSyncTestDB(t)
 	foundID := seedLabelSyncMessage(t, db, providers.ProviderOutlook, "<outlook-found@example.com>", "")
 	missingID := seedLabelSyncMessage(t, db, providers.ProviderOutlook, "<outlook-missing@example.com>", "")
-	syntheticID := seedLabelSyncMessage(t, db, providers.ProviderOutlook, "<acc_inbox-42@sync.gofer>", "")
+	syntheticID := seedLabelSyncMessage(t, db, providers.ProviderOutlook, message.SyntheticID("acc_inbox-42"), "")
 	batchCalls := 0
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

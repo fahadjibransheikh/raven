@@ -210,7 +210,7 @@ func migrationDestinationBoundaryWithGenerated(ctx context.Context, tx *sql.Tx, 
 		return ErrUserStoreIdentity
 	}
 	var owned bool
-	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM sqlite_schema WHERE name='gofer_user_store')`).Scan(&owned); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM sqlite_schema WHERE name IN (`+TableNameList("raven_user_store")+`))`).Scan(&owned); err != nil {
 		return err
 	}
 	if owned != (owner != "") {
@@ -218,7 +218,7 @@ func migrationDestinationBoundaryWithGenerated(ctx context.Context, tx *sql.Tx, 
 	}
 	if owned {
 		var actual string
-		if err := tx.QueryRowContext(ctx, `SELECT user_id FROM gofer_user_store WHERE singleton=1 AND layout_version=1`).Scan(&actual); err != nil {
+		if err := tx.QueryRowContext(ctx, `SELECT user_id FROM raven_user_store WHERE singleton=1 AND layout_version=1`).Scan(&actual); err != nil {
 			return err
 		}
 		if actual != owner {
@@ -277,7 +277,7 @@ func migrationDestinationBoundaryWithGenerated(ctx context.Context, tx *sql.Tx, 
 			continue
 		} // Verified against exact source-derived relations separately.
 		want := 0
-		if owned && (name == "users" || name == "gofer_user_store") {
+		if owned && (name == "users" || name == "raven_user_store") {
 			want = 1
 		}
 		var count int

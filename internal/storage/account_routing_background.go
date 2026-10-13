@@ -21,7 +21,7 @@ func (r *AccountRouting) ActiveAccountOwners(ctx context.Context, ids []string) 
 		args[i] = id
 	}
 	marks := strings.TrimSuffix(strings.Repeat("?,", len(ids)), ",")
-	rows, err := r.System().Read().QueryContext(ctx, `SELECT d.account_id,d.user_id FROM gofer_account_directory d JOIN users u ON u.id=d.user_id WHERE d.account_id IN (`+marks+`) AND d.state='active' AND u.status='active' AND u.deletion_pending=0 AND u.user_type='webmail' AND u.is_admin=0`, args...)
+	rows, err := r.System().Read().QueryContext(ctx, `SELECT d.account_id,d.user_id FROM raven_account_directory d JOIN users u ON u.id=d.user_id WHERE d.account_id IN (`+marks+`) AND d.state='active' AND u.status='active' AND u.deletion_pending=0 AND u.user_type='webmail' AND u.is_admin=0`, args...)
 	if err != nil {
 		return nil, err
 	}

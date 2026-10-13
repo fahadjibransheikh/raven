@@ -202,7 +202,7 @@ func TestUserCalendarReplyRetryWriterWaitAndTriggerRollback(t *testing.T) {
 				case "disabled":
 					_, err = f.system.Write().Exec(`UPDATE users SET status='disabled' WHERE id='alice'`)
 				case "deleting":
-					_, err = f.system.Write().Exec(`UPDATE gofer_account_directory SET state='deleting' WHERE account_id=?`, control.AccountID())
+					_, err = f.system.Write().Exec(`UPDATE raven_account_directory SET state='deleting' WHERE account_id=?`, control.AccountID())
 				case "trigger-ignore":
 					_, err = tx.Exec(`CREATE TRIGGER interfere BEFORE UPDATE OF payload ON calendar_reply_jobs BEGIN SELECT RAISE(IGNORE); END`)
 				case "trigger-payload":

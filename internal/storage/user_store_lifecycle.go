@@ -14,7 +14,7 @@ import (
 // from silently replacing a missing file when they have no mailbox history.
 func ensureUserStoreDirectory(system *DB) error {
 	var local bool
-	if err := system.Read().QueryRow(`SELECT EXISTS(SELECT 1 FROM sqlite_schema WHERE name='gofer_user_store')`).Scan(&local); err != nil {
+	if err := system.Read().QueryRow(`SELECT EXISTS(SELECT 1 FROM sqlite_schema WHERE name IN (` + TableNameList("raven_user_store") + `))`).Scan(&local); err != nil {
 		return err
 	}
 	if local {
@@ -23,7 +23,7 @@ func ensureUserStoreDirectory(system *DB) error {
 	return ensureLayoutSchema(context.Background(), system, centralLayoutSchema)
 }
 
-const userStoreDirectorySchema = `CREATE TABLE IF NOT EXISTS gofer_user_store_directory (
+const userStoreDirectorySchema = `CREATE TABLE IF NOT EXISTS raven_user_store_directory (
  user_id TEXT PRIMARY KEY CHECK(user_id<>''),
  state TEXT NOT NULL CHECK(state IN ('present','removing','removed')),
  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -32,7 +32,7 @@ const userStoreDirectorySchema = `CREATE TABLE IF NOT EXISTS gofer_user_store_di
 
 func (m *UserStores) recordOpenedStore(ctx context.Context, owner string) error {
 	var state string
-	err := m.system.Read().QueryRowContext(ctx, `SELECT state FROM gofer_user_store_directory WHERE user_id=?`, owner).Scan(&state)
+	err := m.system.Read().QueryRowContext(ctx, `SELECT state FROM raven_user_store_directory WHERE user_id=?`, owner).Scan(&state)
 	if err == nil {
 		if state != "present" {
 			return ErrUserStoreOwner
@@ -42,9 +42,9 @@ func (m *UserStores) recordOpenedStore(ctx context.Context, owner string) error 
 	if !errors.Is(err, sql.ErrNoRows) {
 		return err
 	}
-	result, err := m.system.Write().ExecContext(ctx, `INSERT INTO gofer_user_store_directory(user_id,state)
+	result, err := m.system.Write().ExecContext(ctx, `INSERT INTO raven_user_store_directory(user_id,state)
  SELECT id,'present' FROM users WHERE id=? AND user_type='webmail' AND is_admin=0
- ON CONFLICT(user_id) DO UPDATE SET updated_at=CURRENT_TIMESTAMP WHERE gofer_user_store_directory.state='present'`, owner)
+ ON CONFLICT(user_id) DO UPDATE SET updated_at=CURRENT_TIMESTAMP WHERE raven_user_store_directory.state='present'`, owner)
 	if err != nil {
 		return err
 	}
@@ -81,12 +81,12 @@ func (m *UserStores) RemovePendingUserStore(ctx context.Context, owner string) e
 	if !valid {
 		return ErrUserStoreOwner
 	}
-	if _, err := tx.ExecContext(ctx, `INSERT INTO gofer_user_store_directory(user_id,state) VALUES(?,'removing')
- ON CONFLICT(user_id) DO UPDATE SET state='removing',updated_at=CURRENT_TIMESTAMP WHERE gofer_user_store_directory.state='present'`, owner); err != nil {
+	if _, err := tx.ExecContext(ctx, `INSERT INTO raven_user_store_directory(user_id,state) VALUES(?,'removing')
+ ON CONFLICT(user_id) DO UPDATE SET state='removing',updated_at=CURRENT_TIMESTAMP WHERE raven_user_store_directory.state='present'`, owner); err != nil {
 		return err
 	}
 	var state string
-	if err := tx.QueryRowContext(ctx, `SELECT state FROM gofer_user_store_directory WHERE user_id=?`, owner).Scan(&state); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT state FROM raven_user_store_directory WHERE user_id=?`, owner).Scan(&state); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
@@ -153,7 +153,7 @@ func (m *UserStores) RemovePendingUserStore(ctx context.Context, owner string) e
 			return err
 		}
 	}
-	result, err := m.system.Write().ExecContext(ctx, `UPDATE gofer_user_store_directory SET state='removed',updated_at=CURRENT_TIMESTAMP WHERE user_id=? AND state IN ('removing','removed')
+	result, err := m.system.Write().ExecContext(ctx, `UPDATE raven_user_store_directory SET state='removed',updated_at=CURRENT_TIMESTAMP WHERE user_id=? AND state IN ('removing','removed')
  AND EXISTS(SELECT 1 FROM users WHERE id=? AND status='disabled' AND deletion_pending=1 AND user_type='webmail' AND is_admin=0)`, owner, owner)
 	if err != nil {
 		return err
@@ -206,7 +206,7 @@ func (m *UserStores) drainUserStore(ctx context.Context, owner string) error {
 // or provider/account activity. Completion must check those separately.
 func (r *AccountRouting) PendingUserStoreRemoved(ctx context.Context, owner string) (bool, error) {
 	var state string
-	err := r.System().Read().QueryRowContext(ctx, `SELECT state FROM gofer_user_store_directory WHERE user_id=?`, owner).Scan(&state)
+	err := r.System().Read().QueryRowContext(ctx, `SELECT state FROM raven_user_store_directory WHERE user_id=?`, owner).Scan(&state)
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
 	}

@@ -187,7 +187,7 @@ func TestCompleteSetupFreshOwnerCommitsCredentialsStateEventAndSession(t *testin
 
 func TestCompleteSetupCreatesSeparateOwnerAndLeavesExistingWebmailInPlace(t *testing.T) {
 	manager, clock := setupOwnerTestManager(t)
-	insertSetupOwnerUser(t, manager, "default", "local@gofer.local", "", "Local User", UserStatusActive, false)
+	insertSetupOwnerUser(t, manager, "default", "local@raven.local", "", "Local User", UserStatusActive, false)
 	if _, err := manager.db.Write().Exec(`
 		INSERT INTO accounts (id, user_id, email_address) VALUES ('legacy-mailbox', 'default', 'mail@example.com');
 		INSERT INTO password_credentials (user_id, password_hash) VALUES ('default', 'old-password');

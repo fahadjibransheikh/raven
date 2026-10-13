@@ -155,16 +155,16 @@ func migrationVerifyClosedCentralLayout(ctx context.Context, sourcePath, path st
 			return err
 		}
 		generated := map[string]bool{
-			"gofer_account_directory": true, "gofer_user_store_directory": true,
-			"gofer_account_poll_schedule": true, "gofer_account_active_poll": true,
-			"gofer_account_service_schedule": true, "gofer_contact_queue_schedule": true,
-			"gofer_avatar_interests": true, "gofer_mailbox_credentials": true,
+			"raven_account_directory": true, "raven_user_store_directory": true,
+			"raven_account_poll_schedule": true, "raven_account_active_poll": true,
+			"raven_account_service_schedule": true, "raven_contact_queue_schedule": true,
+			"raven_avatar_interests": true, "raven_mailbox_credentials": true,
 		}
 		if layout != nil {
 			if err := migrationCheckLayoutIdentity(ctx, tx, *layout); err != nil {
 				return err
 			}
-			generated["gofer_storage_layout"] = true
+			generated["raven_storage_layout"] = true
 		}
 		if err := migrationDestinationBoundaryWithGenerated(ctx, tx, "", true, generated); err != nil {
 			return err
@@ -179,19 +179,19 @@ func migrationVerifyClosedCentralLayout(ctx context.Context, sourcePath, path st
 func migrationVerifyCentralRouting(ctx context.Context, tx *sql.Tx) error {
 	active := ` FROM migration_source.accounts WHERE coalesce(is_deleting,0)=0`
 	for _, relation := range []struct{ name, columns, source string }{
-		{"gofer_account_directory", "account_id,user_id,state,created_at,updated_at", `SELECT id account_id,user_id,CASE WHEN coalesce(is_deleting,0)<>0 THEN 'deleting' ELSE 'active' END state,created_at,updated_at FROM migration_source.accounts`},
-		{"gofer_user_store_directory", "user_id,state", `SELECT id user_id,'present' state FROM migration_source.users WHERE user_type='webmail' AND is_admin=0`},
-		{"gofer_account_poll_schedule", "account_id,next_due_ms,revision", `SELECT id account_id,0 next_due_ms,0 revision` + active},
-		{"gofer_account_active_poll", "account_id,next_due_ms,last_attempt_ns,failures,revision", `SELECT id account_id,0 next_due_ms,0 last_attempt_ns,0 failures,0 revision` + active},
-		{"gofer_account_service_schedule", "account_id,service,next_due_ms,revision", `SELECT id account_id,'contacts' service,0 next_due_ms,0 revision` + active + ` UNION ALL SELECT id account_id,'calendar' service,0 next_due_ms,0 revision` + active},
-		{"gofer_contact_queue_schedule", "user_id,next_due_ms,revision", `SELECT id user_id,0 next_due_ms,0 revision FROM migration_source.users WHERE user_type='webmail' AND is_admin=0`},
+		{"raven_account_directory", "account_id,user_id,state,created_at,updated_at", `SELECT id account_id,user_id,CASE WHEN coalesce(is_deleting,0)<>0 THEN 'deleting' ELSE 'active' END state,created_at,updated_at FROM migration_source.accounts`},
+		{"raven_user_store_directory", "user_id,state", `SELECT id user_id,'present' state FROM migration_source.users WHERE user_type='webmail' AND is_admin=0`},
+		{"raven_account_poll_schedule", "account_id,next_due_ms,revision", `SELECT id account_id,0 next_due_ms,0 revision` + active},
+		{"raven_account_active_poll", "account_id,next_due_ms,last_attempt_ns,failures,revision", `SELECT id account_id,0 next_due_ms,0 last_attempt_ns,0 failures,0 revision` + active},
+		{"raven_account_service_schedule", "account_id,service,next_due_ms,revision", `SELECT id account_id,'contacts' service,0 next_due_ms,0 revision` + active + ` UNION ALL SELECT id account_id,'calendar' service,0 next_due_ms,0 revision` + active},
+		{"raven_contact_queue_schedule", "user_id,next_due_ms,revision", `SELECT id user_id,0 next_due_ms,0 revision FROM migration_source.users WHERE user_type='webmail' AND is_admin=0`},
 	} {
 		if err := migrationCompareRelation(ctx, tx, relation.name, strings.Split(relation.columns, ","), relation.source, `SELECT * FROM main.`+quoteStoreIdentifier(relation.name)); err != nil {
 			return err
 		}
 	}
 	var invalid bool
-	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM main.gofer_user_store_directory WHERE typeof(created_at)<>'text' OR datetime(created_at) IS NULL OR updated_at IS NOT created_at)`).Scan(&invalid); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM main.raven_user_store_directory WHERE typeof(created_at)<>'text' OR datetime(created_at) IS NULL OR updated_at IS NOT created_at)`).Scan(&invalid); err != nil {
 		return err
 	}
 	if invalid {
@@ -214,7 +214,7 @@ func migrationCompareRelation(ctx context.Context, tx *sql.Tx, name string, colu
 }
 
 func migrationVerifyAvatarInterests(ctx context.Context, tx *sql.Tx) error {
-	if _, err := tx.ExecContext(ctx, `CREATE TEMP TABLE gofer_migration_avatar_audit(email_hash TEXT,user_id TEXT,email TEXT,PRIMARY KEY(email_hash,user_id)) WITHOUT ROWID`); err != nil {
+	if _, err := tx.ExecContext(ctx, `CREATE TEMP TABLE raven_migration_avatar_audit(email_hash TEXT,user_id TEXT,email TEXT,PRIMARY KEY(email_hash,user_id)) WITHOUT ROWID`); err != nil {
 		return err
 	}
 	rows, err := tx.QueryContext(ctx, `SELECT DISTINCT a.user_id,lower(trim(m.from_email)) email
@@ -236,7 +236,7 @@ func migrationVerifyAvatarInterests(ctx context.Context, tx *sql.Tx) error {
 		if hash == "" {
 			continue
 		}
-		if _, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO temp.gofer_migration_avatar_audit(email_hash,user_id,email) VALUES(?,?,?)`, hash, owner, email); err != nil {
+		if _, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO temp.raven_migration_avatar_audit(email_hash,user_id,email) VALUES(?,?,?)`, hash, owner, email); err != nil {
 			rows.Close()
 			return err
 		}
@@ -244,7 +244,7 @@ func migrationVerifyAvatarInterests(ctx context.Context, tx *sql.Tx) error {
 	if err := errors.Join(rows.Err(), rows.Close()); err != nil {
 		return err
 	}
-	if err := migrationCompareRelation(ctx, tx, "gofer_avatar_interests", []string{"email_hash", "user_id"}, `SELECT email_hash,user_id FROM temp.gofer_migration_avatar_audit`, `SELECT email_hash,user_id FROM main.gofer_avatar_interests`); err != nil {
+	if err := migrationCompareRelation(ctx, tx, "raven_avatar_interests", []string{"email_hash", "user_id"}, `SELECT email_hash,user_id FROM temp.raven_migration_avatar_audit`, `SELECT email_hash,user_id FROM main.raven_avatar_interests`); err != nil {
 		return err
 	}
 	// Original cache rows were already compared byte-for-byte. Newly discovered
@@ -252,7 +252,7 @@ func migrationVerifyAvatarInterests(ctx context.Context, tx *sql.Tx) error {
 	var invalid bool
 	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM main.sender_avatars c
  WHERE NOT EXISTS(SELECT 1 FROM migration_source.sender_avatars original WHERE original.email_hash=c.email_hash)
- AND (NOT EXISTS(SELECT 1 FROM temp.gofer_migration_avatar_audit expected WHERE expected.email_hash=c.email_hash AND expected.email=c.email)
+ AND (NOT EXISTS(SELECT 1 FROM temp.raven_migration_avatar_audit expected WHERE expected.email_hash=c.email_hash AND expected.email=c.email)
  OR c.source IS NOT 'gravatar' OR c.status IS NOT 'pending' OR c.gravatar_status IS NOT 'unchecked' OR c.bimi_status IS NOT 'unchecked'
  OR c.gravatar_checked_at IS NOT NULL OR c.bimi_checked_at IS NOT NULL OR c.content_type IS NOT '' OR c.image_data IS NOT NULL OR c.storage_path IS NOT ''
  OR c.fetched_at IS NOT NULL OR c.expires_at IS NOT NULL OR c.next_retry_at IS NOT NULL OR c.error IS NOT ''
@@ -262,6 +262,6 @@ func migrationVerifyAvatarInterests(ctx context.Context, tx *sql.Tx) error {
 	if invalid {
 		return errors.New("final migration has unexpected avatar cache rows or contents")
 	}
-	_, err = tx.ExecContext(ctx, `DROP TABLE temp.gofer_migration_avatar_audit`)
+	_, err = tx.ExecContext(ctx, `DROP TABLE temp.raven_migration_avatar_audit`)
 	return err
 }

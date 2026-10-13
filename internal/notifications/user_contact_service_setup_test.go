@@ -131,7 +131,7 @@ func TestUserContactServiceSetupSaveAndToggleOwnedStateAndWake(t *testing.T) {
 			t.Fatal("toggle changed saved configuration")
 		}
 		var due, newer int64
-		if err := f.system.Read().QueryRow(`SELECT next_due_ms,revision FROM gofer_account_service_schedule WHERE account_id=? AND service='contacts'`, id).Scan(&due, &newer); err != nil || due != 0 || newer <= revision {
+		if err := f.system.Read().QueryRow(`SELECT next_due_ms,revision FROM raven_account_service_schedule WHERE account_id=? AND service='contacts'`, id).Scan(&due, &newer); err != nil || due != 0 || newer <= revision {
 			t.Fatal("toggle did not durably wake contacts", due, newer, err)
 		}
 	}
@@ -177,7 +177,7 @@ func TestUserContactServiceSetupSaveFailureAndWakeFailureAreDistinct(t *testing.
 	if err := f.accountStore.ValidateContactServices(t.Context(), before); err != nil {
 		t.Fatal("failed connection saved settings", err)
 	}
-	if _, err := f.system.Write().Exec(`CREATE TRIGGER reject_contact_settings_wake BEFORE INSERT ON gofer_account_service_schedule BEGIN SELECT RAISE(ABORT,'synthetic wake failure'); END`); err != nil {
+	if _, err := f.system.Write().Exec(`CREATE TRIGGER reject_contact_settings_wake BEFORE INSERT ON raven_account_service_schedule BEGIN SELECT RAISE(ABORT,'synthetic wake failure'); END`); err != nil {
 		t.Fatal(err)
 	}
 	form.Del("password")

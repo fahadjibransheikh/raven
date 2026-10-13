@@ -455,7 +455,7 @@ func migrationHasLayoutIdentity(ctx context.Context, path string) (present bool,
 		return false, err
 	}
 	defer func() { err = errors.Join(err, db.Close()) }()
-	err = db.Read().QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM sqlite_schema WHERE name='gofer_storage_layout')`).Scan(&present)
+	err = db.Read().QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM sqlite_schema WHERE name IN (`+TableNameList("raven_storage_layout")+`))`).Scan(&present)
 	return present, err
 }
 
@@ -477,7 +477,7 @@ func migrationWriteLayoutIdentity(ctx context.Context, path string, layout UserS
 	if _, err := tx.ExecContext(ctx, migrationLayoutSchema); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `INSERT INTO gofer_storage_layout(singleton,layout_version,layout_id,manifest_digest) VALUES(1,1,?,?)`, layout.ID, digest); err != nil {
+	if _, err := tx.ExecContext(ctx, `INSERT INTO raven_storage_layout(singleton,layout_version,layout_id,manifest_digest) VALUES(1,1,?,?)`, layout.ID, digest); err != nil {
 		return err
 	}
 	return tx.Commit()
@@ -527,6 +527,8 @@ func migrationPublicationUsers(ctx context.Context, directory string) (digest st
 		return "", 0, 0, err
 	}
 	hash := sha256.New()
+	// Digest label recorded in storage-migration evidence; it keeps the name from
+	// before the rename so published layouts still verify.
 	migrationDigestFields(hash, "gofer-publication-users-v1")
 	for _, entry := range entries {
 		if err := ctx.Err(); err != nil {

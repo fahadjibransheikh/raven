@@ -387,7 +387,7 @@ func TestUserCalendarDiscoveryHTTPBlockedProviderEvictionAndAuthorityChanges(t *
 				}
 			}
 			if change == "account" {
-				if _, err := f.system.Write().Exec(`UPDATE gofer_account_directory SET state='deleting' WHERE account_id=?`, f.accounts["alice"].ID); err != nil {
+				if _, err := f.system.Write().Exec(`UPDATE raven_account_directory SET state='deleting' WHERE account_id=?`, f.accounts["alice"].ID); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -529,7 +529,7 @@ func TestUserCalendarDiscoveryHTTPWriterWaitRejectsChangedAuthorization(t *testi
 		}
 		// Reproduce a changed durable central grant after provider reads, while
 		// the caller is still waiting for its local publication transaction.
-		if _, err := f.system.Write().Exec(`UPDATE gofer_mailbox_credentials SET revision=revision+1 WHERE account_id=?`, f.accounts["alice"].ID); err != nil {
+		if _, err := f.system.Write().Exec(`UPDATE raven_mailbox_credentials SET revision=revision+1 WHERE account_id=?`, f.accounts["alice"].ID); err != nil {
 			return err
 		}
 		if err := tx.Commit(); err != nil {

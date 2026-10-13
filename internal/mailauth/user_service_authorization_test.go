@@ -299,7 +299,7 @@ func TestUserCalendarGrantEnsureUsesCachedTokenOrScopedRefresh(t *testing.T) {
 				_ = json.NewEncoder(w).Encode(map[string]any{"access_token": "fresh", "token_type": "Bearer", "expires_in": 3600, "scope": tc.granted})
 			}))
 			f.grant(t, tc.key, "cached", "refresh", tc.expired, tc.granted)
-			if _, err := f.system.Write().Exec(`UPDATE gofer_mailbox_credentials SET scopes=? WHERE account_id=?`, tc.cached, f.ids[tc.key]); err != nil {
+			if _, err := f.system.Write().Exec(`UPDATE raven_mailbox_credentials SET scopes=? WHERE account_id=?`, tc.cached, f.ids[tc.key]); err != nil {
 				t.Fatal(err)
 			}
 			proof, err := f.service.SnapshotCalendarAuthorization(t.Context(), "alice", f.ids[tc.key], tc.provider, true)

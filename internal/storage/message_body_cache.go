@@ -93,7 +93,7 @@ func (db *DB) SaveMessageBodyCache(ctx context.Context, id int64, accountID stri
 	}
 	normalized := mailmessage.NormalizeMessageID(rawID)
 	if normalized == "" {
-		normalized = fmt.Sprintf("local-%d@gofer.local", id)
+		normalized = mailmessage.LocalID(id)
 	}
 	date := time.Now().UTC()
 	if received.Valid {

@@ -268,7 +268,7 @@ func TestUserIMAPControlsSettingsAtomicOwnedModesAndEmailToggle(t *testing.T) {
 func (f *userStorageFixture) nextPoll(t *testing.T, owner string) time.Time {
 	t.Helper()
 	var milliseconds int64
-	if err := f.system.Read().QueryRow("SELECT next_due_ms FROM gofer_account_poll_schedule WHERE account_id=?", f.accounts[owner].ID).Scan(&milliseconds); err != nil {
+	if err := f.system.Read().QueryRow("SELECT next_due_ms FROM raven_account_poll_schedule WHERE account_id=?", f.accounts[owner].ID).Scan(&milliseconds); err != nil {
 		t.Fatal(err)
 	}
 	return time.UnixMilli(milliseconds)
@@ -444,14 +444,14 @@ func TestUserGmailActivePollingIsStartedByOwnedHTTPEventStream(t *testing.T) {
 	_ = openUserEventStream(t, f, "alice")
 	waitUserIMAP(t, func() bool {
 		var count int
-		err := f.system.Read().QueryRow(`SELECT COUNT(*) FROM gofer_account_active_poll WHERE account_id=? AND last_attempt_ns>0`, f.accounts["alice"].ID).Scan(&count)
+		err := f.system.Read().QueryRow(`SELECT COUNT(*) FROM raven_account_active_poll WHERE account_id=? AND last_attempt_ns>0`, f.accounts["alice"].ID).Scan(&count)
 		if err != nil {
 			t.Fatal(err)
 		}
 		return count == 1
 	})
 	var count int
-	if err := f.system.Read().QueryRow(`SELECT COUNT(*) FROM gofer_account_active_poll WHERE account_id=?`, f.accounts["bob"].ID).Scan(&count); err != nil || count != 0 {
+	if err := f.system.Read().QueryRow(`SELECT COUNT(*) FROM raven_account_active_poll WHERE account_id=?`, f.accounts["bob"].ID).Scan(&count); err != nil || count != 0 {
 		t.Fatalf("idle owner's active schedule: %d %v", count, err)
 	}
 }

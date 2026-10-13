@@ -63,10 +63,10 @@ func TestUserCalendarControlsHTTPSelectionVisibilityAndEnablement(t *testing.T) 
 		}
 	}
 	var revision int
-	if err := f.system.Read().QueryRow(`SELECT revision FROM gofer_account_service_schedule WHERE account_id=? AND service='calendar'`, alice).Scan(&revision); err != nil || revision != 3 {
+	if err := f.system.Read().QueryRow(`SELECT revision FROM raven_account_service_schedule WHERE account_id=? AND service='calendar'`, alice).Scan(&revision); err != nil || revision != 3 {
 		t.Fatal("calendar scheduling hint", revision, err)
 	}
-	if _, err := f.system.Write().Exec(`CREATE TRIGGER fail_calendar_wake BEFORE UPDATE ON gofer_account_service_schedule WHEN NEW.service='calendar' BEGIN SELECT RAISE(ABORT,'synthetic wake fault'); END`); err != nil {
+	if _, err := f.system.Write().Exec(`CREATE TRIGGER fail_calendar_wake BEFORE UPDATE ON raven_account_service_schedule WHEN NEW.service='calendar' BEGIN SELECT RAISE(ABORT,'synthetic wake fault'); END`); err != nil {
 		t.Fatal(err)
 	}
 	if response := f.request("alice", "POST", "/api/accounts/"+alice+"/calendar/sources", ""); response.Code != 200 {

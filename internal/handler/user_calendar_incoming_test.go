@@ -379,7 +379,7 @@ func TestUserCalendarIncomingWorkerUsesRetryDeadline(t *testing.T) {
 	c := f.seed(t, "ACCEPTED", time.Now().Add(-time.Hour), true)
 	f.afterWrite = func() { f.missingRead = true }
 	f.exec(t, `UPDATE calendar_sync_state SET next_attempt_at=datetime('now','+1 day') WHERE source_id='same-source'`)
-	if _, err := f.system.Write().Exec(`INSERT INTO gofer_account_service_schedule(account_id,service,next_due_ms,revision) VALUES(?,'calendar',?,1) ON CONFLICT(account_id,service) DO UPDATE SET next_due_ms=excluded.next_due_ms`, c.AccountID, time.Now().Add(-time.Second).UnixMilli()); err != nil {
+	if _, err := f.system.Write().Exec(`INSERT INTO raven_account_service_schedule(account_id,service,next_due_ms,revision) VALUES(?,'calendar',?,1) ON CONFLICT(account_id,service) DO UPDATE SET next_due_ms=excluded.next_due_ms`, c.AccountID, time.Now().Add(-time.Second).UnixMilli()); err != nil {
 		t.Fatal(err)
 	}
 	w := &userCalendarWorkers{h: f.h, options: UserCalendarSyncOptions{ScanInterval: time.Hour, RecoveryInterval: time.Hour}, wake: make(chan struct{}, 1)}
@@ -388,7 +388,7 @@ func TestUserCalendarIncomingWorkerUsesRetryDeadline(t *testing.T) {
 		t.Fatal("scheduled incoming work missing")
 	}
 	var due int64
-	if err := f.system.Read().QueryRow(`SELECT next_due_ms FROM gofer_account_service_schedule WHERE account_id=? AND service='calendar'`, c.AccountID).Scan(&due); err != nil {
+	if err := f.system.Read().QueryRow(`SELECT next_due_ms FROM raven_account_service_schedule WHERE account_id=? AND service='calendar'`, c.AccountID).Scan(&due); err != nil {
 		t.Fatal(err)
 	}
 	if at := time.UnixMilli(due); at.Before(time.Now().Add(time.Minute)) || at.After(time.Now().Add(3*time.Minute)) {

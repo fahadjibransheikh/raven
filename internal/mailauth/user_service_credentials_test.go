@@ -105,7 +105,7 @@ func TestUserServiceCredentialsGraphRefreshPreservesMailboxAndRequestedScope(t *
 			}))
 			// A write grant is known, while the cached mailbox token is mail-only.
 			f.grant(t, "outlook", "mailbox-access", "original-refresh", false, strings.Join(microsoftGraphMailScopes(), " "))
-			if _, err := f.system.Write().Exec(`UPDATE gofer_mailbox_credentials SET granted_scopes=? WHERE account_id=?`, microsoftGraphCalendarWriteScope, f.ids["outlook"]); err != nil {
+			if _, err := f.system.Write().Exec(`UPDATE raven_mailbox_credentials SET granted_scopes=? WHERE account_id=?`, microsoftGraphCalendarWriteScope, f.ids["outlook"]); err != nil {
 				t.Fatal(err)
 			}
 			bound := f.service.ContactsAccount("alice", f.ids["outlook"])
@@ -259,7 +259,7 @@ func TestUserServiceCredentialsRejectLateGraphRotation(t *testing.T) {
 				t.Fatal("late service token/rotation escaped")
 			}
 			var revision int64
-			if err := f.system.Read().QueryRow(`SELECT revision FROM gofer_mailbox_credentials WHERE account_id=?`, f.ids["outlook"]).Scan(&revision); err != nil {
+			if err := f.system.Read().QueryRow(`SELECT revision FROM raven_mailbox_credentials WHERE account_id=?`, f.ids["outlook"]).Scan(&revision); err != nil {
 				t.Fatal(err)
 			}
 			expected := int64(1)
@@ -281,7 +281,7 @@ func TestUserServiceCredentialsOlderSchemaKeepsOnlyRecordedGrants(t *testing.T) 
 				scopes += " " + microsoftGraphCalendarWriteScope
 			}
 			f.grant(t, "outlook", "cached", "refresh", false, scopes)
-			if _, err := f.system.Write().Exec(`ALTER TABLE gofer_mailbox_credentials DROP COLUMN granted_scopes`); err != nil {
+			if _, err := f.system.Write().Exec(`ALTER TABLE raven_mailbox_credentials DROP COLUMN granted_scopes`); err != nil {
 				t.Fatal(err)
 			}
 			if _, err := f.system.Write().Exec(`UPDATE users SET status='disabled' WHERE id='alice'`); err != nil {
@@ -447,7 +447,7 @@ func TestUserServiceCredentialsFailedPublicationCannotLeakTokenOrRotation(t *tes
 		_ = json.NewEncoder(w).Encode(map[string]any{"access_token": "fresh-contact", "refresh_token": "rotated", "expires_in": 3600, "scope": "Contacts.ReadWrite"})
 	}))
 	f.grant(t, "outlook", "mailbox-before", "refresh-before", false, strings.Join(microsoftGraphMailScopes(), " "))
-	if _, err := f.system.Write().Exec(`CREATE TRIGGER fail_service_rotation BEFORE UPDATE ON gofer_mailbox_credentials BEGIN SELECT RAISE(ABORT,'fixture publication failure');END`); err != nil {
+	if _, err := f.system.Write().Exec(`CREATE TRIGGER fail_service_rotation BEFORE UPDATE ON raven_mailbox_credentials BEGIN SELECT RAISE(ABORT,'fixture publication failure');END`); err != nil {
 		t.Fatal(err)
 	}
 	if token, err := f.service.GetMicrosoftGraphContactsTokenForUser(t.Context(), "alice", f.ids["outlook"]); err == nil || token != "" {

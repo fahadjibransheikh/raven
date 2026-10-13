@@ -101,7 +101,7 @@ func TestUserCalendarSourceSnapshotRejectsChangedAuthority(t *testing.T) {
 				case "dav-config":
 					_, err = db.Write().Exec(`UPDATE account_caldav_configs SET base_url='https://replaced.test/' WHERE account_id=?`, owners["alice"].ID)
 				case "central-account":
-					_, err = system.Write().Exec(`UPDATE gofer_account_directory SET state='deleting' WHERE account_id=?`, owners["alice"].ID)
+					_, err = system.Write().Exec(`UPDATE raven_account_directory SET state='deleting' WHERE account_id=?`, owners["alice"].ID)
 				case "owner":
 					_, err = system.Write().Exec(`UPDATE users SET status='disabled' WHERE id='alice'`)
 				}
@@ -215,7 +215,7 @@ func TestUserCalendarEventSnapshotRejectsLateChanges(t *testing.T) {
 				case "account-email":
 					_, err = db.Write().Exec(`UPDATE accounts SET email_address='changed@example.com' WHERE id=?`, owners["alice"].ID)
 				case "central-account":
-					_, err = system.Write().Exec(`UPDATE gofer_account_directory SET state='deleting' WHERE account_id=?`, owners["alice"].ID)
+					_, err = system.Write().Exec(`UPDATE raven_account_directory SET state='deleting' WHERE account_id=?`, owners["alice"].ID)
 				case "owner-disabled":
 					_, err = system.Write().Exec(`UPDATE users SET status='disabled' WHERE id='alice'`)
 				}

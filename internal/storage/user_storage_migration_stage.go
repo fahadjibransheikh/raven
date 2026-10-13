@@ -235,17 +235,17 @@ func stageUserStorageMigration(ctx context.Context, source *DB, directory string
 			return err
 		}
 		defer tx.Rollback()
-		if _, err := tx.ExecContext(ctx, `INSERT INTO main.gofer_account_directory(account_id,user_id,state,created_at,updated_at)
+		if _, err := tx.ExecContext(ctx, `INSERT INTO main.raven_account_directory(account_id,user_id,state,created_at,updated_at)
  SELECT id,user_id,CASE WHEN coalesce(is_deleting,0)<>0 THEN 'deleting' ELSE 'active' END,created_at,updated_at FROM migration_source.accounts;
- INSERT INTO main.gofer_account_poll_schedule(account_id) SELECT account_id FROM main.gofer_account_directory WHERE state='active';
- INSERT INTO main.gofer_account_active_poll(account_id) SELECT account_id FROM main.gofer_account_directory WHERE state='active';
- INSERT INTO main.gofer_account_service_schedule(account_id,service) SELECT account_id,'contacts' FROM main.gofer_account_directory WHERE state='active';
- INSERT INTO main.gofer_account_service_schedule(account_id,service) SELECT account_id,'calendar' FROM main.gofer_account_directory WHERE state='active';
- INSERT INTO main.gofer_contact_queue_schedule(user_id) SELECT id FROM main.users WHERE user_type='webmail' AND is_admin=0;`); err != nil {
+ INSERT INTO main.raven_account_poll_schedule(account_id) SELECT account_id FROM main.raven_account_directory WHERE state='active';
+ INSERT INTO main.raven_account_active_poll(account_id) SELECT account_id FROM main.raven_account_directory WHERE state='active';
+ INSERT INTO main.raven_account_service_schedule(account_id,service) SELECT account_id,'contacts' FROM main.raven_account_directory WHERE state='active';
+ INSERT INTO main.raven_account_service_schedule(account_id,service) SELECT account_id,'calendar' FROM main.raven_account_directory WHERE state='active';
+ INSERT INTO main.raven_contact_queue_schedule(user_id) SELECT id FROM main.users WHERE user_type='webmail' AND is_admin=0;`); err != nil {
 			return err
 		}
 		var accounts, owners int64
-		if err := tx.QueryRowContext(ctx, `SELECT (SELECT count(*) FROM gofer_account_directory),(SELECT count(*) FROM gofer_user_store_directory WHERE state='present')`).Scan(&accounts, &owners); err != nil {
+		if err := tx.QueryRowContext(ctx, `SELECT (SELECT count(*) FROM raven_account_directory),(SELECT count(*) FROM raven_user_store_directory WHERE state='present')`).Scan(&accounts, &owners); err != nil {
 			return err
 		}
 		if accounts != report.Accounts || owners != report.Owners {
@@ -270,7 +270,7 @@ func migrationBuildAvatarInterests(ctx context.Context, tx *sql.Tx) error {
 	// normalization and account eligibility, retaining all original cache rows.
 	// The temporary expected set keeps verification bounded by SQLite, not an
 	// in-memory set of every user/sender pair.
-	if _, err := tx.ExecContext(ctx, `CREATE TEMP TABLE gofer_migration_avatar_expected(email_hash TEXT,user_id TEXT,PRIMARY KEY(email_hash,user_id)) WITHOUT ROWID`); err != nil {
+	if _, err := tx.ExecContext(ctx, `CREATE TEMP TABLE raven_migration_avatar_expected(email_hash TEXT,user_id TEXT,PRIMARY KEY(email_hash,user_id)) WITHOUT ROWID`); err != nil {
 		return err
 	}
 	rows, err := tx.QueryContext(ctx, `SELECT DISTINCT a.user_id,lower(trim(m.from_email)) email
@@ -296,11 +296,11 @@ func migrationBuildAvatarInterests(ctx context.Context, tx *sql.Tx) error {
 			rows.Close()
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO main.gofer_avatar_interests(email_hash,user_id) VALUES(?,?)`, hash, owner); err != nil {
+		if _, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO main.raven_avatar_interests(email_hash,user_id) VALUES(?,?)`, hash, owner); err != nil {
 			rows.Close()
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO temp.gofer_migration_avatar_expected(email_hash,user_id) VALUES(?,?)`, hash, owner); err != nil {
+		if _, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO temp.raven_migration_avatar_expected(email_hash,user_id) VALUES(?,?)`, hash, owner); err != nil {
 			rows.Close()
 			return err
 		}
@@ -308,7 +308,7 @@ func migrationBuildAvatarInterests(ctx context.Context, tx *sql.Tx) error {
 	if err := errors.Join(rows.Err(), rows.Close()); err != nil {
 		return err
 	}
-	for _, pair := range [][2]string{{"main.gofer_avatar_interests", "temp.gofer_migration_avatar_expected"}, {"temp.gofer_migration_avatar_expected", "main.gofer_avatar_interests"}} {
+	for _, pair := range [][2]string{{"main.raven_avatar_interests", "temp.raven_migration_avatar_expected"}, {"temp.raven_migration_avatar_expected", "main.raven_avatar_interests"}} {
 		var invalid bool
 		if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT email_hash,user_id FROM `+pair[0]+` EXCEPT SELECT email_hash,user_id FROM `+pair[1]+`)`).Scan(&invalid); err != nil {
 			return err
@@ -317,7 +317,7 @@ func migrationBuildAvatarInterests(ctx context.Context, tx *sql.Tx) error {
 			return errors.New("migration avatar discovery parity failed")
 		}
 	}
-	_, err = tx.ExecContext(ctx, `DROP TABLE temp.gofer_migration_avatar_expected`)
+	_, err = tx.ExecContext(ctx, `DROP TABLE temp.raven_migration_avatar_expected`)
 	return err
 }
 

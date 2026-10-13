@@ -348,7 +348,7 @@ func officeObserveBackground(ctx context.Context, layout, path string, dataset *
 		queues.ObservedUnixMS = time.Now().UnixMilli()
 		queues.IdleWatchers = dataset.Fixture.activity.idleCount(owner)
 		if central != nil {
-			err := central.QueryRowContext(ctx, `SELECT COALESCE(p.next_due_ms,0) FROM gofer_account_directory d LEFT JOIN gofer_account_poll_schedule p ON p.account_id=d.account_id WHERE d.account_id=? AND d.user_id=?`, dataset.Accounts[owner], owner).Scan(&queues.NextPollUnixMS)
+			err := central.QueryRowContext(ctx, `SELECT COALESCE(p.next_due_ms,0) FROM raven_account_directory d LEFT JOIN raven_account_poll_schedule p ON p.account_id=d.account_id WHERE d.account_id=? AND d.user_id=?`, dataset.Accounts[owner], owner).Scan(&queues.NextPollUnixMS)
 			if err != nil {
 				return result, fmt.Errorf("observe %s: %w", owner, err)
 			}

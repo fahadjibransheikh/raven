@@ -406,7 +406,7 @@ func TestUserGmailHistoryRecoveryAndMetadataRetry(t *testing.T) {
 	})
 	var next time.Time
 	var due int64
-	if err := f.system.Read().QueryRow(`SELECT next_due_ms FROM gofer_account_poll_schedule WHERE account_id=?`, f.ids["alice"]).Scan(&due); err != nil {
+	if err := f.system.Read().QueryRow(`SELECT next_due_ms FROM raven_account_poll_schedule WHERE account_id=?`, f.ids["alice"]).Scan(&due); err != nil {
 		t.Fatal(err)
 	}
 	f.local(t, "alice", func(db *storage.DB) error {
@@ -670,7 +670,7 @@ func TestUserGmailDeletionCancelsBodyAndCleansCredentials(t *testing.T) {
 		t.Fatal("deleted body fetch succeeded")
 	}
 	var count int
-	if err := f.system.Read().QueryRow(`SELECT COUNT(*) FROM gofer_mailbox_credentials WHERE account_id=?`, f.ids["alice"]).Scan(&count); err != nil || count != 0 {
+	if err := f.system.Read().QueryRow(`SELECT COUNT(*) FROM raven_mailbox_credentials WHERE account_id=?`, f.ids["alice"]).Scan(&count); err != nil || count != 0 {
 		t.Fatalf("deleted grant remains: %d %v", count, err)
 	}
 	if _, err := os.Stat(filepath.Join(f.blobs, f.ids["alice"])); !os.IsNotExist(err) {

@@ -70,7 +70,7 @@ func TestAccountRoutingUsesExplicitOwnershipAndCentralPolicyScope(t *testing.T) 
 	if err := r.WithAccount(t.Context(), "missing", func(*DB, string) error { t.Error("missing callback invoked"); return nil }); !errors.Is(err, ErrAccountRoute) {
 		t.Fatal(err)
 	}
-	if _, err := system.Write().Exec(`UPDATE gofer_account_directory SET user_id = 'bob' WHERE account_id = ?`, accounts["alice"].AccountID); err == nil {
+	if _, err := system.Write().Exec(`UPDATE raven_account_directory SET user_id = 'bob' WHERE account_id = ?`, accounts["alice"].AccountID); err == nil {
 		t.Fatal("ownership changed")
 	}
 	var count int
@@ -88,7 +88,7 @@ func TestAccountRoutingCreationRecoversCommittedLocalRow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := system.Write().Exec(`CREATE TRIGGER reject_activation BEFORE UPDATE OF state ON gofer_account_directory
+	if _, err := system.Write().Exec(`CREATE TRIGGER reject_activation BEFORE UPDATE OF state ON raven_account_directory
 		WHEN NEW.state = 'active' BEGIN SELECT RAISE(ABORT, 'simulated cutover failure'); END`); err != nil {
 		t.Fatal(err)
 	}
@@ -416,7 +416,7 @@ func TestAccountRoutingNeverReplacesMissingHistoricalStore(t *testing.T) {
 					t.Fatal("lost store reported deleted", err)
 				}
 				var current AccountRouteState
-				if err := system.Read().QueryRow(`SELECT state FROM gofer_account_directory WHERE account_id=?`, entry.AccountID).Scan(&current); err != nil || current != AccountDeleting {
+				if err := system.Read().QueryRow(`SELECT state FROM raven_account_directory WHERE account_id=?`, entry.AccountID).Scan(&current); err != nil || current != AccountDeleting {
 					t.Fatal("failed deletion erased recoverable intent", current, err)
 				}
 			}

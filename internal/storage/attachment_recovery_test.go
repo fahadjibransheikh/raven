@@ -109,7 +109,7 @@ func TestUserAttachmentLookupAndPathRollbackTogether(t *testing.T) {
 
 func TestUserAttachmentPendingDraftOnlyAllowsItsSavedMIME(t *testing.T) {
 	db := seedAttachmentRecovery(t)
-	if _, err := db.Write().Exec(`UPDATE messages SET raw_path='current-immutable-mime'; INSERT INTO gofer_provider_draft_states(account_id,draft_key,provider,mailbox_subject,local_message_id,folder_id,local_revision) VALUES('acc','<label@test.invalid>','gmail','subject',1,'inbox','newer'); INSERT INTO gofer_provider_draft_operations(account_id,draft_key,kind,revision_token,mime_data) VALUES('acc','<label@test.invalid>','upsert','newer','newer')`); err != nil {
+	if _, err := db.Write().Exec(`UPDATE messages SET raw_path='current-immutable-mime'; INSERT INTO raven_provider_draft_states(account_id,draft_key,provider,mailbox_subject,local_message_id,folder_id,local_revision) VALUES('acc','<label@test.invalid>','gmail','subject',1,'inbox','newer'); INSERT INTO raven_provider_draft_operations(account_id,draft_key,kind,revision_token,mime_data) VALUES('acc','<label@test.invalid>','upsert','newer','newer')`); err != nil {
 		t.Fatal(err)
 	}
 	s := attachmentSnapshot(t, db)

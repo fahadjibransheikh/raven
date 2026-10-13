@@ -171,7 +171,7 @@ func TestUserCalendarReplyFollowupWriterWaitAndTriggerFaults(t *testing.T) {
 				case "disabled":
 					_, err = f.system.Write().Exec(`UPDATE users SET status='disabled' WHERE id='alice'`)
 				case "deleting":
-					_, err = f.system.Write().Exec(`UPDATE gofer_account_directory SET state='deleting' WHERE account_id=?`, authority.proof.Account)
+					_, err = f.system.Write().Exec(`UPDATE raven_account_directory SET state='deleting' WHERE account_id=?`, authority.proof.Account)
 				case "trigger-ignore":
 					_, err = tx.Exec(`CREATE TRIGGER interfere BEFORE UPDATE OF state ON calendar_reply_jobs BEGIN SELECT RAISE(IGNORE); END`)
 				case "trigger-state":

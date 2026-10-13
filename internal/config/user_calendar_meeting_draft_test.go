@@ -456,7 +456,7 @@ func TestUserCalendarMeetingDraftWriterWaitAndTriggerRollback(t *testing.T) {
 						case "owner":
 							_, err = system.Write().Exec(`UPDATE users SET status='disabled' WHERE id='alice'`)
 						case "account":
-							_, err = system.Write().Exec(`UPDATE gofer_account_directory SET state='deleting' WHERE account_id=?`, source.Source().AccountID)
+							_, err = system.Write().Exec(`UPDATE raven_account_directory SET state='deleting' WHERE account_id=?`, source.Source().AccountID)
 						case "settings":
 							_, err = tx.Exec(`UPDATE accounts SET provider_account_id='replaced'`)
 						case "target":

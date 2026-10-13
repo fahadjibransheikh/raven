@@ -214,7 +214,7 @@ func runMutatingCommand(ctx context.Context, databasePath string, action func(*S
 		return fmt.Errorf("open database: %w", err)
 	}
 	var owned bool
-	if err := probe.Read().QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM sqlite_schema WHERE name IN ('gofer_storage_layout','gofer_user_store','gofer_account_directory'))`).Scan(&owned); err != nil {
+	if err := probe.Read().QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM sqlite_schema WHERE name IN (`+storage.TableNameList("raven_storage_layout", "raven_user_store", "raven_account_directory")+`))`).Scan(&owned); err != nil {
 		probe.Close()
 		return err
 	}

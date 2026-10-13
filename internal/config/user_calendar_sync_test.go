@@ -234,7 +234,7 @@ func TestUserCalendarSyncWriterWaitRejectsChangedAuthorityAndCache(t *testing.T)
 				case "owner":
 					_, err = system.Write().Exec(`UPDATE users SET status='disabled' WHERE id='alice'`)
 				case "account":
-					_, err = system.Write().Exec(`UPDATE gofer_account_directory SET state='deleting' WHERE account_id=?`, owners["alice"].ID)
+					_, err = system.Write().Exec(`UPDATE raven_account_directory SET state='deleting' WHERE account_id=?`, owners["alice"].ID)
 				case "connection":
 					_, err = tx.Exec(`UPDATE accounts SET username='edited' WHERE id=?`, owners["alice"].ID)
 				case "caldav":

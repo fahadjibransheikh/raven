@@ -64,17 +64,17 @@ func ImportUserStorageMigrationCredentials(ctx context.Context, tx *sql.Tx, key 
 	if _, err := codec.mailboxCredentialAEAD(); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `SAVEPOINT gofer_migration_credentials`); err != nil {
+	if _, err := tx.ExecContext(ctx, `SAVEPOINT raven_migration_credentials`); err != nil {
 		return err
 	}
 	defer func() {
 		cleanup, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		if err != nil {
-			_, rollbackErr := tx.ExecContext(cleanup, `ROLLBACK TO gofer_migration_credentials`)
+			_, rollbackErr := tx.ExecContext(cleanup, `ROLLBACK TO raven_migration_credentials`)
 			err = errors.Join(err, rollbackErr)
 		}
-		_, releaseErr := tx.ExecContext(cleanup, `RELEASE gofer_migration_credentials`)
+		_, releaseErr := tx.ExecContext(cleanup, `RELEASE raven_migration_credentials`)
 		err = errors.Join(err, releaseErr)
 	}()
 	if err := requireFreshCredentialMigration(ctx, tx); err != nil {
@@ -105,7 +105,7 @@ func ImportUserStorageMigrationCredentials(ctx context.Context, tx *sql.Tx, key 
 		}
 		// Metadata stays in SQLite so DATETIME storage classes/representations,
 		// NULL expiry, token type and recorded scopes are preserved exactly.
-		if _, err := tx.ExecContext(ctx, `INSERT INTO main.gofer_mailbox_credentials(
+		if _, err := tx.ExecContext(ctx, `INSERT INTO main.raven_mailbox_credentials(
  id,account_id,user_id,provider,provider_account_id,access_token_ciphertext,refresh_token_ciphertext,key_version,
  token_type,expires_at,scopes,granted_scopes,revision,created_at,updated_at)
  SELECT id,account_id,?,provider,provider_account_id,?,?,2,token_type,expires_at,scopes,scopes,1,created_at,updated_at
@@ -129,7 +129,7 @@ func ImportUserStorageMigrationCredentials(ctx context.Context, tx *sql.Tx, key 
 func requireFreshCredentialMigration(ctx context.Context, tx *sql.Tx) error {
 	var invalid bool
 	if err := tx.QueryRowContext(ctx, `SELECT
- EXISTS(SELECT 1 FROM main.sqlite_schema WHERE name IN ('gofer_mailbox_credentials','gofer_user_store'))
+ EXISTS(SELECT 1 FROM main.sqlite_schema WHERE name IN (`+storage.TableNameList("raven_mailbox_credentials", "raven_user_store")+`))
  OR EXISTS(SELECT 1 FROM main.accounts) OR EXISTS(SELECT 1 FROM main.oauth_accounts)`).Scan(&invalid); err != nil {
 		return err
 	}
@@ -142,7 +142,7 @@ func requireFreshCredentialMigration(ctx context.Context, tx *sql.Tx) error {
 	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(
  SELECT 1 FROM migration_source.oauth_accounts c LEFT JOIN migration_source.accounts a ON a.id=c.account_id
  LEFT JOIN migration_source.users original ON original.id=a.user_id
- LEFT JOIN main.users u ON u.id=a.user_id LEFT JOIN main.gofer_account_directory d ON d.account_id=a.id
+ LEFT JOIN main.users u ON u.id=a.user_id LEFT JOIN main.raven_account_directory d ON d.account_id=a.id
  WHERE a.id IS NULL OR original.id IS NULL OR u.id IS NULL OR d.account_id IS NULL
  OR original.user_type<>'webmail' OR original.is_admin<>0 OR u.user_type<>'webmail' OR u.is_admin<>0
  OR u.status IS NOT original.status OR u.deletion_pending IS NOT original.deletion_pending
@@ -197,21 +197,21 @@ func migrationCredentialTokens(codec *Service, row legacyOAuthCredential) (strin
 
 func verifyCredentialMigration(ctx context.Context, tx *sql.Tx, codec *Service) error {
 	var sourceCount, destinationCount int64
-	if err := tx.QueryRowContext(ctx, `SELECT (SELECT count(*) FROM migration_source.oauth_accounts),(SELECT count(*) FROM main.gofer_mailbox_credentials)`).Scan(&sourceCount, &destinationCount); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT (SELECT count(*) FROM migration_source.oauth_accounts),(SELECT count(*) FROM main.raven_mailbox_credentials)`).Scan(&sourceCount, &destinationCount); err != nil {
 		return err
 	}
 	if sourceCount != destinationCount {
 		return errors.New("mailbox credential migration row parity failed")
 	}
 	var invalid bool
-	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM main.gofer_mailbox_credentials c JOIN migration_source.oauth_accounts original ON original.id=c.id
+	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM main.raven_mailbox_credentials c JOIN migration_source.oauth_accounts original ON original.id=c.id
  WHERE original.key_version=2 AND (c.access_token_ciphertext IS NOT original.access_token_ciphertext OR c.refresh_token_ciphertext IS NOT original.refresh_token_ciphertext))`).Scan(&invalid); err != nil {
 		return err
 	}
 	if invalid {
 		return errors.New("current mailbox ciphertext parity failed")
 	}
-	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM main.gofer_mailbox_credentials c JOIN migration_source.accounts a ON a.id=c.account_id
+	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM main.raven_mailbox_credentials c JOIN migration_source.accounts a ON a.id=c.account_id
  WHERE c.user_id IS NOT a.user_id OR c.key_version<>2 OR c.revision<>1
  OR c.granted_scopes IS NOT c.scopes)`).Scan(&invalid); err != nil {
 		return err
@@ -228,7 +228,7 @@ func verifyCredentialMigration(ctx context.Context, tx *sql.Tx, codec *Service) 
 		projection += `typeof("` + column + `"),"` + column + `" COLLATE BINARY`
 	}
 	source := `SELECT ` + projection + ` FROM migration_source.oauth_accounts`
-	destination := `SELECT ` + projection + ` FROM main.gofer_mailbox_credentials`
+	destination := `SELECT ` + projection + ` FROM main.raven_mailbox_credentials`
 	for _, pair := range [][2]string{{source, destination}, {destination, source}} {
 		if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT * FROM (`+pair[0]+` EXCEPT `+pair[1]+`))`).Scan(&invalid); err != nil {
 			return err
@@ -240,7 +240,7 @@ func verifyCredentialMigration(ctx context.Context, tx *sql.Tx, codec *Service) 
 	rows, err := tx.QueryContext(ctx, `SELECT c.id,c.account_id,c.provider,c.provider_account_id,
  c.access_token_ciphertext,c.refresh_token_ciphertext,original.access_token,original.refresh_token,
  original.access_token_ciphertext,original.refresh_token_ciphertext,original.key_version
- FROM main.gofer_mailbox_credentials c JOIN migration_source.oauth_accounts original ON original.id=c.id`)
+ FROM main.raven_mailbox_credentials c JOIN migration_source.oauth_accounts original ON original.id=c.id`)
 	if err != nil {
 		return err
 	}
@@ -279,7 +279,7 @@ func verifyCredentialMigration(ctx context.Context, tx *sql.Tx, codec *Service) 
 
 // Retain the runtime constraints and lifecycle guards, not only today's rows.
 func verifyMigrationCredentialSchema(ctx context.Context, tx *sql.Tx) error {
-	expected := map[string]string{"gofer_mailbox_credentials": strings.Replace(userMailboxCredentialSchema, "CREATE TABLE IF NOT EXISTS", "CREATE TABLE", 1)}
+	expected := map[string]string{"raven_mailbox_credentials": strings.Replace(userMailboxCredentialSchema, "CREATE TABLE IF NOT EXISTS", "CREATE TABLE", 1)}
 	for _, guard := range strings.Split(userMailboxCredentialGuards, "CREATE TRIGGER IF NOT EXISTS ")[1:] {
 		fields := strings.Fields(guard)
 		expected[fields[0]] = "CREATE TRIGGER " + guard
@@ -289,7 +289,7 @@ func verifyMigrationCredentialSchema(ctx context.Context, tx *sql.Tx) error {
 	}
 	for name, definition := range expected {
 		var actual string
-		if err := tx.QueryRowContext(ctx, `SELECT sql FROM main.sqlite_schema WHERE name=? AND tbl_name='gofer_mailbox_credentials' AND type IN ('table','trigger')`, name).Scan(&actual); err != nil {
+		if err := tx.QueryRowContext(ctx, `SELECT sql FROM main.sqlite_schema WHERE name=? AND tbl_name='raven_mailbox_credentials' AND type IN ('table','trigger')`, name).Scan(&actual); err != nil {
 			return errors.New("final migration mailbox schema or lifecycle guard is missing")
 		}
 		if normalize(actual) != normalize(definition) {
@@ -297,7 +297,7 @@ func verifyMigrationCredentialSchema(ctx context.Context, tx *sql.Tx) error {
 		}
 	}
 	var guards int
-	if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM main.sqlite_schema WHERE type='trigger' AND tbl_name='gofer_mailbox_credentials'`).Scan(&guards); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM main.sqlite_schema WHERE type='trigger' AND tbl_name='raven_mailbox_credentials'`).Scan(&guards); err != nil {
 		return err
 	}
 	if guards != 3 {

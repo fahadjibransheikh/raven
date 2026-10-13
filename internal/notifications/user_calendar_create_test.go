@@ -274,7 +274,7 @@ func TestUserCalendarCreateHTTPNativeRecoveryReplayAndOwnerIsolation(t *testing.
 					api.mu.Unlock()
 					// Time naturally expires a token without changing the authorization grant.
 					// Local durable replay is also permitted during a provider cooldown.
-					if _, err := f.system.Write().Exec(`UPDATE gofer_mailbox_credentials SET expires_at=datetime('now','-1 hour') WHERE account_id=?`, f.accounts[owner].ID); err != nil {
+					if _, err := f.system.Write().Exec(`UPDATE raven_mailbox_credentials SET expires_at=datetime('now','-1 hour') WHERE account_id=?`, f.accounts[owner].ID); err != nil {
 						t.Fatal(err)
 					}
 					if err := f.routing.DeferProviderRetry(t.Context(), owner, f.accounts[owner].ID, time.Now().Add(time.Hour)); err != nil {

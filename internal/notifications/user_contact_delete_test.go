@@ -337,7 +337,7 @@ func TestUserContactDeleteHTTPFailedLocalCommitRecoversRemoteNotFound(t *testing
 			if err := f.routing.WithUser(t.Context(), "alice", func(db *storage.DB) error { _, err := db.Write().Exec(`DROP TRIGGER reject_http_delete`); return err }); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := f.system.Write().Exec(`CREATE TRIGGER reject_http_delete_wake BEFORE INSERT ON gofer_contact_queue_schedule BEGIN SELECT RAISE(ABORT,'synthetic wake failure'); END`); err != nil {
+			if _, err := f.system.Write().Exec(`CREATE TRIGGER reject_http_delete_wake BEFORE INSERT ON raven_contact_queue_schedule BEGIN SELECT RAISE(ABORT,'synthetic wake failure'); END`); err != nil {
 				t.Fatal(err)
 			}
 			if response := requestContactDelete(f, "alice"); response.Code != 303 {

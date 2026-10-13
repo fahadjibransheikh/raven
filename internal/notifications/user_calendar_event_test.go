@@ -94,7 +94,7 @@ func TestUserCalendarEventHTTPDetailsCachedGrantsAndOwnerIsolation(t *testing.T)
 			if r := f.request("bob", "GET", "/api/calendar/events/same-event", ""); r.Code != 200 || !strings.Contains(r.Body.String(), "bob old") {
 				t.Fatal("selection crossed owners", r.Code, r.Body.String())
 			}
-			if _, err := f.system.Write().Exec(`UPDATE gofer_account_directory SET state='deleting' WHERE account_id=?`, f.accounts["bob"].ID); err != nil {
+			if _, err := f.system.Write().Exec(`UPDATE raven_account_directory SET state='deleting' WHERE account_id=?`, f.accounts["bob"].ID); err != nil {
 				t.Fatal(err)
 			}
 			if r := f.request("bob", "GET", "/api/calendar/events/same-event", ""); r.Code != 404 {

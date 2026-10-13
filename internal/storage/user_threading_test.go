@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	mailmessage "github.com/fahadjibransheikh/raven/internal/mail/message"
 	"os"
 	"reflect"
 	"testing"
@@ -89,7 +90,7 @@ func TestUserStartupThreadingMatchesLegacyOrderAndGrouping(t *testing.T) {
 	if len(results["bob"]) != 12 || !reflect.DeepEqual(results["alice"], results["bob"]) {
 		t.Fatal("legacy threading parity", results)
 	}
-	if results["bob"][2].parent != 1 || results["bob"][3].normalized != "local-4@gofer.local" {
+	if results["bob"][2].parent != 1 || results["bob"][3].normalized != mailmessage.LocalID(4) {
 		t.Fatal(results)
 	}
 	var idle ThreadingState
@@ -300,7 +301,7 @@ func TestUserStartupThreadingHonorsAccountDirectoryTransitions(t *testing.T) {
 			system, _, r := newAccountRoutingTest(t, 1)
 			seedStartupThreading(t, r, "alice", 4)
 			if change == "deleting" {
-				if _, err := system.Write().Exec(`UPDATE gofer_account_directory SET state='deleting' WHERE user_id='alice'`); err != nil {
+				if _, err := system.Write().Exec(`UPDATE raven_account_directory SET state='deleting' WHERE user_id='alice'`); err != nil {
 					t.Fatal(err)
 				}
 			} else {

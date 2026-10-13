@@ -206,7 +206,7 @@ func TestUserAccountStoreDeletionRemainsRetryableUntilExternalCleanup(t *testing
 
 func TestUserAccountStoreExposesInterruptedCreationForRecovery(t *testing.T) {
 	system, routing, accounts := newUserAccountTestStore(t)
-	if _, err := system.Write().Exec(`CREATE TRIGGER reject_activation BEFORE UPDATE OF state ON gofer_account_directory WHEN NEW.state = 'active' BEGIN SELECT RAISE(ABORT, 'simulated crash boundary'); END`); err != nil {
+	if _, err := system.Write().Exec(`CREATE TRIGGER reject_activation BEFORE UPDATE OF state ON raven_account_directory WHEN NEW.state = 'active' BEGIN SELECT RAISE(ABORT, 'simulated crash boundary'); END`); err != nil {
 		t.Fatal(err)
 	}
 	_, err := accounts.CreateAccount(t.Context(), "alice", secureAccountStoreTestRequest("mail@example.com"))

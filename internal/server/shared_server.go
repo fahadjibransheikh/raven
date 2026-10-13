@@ -31,7 +31,7 @@ import (
 
 // ConfiguredDatabasePath is RAVEN_DB_PATH, or the default data/raven.db. An
 // explicit path is used exactly as given. For the default, a database left by
-// an install from before the rename (data/gofer.db) is renamed into place first.
+// an install from before the rename (data/raven.db) is renamed into place first.
 func ConfiguredDatabasePath() string {
 	if dbPath := legacyenv.Get("RAVEN_DB_PATH"); dbPath != "" {
 		return dbPath

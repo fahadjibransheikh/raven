@@ -177,7 +177,7 @@ func TestUserGmailActivePollRefreshAndCooldown(t *testing.T) {
 	if f.api.count("alice", "/users/me/profile", "") != calls {
 		t.Fatal("reconnect bypassed provider cooldown")
 	}
-	if _, err := f.system.Write().Exec(`UPDATE gofer_account_provider_retry SET retry_until_ms=0 WHERE account_id=?`, f.ids["alice"]); err != nil {
+	if _, err := f.system.Write().Exec(`UPDATE raven_account_provider_retry SET retry_until_ms=0 WHERE account_id=?`, f.ids["alice"]); err != nil {
 		t.Fatal(err)
 	}
 	if err := f.routing.ResetActivePolling(t.Context(), "alice", f.ids["alice"]); err != nil {

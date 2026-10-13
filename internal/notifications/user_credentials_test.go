@@ -74,7 +74,7 @@ func TestUserMailboxCredentialLifecycleCleanup(t *testing.T) {
 		t.Fatalf("foreign blob lost: %v", err)
 	}
 	var count int
-	if err := f.system.Read().QueryRow(`SELECT COUNT(*) FROM gofer_mailbox_credentials WHERE account_id=?`, ids["alice"]).Scan(&count); err != nil || count != 0 {
+	if err := f.system.Read().QueryRow(`SELECT COUNT(*) FROM raven_mailbox_credentials WHERE account_id=?`, ids["alice"]).Scan(&count); err != nil || count != 0 {
 		t.Fatalf("deleted grant remains: %d %v", count, err)
 	}
 	if token, err := credentials.GetOAuthTokenForUser(t.Context(), "bob", ids["bob"]); err != nil || token != "bob-access" {

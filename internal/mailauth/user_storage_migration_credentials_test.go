@@ -188,7 +188,7 @@ func (f *migrationCredentialFixture) begin(t *testing.T) (*sql.Conn, *sql.Tx, []
 		conn.Close()
 	})
 	if _, err := tx.Exec(`INSERT INTO main.users SELECT * FROM migration_source.users;
- INSERT INTO main.gofer_account_directory(account_id,user_id,state) SELECT id,user_id,CASE WHEN is_deleting<>0 THEN 'deleting' ELSE 'active' END FROM migration_source.accounts`); err != nil {
+ INSERT INTO main.raven_account_directory(account_id,user_id,state) SELECT id,user_id,CASE WHEN is_deleting<>0 THEN 'deleting' ELSE 'active' END FROM migration_source.accounts`); err != nil {
 		t.Fatal(err)
 	}
 	return conn, tx, before
@@ -216,7 +216,7 @@ func TestUserStorageMigrationCredentialsAuthenticateAndPreserveOriginalBindings(
 		var expiry sql.NullString
 		var accessBytes, refreshBytes []byte
 		var version int
-		if err := f.central.Read().QueryRow(`SELECT id,provider_account_id,access_token_ciphertext,refresh_token_ciphertext,key_version,CAST(expires_at AS TEXT),scopes,granted_scopes FROM gofer_mailbox_credentials WHERE account_id=?`, account).Scan(&id, &subject, &accessBytes, &refreshBytes, &version, &expiry, &scopes, &granted); err != nil {
+		if err := f.central.Read().QueryRow(`SELECT id,provider_account_id,access_token_ciphertext,refresh_token_ciphertext,key_version,CAST(expires_at AS TEXT),scopes,granted_scopes FROM raven_mailbox_credentials WHERE account_id=?`, account).Scan(&id, &subject, &accessBytes, &refreshBytes, &version, &expiry, &scopes, &granted); err != nil {
 			t.Fatal(err)
 		}
 		if id != original.Context.ID || subject != original.Context.ProviderAccountID || version != 2 || granted != scopes {
@@ -251,13 +251,13 @@ func TestUserStorageMigrationCredentialsAuthenticateAndPreserveOriginalBindings(
 	if err := f.central.Read().QueryRow(`SELECT deletion_pending FROM users WHERE id='deleting'`).Scan(&deleting); err != nil || deleting != 1 {
 		t.Fatal("owner deletion canceled", deleting, err)
 	}
-	if err := f.central.Read().QueryRow(`SELECT count(*) FROM sqlite_schema WHERE type='trigger' AND tbl_name='gofer_mailbox_credentials'`).Scan(&guards); err != nil || guards != 3 {
+	if err := f.central.Read().QueryRow(`SELECT count(*) FROM sqlite_schema WHERE type='trigger' AND tbl_name='raven_mailbox_credentials'`).Scan(&guards); err != nil || guards != 3 {
 		t.Fatal("runtime guards missing", guards, err)
 	}
-	if _, err := f.central.Write().Exec(`UPDATE gofer_mailbox_credentials SET scopes='new scope' WHERE account_id='disabled'`); err == nil {
+	if _, err := f.central.Write().Exec(`UPDATE raven_mailbox_credentials SET scopes='new scope' WHERE account_id='disabled'`); err == nil {
 		t.Fatal("import left disabled owner grants writable")
 	}
-	if _, err := f.central.Write().Exec(`UPDATE gofer_mailbox_credentials SET user_id='bob' WHERE account_id='current'`); err == nil {
+	if _, err := f.central.Write().Exec(`UPDATE raven_mailbox_credentials SET user_id='bob' WHERE account_id='current'`); err == nil {
 		t.Fatal("import left ownership mutable")
 	}
 	after, err := os.ReadFile(f.source.Path())
@@ -294,17 +294,17 @@ func TestUserStorageMigrationCredentialsFailuresRestoreSavepoint(t *testing.T) {
 			}
 			_, tx, _ := f.begin(t)
 			queries := map[string]string{
-				"wrong-owner":            `UPDATE gofer_account_directory SET user_id='bob' WHERE account_id='current'`,
-				"missing-route":          `DELETE FROM gofer_account_directory WHERE account_id='current'`,
+				"wrong-owner":            `UPDATE raven_account_directory SET user_id='bob' WHERE account_id='current'`,
+				"missing-route":          `DELETE FROM raven_account_directory WHERE account_id='current'`,
 				"enabled-disabled-owner": `UPDATE users SET status='active' WHERE id='disabled'`,
-				"wrong-lifecycle":        `UPDATE gofer_account_directory SET state='active' WHERE account_id='deleting'`,
+				"wrong-lifecycle":        `UPDATE raven_account_directory SET state='active' WHERE account_id='deleting'`,
 				"existing-table":         userMailboxCredentialSchema + userMailboxCredentialGuards,
 			}
 			if query := queries[failure]; query != "" {
 				// An immutable directory edit is itself rejected. Use a delete/insert
 				// mismatch to exercise the trusted import's independent validation.
 				if failure == "wrong-owner" {
-					query = `DELETE FROM gofer_account_directory WHERE account_id='current'; INSERT INTO gofer_account_directory(account_id,user_id,state) VALUES('current','bob','active')`
+					query = `DELETE FROM raven_account_directory WHERE account_id='current'; INSERT INTO raven_account_directory(account_id,user_id,state) VALUES('current','bob','active')`
 				}
 				if _, err := tx.Exec(query); err != nil {
 					t.Fatal(err)
@@ -312,7 +312,7 @@ func TestUserStorageMigrationCredentialsFailuresRestoreSavepoint(t *testing.T) {
 			}
 			if failure == "existing-table" {
 				row := f.originals["current"]
-				if _, err := tx.Exec(`INSERT INTO gofer_mailbox_credentials(id,account_id,user_id,provider,provider_account_id,access_token_ciphertext,key_version) VALUES(?,?,'alice','google',?,?,2)`, row.Context.ID, row.Context.AccountID, row.Context.ProviderAccountID, row.AccessCiphertext); err != nil {
+				if _, err := tx.Exec(`INSERT INTO raven_mailbox_credentials(id,account_id,user_id,provider,provider_account_id,access_token_ciphertext,key_version) VALUES(?,?,'alice','google',?,?,2)`, row.Context.ID, row.Context.AccountID, row.Context.ProviderAccountID, row.AccessCiphertext); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -329,7 +329,7 @@ func TestUserStorageMigrationCredentialsFailuresRestoreSavepoint(t *testing.T) {
 				t.Fatal("unsafe credential migration accepted")
 			}
 			var tableCount int
-			if err := tx.QueryRow(`SELECT count(*) FROM sqlite_schema WHERE name='gofer_mailbox_credentials'`).Scan(&tableCount); err != nil {
+			if err := tx.QueryRow(`SELECT count(*) FROM sqlite_schema WHERE name='raven_mailbox_credentials'`).Scan(&tableCount); err != nil {
 				t.Fatal(err)
 			}
 			want := 0
@@ -341,7 +341,7 @@ func TestUserStorageMigrationCredentialsFailuresRestoreSavepoint(t *testing.T) {
 			}
 			if failure == "existing-table" {
 				var ciphertext []byte
-				if err := tx.QueryRow(`SELECT access_token_ciphertext FROM gofer_mailbox_credentials`).Scan(&ciphertext); err != nil || !bytes.Equal(ciphertext, f.originals["current"].AccessCiphertext) {
+				if err := tx.QueryRow(`SELECT access_token_ciphertext FROM raven_mailbox_credentials`).Scan(&ciphertext); err != nil || !bytes.Equal(ciphertext, f.originals["current"].AccessCiphertext) {
 					t.Fatal("existing grant overwritten by import", err)
 				}
 			}
@@ -402,7 +402,7 @@ func TestUserStorageMigrationCredentialsRefreshOnlyGrantWorksThroughRuntime(t *t
 		t.Fatal("imported refresh-only grant unusable", err, requests.Load())
 	}
 	var ciphertext []byte
-	if err := f.central.Read().QueryRow(`SELECT access_token_ciphertext FROM gofer_mailbox_credentials WHERE account_id='refresh-only'`).Scan(&ciphertext); err != nil || len(ciphertext) == 0 || bytes.Contains(ciphertext, []byte("refreshed-access")) {
+	if err := f.central.Read().QueryRow(`SELECT access_token_ciphertext FROM raven_mailbox_credentials WHERE account_id='refresh-only'`).Scan(&ciphertext); err != nil || len(ciphertext) == 0 || bytes.Contains(ciphertext, []byte("refreshed-access")) {
 		t.Fatal("runtime refresh did not publish encrypted access", err)
 	}
 }
@@ -435,7 +435,7 @@ func TestUserStorageMigrationCredentialsFinalVerifierChecksAllOriginalFormats(t 
 	if err := VerifyUserStorageMigrationCredentials(t.Context(), nil, testMailboxCredentialKey); err == nil {
 		t.Fatal("missing transaction accepted")
 	}
-	if _, err := tx.Exec(`DROP TRIGGER gofer_mailbox_credential_owner_update`); err != nil {
+	if _, err := tx.Exec(`DROP TRIGGER raven_mailbox_credential_owner_update`); err != nil {
 		t.Fatal(err)
 	}
 	if err := VerifyUserStorageMigrationCredentials(t.Context(), tx, testMailboxCredentialKey); err == nil {

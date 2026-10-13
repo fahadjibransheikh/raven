@@ -38,14 +38,14 @@ func TestUserProviderDraftPublicationAndQueueRollbackTogether(t *testing.T) {
 	if _, err := publishUserProviderDraft(t, db, "first"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.Write().Exec(`CREATE TRIGGER reject_provider_draft BEFORE UPDATE ON gofer_provider_draft_operations BEGIN SELECT RAISE(ABORT,'injected draft queue failure'); END`); err != nil {
+	if _, err := db.Write().Exec(`CREATE TRIGGER reject_provider_draft BEFORE UPDATE ON raven_provider_draft_operations BEGIN SELECT RAISE(ABORT,'injected draft queue failure'); END`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := publishUserProviderDraft(t, db, "second"); err == nil {
 		t.Fatal("failed queue committed draft content")
 	}
 	var subject, path, revision string
-	if err := db.Read().QueryRow(`SELECT m.subject,m.body_text_path,s.local_revision FROM messages m JOIN gofer_provider_draft_states s ON s.local_message_id=m.id`).Scan(&subject, &path, &revision); err != nil {
+	if err := db.Read().QueryRow(`SELECT m.subject,m.body_text_path,s.local_revision FROM messages m JOIN raven_provider_draft_states s ON s.local_message_id=m.id`).Scan(&subject, &path, &revision); err != nil {
 		t.Fatal(err)
 	}
 	if subject != "first" || path != "body-first" || revision != "first" {
@@ -113,7 +113,7 @@ func TestUserProviderDraftRecoveryRetainsCreateFenceAndCandidate(t *testing.T) {
 	if err := db.RecordUserProviderDraftCandidate(t.Context(), second, "container", "remote"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.Write().Exec(`CREATE TRIGGER reject_draft_completion BEFORE DELETE ON gofer_provider_draft_operations BEGIN SELECT RAISE(ABORT,'injected draft completion failure'); END`); err != nil {
+	if _, err := db.Write().Exec(`CREATE TRIGGER reject_draft_completion BEFORE DELETE ON raven_provider_draft_operations BEGIN SELECT RAISE(ABORT,'injected draft completion failure'); END`); err != nil {
 		t.Fatal(err)
 	}
 	if err := db.CompleteUserProviderDraftUpsert(t.Context(), second); err == nil {
@@ -121,7 +121,7 @@ func TestUserProviderDraftRecoveryRetainsCreateFenceAndCandidate(t *testing.T) {
 	}
 	var candidate, remote string
 	var size int
-	if err := db.Read().QueryRow(`SELECT o.candidate_id,length(o.mime_data),s.remote_id FROM gofer_provider_draft_operations o JOIN gofer_provider_draft_states s ON s.account_id=o.account_id AND s.draft_key=o.draft_key`).Scan(&candidate, &size, &remote); err != nil {
+	if err := db.Read().QueryRow(`SELECT o.candidate_id,length(o.mime_data),s.remote_id FROM raven_provider_draft_operations o JOIN raven_provider_draft_states s ON s.account_id=o.account_id AND s.draft_key=o.draft_key`).Scan(&candidate, &size, &remote); err != nil {
 		t.Fatal(err)
 	}
 	if candidate != "container" || size == 0 || remote != "" {
@@ -176,7 +176,7 @@ func TestUserProviderDraftReceivingPreservesPendingEditAndDiscard(t *testing.T) 
 	if err := db.CompleteUserProviderDraftDelete(t.Context(), op); err != nil {
 		t.Fatal(err)
 	}
-	if err := db.Read().QueryRow(`SELECT count(*) FROM gofer_provider_draft_states`).Scan(&count); err != nil || count != 0 {
+	if err := db.Read().QueryRow(`SELECT count(*) FROM raven_provider_draft_states`).Scan(&count); err != nil || count != 0 {
 		t.Fatal("completed deletion retained state", count, err)
 	}
 }

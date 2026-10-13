@@ -351,7 +351,7 @@ func TestUserCalendarDeleteHTTPChangedAuthorityAndAtomicLocalFailure(t *testing.
 						return
 					}
 					if mode == "grant" {
-						_, err := f.system.Write().Exec(`UPDATE gofer_mailbox_credentials SET revision=revision+1 WHERE account_id=?`, f.accounts["alice"].ID)
+						_, err := f.system.Write().Exec(`UPDATE raven_mailbox_credentials SET revision=revision+1 WHERE account_id=?`, f.accounts["alice"].ID)
 						if err != nil {
 							t.Error(err)
 						}

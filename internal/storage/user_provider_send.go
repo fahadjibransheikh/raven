@@ -10,7 +10,7 @@ import (
 // acceptance separate from the retryable local Sent cache and its immutable MIME.
 func ensureUserMailDeliverySchema(ctx context.Context, db *DB) error {
 	var owner string
-	if err := db.Read().QueryRowContext(ctx, `SELECT user_id FROM gofer_user_store WHERE singleton=1`).Scan(&owner); err != nil {
+	if err := db.Read().QueryRowContext(ctx, `SELECT user_id FROM raven_user_store WHERE singleton=1`).Scan(&owner); err != nil {
 		return err
 	}
 	if err := ensureLayoutSchema(ctx, db, userLayoutSchema); err != nil {
@@ -53,7 +53,7 @@ func (db *DB) CompleteUserProviderSend(ctx context.Context, send OutgoingSend, s
 	if err := checkUserSendAttempt(ctx, tx, send, subject, false); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `INSERT INTO gofer_provider_send_receipts(send_id,provider,mailbox_subject,provider_message_id) VALUES(?,?,?,?)`, send.ID, send.Transport, subject, providerID); err != nil {
+	if _, err := tx.ExecContext(ctx, `INSERT INTO raven_provider_send_receipts(send_id,provider,mailbox_subject,provider_message_id) VALUES(?,?,?,?)`, send.ID, send.Transport, subject, providerID); err != nil {
 		return err
 	}
 	// Keep MIME and snapshot until local Sent publication succeeds. No subsequent
@@ -67,7 +67,7 @@ func (db *DB) CompleteUserProviderSend(ctx context.Context, send OutgoingSend, s
 
 func (db *DB) UserProviderSendReceipt(ctx context.Context, sendID, accountID string) (string, error) {
 	var id string
-	err := db.Read().QueryRowContext(ctx, `SELECT r.provider_message_id FROM gofer_provider_send_receipts r JOIN outgoing_sends o ON o.id=r.send_id JOIN accounts a ON a.id=o.account_id
+	err := db.Read().QueryRowContext(ctx, `SELECT r.provider_message_id FROM raven_provider_send_receipts r JOIN outgoing_sends o ON o.id=r.send_id JOIN accounts a ON a.id=o.account_id
 		WHERE o.id=? AND o.account_id=? AND o.status='sent' AND r.provider=o.transport AND a.provider=r.provider AND a.auth_method='oauth2' AND a.provider_account_id=r.mailbox_subject AND COALESCE(a.is_deleting,0)=0`, sendID, accountID).Scan(&id)
 	return id, err
 }
@@ -82,7 +82,7 @@ func (db *DB) CompleteUserProviderSentCache(ctx context.Context, send OutgoingSe
 		return err
 	}
 	var storedID string
-	if err := tx.QueryRowContext(ctx, `SELECT provider_message_id FROM gofer_provider_send_receipts WHERE send_id=? AND provider=? AND mailbox_subject=?`, send.ID, send.Transport, subject).Scan(&storedID); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT provider_message_id FROM raven_provider_send_receipts WHERE send_id=? AND provider=? AND mailbox_subject=?`, send.ID, send.Transport, subject).Scan(&storedID); err != nil {
 		return err
 	}
 	if storedID != providerID {
@@ -102,13 +102,13 @@ func (db *DB) CompleteUserProviderSentCache(ctx context.Context, send OutgoingSe
 		envelope_recipients='[]',mime_data=NULL,message_json='',updated_at=CURRENT_TIMESTAMP WHERE id=?`, send.ID); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `DELETE FROM gofer_provider_send_receipts WHERE send_id=?`, send.ID); err != nil {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM raven_provider_send_receipts WHERE send_id=?`, send.ID); err != nil {
 		return err
 	}
 	return tx.Commit()
 }
 
-const providerSendReceiptSchema = `CREATE TABLE IF NOT EXISTS gofer_provider_send_receipts (
+const providerSendReceiptSchema = `CREATE TABLE IF NOT EXISTS raven_provider_send_receipts (
 		send_id TEXT PRIMARY KEY REFERENCES outgoing_sends(id) ON DELETE CASCADE,
 		provider TEXT NOT NULL CHECK(provider IN ('gmail','outlook')),
 		mailbox_subject TEXT NOT NULL,

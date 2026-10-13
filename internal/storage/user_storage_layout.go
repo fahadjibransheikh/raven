@@ -32,7 +32,7 @@ type UserStorageLayout struct {
 	OwnersAtMigration   int64  `json:"owners_at_migration"`
 }
 
-const migrationLayoutSchema = `CREATE TABLE gofer_storage_layout (
+const migrationLayoutSchema = `CREATE TABLE raven_storage_layout (
  singleton INTEGER PRIMARY KEY CHECK(singleton=1),
  layout_version INTEGER NOT NULL CHECK(layout_version=1),
  layout_id TEXT NOT NULL CHECK(length(layout_id)=32),
@@ -81,7 +81,7 @@ func LoadUserStorageLayout(ctx context.Context, path string) (layout UserStorage
 	// users may have been added or removed since publication.
 	cursor := ""
 	for {
-		rows, err := tx.QueryContext(ctx, `SELECT user_id FROM gofer_user_store_directory WHERE state='present' AND user_id>? ORDER BY user_id LIMIT 64`, cursor)
+		rows, err := tx.QueryContext(ctx, `SELECT user_id FROM raven_user_store_directory WHERE state='present' AND user_id>? ORDER BY user_id LIMIT 64`, cursor)
 		if err != nil {
 			return layout, err
 		}
@@ -130,21 +130,30 @@ func migrationCheckLayoutIdentity(ctx context.Context, tx *sql.Tx, layout UserSt
 	if err != nil {
 		return err
 	}
+	// Until the central database is upgraded the table has its old name.
+	table, err := firstExistingTable(ctx, tx, "raven_storage_layout", legacyTableName("raven_storage_layout"))
+	if err != nil {
+		return err
+	}
+	if table == "" {
+		return errors.New("central database does not match the completed layout identity")
+	}
 	var matches, count int
-	if err := tx.QueryRowContext(ctx, `SELECT count(*),coalesce(sum(singleton=1 AND layout_version=1 AND layout_id=? AND manifest_digest=?),0) FROM main.gofer_storage_layout`, layout.ID, digest).Scan(&count, &matches); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT count(*),coalesce(sum(singleton=1 AND layout_version=1 AND layout_id=? AND manifest_digest=?),0) FROM main.`+table, layout.ID, digest).Scan(&count, &matches); err != nil {
 		return err
 	}
 	if count != 1 || matches != 1 {
 		return errors.New("central database does not match the completed layout identity")
 	}
 	var definition string
-	if err := tx.QueryRowContext(ctx, `SELECT sql FROM main.sqlite_schema WHERE name='gofer_storage_layout' AND type='table'`).Scan(&definition); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT sql FROM main.sqlite_schema WHERE name=? AND type='table'`, table).Scan(&definition); err != nil {
 		return err
 	}
 	normalize := func(value string) string {
-		return strings.Join(strings.Fields(strings.TrimSuffix(strings.TrimSpace(value), ";")), " ")
+		// A renamed table's definition quotes its new name.
+		return strings.Join(strings.Fields(strings.TrimSuffix(strings.TrimSpace(strings.ReplaceAll(value, `"`, "")), ";")), " ")
 	}
-	if normalize(definition) != normalize(migrationLayoutSchema) {
+	if normalize(definition) != normalize(strings.Replace(migrationLayoutSchema, "raven_storage_layout", table, 1)) {
 		return errors.New("central layout identity schema changed")
 	}
 	return nil
@@ -261,7 +270,7 @@ func VerifySharedStorageRuntime(ctx context.Context, path string) (err error) {
 	}
 	defer func() { err = errors.Join(err, db.Close()) }()
 	var owned bool
-	if err := db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM sqlite_schema WHERE name IN ('gofer_storage_layout','gofer_user_store','gofer_account_directory'))`).Scan(&owned); err != nil {
+	if err := db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM sqlite_schema WHERE name IN (`+TableNameList("raven_storage_layout", "raven_user_store", "raven_account_directory")+`))`).Scan(&owned); err != nil {
 		return err
 	}
 	if owned {
@@ -297,7 +306,7 @@ func VerifyUserStorageRuntimeBoundary(ctx context.Context, path string) (err err
 	}
 	defer tx.Rollback()
 	var invalid bool
-	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM sqlite_schema WHERE name='gofer_user_store') OR EXISTS(SELECT 1 FROM app_settings p JOIN users u ON u.id=p.user_id WHERE u.user_type<>'management')`).Scan(&invalid); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM sqlite_schema WHERE name IN (`+TableNameList("raven_user_store")+`)) OR EXISTS(SELECT 1 FROM app_settings p JOIN users u ON u.id=p.user_id WHERE u.user_type<>'management')`).Scan(&invalid); err != nil {
 		return err
 	}
 	if invalid {

@@ -65,7 +65,7 @@ func NewUserCredentials(ctx context.Context, cfg *Config, routing *storage.Accou
 	}
 	// Older opt-in stores have only the cached token scope. Preserve only that
 	// recorded evidence on reads; missing historical grants require reconnect.
-	columns, err := tx.QueryContext(ctx, `PRAGMA table_info(gofer_mailbox_credentials)`)
+	columns, err := tx.QueryContext(ctx, `PRAGMA table_info(raven_mailbox_credentials)`)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +88,7 @@ func NewUserCredentials(ctx context.Context, cfg *Config, routing *storage.Accou
 		return nil, scanErr
 	}
 	if !hasGrants {
-		if _, err := tx.ExecContext(ctx, `ALTER TABLE gofer_mailbox_credentials ADD COLUMN granted_scopes TEXT NOT NULL DEFAULT ''`); err != nil {
+		if _, err := tx.ExecContext(ctx, `ALTER TABLE raven_mailbox_credentials ADD COLUMN granted_scopes TEXT NOT NULL DEFAULT ''`); err != nil {
 			return nil, err
 		}
 	}
@@ -213,7 +213,7 @@ func (s *UserCredentials) UpsertForUser(ctx context.Context, owner, id, provider
 			defer tx.Rollback()
 			var credential oauthCredentialContext
 			var oldRefresh []byte
-			err = tx.QueryRowContext(ctx, `SELECT id,account_id,provider,provider_account_id,refresh_token_ciphertext FROM gofer_mailbox_credentials WHERE account_id=? AND user_id=?`, id, owner).Scan(&credential.ID, &credential.AccountID, &credential.Provider, &credential.ProviderAccountID, &oldRefresh)
+			err = tx.QueryRowContext(ctx, `SELECT id,account_id,provider,provider_account_id,refresh_token_ciphertext FROM raven_mailbox_credentials WHERE account_id=? AND user_id=?`, id, owner).Scan(&credential.ID, &credential.AccountID, &credential.Provider, &credential.ProviderAccountID, &oldRefresh)
 			existing := err == nil
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
 				return err
@@ -242,9 +242,9 @@ func (s *UserCredentials) UpsertForUser(ctx context.Context, owner, id, provider
 				}
 			}
 			if existing {
-				_, err = tx.ExecContext(ctx, `UPDATE gofer_mailbox_credentials SET provider=?,provider_account_id=?,access_token_ciphertext=?,refresh_token_ciphertext=?,token_type=?,expires_at=?,scopes=?,granted_scopes=?,revision=revision+1,updated_at=CURRENT_TIMESTAMP WHERE account_id=? AND user_id=?`, provider, subject, accessBytes, refreshBytes, tokenType, expires, scopes, scopes, id, owner)
+				_, err = tx.ExecContext(ctx, `UPDATE raven_mailbox_credentials SET provider=?,provider_account_id=?,access_token_ciphertext=?,refresh_token_ciphertext=?,token_type=?,expires_at=?,scopes=?,granted_scopes=?,revision=revision+1,updated_at=CURRENT_TIMESTAMP WHERE account_id=? AND user_id=?`, provider, subject, accessBytes, refreshBytes, tokenType, expires, scopes, scopes, id, owner)
 			} else {
-				_, err = tx.ExecContext(ctx, `INSERT INTO gofer_mailbox_credentials(id,account_id,user_id,provider,provider_account_id,access_token_ciphertext,refresh_token_ciphertext,key_version,token_type,expires_at,scopes,granted_scopes) VALUES(?,?,?,?,?,?,?,2,?,?,?,?)`, credential.ID, id, owner, provider, subject, accessBytes, refreshBytes, tokenType, expires, scopes, scopes)
+				_, err = tx.ExecContext(ctx, `INSERT INTO raven_mailbox_credentials(id,account_id,user_id,provider,provider_account_id,access_token_ciphertext,refresh_token_ciphertext,key_version,token_type,expires_at,scopes,granted_scopes) VALUES(?,?,?,?,?,?,?,2,?,?,?,?)`, credential.ID, id, owner, provider, subject, accessBytes, refreshBytes, tokenType, expires, scopes, scopes)
 			}
 			if err != nil {
 				return fmt.Errorf("save mailbox authorization: %w", err)
@@ -259,7 +259,7 @@ func (s *UserCredentials) load(ctx context.Context, owner, id string) (record us
 		var access, refresh []byte
 		var version int
 		err := s.routing.System().Read().QueryRowContext(ctx, `SELECT c.id,c.account_id,c.provider,c.provider_account_id,c.access_token_ciphertext,c.refresh_token_ciphertext,c.key_version,c.token_type,c.expires_at,c.scopes,COALESCE(NULLIF(c.granted_scopes,''),c.scopes),c.revision
-		 FROM gofer_mailbox_credentials c JOIN gofer_account_directory d ON d.account_id=c.account_id JOIN users u ON u.id=d.user_id
+		 FROM raven_mailbox_credentials c JOIN raven_account_directory d ON d.account_id=c.account_id JOIN users u ON u.id=d.user_id
 		 WHERE c.account_id=? AND c.user_id=? AND c.provider=? AND c.provider_account_id=? AND d.user_id=c.user_id AND d.state='active' AND u.status='active' AND u.deletion_pending=0 AND u.user_type='webmail' AND u.is_admin=0`, id, owner, identity.provider, identity.subject).Scan(&record.ID, &record.AccountID, &record.Provider, &record.ProviderAccountID, &access, &refresh, &version, &record.TokenType, &record.ExpiresAt, &record.Scopes, &record.grantedScopes, &record.revision)
 		if err != nil {
 			return fmt.Errorf("load mailbox authorization: %w", err)
@@ -316,7 +316,7 @@ func (s *UserCredentials) publish(ctx context.Context, record userCredentialReco
 		if tokenType == "" {
 			tokenType = "Bearer"
 		}
-		result, err := s.routing.System().Write().ExecContext(ctx, `UPDATE gofer_mailbox_credentials SET access_token_ciphertext=?,refresh_token_ciphertext=CASE WHEN ? IS NULL THEN refresh_token_ciphertext ELSE ? END,token_type=?,expires_at=?,scopes=?,granted_scopes=?,revision=revision+1,updated_at=CURRENT_TIMESTAMP
+		result, err := s.routing.System().Write().ExecContext(ctx, `UPDATE raven_mailbox_credentials SET access_token_ciphertext=?,refresh_token_ciphertext=CASE WHEN ? IS NULL THEN refresh_token_ciphertext ELSE ? END,token_type=?,expires_at=?,scopes=?,granted_scopes=?,revision=revision+1,updated_at=CURRENT_TIMESTAMP
 		 WHERE id=? AND account_id=? AND user_id=? AND provider=? AND provider_account_id=? AND revision=?`, access, refresh, refresh, tokenType, expiry, scopes, granted, record.ID, record.AccountID, record.owner, record.Provider, record.ProviderAccountID, record.revision)
 		if err != nil {
 			return err
@@ -449,12 +449,12 @@ func (s *UserAccountCredentials) GetMicrosoftGraphMailTokenForAccount(ctx contex
 // blocks new activity. It also works for disabled/deleting owners and tombstones.
 func (s *UserCredentials) CleanupAccount(ctx context.Context, id string) error {
 	var state storage.AccountRouteState
-	if err := s.routing.System().Read().QueryRowContext(ctx, `SELECT state FROM gofer_account_directory WHERE account_id=?`, id).Scan(&state); err != nil {
+	if err := s.routing.System().Read().QueryRowContext(ctx, `SELECT state FROM raven_account_directory WHERE account_id=?`, id).Scan(&state); err != nil {
 		return err
 	}
 	if state != storage.AccountDeleting && state != storage.AccountDeleted {
 		return storage.ErrAccountRoute
 	}
-	_, err := s.routing.System().Write().ExecContext(ctx, `DELETE FROM gofer_mailbox_credentials WHERE account_id=? AND EXISTS(SELECT 1 FROM gofer_account_directory WHERE account_id=? AND state IN ('deleting','deleted'))`, id, id)
+	_, err := s.routing.System().Write().ExecContext(ctx, `DELETE FROM raven_mailbox_credentials WHERE account_id=? AND EXISTS(SELECT 1 FROM raven_account_directory WHERE account_id=? AND state IN ('deleting','deleted'))`, id, id)
 	return err
 }

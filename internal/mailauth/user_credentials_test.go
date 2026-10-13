@@ -145,7 +145,7 @@ func TestUserCredentialsOwnerIsolationAndEncryptedCentralStorage(t *testing.T) {
 			t.Fatalf("own grant: %q %v", got, err)
 		}
 		var ciphertext, refresh []byte
-		if err := f.system.Read().QueryRow(`SELECT access_token_ciphertext,refresh_token_ciphertext FROM gofer_mailbox_credentials WHERE account_id=? AND user_id=?`, f.ids[owner], owner).Scan(&ciphertext, &refresh); err != nil {
+		if err := f.system.Read().QueryRow(`SELECT access_token_ciphertext,refresh_token_ciphertext FROM raven_mailbox_credentials WHERE account_id=? AND user_id=?`, f.ids[owner], owner).Scan(&ciphertext, &refresh); err != nil {
 			t.Fatal(err)
 		}
 		if bytes.Contains(ciphertext, []byte(owner+"-access")) || bytes.Contains(refresh, []byte(owner+"-refresh")) {
@@ -159,7 +159,7 @@ func TestUserCredentialsOwnerIsolationAndEncryptedCentralStorage(t *testing.T) {
 			if count != 0 {
 				return errors.New("user store contains OAuth credentials")
 			}
-			if err := db.Read().QueryRow(`SELECT COUNT(*) FROM sqlite_schema WHERE name='gofer_mailbox_credentials'`).Scan(&count); err != nil {
+			if err := db.Read().QueryRow(`SELECT COUNT(*) FROM sqlite_schema WHERE name='raven_mailbox_credentials'`).Scan(&count); err != nil {
 				return err
 			}
 			if count != 0 {
@@ -318,7 +318,7 @@ func TestUserCredentialsRejectStaleRefreshPublication(t *testing.T) {
 				t.Fatalf("missing conflict: %v", got.err)
 			}
 			var revision int
-			if err := f.system.Read().QueryRow(`SELECT revision FROM gofer_mailbox_credentials WHERE account_id=?`, f.ids["alice"]).Scan(&revision); err != nil {
+			if err := f.system.Read().QueryRow(`SELECT revision FROM raven_mailbox_credentials WHERE account_id=?`, f.ids["alice"]).Scan(&revision); err != nil {
 				t.Fatal(err)
 			}
 			want := 1
@@ -340,7 +340,7 @@ func TestUserCredentialsRejectStaleRefreshPublication(t *testing.T) {
 					t.Fatalf("cleanup retry: %v", err)
 				}
 				var count int
-				if err := f.system.Read().QueryRow(`SELECT COUNT(*) FROM gofer_mailbox_credentials WHERE account_id=?`, f.ids["alice"]).Scan(&count); err != nil || count != 0 {
+				if err := f.system.Read().QueryRow(`SELECT COUNT(*) FROM raven_mailbox_credentials WHERE account_id=?`, f.ids["alice"]).Scan(&count); err != nil || count != 0 {
 					t.Fatalf("deleted credentials: %d %v", count, err)
 				}
 				if err := f.service.UpsertForUser(t.Context(), "alice", f.ids["alice"], "google", "same-google-subject", "resurrect", "refresh", "", nil, ""); err == nil {
@@ -404,7 +404,7 @@ func TestUserCredentialsRejectTamperedAndReassignedGrants(t *testing.T) {
 	if got, err := wrong.GetOAuthTokenForUser(t.Context(), "alice", f.ids["alice"]); err == nil || got != "" {
 		t.Fatalf("wrong key accepted: %q %v", got, err)
 	}
-	if _, err := f.system.Write().Exec(`UPDATE gofer_mailbox_credentials SET refresh_token_ciphertext=(SELECT refresh_token_ciphertext FROM gofer_mailbox_credentials WHERE account_id=?) WHERE account_id=?`, f.ids["bob"], f.ids["alice"]); err != nil {
+	if _, err := f.system.Write().Exec(`UPDATE raven_mailbox_credentials SET refresh_token_ciphertext=(SELECT refresh_token_ciphertext FROM raven_mailbox_credentials WHERE account_id=?) WHERE account_id=?`, f.ids["bob"], f.ids["alice"]); err != nil {
 		t.Fatal(err)
 	}
 	if got, err := f.service.GetOAuthTokenForUser(t.Context(), "alice", f.ids["alice"]); err == nil || got != "" {
@@ -425,7 +425,7 @@ func TestUserCredentialsRejectTamperedAndReassignedGrants(t *testing.T) {
 	if err := f.service.UpsertForUser(t.Context(), "alice", f.ids["alice"], "google", "changed-subject", "new-access", "", "", nil, ""); err == nil {
 		t.Fatal("refresh from old identity reused")
 	}
-	if _, err := f.system.Write().Exec(`UPDATE gofer_mailbox_credentials SET user_id='bob' WHERE account_id=?`, f.ids["alice"]); err == nil {
+	if _, err := f.system.Write().Exec(`UPDATE raven_mailbox_credentials SET user_id='bob' WHERE account_id=?`, f.ids["alice"]); err == nil {
 		t.Fatal("credential ownership changed")
 	}
 	if err := f.service.UpsertForUser(t.Context(), "alice", f.ids["alice"], "google", "changed-subject", "new-access", "new-refresh", "", nil, "mail"); err != nil {

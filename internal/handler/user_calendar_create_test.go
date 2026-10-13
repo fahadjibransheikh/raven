@@ -128,7 +128,7 @@ func TestUserCalendarCreateNativeProviderReservationPublicationAndRecovery(t *te
 									t.Error(err)
 								}
 							} else {
-								_, err := f.system.Write().Exec(`UPDATE gofer_mailbox_credentials SET revision=revision+1 WHERE account_id=?`, f.accounts[owner].ID)
+								_, err := f.system.Write().Exec(`UPDATE raven_mailbox_credentials SET revision=revision+1 WHERE account_id=?`, f.accounts[owner].ID)
 								if err != nil {
 									t.Error(err)
 								}

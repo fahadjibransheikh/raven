@@ -228,7 +228,7 @@ func TestUserOAuthOnboardingReconnectAndEditing(t *testing.T) {
 				}
 			}
 			var plaintext int
-			if err := f.h.db.Read().QueryRow(`SELECT count(*) FROM gofer_mailbox_credentials WHERE CAST(access_token_ciphertext AS TEXT) LIKE '%grant%' OR CAST(refresh_token_ciphertext AS TEXT) LIKE '%refresh%'`).Scan(&plaintext); err != nil || plaintext != 0 {
+			if err := f.h.db.Read().QueryRow(`SELECT count(*) FROM raven_mailbox_credentials WHERE CAST(access_token_ciphertext AS TEXT) LIKE '%grant%' OR CAST(refresh_token_ciphertext AS TEXT) LIKE '%refresh%'`).Scan(&plaintext); err != nil || plaintext != 0 {
 				t.Fatalf("plaintext credential: %d %v", plaintext, err)
 			}
 		})
@@ -283,7 +283,7 @@ func TestUserOAuthRejectsStateAndIdentityConfusion(t *testing.T) {
 
 func TestUserOAuthCredentialSaveFailureCanRecover(t *testing.T) {
 	f := newUserOAuthFixture(t, nil)
-	if _, err := f.h.db.Write().Exec(`CREATE TRIGGER reject_test_grant BEFORE INSERT ON gofer_mailbox_credentials BEGIN SELECT RAISE(ABORT,'injected grant failure'); END`); err != nil {
+	if _, err := f.h.db.Write().Exec(`CREATE TRIGGER reject_test_grant BEFORE INSERT ON raven_mailbox_credentials BEGIN SELECT RAISE(ABORT,'injected grant failure'); END`); err != nil {
 		t.Fatal(err)
 	}
 	rec := f.callback("alice", "gmail", f.start(t, "alice", "gmail", "add"), "alice-grant")
@@ -501,7 +501,7 @@ func TestUserOAuthReconnectDeletionDrainsAndRejectsPublication(t *testing.T) {
 		t.Fatal("deletion did not drain")
 	}
 	var revision int
-	if err := f.h.db.Read().QueryRow(`SELECT revision FROM gofer_mailbox_credentials WHERE account_id=?`, id).Scan(&revision); err != nil || revision != 1 {
+	if err := f.h.db.Read().QueryRow(`SELECT revision FROM raven_mailbox_credentials WHERE account_id=?`, id).Scan(&revision); err != nil || revision != 1 {
 		t.Fatalf("deleting mailbox published token: %d %v", revision, err)
 	}
 }

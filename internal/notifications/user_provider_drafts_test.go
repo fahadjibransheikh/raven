@@ -183,7 +183,7 @@ func (f *userStorageFixture) pendingProviderDrafts(t *testing.T, owner string) i
 	t.Helper()
 	var n int
 	if err := f.routing.WithUser(t.Context(), owner, func(db *storage.DB) error {
-		return db.Read().QueryRow(`SELECT count(*) FROM gofer_provider_draft_operations`).Scan(&n)
+		return db.Read().QueryRow(`SELECT count(*) FROM raven_provider_draft_operations`).Scan(&n)
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -258,7 +258,7 @@ func TestUserProviderDraftLostCreateAckReconcilesWithoutDuplicate(t *testing.T) 
 			}
 			var id int64
 			if err := f.routing.WithUser(t.Context(), "alice", func(db *storage.DB) error {
-				return db.Read().QueryRow(`SELECT id FROM gofer_provider_draft_operations WHERE account_id=?`, f.accounts["alice"].ID).Scan(&id)
+				return db.Read().QueryRow(`SELECT id FROM raven_provider_draft_operations WHERE account_id=?`, f.accounts["alice"].ID).Scan(&id)
 			}); err != nil {
 				t.Fatal(err)
 			}
@@ -337,7 +337,7 @@ func TestUserProviderDraftScheduledEditSendAndCleanup(t *testing.T) {
 func (f *userStorageFixture) providerDraftsDue(t *testing.T, owner string) {
 	t.Helper()
 	if err := f.routing.WithUser(t.Context(), owner, func(db *storage.DB) error {
-		_, err := db.Write().Exec(`UPDATE gofer_provider_draft_operations SET next_attempt_at=CURRENT_TIMESTAMP`)
+		_, err := db.Write().Exec(`UPDATE raven_provider_draft_operations SET next_attempt_at=CURRENT_TIMESTAMP`)
 		return err
 	}); err != nil {
 		t.Fatal(err)
@@ -349,7 +349,7 @@ func TestUserProviderDraftCandidateSurvivesPublicationFailure(t *testing.T) {
 		t.Run(provider, func(t *testing.T) {
 			f, api := newProviderDraftFixture(t, provider)
 			if err := f.routing.WithUser(t.Context(), "alice", func(db *storage.DB) error {
-				_, err := db.Write().Exec(`CREATE TRIGGER reject_provider_draft_completion BEFORE DELETE ON gofer_provider_draft_operations BEGIN SELECT RAISE(ABORT,'injected completion failure'); END`)
+				_, err := db.Write().Exec(`CREATE TRIGGER reject_provider_draft_completion BEFORE DELETE ON raven_provider_draft_operations BEGIN SELECT RAISE(ABORT,'injected completion failure'); END`)
 				return err
 			}); err != nil {
 				t.Fatal(err)
@@ -358,7 +358,7 @@ func TestUserProviderDraftCandidateSurvivesPublicationFailure(t *testing.T) {
 			waitUserIMAP(t, func() bool {
 				var n int
 				if err := f.routing.WithUser(t.Context(), "alice", func(db *storage.DB) error {
-					return db.Read().QueryRow(`SELECT count(*) FROM gofer_provider_draft_operations WHERE status='ambiguous' AND candidate_id!='' AND length(mime_data)>0`).Scan(&n)
+					return db.Read().QueryRow(`SELECT count(*) FROM raven_provider_draft_operations WHERE status='ambiguous' AND candidate_id!='' AND length(mime_data)>0`).Scan(&n)
 				}); err != nil {
 					t.Fatal(err)
 				}
@@ -475,7 +475,7 @@ func TestUserProviderDraftBacklogBeyondBoundedPass(t *testing.T) {
 			}
 			f.saveProviderDraft(t, "bob", "<other-owner@mail.test>", "independent")
 			waitUserIMAP(t, func() bool { return f.pendingProviderDrafts(t, "bob") == 0 })
-			if _, err := f.system.Write().Exec(`INSERT INTO gofer_account_poll_schedule(account_id,next_due_ms) SELECT account_id,9999999999999 FROM gofer_account_directory WHERE account_id!=? ON CONFLICT(account_id) DO UPDATE SET next_due_ms=excluded.next_due_ms`, f.accounts["alice"].ID); err != nil {
+			if _, err := f.system.Write().Exec(`INSERT INTO raven_account_poll_schedule(account_id,next_due_ms) SELECT account_id,9999999999999 FROM raven_account_directory WHERE account_id!=? ON CONFLICT(account_id) DO UPDATE SET next_due_ms=excluded.next_due_ms`, f.accounts["alice"].ID); err != nil {
 				t.Fatal(err)
 			}
 			if err := f.imap.Start(mail.UserIMAPBackgroundOptions{PollInterval: 24 * time.Hour, ScanInterval: 20 * time.Millisecond, DisableIDLE: true}); err != nil {
@@ -519,7 +519,7 @@ func TestUserProviderDraftInvisibleUncertainCreateWaitsForRevision(t *testing.T)
 			waitUserIMAP(t, func() bool {
 				var n int
 				if err := f.routing.WithUser(t.Context(), "alice", func(db *storage.DB) error {
-					return db.Read().QueryRow(`SELECT count(*) FROM gofer_provider_draft_operations WHERE create_attempted=1 AND status='ambiguous'`).Scan(&n)
+					return db.Read().QueryRow(`SELECT count(*) FROM raven_provider_draft_operations WHERE create_attempted=1 AND status='ambiguous'`).Scan(&n)
 				}); err != nil {
 					t.Fatal(err)
 				}
@@ -538,7 +538,7 @@ func TestUserProviderDraftInvisibleUncertainCreateWaitsForRevision(t *testing.T)
 			waitUserIMAP(t, func() bool {
 				var n int
 				if err := f.routing.WithUser(t.Context(), "alice", func(db *storage.DB) error {
-					return db.Read().QueryRow(`SELECT count(*) FROM gofer_provider_draft_operations WHERE create_attempted=1 AND status='ambiguous' AND attempt_count>=2`).Scan(&n)
+					return db.Read().QueryRow(`SELECT count(*) FROM raven_provider_draft_operations WHERE create_attempted=1 AND status='ambiguous' AND attempt_count>=2`).Scan(&n)
 				}); err != nil {
 					t.Fatal(err)
 				}
@@ -635,7 +635,7 @@ func TestUserProviderDraftCooldownAndAccountDeletion(t *testing.T) {
 			if api.draftCount("alice") != 0 {
 				t.Fatal("manual sync bypassed durable provider cooldown")
 			}
-			if _, err := f.system.Write().Exec(`UPDATE gofer_account_provider_retry SET retry_until_ms=0 WHERE account_id=?`, f.accounts["alice"].ID); err != nil {
+			if _, err := f.system.Write().Exec(`UPDATE raven_account_provider_retry SET retry_until_ms=0 WHERE account_id=?`, f.accounts["alice"].ID); err != nil {
 				t.Fatal(err)
 			}
 			f.providerDraftsDue(t, "alice")
@@ -774,7 +774,7 @@ func TestUserProviderDraftMailboxChangeRejectsLateAcceptance(t *testing.T) {
 				if err := db.Read().QueryRow(`SELECT count(*) FROM messages WHERE id=? AND COALESCE(remote_message_id,'')!=''`, id).Scan(&bound); err != nil {
 					return err
 				}
-				if err := db.Read().QueryRow(`SELECT count(*) FROM gofer_provider_draft_operations WHERE candidate_id!=''`).Scan(&candidates); err != nil {
+				if err := db.Read().QueryRow(`SELECT count(*) FROM raven_provider_draft_operations WHERE candidate_id!=''`).Scan(&candidates); err != nil {
 					return err
 				}
 				if bound != 0 || candidates != 0 {

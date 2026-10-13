@@ -393,11 +393,11 @@ func TestUserCalendarSyncHTTPLateChangesEvictionAndShutdown(t *testing.T) {
 					}
 				case "account":
 					want = 404
-					if _, err := f.system.Write().Exec(`UPDATE gofer_account_directory SET state='deleting' WHERE account_id=?`, f.accounts["alice"].ID); err != nil {
+					if _, err := f.system.Write().Exec(`UPDATE raven_account_directory SET state='deleting' WHERE account_id=?`, f.accounts["alice"].ID); err != nil {
 						t.Fatal(err)
 					}
 				case "reconnect":
-					if _, err := f.system.Write().Exec(`UPDATE gofer_mailbox_credentials SET revision=revision+1 WHERE user_id='alice' AND account_id=?`, f.accounts["alice"].ID); err != nil {
+					if _, err := f.system.Write().Exec(`UPDATE raven_mailbox_credentials SET revision=revision+1 WHERE user_id='alice' AND account_id=?`, f.accounts["alice"].ID); err != nil {
 						t.Fatal(err)
 					}
 				case "shutdown":
@@ -514,7 +514,7 @@ func TestUserCalendarSyncHTTPWriterWaitRechecksAuthorizationAndCancellation(t *t
 				}
 				want := 409
 				if change == "authorization" {
-					if _, err := f.system.Write().Exec(`UPDATE gofer_mailbox_credentials SET revision=revision+1 WHERE account_id=?`, f.accounts["alice"].ID); err != nil {
+					if _, err := f.system.Write().Exec(`UPDATE raven_mailbox_credentials SET revision=revision+1 WHERE account_id=?`, f.accounts["alice"].ID); err != nil {
 						return err
 					}
 					if err := tx.Commit(); err != nil {

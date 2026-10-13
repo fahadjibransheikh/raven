@@ -54,10 +54,10 @@ func TestUserContactEditHTTPAtomicOwnedQueueAndWakeRecovery(t *testing.T) {
 		t.Fatal("unchanged destination requested new setup")
 	}
 	var wake int
-	if err := f.system.Read().QueryRow(`SELECT COUNT(*) FROM gofer_contact_queue_schedule WHERE user_id='alice' AND next_due_ms=0`).Scan(&wake); err != nil || wake != 1 {
+	if err := f.system.Read().QueryRow(`SELECT COUNT(*) FROM raven_contact_queue_schedule WHERE user_id='alice' AND next_due_ms=0`).Scan(&wake); err != nil || wake != 1 {
 		t.Fatal("committed editor queue was not woken", wake, err)
 	}
-	if _, err := f.system.Write().Exec(`CREATE TRIGGER reject_editor_wake BEFORE INSERT ON gofer_contact_queue_schedule BEGIN SELECT RAISE(ABORT,'synthetic wake failure'); END`); err != nil {
+	if _, err := f.system.Write().Exec(`CREATE TRIGGER reject_editor_wake BEFORE INSERT ON raven_contact_queue_schedule BEGIN SELECT RAISE(ABORT,'synthetic wake failure'); END`); err != nil {
 		t.Fatal(err)
 	}
 	form.Set("phone", "second-edit")
@@ -266,7 +266,7 @@ func TestUserContactEditHTTPRootShutdownJoinsBlockedWriter(t *testing.T) {
 func TestUserContactEditHTTPFailedFirstWakeSurvivesLastAccountDeletion(t *testing.T) {
 	f, _, _ := newOwnedDAVSetupFixture(t)
 	seedOwnedEditor(t, f, "alice")
-	if _, err := f.system.Write().Exec(`CREATE TRIGGER reject_first_editor_wake BEFORE INSERT ON gofer_contact_queue_schedule BEGIN SELECT RAISE(ABORT,'synthetic first wake failure'); END`); err != nil {
+	if _, err := f.system.Write().Exec(`CREATE TRIGGER reject_first_editor_wake BEFORE INSERT ON raven_contact_queue_schedule BEGIN SELECT RAISE(ABORT,'synthetic first wake failure'); END`); err != nil {
 		t.Fatal(err)
 	}
 	response := requestContactEditor(t.Context(), f, "alice", "/api/contacts?id=same-contact-id", editorForm("alice"))
