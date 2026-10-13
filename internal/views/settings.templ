@@ -2751,7 +2751,7 @@ templ AddAccountWizardFooter() {
 				@icon.ChevronRight(icon.Props{Class: "size-4"})
 			</button>
 		</div>
-		<div data-wizard-footer-step="3" data-active="false" class="hidden flex justify-between">
+		<div data-wizard-footer-step="3" data-active="false" class="hidden flex flex-wrap justify-between gap-2">
 			<button type="button" data-on-click='["wizardGo",2]' data-account-test-action data-account-test-back class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md border border-border hover:bg-accent disabled:pointer-events-none disabled:opacity-50">
 				@icon.ArrowLeft(icon.Props{Class: "size-4"})
 				Back
@@ -3209,7 +3209,7 @@ templ EditAccountWizardFooter(data models.EditAccountData) {
 				@icon.ChevronRight(icon.Props{Class: "size-4"})
 			</button>
 		</div>
-		<div data-wizard-footer-step="3" data-active="false" class="hidden flex justify-between">
+		<div data-wizard-footer-step="3" data-active="false" class="hidden flex flex-wrap justify-between gap-2">
 			<button type="button" data-on-click='["editWizardGo",2]' data-account-test-action data-account-test-back class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md border border-border hover:bg-accent disabled:pointer-events-none disabled:opacity-50">
 				@icon.ArrowLeft(icon.Props{Class: "size-4"})
 				Back
