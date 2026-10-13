@@ -55,7 +55,7 @@ func TestPasskeyLoginPageAndPublicHandlersSupportDiscoverableFallback(t *testing
 		!strings.Contains(started.Body.String(), `"userVerification":"required"`) {
 		t.Fatalf("discoverable passkey start = %d headers:%v body:%q", started.Code, started.Header(), started.Body.String())
 	}
-	challengeCookie := responseCookie(started, "gofer_passkey_login", true)
+	challengeCookie := responseCookie(started, "raven_passkey_login", true)
 	if challengeCookie == nil || !challengeCookie.HttpOnly || !challengeCookie.Secure ||
 		challengeCookie.Path != "/login" || challengeCookie.SameSite != http.SameSiteLaxMode {
 		t.Fatalf("passkey login challenge cookie = %#v", challengeCookie)
@@ -70,10 +70,10 @@ func TestPasskeyLoginPageAndPublicHandlersSupportDiscoverableFallback(t *testing
 	rejected := httptest.NewRecorder()
 	stack.ServeHTTP(rejected, request)
 	if rejected.Code != http.StatusUnauthorized || !strings.Contains(rejected.Body.String(), passkeyLoginFailureMessage) ||
-		responseCookie(rejected, "gofer_session", true) != nil {
+		responseCookie(rejected, "raven_session", true) != nil {
 		t.Fatalf("invalid passkey finish = %d cookies:%#v body:%q", rejected.Code, rejected.Result().Cookies(), rejected.Body.String())
 	}
-	if cleared := responseCookie(rejected, "gofer_passkey_login", false); cleared == nil || cleared.MaxAge != -1 {
+	if cleared := responseCookie(rejected, "raven_passkey_login", false); cleared == nil || cleared.MaxAge != -1 {
 		t.Fatalf("invalid passkey challenge cleanup = %#v", cleared)
 	}
 	var activeChallenges, sessions int

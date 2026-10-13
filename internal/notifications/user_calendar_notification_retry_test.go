@@ -206,7 +206,7 @@ func TestUserCalendarNotificationRetryHTTPRenderingReleasesStore(t *testing.T) {
 	release := func() { once.Do(func() { close(writer.release) }) }
 	t.Cleanup(release)
 	r := httptest.NewRequest("POST", ownedNotificationRetryPath, nil).WithContext(t.Context())
-	r.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.sessions["alice"].Token})
+	r.AddCookie(&http.Cookie{Name: "raven_session", Value: f.sessions["alice"].Token})
 	done := make(chan struct{})
 	go func() { f.http.ServeHTTP(writer, r); close(done) }()
 	select {

@@ -55,7 +55,7 @@ func (b *userDeletionBrowser) delete(t *testing.T, owner, confirmation string, c
 	values := url.Values{"confirmation": {confirmation}}
 	if csrf {
 		proofReq := httptest.NewRequest(http.MethodGet, "/admin/users", nil)
-		proofReq.AddCookie(&http.Cookie{Name: "gofer_session", Value: b.session.Token})
+		proofReq.AddCookie(&http.Cookie{Name: "raven_session", Value: b.session.Token})
 		var proof string
 		b.f.auth.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			proof = auth.CSRFToken(r.Context(), http.MethodPost, path)
@@ -67,7 +67,7 @@ func (b *userDeletionBrowser) delete(t *testing.T, owner, confirmation string, c
 	}
 	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(values.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.AddCookie(&http.Cookie{Name: "gofer_session", Value: b.session.Token})
+	req.AddCookie(&http.Cookie{Name: "raven_session", Value: b.session.Token})
 	w := httptest.NewRecorder()
 	b.http.ServeHTTP(w, req)
 	return w
@@ -162,7 +162,7 @@ func TestOwnedUserDeletionHTTPDrainsNativeWorkAndUploads(t *testing.T) {
 	defer releaseUpload.Do(func() { close(reader.release) })
 	req := httptest.NewRequest(http.MethodPost, "/compose/attachments", reader).WithContext(t.Context())
 	req.Header.Set("Content-Type", form.FormDataContentType())
-	req.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.sessions["alice"].Token})
+	req.AddCookie(&http.Cookie{Name: "raven_session", Value: f.sessions["alice"].Token})
 	uploadDone := make(chan *httptest.ResponseRecorder, 1)
 	go func() { w := httptest.NewRecorder(); f.http.ServeHTTP(w, req); uploadDone <- w }()
 	awaitIMAP(t, reader.entered)

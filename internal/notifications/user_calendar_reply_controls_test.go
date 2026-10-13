@@ -99,7 +99,7 @@ func TestUserCalendarReplyStatusHTTPRenderReleasesDatabaseLease(t *testing.T) {
 	release := func() { once.Do(func() { close(writer.release) }) }
 	defer release()
 	request := httptest.NewRequest("GET", "/api/calendar/replies/"+ids["alice"], nil).WithContext(t.Context())
-	request.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.sessions["alice"].Token})
+	request.AddCookie(&http.Cookie{Name: "raven_session", Value: f.sessions["alice"].Token})
 	done := make(chan struct{})
 	go func() { f.http.ServeHTTP(writer, request); close(done) }()
 	select {

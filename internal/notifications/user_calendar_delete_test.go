@@ -422,7 +422,7 @@ func TestUserCalendarDeleteHTTPBrowserDetachRootJoinAndOtherOwnerProgress(t *tes
 			browser, stopBrowser := context.WithCancel(t.Context())
 			defer stopBrowser()
 			req := httptest.NewRequest(http.MethodDelete, ownedCalendarDeleteQuery("outlook", "event", f, "alice"), nil).WithContext(browser)
-			req.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.sessions["alice"].Token})
+			req.AddCookie(&http.Cookie{Name: "raven_session", Value: f.sessions["alice"].Token})
 			done := make(chan *httptest.ResponseRecorder, 1)
 			go func() { rec := httptest.NewRecorder(); f.http.ServeHTTP(rec, req); done <- rec }()
 			select {

@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	passkeyLoginChallengeCookieName  = "gofer_passkey_login"
+	passkeyLoginChallengeCookieName  = "raven_passkey_login"
 	passkeyAssertionDraftVersion     = 1
 	passkeyAssertionDraftKey         = "gofer/auth/passkey-assertion-draft/v1"
 	passkeyAssertionMaxBodyBytes     = 1 << 20
@@ -1099,21 +1099,21 @@ func SetPasskeyLoginChallengeCookie(w http.ResponseWriter, token string, secure 
 	if maxAge < 1 {
 		maxAge = 1
 	}
-	http.SetCookie(w, &http.Cookie{
+	setCookie(w, &http.Cookie{
 		Name: passkeyLoginChallengeCookieName, Value: token, Path: "/login",
 		MaxAge: maxAge, HttpOnly: true, Secure: secure, SameSite: http.SameSiteLaxMode,
 	})
 }
 
 func ClearPasskeyLoginChallengeCookie(w http.ResponseWriter, secure bool) {
-	http.SetCookie(w, &http.Cookie{
+	setCookie(w, &http.Cookie{
 		Name: passkeyLoginChallengeCookieName, Value: "", Path: "/login",
 		MaxAge: -1, HttpOnly: true, Secure: secure, SameSite: http.SameSiteLaxMode,
 	})
 }
 
 func GetPasskeyLoginChallengeToken(r *http.Request) string {
-	cookie, err := r.Cookie(passkeyLoginChallengeCookieName)
+	cookie, err := readCookie(r, passkeyLoginChallengeCookieName)
 	if err != nil {
 		return ""
 	}

@@ -72,7 +72,7 @@ func TestForcedPasswordChangeRestrictsAccessUntilCompleted(t *testing.T) {
 	login := postSecuritySettings(t, stack, "/login", url.Values{"identifier": {"forced-user"}, "password": {localLoginPassword}})
 	var cookie *http.Cookie
 	for _, c := range login.Result().Cookies() {
-		if c.Name == "gofer_session" && c.Value != "" {
+		if c.Name == "raven_session" && c.Value != "" {
 			cookie = c
 		}
 	}

@@ -28,7 +28,7 @@ func openUserEventStream(t *testing.T, f *userStorageFixture, owner string) <-ch
 	if err != nil {
 		t.Fatal(err)
 	}
-	req.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.sessions[owner].Token})
+	req.AddCookie(&http.Cookie{Name: "raven_session", Value: f.sessions[owner].Token})
 	response, err := server.Client().Do(req)
 	if err != nil {
 		cancel()
@@ -88,7 +88,7 @@ func TestUserIMAPControlsManualHTTPDetachDeduplicateCancelAndSSEIsolation(t *tes
 	blocked, release := server.setBlock("alice", "list")
 	ctx, cancel := context.WithCancel(t.Context())
 	req := httptest.NewRequest(http.MethodPost, "/api/mail/sync/accounts/"+f.accounts["alice"].ID, nil).WithContext(ctx)
-	req.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.sessions["alice"].Token})
+	req.AddCookie(&http.Cookie{Name: "raven_session", Value: f.sessions["alice"].Token})
 	recorder := httptest.NewRecorder()
 	f.http.ServeHTTP(recorder, req)
 	cancel()

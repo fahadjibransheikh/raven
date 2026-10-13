@@ -116,7 +116,7 @@ func prepareHandlerVerifiedMFA(t *testing.T) (*auth.Manager, *storage.DB, http.H
 	t.Helper()
 	manager, db, stack, setupToken := setupEntryStack(t)
 	entry := postSetup(stack, setupToken)
-	setupCookie := responseCookie(entry, "gofer_pre_auth", true)
+	setupCookie := responseCookie(entry, "raven_pre_auth", true)
 	if setupCookie == nil {
 		t.Fatal("setup entry did not return pre-authentication cookie")
 	}
@@ -211,11 +211,11 @@ func TestSetupTokenVerificationCreatesProtectedContinuationWithoutCompletingSetu
 	if recorder.Code != http.StatusSeeOther || recorder.Header().Get("Location") != setupOwnerPath {
 		t.Fatalf("successful setup verification = %d location:%q body:%q", recorder.Code, recorder.Header().Get("Location"), recorder.Body.String())
 	}
-	setupCookie := responseCookie(recorder, "gofer_pre_auth", true)
+	setupCookie := responseCookie(recorder, "raven_pre_auth", true)
 	if setupCookie == nil || setupCookie.Value == "" || setupCookie.Value == setupToken || !setupCookie.HttpOnly || !setupCookie.Secure || setupCookie.SameSite != http.SameSiteLaxMode || setupCookie.MaxAge != 600 || setupCookie.Path != "/" {
 		t.Fatalf("setup access cookie = %#v", setupCookie)
 	}
-	for _, cookieName := range []string{"gofer_session", "gofer_auth_return_to"} {
+	for _, cookieName := range []string{"raven_session", "raven_auth_return_to"} {
 		cleared := responseCookie(recorder, cookieName, false)
 		if cleared == nil || cleared.MaxAge != -1 {
 			t.Fatalf("setup verification did not clear %s: %#v", cookieName, cleared)
@@ -272,7 +272,7 @@ func TestSetupTokenVerificationCreatesProtectedContinuationWithoutCompletingSetu
 	if withoutCookie.Code != http.StatusSeeOther || withoutCookie.Header().Get("Location") != setupPath {
 		t.Fatalf("unverified setup owner request = %d location:%q", withoutCookie.Code, withoutCookie.Header().Get("Location"))
 	}
-	cleared := responseCookie(withoutCookie, "gofer_pre_auth", false)
+	cleared := responseCookie(withoutCookie, "raven_pre_auth", false)
 	if cleared == nil || cleared.MaxAge != -1 {
 		t.Fatalf("unverified setup owner request did not clear stale cookie: %#v", cleared)
 	}
@@ -281,7 +281,7 @@ func TestSetupTokenVerificationCreatesProtectedContinuationWithoutCompletingSetu
 func TestFreshSetupOwnerDraftIsProtectedEncryptedAndNonMutating(t *testing.T) {
 	_, db, stack, setupToken := setupEntryStack(t)
 	entry := postSetup(stack, setupToken)
-	setupCookie := responseCookie(entry, "gofer_pre_auth", true)
+	setupCookie := responseCookie(entry, "raven_pre_auth", true)
 	if setupCookie == nil {
 		t.Fatal("setup verification did not issue continuation cookie")
 	}
@@ -331,7 +331,7 @@ func TestFreshSetupOwnerDraftIsProtectedEncryptedAndNonMutating(t *testing.T) {
 func TestSetupPasswordRequiresCurrentOwnerDraftAndNeverEchoesSecrets(t *testing.T) {
 	manager, db, stack, setupToken := setupEntryStack(t)
 	entry := postSetup(stack, setupToken)
-	setupCookie := responseCookie(entry, "gofer_pre_auth", true)
+	setupCookie := responseCookie(entry, "raven_pre_auth", true)
 	if setupCookie == nil {
 		t.Fatal("setup verification did not issue continuation cookie")
 	}
@@ -455,7 +455,7 @@ func TestSetupPasswordRequiresCurrentOwnerDraftAndNeverEchoesSecrets(t *testing.
 func TestSetupPasswordPostIsProtectedByCanonicalOriginGuard(t *testing.T) {
 	_, db, stack, setupToken := setupEntryStack(t)
 	entry := postSetup(stack, setupToken)
-	setupCookie := responseCookie(entry, "gofer_pre_auth", true)
+	setupCookie := responseCookie(entry, "raven_pre_auth", true)
 	owner := postSetupOwner(stack, setupCookie, url.Values{
 		"owner_target": {"create"}, "name": {"Owner"}, "username": {"owner"},
 	})
@@ -498,7 +498,7 @@ func TestSetupPasswordPostIsProtectedByCanonicalOriginGuard(t *testing.T) {
 func TestSetupMFARequiresPreparedPasswordAndExplicitStart(t *testing.T) {
 	_, _, stack, setupToken := setupEntryStack(t)
 	entry := postSetup(stack, setupToken)
-	setupCookie := responseCookie(entry, "gofer_pre_auth", true)
+	setupCookie := responseCookie(entry, "raven_pre_auth", true)
 
 	request := httptest.NewRequest(http.MethodGet, setupMFAPath, nil)
 	request.AddCookie(setupCookie)
@@ -542,7 +542,7 @@ func TestSetupMFARequiresPreparedPasswordAndExplicitStart(t *testing.T) {
 func TestSetupMFAStartConfirmReplaceIsEncryptedAndNonMutating(t *testing.T) {
 	manager, db, stack, setupToken := setupEntryStack(t)
 	entry := postSetup(stack, setupToken)
-	setupCookie := responseCookie(entry, "gofer_pre_auth", true)
+	setupCookie := responseCookie(entry, "raven_pre_auth", true)
 	postSetupOwner(stack, setupCookie, url.Values{
 		"owner_target": {"create"}, "name": {"Owner"}, "username": {"owner"},
 	})
@@ -652,7 +652,7 @@ func TestSetupMFAStartConfirmReplaceIsEncryptedAndNonMutating(t *testing.T) {
 func TestSetupRecoveryRequiresVerifiedTOTPAndExplicitGeneration(t *testing.T) {
 	_, _, stack, setupToken := setupEntryStack(t)
 	entry := postSetup(stack, setupToken)
-	setupCookie := responseCookie(entry, "gofer_pre_auth", true)
+	setupCookie := responseCookie(entry, "raven_pre_auth", true)
 
 	request := httptest.NewRequest(http.MethodGet, setupRecoveryPath, nil)
 	request.AddCookie(setupCookie)
@@ -980,12 +980,12 @@ func TestSetupCompletionSignsInOwnerConsumesSetupAndRejectsReplay(t *testing.T) 
 		t.Fatalf("setup completion = %d location:%q headers:%v body:%q",
 			completed.Code, completed.Header().Get("Location"), completed.Header(), completed.Body.String())
 	}
-	sessionCookie := responseCookie(completed, "gofer_session", true)
+	sessionCookie := responseCookie(completed, "raven_session", true)
 	if sessionCookie == nil || sessionCookie.Value == "" || !sessionCookie.HttpOnly || !sessionCookie.Secure ||
 		sessionCookie.SameSite != http.SameSiteLaxMode || sessionCookie.MaxAge != 30*24*60*60 || sessionCookie.Path != "/" {
 		t.Fatalf("setup completion session cookie = %#v", sessionCookie)
 	}
-	clearedPreAuth := responseCookie(completed, "gofer_pre_auth", false)
+	clearedPreAuth := responseCookie(completed, "raven_pre_auth", false)
 	if clearedPreAuth == nil || clearedPreAuth.MaxAge != -1 {
 		t.Fatalf("setup completion did not clear pre-auth cookie: %#v", clearedPreAuth)
 	}
@@ -1006,7 +1006,7 @@ func TestSetupCompletionSignsInOwnerConsumesSetupAndRejectsReplay(t *testing.T) 
 		t.Fatalf("setup after completion = %d %q", notFound.Code, notFound.Body.String())
 	}
 	replay := postSetupReview(stack, setupCookie, url.Values{"action": {"complete"}})
-	if replay.Code != http.StatusNotFound || responseCookie(replay, "gofer_session", true) != nil {
+	if replay.Code != http.StatusNotFound || responseCookie(replay, "raven_session", true) != nil {
 		t.Fatalf("replayed setup completion = %d cookies:%#v body:%q", replay.Code, replay.Result().Cookies(), replay.Body.String())
 	}
 }
@@ -1024,7 +1024,7 @@ func TestSetupCompletionRejectsInvalidActionAndBlocksUnassignedMailbox(t *testin
 	blocked := postSetupReview(stack, setupCookie, url.Values{"action": {"complete"}})
 	if blocked.Code != http.StatusConflict || !strings.Contains(blocked.Body.String(), "Setup completion is blocked") ||
 		!strings.Contains(blocked.Body.String(), "Setup remains uninitialized") ||
-		strings.Contains(blocked.Body.String(), "Complete setup and sign in") || responseCookie(blocked, "gofer_session", true) != nil {
+		strings.Contains(blocked.Body.String(), "Complete setup and sign in") || responseCookie(blocked, "raven_session", true) != nil {
 		t.Fatalf("blocked completion = %d cookies:%#v body:%q", blocked.Code, blocked.Result().Cookies(), blocked.Body.String())
 	}
 	var initialized, users, sessions int
@@ -1081,7 +1081,7 @@ func TestSetupCompletionPostIsBoundedQueryFreeAndProtectedByCanonicalOrigin(t *t
 	recorder := httptest.NewRecorder()
 	guard.Middleware(stack).ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusForbidden || !strings.Contains(recorder.Body.String(), "cross-origin request blocked") ||
-		responseCookie(recorder, "gofer_session", true) != nil {
+		responseCookie(recorder, "raven_session", true) != nil {
 		t.Fatalf("cross-origin setup completion = %d cookies:%#v body:%q", recorder.Code, recorder.Result().Cookies(), recorder.Body.String())
 	}
 	var storedPayload []byte
@@ -1129,7 +1129,7 @@ func TestSetupReviewBlocksUnassignedMailboxWithoutGuessingOwnership(t *testing.T
 func TestSetupMFAPostIsProtectedByCanonicalOriginGuard(t *testing.T) {
 	_, db, stack, setupToken := setupEntryStack(t)
 	entry := postSetup(stack, setupToken)
-	setupCookie := responseCookie(entry, "gofer_pre_auth", true)
+	setupCookie := responseCookie(entry, "raven_pre_auth", true)
 	postSetupOwner(stack, setupCookie, url.Values{
 		"owner_target": {"create"}, "name": {"Owner"}, "username": {"owner"},
 	})
@@ -1179,7 +1179,7 @@ func TestLegacyDefaultSetupCreatesSeparateManagementOwnerWithoutMovingData(t *te
 		t.Fatal(err)
 	}
 	entry := postSetup(stack, setupToken)
-	setupCookie := responseCookie(entry, "gofer_pre_auth", true)
+	setupCookie := responseCookie(entry, "raven_pre_auth", true)
 	request := httptest.NewRequest(http.MethodGet, setupOwnerPath, nil)
 	request.AddCookie(setupCookie)
 	page := httptest.NewRecorder()
@@ -1222,7 +1222,7 @@ func TestExistingSetupUsersRemainSeparateFromNewManagementOwner(t *testing.T) {
 		t.Fatal(err)
 	}
 	entry := postSetup(stack, setupToken)
-	setupCookie := responseCookie(entry, "gofer_pre_auth", true)
+	setupCookie := responseCookie(entry, "raven_pre_auth", true)
 	request := httptest.NewRequest(http.MethodGet, setupOwnerPath, nil)
 	request.AddCookie(setupCookie)
 	page := httptest.NewRecorder()
@@ -1259,7 +1259,7 @@ func TestExistingSetupUsersRemainSeparateFromNewManagementOwner(t *testing.T) {
 func TestSetupOwnerPostIsProtectedByCanonicalOriginGuard(t *testing.T) {
 	_, db, stack, setupToken := setupEntryStack(t)
 	entry := postSetup(stack, setupToken)
-	setupCookie := responseCookie(entry, "gofer_pre_auth", true)
+	setupCookie := responseCookie(entry, "raven_pre_auth", true)
 	t.Setenv("RAVEN_ADDR", "127.0.0.1:8090")
 	t.Setenv("RAVEN_BASE_URL", "https://gofer.example")
 	t.Setenv("RAVEN_ALLOW_UNAUTHENTICATED_REMOTE", "")
@@ -1322,7 +1322,7 @@ func TestSetupTokenFailuresAreIndistinguishableAndDoNotEchoSecrets(t *testing.T)
 			if strings.Contains(recorder.Body.String(), submitted) || strings.Contains(recorder.Body.String(), setupToken) {
 				t.Fatal("setup failure echoed submitted or stored credentials")
 			}
-			if responseCookie(recorder, "gofer_pre_auth", true) != nil {
+			if responseCookie(recorder, "raven_pre_auth", true) != nil {
 				t.Fatal("setup failure issued an access cookie")
 			}
 			if referenceBody == "" {
@@ -1437,7 +1437,7 @@ func TestSetupAcceptsPrivacyBrowserNullOriginWithSameOriginMetadata(t *testing.T
 	request.Header.Set("Sec-Fetch-Site", "same-origin")
 	recorder := httptest.NewRecorder()
 	guard.Middleware(stack).ServeHTTP(recorder, request)
-	if recorder.Code != http.StatusSeeOther || recorder.Header().Get("Location") != setupOwnerPath || responseCookie(recorder, "gofer_pre_auth", true) == nil {
+	if recorder.Code != http.StatusSeeOther || recorder.Header().Get("Location") != setupOwnerPath || responseCookie(recorder, "raven_pre_auth", true) == nil {
 		t.Fatalf("null-origin same-origin setup = %d location:%q body:%q", recorder.Code, recorder.Header().Get("Location"), recorder.Body.String())
 	}
 }
@@ -1469,7 +1469,7 @@ func TestSetupTokenIsIgnoredInQueryString(t *testing.T) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	stack.ServeHTTP(recorder, request)
-	if recorder.Code != http.StatusSeeOther || recorder.Header().Get("Location") != setupPath || strings.Contains(recorder.Body.String(), setupToken) || responseCookie(recorder, "gofer_pre_auth", true) != nil || recorder.Header().Get("Referrer-Policy") != "no-referrer" {
+	if recorder.Code != http.StatusSeeOther || recorder.Header().Get("Location") != setupPath || strings.Contains(recorder.Body.String(), setupToken) || responseCookie(recorder, "raven_pre_auth", true) != nil || recorder.Header().Get("Referrer-Policy") != "no-referrer" {
 		t.Fatalf("query-string setup token = %d %q", recorder.Code, recorder.Body.String())
 	}
 	var attempts, challenges int
@@ -1509,7 +1509,7 @@ func TestPersonalSetupUsesTokenAndSingleProfileWithoutAdminRoutes(t *testing.T) 
 	start := postSetup(stack, token)
 	var setupCookie *http.Cookie
 	for _, cookie := range start.Result().Cookies() {
-		if cookie.Name == "gofer_pre_auth" && cookie.Value != "" {
+		if cookie.Name == "raven_pre_auth" && cookie.Value != "" {
 			setupCookie = cookie
 		}
 	}
@@ -1523,7 +1523,7 @@ func TestPersonalSetupUsesTokenAndSingleProfileWithoutAdminRoutes(t *testing.T) 
 	completed := postSetupOwner(stack, setupCookie, form)
 	var sessionCookie *http.Cookie
 	for _, cookie := range completed.Result().Cookies() {
-		if cookie.Name == "gofer_session" && cookie.Value != "" {
+		if cookie.Name == "raven_session" && cookie.Value != "" {
 			sessionCookie = cookie
 		}
 	}

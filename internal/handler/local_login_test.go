@@ -112,7 +112,7 @@ func TestLocalLoginSuccessSetsSessionAndUsesSafeReturnTarget(t *testing.T) {
 	handler, manager, _ := newLocalLoginHandler(t, auth.UserStatusActive, false, false, true, false)
 	returnCookieRecorder := httptest.NewRecorder()
 	auth.SetReturnToCookie(returnCookieRecorder, "/settings/advanced?from=login", true)
-	returnCookie := responseCookie(returnCookieRecorder, "gofer_auth_return_to", true)
+	returnCookie := responseCookie(returnCookieRecorder, "raven_auth_return_to", true)
 	if returnCookie == nil {
 		t.Fatal("return-to setup omitted cookie")
 	}
@@ -121,7 +121,7 @@ func TestLocalLoginSuccessSetsSessionAndUsesSafeReturnTarget(t *testing.T) {
 	if recorder.Code != http.StatusSeeOther || recorder.Header().Get("Location") != "/settings/advanced?from=login" {
 		t.Fatalf("successful login = %d %q", recorder.Code, recorder.Header().Get("Location"))
 	}
-	sessionCookie := responseCookie(recorder, "gofer_session", true)
+	sessionCookie := responseCookie(recorder, "raven_session", true)
 	if sessionCookie == nil || !sessionCookie.HttpOnly || !sessionCookie.Secure || sessionCookie.SameSite != http.SameSiteLaxMode {
 		t.Fatalf("session cookie = %#v", sessionCookie)
 	}
@@ -132,7 +132,7 @@ func TestLocalLoginSuccessSetsSessionAndUsesSafeReturnTarget(t *testing.T) {
 	if session.AuthenticationMethod != auth.AuthenticationMethodPassword || session.AssuranceLevel != auth.AssuranceLevelSingleFactor || session.UserAgent != "Raven Login Test/1.0" {
 		t.Fatalf("password session = %#v", session)
 	}
-	clearedReturnTo := responseCookie(recorder, "gofer_auth_return_to", false)
+	clearedReturnTo := responseCookie(recorder, "raven_auth_return_to", false)
 	if clearedReturnTo == nil || clearedReturnTo.MaxAge != -1 {
 		t.Fatalf("cleared return-to cookie = %#v", clearedReturnTo)
 	}
@@ -164,7 +164,7 @@ func TestLocalLoginFailuresUseOneGenericResponse(t *testing.T) {
 			} else if body != referenceBody {
 				t.Fatal("login failure body differs by account state")
 			}
-			if responseCookie(recorder, "gofer_session", true) != nil {
+			if responseCookie(recorder, "raven_session", true) != nil {
 				t.Fatal("failed login issued session cookie")
 			}
 		})
@@ -186,7 +186,7 @@ func TestLocalAndAdminLoginRejectTheOppositeAccountTypeGenerically(t *testing.T)
 			handler, _, db := newLocalLoginHandler(t, auth.UserStatusActive, test.isAdmin, false, true, false)
 			recorder := test.post(t, handler, "person", localLoginPassword)
 			if recorder.Code != http.StatusUnauthorized || !strings.Contains(recorder.Body.String(), loginFailureMessage) ||
-				!strings.Contains(recorder.Body.String(), test.pageMarker) || responseCookie(recorder, "gofer_session", true) != nil {
+				!strings.Contains(recorder.Body.String(), test.pageMarker) || responseCookie(recorder, "raven_session", true) != nil {
 				t.Fatalf("cross-surface login = status:%d cookies:%#v body:%q", recorder.Code, recorder.Result().Cookies(), recorder.Body.String())
 			}
 			var sessions, challenges int
@@ -222,7 +222,7 @@ func TestLocalLoginRequiredMFAEnrollmentNeverCreatesSession(t *testing.T) {
 	if recorder.Code != http.StatusSeeOther || recorder.Header().Get("Location") != "/login/mfa/enroll" {
 		t.Fatalf("MFA login = %d %q", recorder.Code, recorder.Header().Get("Location"))
 	}
-	challengeCookie := responseCookie(recorder, "gofer_pre_auth", true)
+	challengeCookie := responseCookie(recorder, "raven_pre_auth", true)
 	if challengeCookie == nil || !challengeCookie.HttpOnly || !challengeCookie.Secure || challengeCookie.MaxAge != 600 {
 		t.Fatalf("MFA challenge cookie = %#v", challengeCookie)
 	}
@@ -271,7 +271,7 @@ func TestLocalLoginCompletesRequiredMFAEnrollmentBeforeCreatingSession(t *testin
 	mux.HandleFunc("POST /login/mfa/enroll/codes", handler.handleMFAEnrollmentCodesSubmit)
 	stack := manager.Middleware(mux)
 	login := postLocalLogin(t, handler, "person", localLoginPassword)
-	challengeCookie := responseCookie(login, "gofer_pre_auth", true)
+	challengeCookie := responseCookie(login, "raven_pre_auth", true)
 	if login.Code != http.StatusSeeOther || login.Header().Get("Location") != "/login/mfa/enroll" || challengeCookie == nil {
 		t.Fatalf("required MFA login = status:%d location:%q cookies:%#v", login.Code, login.Header().Get("Location"), login.Result().Cookies())
 	}
@@ -285,7 +285,7 @@ func TestLocalLoginCompletesRequiredMFAEnrollmentBeforeCreatingSession(t *testin
 		return w
 	}
 	for _, path := range []string{"/login/mfa/enroll", "/login/mfa/enroll/codes"} {
-		for _, cookie := range []*http.Cookie{nil, {Name: "gofer_pre_auth", Value: "invalid-challenge"}} {
+		for _, cookie := range []*http.Cookie{nil, {Name: "raven_pre_auth", Value: "invalid-challenge"}} {
 			if w := get(path, cookie); w.Code != http.StatusSeeOther || !strings.HasPrefix(w.Header().Get("Location"), "/login") {
 				t.Fatalf("unexpected missing/invalid challenge response: %d", w.Code)
 			}
@@ -345,7 +345,7 @@ func TestLocalLoginCompletesRequiredMFAEnrollmentBeforeCreatingSession(t *testin
 		"/login/mfa/enroll/codes",
 		url.Values{"action": {"complete"}, "batch_id": {batchMatch[1]}, "saved": {"yes"}},
 	)
-	sessionCookie := responseCookie(completed, "gofer_session", true)
+	sessionCookie := responseCookie(completed, "raven_session", true)
 	if completed.Code != http.StatusSeeOther || completed.Header().Get("Location") != "/" || sessionCookie == nil {
 		t.Fatalf("complete required MFA = %d location:%q cookies:%#v body:%q", completed.Code, completed.Header().Get("Location"), completed.Result().Cookies(), completed.Body.String())
 	}
@@ -362,13 +362,13 @@ func TestLocalLoginMFAContinuationRequiresCookie(t *testing.T) {
 	if recorder.Code != http.StatusSeeOther || recorder.Header().Get("Location") != "/login" {
 		t.Fatalf("missing MFA cookie response = %d %q", recorder.Code, recorder.Header().Get("Location"))
 	}
-	cleared := responseCookie(recorder, "gofer_pre_auth", false)
+	cleared := responseCookie(recorder, "raven_pre_auth", false)
 	if cleared == nil || cleared.MaxAge != -1 {
 		t.Fatalf("invalid MFA cookie cleanup = %#v", cleared)
 	}
 
 	request = httptest.NewRequest(http.MethodGet, "/login/mfa", nil)
-	request.AddCookie(&http.Cookie{Name: "gofer_pre_auth", Value: "forged-token"})
+	request.AddCookie(&http.Cookie{Name: "raven_pre_auth", Value: "forged-token"})
 	recorder = httptest.NewRecorder()
 	handler.handleLoginMFA(recorder, request)
 	if recorder.Code != http.StatusSeeOther || recorder.Header().Get("Location") != "/login" {
@@ -378,7 +378,7 @@ func TestLocalLoginMFAContinuationRequiresCookie(t *testing.T) {
 	returnRecorder := httptest.NewRecorder()
 	auth.SetReturnToCookie(returnRecorder, "/admin", true)
 	request = httptest.NewRequest(http.MethodGet, "/login/mfa", nil)
-	request.AddCookie(responseCookie(returnRecorder, "gofer_auth_return_to", true))
+	request.AddCookie(responseCookie(returnRecorder, "raven_auth_return_to", true))
 	recorder = httptest.NewRecorder()
 	handler.handleLoginMFA(recorder, request)
 	if recorder.Code != http.StatusSeeOther || recorder.Header().Get("Location") != "/admin/login" {
@@ -390,10 +390,10 @@ func TestAdminPasswordMFASeedsManagementReturnTarget(t *testing.T) {
 	handler, _, _ := newLocalLoginHandler(t, auth.UserStatusActive, true, true, true, false)
 	recorder := postAdminLogin(t, handler, "person", localLoginPassword)
 	if recorder.Code != http.StatusSeeOther || recorder.Header().Get("Location") != "/login/mfa/enroll" ||
-		responseCookie(recorder, "gofer_pre_auth", true) == nil {
+		responseCookie(recorder, "raven_pre_auth", true) == nil {
 		t.Fatalf("admin MFA start = status:%d location:%q cookies:%#v", recorder.Code, recorder.Header().Get("Location"), recorder.Result().Cookies())
 	}
-	returnCookie := responseCookie(recorder, "gofer_auth_return_to", true)
+	returnCookie := responseCookie(recorder, "raven_auth_return_to", true)
 	if returnCookie == nil {
 		t.Fatalf("admin MFA start omitted return target: %#v", recorder.Result().Cookies())
 	}
@@ -418,7 +418,7 @@ func TestLocalLoginTOTPContinuationCreatesMultiFactorSession(t *testing.T) {
 
 	returnCookieRecorder := httptest.NewRecorder()
 	auth.SetReturnToCookie(returnCookieRecorder, "/admin/account/security?from=mfa", true)
-	returnCookie := responseCookie(returnCookieRecorder, "gofer_auth_return_to", true)
+	returnCookie := responseCookie(returnCookieRecorder, "raven_auth_return_to", true)
 	loginForm := url.Values{
 		"identifier": {"owner"},
 		"password":   {"correct horse battery staple for owner"},
@@ -431,10 +431,10 @@ func TestLocalLoginTOTPContinuationCreatesMultiFactorSession(t *testing.T) {
 	request.AddCookie(returnCookie)
 	password := httptest.NewRecorder()
 	stack.ServeHTTP(password, request)
-	if password.Code != http.StatusSeeOther || password.Header().Get("Location") != "/login/mfa" || responseCookie(password, "gofer_session", true) != nil {
+	if password.Code != http.StatusSeeOther || password.Header().Get("Location") != "/login/mfa" || responseCookie(password, "raven_session", true) != nil {
 		t.Fatalf("password MFA start = %d location:%q cookies:%#v body:%q", password.Code, password.Header().Get("Location"), password.Result().Cookies(), password.Body.String())
 	}
-	challengeCookie := responseCookie(password, "gofer_pre_auth", true)
+	challengeCookie := responseCookie(password, "raven_pre_auth", true)
 	if challengeCookie == nil {
 		t.Fatal("password MFA start omitted challenge cookie")
 	}
@@ -462,7 +462,7 @@ func TestLocalLoginTOTPContinuationCreatesMultiFactorSession(t *testing.T) {
 	invalid := httptest.NewRecorder()
 	stack.ServeHTTP(invalid, request)
 	if invalid.Code != http.StatusUnauthorized || !strings.Contains(invalid.Body.String(), loginMFAFailureMessage) ||
-		responseCookie(invalid, "gofer_session", true) != nil || strings.Contains(invalid.Body.String(), invalidCode) {
+		responseCookie(invalid, "raven_session", true) != nil || strings.Contains(invalid.Body.String(), invalidCode) {
 		t.Fatalf("invalid TOTP continuation = %d cookies:%#v body:%q", invalid.Code, invalid.Result().Cookies(), invalid.Body.String())
 	}
 
@@ -480,14 +480,14 @@ func TestLocalLoginTOTPContinuationCreatesMultiFactorSession(t *testing.T) {
 	if verified.Code != http.StatusSeeOther || verified.Header().Get("Location") != "/admin/account/security?from=mfa" || strings.Contains(verified.Body.String(), validCode) {
 		t.Fatalf("verified TOTP continuation = %d location:%q body:%q", verified.Code, verified.Header().Get("Location"), verified.Body.String())
 	}
-	sessionCookie := responseCookie(verified, "gofer_session", true)
+	sessionCookie := responseCookie(verified, "raven_session", true)
 	if sessionCookie == nil || !sessionCookie.HttpOnly || !sessionCookie.Secure || sessionCookie.SameSite != http.SameSiteLaxMode {
 		t.Fatalf("verified TOTP session cookie = %#v", sessionCookie)
 	}
-	if cleared := responseCookie(verified, "gofer_pre_auth", false); cleared == nil || cleared.MaxAge != -1 {
+	if cleared := responseCookie(verified, "raven_pre_auth", false); cleared == nil || cleared.MaxAge != -1 {
 		t.Fatalf("verified TOTP pre-auth cleanup = %#v", cleared)
 	}
-	if cleared := responseCookie(verified, "gofer_auth_return_to", false); cleared == nil || cleared.MaxAge != -1 {
+	if cleared := responseCookie(verified, "raven_auth_return_to", false); cleared == nil || cleared.MaxAge != -1 {
 		t.Fatalf("verified TOTP return-target cleanup = %#v", cleared)
 	}
 	session, err := manager.GetSessionByToken(t.Context(), sessionCookie.Value)
@@ -501,7 +501,7 @@ func TestLocalLoginTOTPContinuationCreatesMultiFactorSession(t *testing.T) {
 func TestLocalLoginMFAPostIsProtectedByCanonicalOriginGuard(t *testing.T) {
 	handler, _, db := newLocalLoginHandler(t, auth.UserStatusActive, false, true, true, false)
 	password := postLocalLogin(t, handler, "person", localLoginPassword)
-	challengeCookie := responseCookie(password, "gofer_pre_auth", true)
+	challengeCookie := responseCookie(password, "raven_pre_auth", true)
 	if challengeCookie == nil {
 		t.Fatal("MFA origin test omitted challenge cookie")
 	}
@@ -546,12 +546,12 @@ func TestLocalLoginMFARejectsMissingCookieAndOversizedForm(t *testing.T) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	handler.handleLoginMFASubmit(recorder, request)
-	if recorder.Code != http.StatusSeeOther || recorder.Header().Get("Location") != "/login?error=mfa" || responseCookie(recorder, "gofer_session", true) != nil {
+	if recorder.Code != http.StatusSeeOther || recorder.Header().Get("Location") != "/login?error=mfa" || responseCookie(recorder, "raven_session", true) != nil {
 		t.Fatalf("missing MFA cookie = %d location:%q cookies:%#v", recorder.Code, recorder.Header().Get("Location"), recorder.Result().Cookies())
 	}
 
 	password := postLocalLogin(t, handler, "person", localLoginPassword)
-	challengeCookie := responseCookie(password, "gofer_pre_auth", true)
+	challengeCookie := responseCookie(password, "raven_pre_auth", true)
 	request = httptest.NewRequest(http.MethodPost, "/login/mfa", io.LimitReader(strings.NewReader(strings.Repeat("x", loginMFAFormMaximumBytes+1)), loginMFAFormMaximumBytes+1))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.AddCookie(challengeCookie)
@@ -630,10 +630,10 @@ func TestLocalLoginMFAOffersOnlyRegisteredFactors(t *testing.T) {
 			passwordRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 			login := httptest.NewRecorder()
 			stack.ServeHTTP(login, passwordRequest)
-			if responseCookie(login, "gofer_session", true) != nil {
+			if responseCookie(login, "raven_session", true) != nil {
 				t.Fatal("password-only login issued a session cookie")
 			}
-			cookie := responseCookie(login, "gofer_pre_auth", true)
+			cookie := responseCookie(login, "raven_pre_auth", true)
 			if cookie == nil {
 				t.Fatal("missing primary authentication challenge")
 			}

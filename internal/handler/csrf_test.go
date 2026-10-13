@@ -27,7 +27,7 @@ func csrfProofForSession(t *testing.T, manager *auth.Manager, sessionToken, acti
 		}
 	}
 	request := httptest.NewRequest(http.MethodGet, probePath, nil)
-	request.AddCookie(&http.Cookie{Name: "gofer_session", Value: sessionToken})
+	request.AddCookie(&http.Cookie{Name: "raven_session", Value: sessionToken})
 	recorder := httptest.NewRecorder()
 	probe.ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusOK || len(recorder.Body.String()) != 64 {
@@ -83,7 +83,7 @@ func TestAdminSecurityFormsRequireRenderedSessionCSRFProof(t *testing.T) {
 	stack := manager.Middleware(mux)
 
 	request := httptest.NewRequest(http.MethodGet, "/admin/security", nil)
-	request.AddCookie(&http.Cookie{Name: "gofer_session", Value: session.Token})
+	request.AddCookie(&http.Cookie{Name: "raven_session", Value: session.Token})
 	recorder := httptest.NewRecorder()
 	stack.ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusOK {
@@ -118,7 +118,7 @@ func TestAdminSecurityFormsRequireRenderedSessionCSRFProof(t *testing.T) {
 	}
 	request = httptest.NewRequest(http.MethodPost, action, strings.NewReader(form.Encode()))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.AddCookie(&http.Cookie{Name: "gofer_session", Value: session.Token})
+	request.AddCookie(&http.Cookie{Name: "raven_session", Value: session.Token})
 	recorder = httptest.NewRecorder()
 	stack.ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusForbidden {
@@ -131,7 +131,7 @@ func TestAdminSecurityFormsRequireRenderedSessionCSRFProof(t *testing.T) {
 	form.Set(auth.CSRFFormFieldName, proof)
 	request = httptest.NewRequest(http.MethodPost, action, strings.NewReader(form.Encode()))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.AddCookie(&http.Cookie{Name: "gofer_session", Value: session.Token})
+	request.AddCookie(&http.Cookie{Name: "raven_session", Value: session.Token})
 	recorder = httptest.NewRecorder()
 	stack.ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusSeeOther {
@@ -175,7 +175,7 @@ func TestAdminMailSecurityMutationsRequireRecentStrongStepUp(t *testing.T) {
 	stack := manager.Middleware(mux)
 
 	pageRequest := httptest.NewRequest(http.MethodGet, "/admin/security", nil)
-	pageRequest.AddCookie(&http.Cookie{Name: "gofer_session", Value: session.Token})
+	pageRequest.AddCookie(&http.Cookie{Name: "raven_session", Value: session.Token})
 	page := httptest.NewRecorder()
 	stack.ServeHTTP(page, pageRequest)
 	if page.Code != http.StatusOK || !strings.Contains(page.Body.String(), "Recent administrator verification required") ||
@@ -202,7 +202,7 @@ func TestAdminMailSecurityMutationsRequireRecentStrongStepUp(t *testing.T) {
 		test.form.Set(auth.CSRFFormFieldName, csrfProofFromForm(t, page.Body.String(), test.path))
 		request := httptest.NewRequest(http.MethodPost, test.path, strings.NewReader(test.form.Encode()))
 		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-		request.AddCookie(&http.Cookie{Name: "gofer_session", Value: session.Token})
+		request.AddCookie(&http.Cookie{Name: "raven_session", Value: session.Token})
 		recorder := httptest.NewRecorder()
 		stack.ServeHTTP(recorder, request)
 		return recorder
@@ -218,7 +218,7 @@ func TestAdminMailSecurityMutationsRequireRecentStrongStepUp(t *testing.T) {
 		}
 	}
 	stalePageRequest := httptest.NewRequest(http.MethodGet, staleRedirect, nil)
-	stalePageRequest.AddCookie(&http.Cookie{Name: "gofer_session", Value: session.Token})
+	stalePageRequest.AddCookie(&http.Cookie{Name: "raven_session", Value: session.Token})
 	stalePage := httptest.NewRecorder()
 	stack.ServeHTTP(stalePage, stalePageRequest)
 	if stalePage.Code != http.StatusOK ||
@@ -281,7 +281,7 @@ func TestLogoutRequiresSessionCSRFBeforeRevocation(t *testing.T) {
 	stack := manager.Middleware(mux)
 
 	request := httptest.NewRequest(http.MethodPost, "/auth/logout", nil)
-	request.AddCookie(&http.Cookie{Name: "gofer_session", Value: session.Token})
+	request.AddCookie(&http.Cookie{Name: "raven_session", Value: session.Token})
 	recorder := httptest.NewRecorder()
 	stack.ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusForbidden {
@@ -295,7 +295,7 @@ func TestLogoutRequiresSessionCSRFBeforeRevocation(t *testing.T) {
 	form := url.Values{auth.CSRFFormFieldName: {proof}}
 	request = httptest.NewRequest(http.MethodPost, "/auth/logout", strings.NewReader(form.Encode()))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.AddCookie(&http.Cookie{Name: "gofer_session", Value: session.Token})
+	request.AddCookie(&http.Cookie{Name: "raven_session", Value: session.Token})
 	recorder = httptest.NewRecorder()
 	stack.ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusSeeOther || recorder.Header().Get("Location") != "/login" {

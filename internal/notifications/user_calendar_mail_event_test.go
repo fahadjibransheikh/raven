@@ -262,7 +262,7 @@ func TestUserMailCalendarHTTPRenderReleasesSoleStore(t *testing.T) {
 	unblock := func() { once.Do(func() { close(w.release) }) }
 	defer unblock()
 	req := httptest.NewRequest("GET", "/api/mail/1/calendar", nil).WithContext(t.Context())
-	req.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.sessions["alice"].Token})
+	req.AddCookie(&http.Cookie{Name: "raven_session", Value: f.sessions["alice"].Token})
 	done := make(chan struct{})
 	go func() { f.http.ServeHTTP(w, req); close(done) }()
 	select {

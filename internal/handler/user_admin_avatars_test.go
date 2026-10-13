@@ -82,7 +82,7 @@ func TestOwnedAdminAvatarReadRejectsExpiredActorAndReleasesStore(t *testing.T) {
 	f := newOwnedAdminDiagnosticFixture(t)
 	seedOwnedAdminAvatarCache(t, f)
 	r := httptest.NewRequest(http.MethodGet, "/api/admin/avatars/senders?user_id=alice", nil)
-	r.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.session.Token})
+	r.AddCookie(&http.Cookie{Name: "raven_session", Value: f.session.Token})
 	w := &diagnosticBrowserWriter{ResponseRecorder: httptest.NewRecorder(), entered: make(chan struct{}), release: make(chan struct{})}
 	done := make(chan struct{})
 	go func() { defer close(done); f.http.ServeHTTP(w, r) }()

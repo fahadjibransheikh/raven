@@ -43,7 +43,7 @@ func TestUserCalendarViewsHTTPCachedOwnerIsolationAndFragments(t *testing.T) {
 		for _, path := range []string{"/calendar?month=2026-10&cache=1", "/calendar?date=2026-10-15&view=week&cache=1"} {
 			for _, target := range []string{"", "main-content", "calendar-main", "mail-list", "app-shell"} {
 				request := httptest.NewRequest("GET", path, nil)
-				request.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.sessions[owner].Token})
+				request.AddCookie(&http.Cookie{Name: "raven_session", Value: f.sessions[owner].Token})
 				if target != "" {
 					request.Header.Set("HX-Request", "true")
 					request.Header.Set("HX-Target", target)
@@ -81,7 +81,7 @@ func TestUserCalendarViewsHTTPRenderReleasesDatabaseLease(t *testing.T) {
 			release := func() { once.Do(func() { close(writer.release) }) }
 			defer release()
 			request := httptest.NewRequest("GET", path, nil).WithContext(t.Context())
-			request.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.sessions["alice"].Token})
+			request.AddCookie(&http.Cookie{Name: "raven_session", Value: f.sessions["alice"].Token})
 			done := make(chan struct{})
 			go func() { f.http.ServeHTTP(writer, request); close(done) }()
 			select {

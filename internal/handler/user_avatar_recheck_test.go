@@ -18,7 +18,7 @@ import (
 
 func avatarRecheckRequest(f *ownedAdminDiagnosticFixture, ctx context.Context, email string) *httptest.ResponseRecorder {
 	r := httptest.NewRequest(http.MethodPost, "/api/admin/avatars/senders/"+avatarresolver.GravatarHash(email)+"/recheck", nil).WithContext(ctx)
-	r.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.session.Token})
+	r.AddCookie(&http.Cookie{Name: "raven_session", Value: f.session.Token})
 	w := httptest.NewRecorder()
 	f.http.ServeHTTP(w, r)
 	return w

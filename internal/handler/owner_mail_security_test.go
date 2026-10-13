@@ -56,7 +56,7 @@ func TestPersonalOwnerManagesMailSecurityExceptions(t *testing.T) {
 		} else {
 			req = httptest.NewRequest(method, path, nil)
 		}
-		req.AddCookie(&http.Cookie{Name: "gofer_session", Value: s.Token})
+		req.AddCookie(&http.Cookie{Name: "raven_session", Value: s.Token})
 		rec := httptest.NewRecorder()
 		stack.ServeHTTP(rec, req)
 		return rec

@@ -37,7 +37,7 @@ func TestUserContactSuppressionHTTPBulkRollbackThenOwnedClearAndProviderIsolatio
 	for _, owner := range []string{"alice", "bob"} {
 		for _, partial := range []bool{false, true} {
 			request := httptest.NewRequest("GET", "/settings/contacts", nil).WithContext(t.Context())
-			request.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.sessions[owner].Token})
+			request.AddCookie(&http.Cookie{Name: "raven_session", Value: f.sessions[owner].Token})
 			if partial {
 				request.Header.Set("HX-Request", "true")
 			}
@@ -107,7 +107,7 @@ func TestUserContactSuppressionHTTPRenderReleasesSoleCacheSlot(t *testing.T) {
 	release := func() { once.Do(func() { close(writer.release) }) }
 	defer release()
 	request := httptest.NewRequest("GET", "/api/settings/contacts/suppressed", nil).WithContext(t.Context())
-	request.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.sessions["alice"].Token})
+	request.AddCookie(&http.Cookie{Name: "raven_session", Value: f.sessions["alice"].Token})
 	done := make(chan struct{})
 	go func() { f.http.ServeHTTP(writer, request); close(done) }()
 	select {

@@ -321,7 +321,7 @@ func (f *managedMailFixture) form(owner, method, path string, form url.Values) *
 	request := httptest.NewRequest(method, "http://127.0.0.1:8090"+path, strings.NewReader(form.Encode()))
 	request.Header.Set("Origin", "http://127.0.0.1:8090")
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.tokens[owner]})
+	request.AddCookie(&http.Cookie{Name: "raven_session", Value: f.tokens[owner]})
 	response := httptest.NewRecorder()
 	f.app.ServeHTTP(response, request)
 	return response
@@ -482,7 +482,7 @@ func (f *managedMailFixture) setUserStatus(t *testing.T, owner, status string) {
 	// Obtain the action-bound proof from the real authenticated administrator
 	// context, then dispatch the mutation through the full application mux.
 	probe := httptest.NewRequest("GET", "http://127.0.0.1:8090/admin/users", nil)
-	probe.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.tokens["owner"]})
+	probe.AddCookie(&http.Cookie{Name: "raven_session", Value: f.tokens["owner"]})
 	proof := httptest.NewRecorder()
 	f.app.auth.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		io.WriteString(w, auth.CSRFToken(r.Context(), "POST", path))

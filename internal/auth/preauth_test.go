@@ -272,7 +272,7 @@ func TestPreAuthCookieContract(t *testing.T) {
 		t.Run(map[bool]string{false: "loopback HTTP", true: "remote HTTPS"}[secure], func(t *testing.T) {
 			recorder := httptest.NewRecorder()
 			SetPreAuthCookie(recorder, "pre-auth-token", secure, 10*time.Minute)
-			cookies := recorder.Result().Cookies()
+			cookies := currentCookies(recorder.Result())
 			if len(cookies) != 1 {
 				t.Fatalf("SetPreAuthCookie() cookies = %#v", cookies)
 			}

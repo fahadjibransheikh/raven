@@ -62,7 +62,7 @@ func beginGooglePreAuth(t *testing.T, handler *Handler) (*http.Cookie, string) {
 		t.Fatal("authorization redirect omitted state")
 	}
 	for _, cookie := range recorder.Result().Cookies() {
-		if cookie.Name == "gofer_pre_auth" && cookie.MaxAge > 0 {
+		if cookie.Name == "raven_pre_auth" && cookie.MaxAge > 0 {
 			continue
 		}
 		if cookie.Name == "oauth_state" && cookie.MaxAge != -1 {
@@ -70,7 +70,7 @@ func beginGooglePreAuth(t *testing.T, handler *Handler) (*http.Cookie, string) {
 		}
 	}
 	for _, cookie := range recorder.Result().Cookies() {
-		if cookie.Name == "gofer_pre_auth" && cookie.MaxAge > 0 {
+		if cookie.Name == "raven_pre_auth" && cookie.MaxAge > 0 {
 			return cookie, state
 		}
 	}
@@ -323,7 +323,7 @@ func TestGoogleCallbackDoesNotReflectProviderError(t *testing.T) {
 func assertPreAuthCookieCleared(t *testing.T, recorder *httptest.ResponseRecorder) {
 	t.Helper()
 	for _, cookie := range recorder.Result().Cookies() {
-		if cookie.Name == "gofer_pre_auth" {
+		if cookie.Name == "raven_pre_auth" {
 			if cookie.MaxAge != -1 {
 				t.Fatalf("pre-authentication cookie was not cleared: %#v", cookie)
 			}

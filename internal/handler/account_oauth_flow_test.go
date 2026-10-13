@@ -38,7 +38,7 @@ func newAccountOAuthFlowTestHandler(t *testing.T) (*Handler, *mailauth.Service, 
 }
 
 func accountOAuthUserRequest(req *http.Request, userID, sessionToken string) *http.Request {
-	req.AddCookie(&http.Cookie{Name: "gofer_session", Value: sessionToken})
+	req.AddCookie(&http.Cookie{Name: "raven_session", Value: sessionToken})
 	return req.WithContext(auth.ContextWithUser(req.Context(), &auth.User{ID: userID, Username: userID}))
 }
 
@@ -65,7 +65,7 @@ func TestPasswordAuthenticatedUserCanStartMailboxAuthorization(t *testing.T) {
 	}
 	req := httptest.NewRequest(http.MethodPost, authorizePath, strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.AddCookie(&http.Cookie{Name: "gofer_session", Value: session.Token})
+	req.AddCookie(&http.Cookie{Name: "raven_session", Value: session.Token})
 	rec := httptest.NewRecorder()
 
 	h.auth.Middleware(http.HandlerFunc(h.handleAccountOAuthAuthorize)).ServeHTTP(rec, req)
@@ -119,7 +119,7 @@ func TestOutlookMailboxAuthorizationSendsPKCEChallengeForStoredVerifier(t *testi
 	}
 	req := httptest.NewRequest(http.MethodPost, authorizePath, strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.AddCookie(&http.Cookie{Name: "gofer_session", Value: session.Token})
+	req.AddCookie(&http.Cookie{Name: "raven_session", Value: session.Token})
 	rec := httptest.NewRecorder()
 
 	h.auth.Middleware(http.HandlerFunc(h.handleAccountOAuthAuthorize)).ServeHTTP(rec, req)

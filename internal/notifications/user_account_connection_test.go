@@ -40,7 +40,7 @@ func TestUserAccountConnectionHTTPPlainIMAPSMTPAndOwnership(t *testing.T) {
 	}
 	w := &blockedContactViewWriter{ResponseRecorder: httptest.NewRecorder(), entered: make(chan struct{}), release: make(chan struct{})}
 	req := httptest.NewRequest("POST", "/api/accounts/"+f.accounts["alice"].ID+"/test?wizard=add", nil)
-	req.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.sessions["alice"].Token})
+	req.AddCookie(&http.Cookie{Name: "raven_session", Value: f.sessions["alice"].Token})
 	done := make(chan struct{})
 	go func() { defer close(done); f.http.ServeHTTP(w, req) }()
 	t.Cleanup(func() { close(w.release); <-done })
@@ -63,7 +63,7 @@ func TestUserAccountDiscoveryRequiresNoUserStoreLease(t *testing.T) {
 			ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 			req := httptest.NewRequest("POST", "/api/accounts/discover", strings.NewReader(body)).WithContext(ctx)
 			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-			req.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.sessions["bob"].Token})
+			req.AddCookie(&http.Cookie{Name: "raven_session", Value: f.sessions["bob"].Token})
 			response := httptest.NewRecorder()
 			f.http.ServeHTTP(response, req)
 			cancel()

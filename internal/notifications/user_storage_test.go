@@ -166,7 +166,7 @@ func (f *userStorageFixture) request(owner, method, path, body string) *httptest
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	}
 	if session := f.sessions[owner]; session != nil {
-		req.AddCookie(&http.Cookie{Name: "gofer_session", Value: session.Token})
+		req.AddCookie(&http.Cookie{Name: "raven_session", Value: session.Token})
 	}
 	rec := httptest.NewRecorder()
 	f.http.ServeHTTP(rec, req)

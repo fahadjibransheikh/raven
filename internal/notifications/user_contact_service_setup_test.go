@@ -221,7 +221,7 @@ func TestUserContactServiceSetupSlowSaveReleasesCacheAndRejectsLateCommit(t *tes
 			defer cancel()
 			request := httptest.NewRequest("POST", "/api/accounts/"+id+"/contacts/sync", strings.NewReader(form.Encode())).WithContext(requestCtx)
 			request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-			request.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.sessions["alice"].Token})
+			request.AddCookie(&http.Cookie{Name: "raven_session", Value: f.sessions["alice"].Token})
 			done := make(chan *httptest.ResponseRecorder, 1)
 			go func() { recorder := httptest.NewRecorder(); f.http.ServeHTTP(recorder, request); done <- recorder }()
 			select {
@@ -400,7 +400,7 @@ func TestUserContactServiceSetupStreamsProgressAndOwnerBooks(t *testing.T) {
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/x-ndjson")
-	req.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.sessions["alice"].Token})
+	req.AddCookie(&http.Cookie{Name: "raven_session", Value: f.sessions["alice"].Token})
 	response, err := endpoint.Client().Do(req)
 	if err != nil {
 		t.Fatal(err)
@@ -455,7 +455,7 @@ func TestUserContactServiceSetupStreamRejectsLateConfiguration(t *testing.T) {
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/x-ndjson")
-	req.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.sessions["alice"].Token})
+	req.AddCookie(&http.Cookie{Name: "raven_session", Value: f.sessions["alice"].Token})
 	response, err := endpoint.Client().Do(req)
 	if err != nil {
 		t.Fatal(err)

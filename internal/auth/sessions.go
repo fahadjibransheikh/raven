@@ -7,10 +7,10 @@ import (
 	"time"
 )
 
-const sessionCookieName = "gofer_session"
+const sessionCookieName = "raven_session"
 
 func SetSessionCookie(w http.ResponseWriter, token string, secure bool) {
-	http.SetCookie(w, &http.Cookie{
+	setCookie(w, &http.Cookie{
 		Name:     sessionCookieName,
 		Value:    token,
 		Path:     "/",
@@ -22,7 +22,7 @@ func SetSessionCookie(w http.ResponseWriter, token string, secure bool) {
 }
 
 func ClearSessionCookie(w http.ResponseWriter, secure bool) {
-	http.SetCookie(w, &http.Cookie{
+	setCookie(w, &http.Cookie{
 		Name:     sessionCookieName,
 		Value:    "",
 		Path:     "/",
@@ -34,7 +34,7 @@ func ClearSessionCookie(w http.ResponseWriter, secure bool) {
 }
 
 func GetSessionToken(r *http.Request) string {
-	c, err := r.Cookie(sessionCookieName)
+	c, err := readCookie(r, sessionCookieName)
 	if err != nil {
 		return ""
 	}

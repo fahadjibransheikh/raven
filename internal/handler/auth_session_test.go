@@ -33,7 +33,7 @@ func TestLogoutRevokesSessionWithTypedMetadata(t *testing.T) {
 
 	handler := &Handler{auth: manager}
 	req := httptest.NewRequest(http.MethodPost, "/auth/logout", nil)
-	req.AddCookie(&http.Cookie{Name: "gofer_session", Value: session.Token})
+	req.AddCookie(&http.Cookie{Name: "raven_session", Value: session.Token})
 	req = req.WithContext(auth.ContextWithUser(req.Context(), &auth.User{ID: "user-id"}))
 	recorder := httptest.NewRecorder()
 	handler.handleLogout(recorder, req)
@@ -55,7 +55,7 @@ func TestLogoutRevokesSessionWithTypedMetadata(t *testing.T) {
 		t.Fatalf("logout revocation = at:%v by:%q reason:%q", revokedAt, revokedBy, reason)
 	}
 	cookies := recorder.Result().Cookies()
-	if len(cookies) < 1 || cookies[0].Name != "gofer_session" || cookies[0].MaxAge != -1 {
+	if len(cookies) < 1 || cookies[0].Name != "raven_session" || cookies[0].MaxAge != -1 {
 		t.Fatalf("logout cookies = %#v, want cleared session cookie", cookies)
 	}
 }
@@ -80,7 +80,7 @@ func TestLogoutAuditFailurePreservesSessionAndCookieForRetry(t *testing.T) {
 	}
 	handler := &Handler{auth: manager}
 	req := httptest.NewRequest(http.MethodPost, "/auth/logout", nil)
-	req.AddCookie(&http.Cookie{Name: "gofer_session", Value: session.Token})
+	req.AddCookie(&http.Cookie{Name: "raven_session", Value: session.Token})
 	recorder := httptest.NewRecorder()
 	handler.handleLogout(recorder, req)
 	if recorder.Code != http.StatusInternalServerError || len(recorder.Result().Cookies()) != 0 || recorder.Header().Get("Location") != "" {

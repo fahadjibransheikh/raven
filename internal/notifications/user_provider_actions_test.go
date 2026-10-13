@@ -699,7 +699,7 @@ func TestUserProviderActionsSlowPayloadDoesNotLeaseStore(t *testing.T) {
 	t.Cleanup(unblock)
 	req := httptest.NewRequest("POST", "/api/messages/read", nil)
 	req.Header.Set("Content-Type", "application/json")
-	req.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.sessions["alice"].Token})
+	req.AddCookie(&http.Cookie{Name: "raven_session", Value: f.sessions["alice"].Token})
 	req.Body = body
 	rec := httptest.NewRecorder()
 	done := make(chan struct{})

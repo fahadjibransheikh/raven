@@ -125,7 +125,7 @@ func TestUserMessageRefetchReleasesStoreDuringNetworkAndBrowserWaits(t *testing.
 	var releaseOnce sync.Once
 	w := &blockedContactViewWriter{ResponseRecorder: httptest.NewRecorder(), entered: make(chan struct{}), release: make(chan struct{})}
 	req := httptest.NewRequest("POST", "/api/messages/1/refetch", nil)
-	req.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.sessions["alice"].Token})
+	req.AddCookie(&http.Cookie{Name: "raven_session", Value: f.sessions["alice"].Token})
 	done := make(chan struct{})
 	go func() { defer close(done); f.http.ServeHTTP(w, req) }()
 	t.Cleanup(func() { releaseOnce.Do(func() { close(release) }); close(w.release); <-done })

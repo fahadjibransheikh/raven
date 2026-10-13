@@ -84,12 +84,12 @@ func TestRecoveryCodeLoginRequiresFactorRepairBeforeIssuingSession(t *testing.T)
 	manager, db, stack, recoveryCode := completedSetupWithRecoveryCode(t)
 	returnRecorder := httptest.NewRecorder()
 	auth.SetReturnToCookie(returnRecorder, "/admin/account/security?from=recovery", true)
-	returnCookie := responseCookie(returnRecorder, "gofer_auth_return_to", true)
+	returnCookie := responseCookie(returnRecorder, "raven_auth_return_to", true)
 	password := startOwnerPasswordMFA(t, stack, returnCookie)
 	if password.Code != http.StatusSeeOther || password.Header().Get("Location") != "/login/mfa" {
 		t.Fatalf("password MFA start = %d location:%q", password.Code, password.Header().Get("Location"))
 	}
-	mfaCookie := responseCookie(password, "gofer_pre_auth", true)
+	mfaCookie := responseCookie(password, "raven_pre_auth", true)
 	if mfaCookie == nil {
 		t.Fatal("password MFA start omitted pre-authentication cookie")
 	}
@@ -107,15 +107,15 @@ func TestRecoveryCodeLoginRequiresFactorRepairBeforeIssuingSession(t *testing.T)
 
 	invalid := postRecoveryRoute(stack, "/login/mfa/recovery", mfaCookie, url.Values{"code": {"AAAA-BBBB-CCCC-DDDD-EEEE-FFFF"}})
 	if invalid.Code != http.StatusUnauthorized || !strings.Contains(invalid.Body.String(), recoveryCodeFailureMessage) ||
-		responseCookie(invalid, "gofer_session", true) != nil {
+		responseCookie(invalid, "raven_session", true) != nil {
 		t.Fatalf("invalid recovery code = %d cookies:%#v body:%q", invalid.Code, invalid.Result().Cookies(), invalid.Body.String())
 	}
 	valid := postRecoveryRoute(stack, "/login/mfa/recovery", mfaCookie, url.Values{"code": {strings.ToLower(recoveryCode)}})
 	if valid.Code != http.StatusSeeOther || valid.Header().Get("Location") != "/login/recovery/mfa" ||
-		responseCookie(valid, "gofer_session", true) != nil {
+		responseCookie(valid, "raven_session", true) != nil {
 		t.Fatalf("valid recovery code = %d location:%q cookies:%#v", valid.Code, valid.Header().Get("Location"), valid.Result().Cookies())
 	}
-	repairCookie := responseCookie(valid, "gofer_pre_auth", true)
+	repairCookie := responseCookie(valid, "raven_pre_auth", true)
 	if repairCookie == nil || repairCookie.Value == mfaCookie.Value || repairCookie.MaxAge != 900 {
 		t.Fatalf("rotated repair cookie = %#v, previous %#v", repairCookie, mfaCookie)
 	}
@@ -144,14 +144,14 @@ func TestRecoveryCodeLoginRequiresFactorRepairBeforeIssuingSession(t *testing.T)
 		"action": {"confirm"}, "code": {setupHandlerTOTPCode(t, newSecret)},
 	})
 	if confirmed.Code != http.StatusSeeOther || confirmed.Header().Get("Location") != "/login/recovery/codes" ||
-		responseCookie(confirmed, "gofer_session", true) != nil {
+		responseCookie(confirmed, "raven_session", true) != nil {
 		t.Fatalf("replacement TOTP confirmation = %d location:%q cookies:%#v body:%q", confirmed.Code, confirmed.Header().Get("Location"), confirmed.Result().Cookies(), confirmed.Body.String())
 	}
 
 	generated := postRecoveryRoute(stack, "/login/recovery/codes", repairCookie, url.Values{"action": {"generate"}})
 	matches := renderedRecoveryCodePattern.FindAllStringSubmatch(generated.Body.String(), -1)
 	if generated.Code != http.StatusOK || len(matches) != 10 ||
-		!strings.Contains(generated.Body.String(), "shown only in this response") || responseCookie(generated, "gofer_session", true) != nil {
+		!strings.Contains(generated.Body.String(), "shown only in this response") || responseCookie(generated, "raven_session", true) != nil {
 		t.Fatalf("fresh recovery-code generation = %d codes:%d cookies:%#v body:%q", generated.Code, len(matches), generated.Result().Cookies(), generated.Body.String())
 	}
 	request = httptest.NewRequest(http.MethodGet, "/login/recovery/codes", nil)
@@ -172,11 +172,11 @@ func TestRecoveryCodeLoginRequiresFactorRepairBeforeIssuingSession(t *testing.T)
 	if completed.Code != http.StatusSeeOther || completed.Header().Get("Location") != "/admin/account/security?from=recovery" {
 		t.Fatalf("recovery completion = %d location:%q body:%q", completed.Code, completed.Header().Get("Location"), completed.Body.String())
 	}
-	sessionCookie := responseCookie(completed, "gofer_session", true)
+	sessionCookie := responseCookie(completed, "raven_session", true)
 	if sessionCookie == nil || !sessionCookie.HttpOnly || !sessionCookie.Secure {
 		t.Fatalf("recovery session cookie = %#v", sessionCookie)
 	}
-	if cleared := responseCookie(completed, "gofer_pre_auth", false); cleared == nil || cleared.MaxAge != -1 {
+	if cleared := responseCookie(completed, "raven_pre_auth", false); cleared == nil || cleared.MaxAge != -1 {
 		t.Fatalf("recovery pre-auth cleanup = %#v", cleared)
 	}
 	session, err := manager.GetSessionByToken(t.Context(), sessionCookie.Value)
@@ -189,7 +189,7 @@ func TestRecoveryCodeLoginRequiresFactorRepairBeforeIssuingSession(t *testing.T)
 func TestRecoveryCodeSubmissionIsOriginProtectedAndBounded(t *testing.T) {
 	manager, db, stack, recoveryCode := completedSetupWithRecoveryCode(t)
 	password := startOwnerPasswordMFA(t, stack)
-	mfaCookie := responseCookie(password, "gofer_pre_auth", true)
+	mfaCookie := responseCookie(password, "raven_pre_auth", true)
 	if mfaCookie == nil {
 		t.Fatal("recovery origin test omitted MFA cookie")
 	}

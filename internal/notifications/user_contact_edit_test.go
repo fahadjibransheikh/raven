@@ -18,7 +18,7 @@ func requestContactEditor(ctx context.Context, f *userStorageFixture, owner, pat
 	req := httptest.NewRequest("POST", path, strings.NewReader(form.Encode())).WithContext(ctx)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
-	req.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.sessions[owner].Token})
+	req.AddCookie(&http.Cookie{Name: "raven_session", Value: f.sessions[owner].Token})
 	response := httptest.NewRecorder()
 	f.http.ServeHTTP(response, req)
 	return response

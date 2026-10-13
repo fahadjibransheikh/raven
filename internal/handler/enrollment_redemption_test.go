@@ -257,7 +257,7 @@ func TestGoogleInvitationEnrollmentCompletesThroughPublicHandlerWithoutCreatingM
 	}
 	var preAuthCookie *http.Cookie
 	for _, cookie := range startRecorder.Result().Cookies() {
-		if cookie.Name == "gofer_pre_auth" && cookie.MaxAge > 0 {
+		if cookie.Name == "raven_pre_auth" && cookie.MaxAge > 0 {
 			preAuthCookie = cookie
 		}
 	}
@@ -298,7 +298,7 @@ func TestGoogleInvitationEnrollmentCompletesThroughPublicHandlerWithoutCreatingM
 	verifier.nonce = authorizationURL.Query().Get("nonce")
 	preAuthCookie = nil
 	for _, cookie := range startRecorder.Result().Cookies() {
-		if cookie.Name == "gofer_pre_auth" && cookie.MaxAge > 0 {
+		if cookie.Name == "raven_pre_auth" && cookie.MaxAge > 0 {
 			preAuthCookie = cookie
 		}
 	}
@@ -319,7 +319,7 @@ func TestGoogleInvitationEnrollmentCompletesThroughPublicHandlerWithoutCreatingM
 	}
 	var sessionCookie *http.Cookie
 	for _, cookie := range callbackRecorder.Result().Cookies() {
-		if cookie.Name == "gofer_session" && cookie.MaxAge > 0 {
+		if cookie.Name == "raven_session" && cookie.MaxAge > 0 {
 			sessionCookie = cookie
 		}
 	}
@@ -347,7 +347,7 @@ func TestEnrollmentRedemptionCompletesThroughPublicStackAndClearsAuthCookies(t *
 	if recorder.Code != http.StatusSeeOther || recorder.Header().Get("Location") != invitationEnrollmentCompletePath {
 		t.Fatalf("successful redemption = %d %q body=%q", recorder.Code, recorder.Header().Get("Location"), recorder.Body.String())
 	}
-	for _, cookieName := range []string{"gofer_session", "gofer_pre_auth"} {
+	for _, cookieName := range []string{"raven_session", "raven_pre_auth"} {
 		cookie := responseCookie(recorder, cookieName, false)
 		if cookie == nil || cookie.MaxAge != -1 {
 			t.Fatalf("cleared %s cookie = %#v", cookieName, cookie)

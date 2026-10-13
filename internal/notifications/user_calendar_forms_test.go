@@ -204,7 +204,7 @@ func TestUserCalendarFormsHTTPRenderDoesNotRetainSoleStore(t *testing.T) {
 		release := func() { once.Do(func() { close(writer.release) }) }
 		t.Cleanup(release)
 		request := httptest.NewRequest("GET", path, nil).WithContext(t.Context())
-		request.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.sessions["alice"].Token})
+		request.AddCookie(&http.Cookie{Name: "raven_session", Value: f.sessions["alice"].Token})
 		done := make(chan struct{})
 		go func() { f.http.ServeHTTP(writer, request); close(done) }()
 		select {
@@ -312,7 +312,7 @@ func TestUserCalendarFormsHTTPMetadataDoesNotWaitForFileCleanup(t *testing.T) {
 	for _, path := range []string{"/api/calendar/events/same-event/edit", "/api/calendar/events/same-occurrence/delete-occurrence-confirmation", "/api/calendar/events/same-occurrence/delete-series-confirmation"} {
 		ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 		request := httptest.NewRequest("GET", path, nil).WithContext(ctx)
-		request.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.sessions["alice"].Token})
+		request.AddCookie(&http.Cookie{Name: "raven_session", Value: f.sessions["alice"].Token})
 		response := httptest.NewRecorder()
 		f.http.ServeHTTP(response, request)
 		cancel()

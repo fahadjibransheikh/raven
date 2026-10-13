@@ -104,7 +104,7 @@ func beginOIDCHandlerLogin(t *testing.T, stack http.Handler) (*http.Cookie, stri
 		t.Fatalf("OIDC authorization query = %q", location.RawQuery)
 	}
 	for _, cookie := range recorder.Result().Cookies() {
-		if cookie.Name == "gofer_pre_auth" && cookie.MaxAge > 0 {
+		if cookie.Name == "raven_pre_auth" && cookie.MaxAge > 0 {
 			return cookie, state, nonce
 		}
 	}
@@ -142,7 +142,7 @@ func TestOIDCApplicationLoginHandlerCreatesOnlyGoferSession(t *testing.T) {
 	}
 	foundSessionCookie := false
 	for _, cookie := range recorder.Result().Cookies() {
-		if cookie.Name == "gofer_session" && cookie.Value != "" && cookie.MaxAge > 0 {
+		if cookie.Name == "raven_session" && cookie.Value != "" && cookie.MaxAge > 0 {
 			foundSessionCookie = true
 		}
 	}

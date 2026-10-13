@@ -458,7 +458,7 @@ func officeHTTP(client *http.Client, base, token, method, path, body, contentTyp
 	if contentType != "" {
 		request.Header.Set("Content-Type", contentType)
 	}
-	request.AddCookie(&http.Cookie{Name: "gofer_session", Value: token})
+	request.AddCookie(&http.Cookie{Name: "raven_session", Value: token})
 	response, err := client.Do(request)
 	if err != nil {
 		return 0, "", err

@@ -97,7 +97,7 @@ func ownedSecurityPost(t *testing.T, f *ownedAdminDiagnosticFixture, page, path 
 	form.Set(auth.CSRFFormFieldName, csrfProofFromForm(t, page, path))
 	r := httptest.NewRequest("POST", path, strings.NewReader(form.Encode()))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	r.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.session.Token})
+	r.AddCookie(&http.Cookie{Name: "raven_session", Value: f.session.Token})
 	w := httptest.NewRecorder()
 	f.http.ServeHTTP(w, r)
 	return w

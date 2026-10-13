@@ -30,7 +30,7 @@ func TestUserContactViewsHTTPPrivateProfilesAndFragments(t *testing.T) {
 		}
 		for _, target := range []string{"mail-list", "app-shell", "contacts-page"} {
 			request := httptest.NewRequest("GET", "/contacts?contact=same-contact-id", nil)
-			request.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.sessions[owner].Token})
+			request.AddCookie(&http.Cookie{Name: "raven_session", Value: f.sessions[owner].Token})
 			request.Header.Set("HX-Request", "true")
 			request.Header.Set("HX-Target", target)
 			response := httptest.NewRecorder()
@@ -64,7 +64,7 @@ func TestUserContactViewHTTPRenderingReleasesDatabaseLease(t *testing.T) {
 	release := func() { once.Do(func() { close(writer.release) }) }
 	defer release()
 	request := httptest.NewRequest("GET", "/contacts?contact=same-contact-id", nil).WithContext(t.Context())
-	request.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.sessions["alice"].Token})
+	request.AddCookie(&http.Cookie{Name: "raven_session", Value: f.sessions["alice"].Token})
 	done := make(chan struct{})
 	go func() { f.http.ServeHTTP(writer, request); close(done) }()
 	select {

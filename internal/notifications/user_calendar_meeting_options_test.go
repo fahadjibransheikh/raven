@@ -254,7 +254,7 @@ func TestUserCalendarMeetingOptionsHTTPMetadataIgnoresFileCleanup(t *testing.T) 
 	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 	defer cancel()
 	request := httptest.NewRequest("GET", "/api/calendar/meeting-options?source_id=same-source", nil).WithContext(ctx)
-	request.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.sessions["alice"].Token})
+	request.AddCookie(&http.Cookie{Name: "raven_session", Value: f.sessions["alice"].Token})
 	rec := httptest.NewRecorder()
 	f.http.ServeHTTP(rec, request)
 	if rec.Code != 200 {
@@ -323,7 +323,7 @@ func TestUserCalendarMeetingOptionsHTTPRenderingReleasesStore(t *testing.T) {
 	unblock := func() { once.Do(func() { close(writer.release) }) }
 	defer unblock()
 	request := httptest.NewRequest("GET", "/api/calendar/meeting-options?source_id=same-source", nil).WithContext(t.Context())
-	request.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.sessions["alice"].Token})
+	request.AddCookie(&http.Cookie{Name: "raven_session", Value: f.sessions["alice"].Token})
 	done := make(chan struct{})
 	go func() { f.http.ServeHTTP(writer, request); close(done) }()
 	select {

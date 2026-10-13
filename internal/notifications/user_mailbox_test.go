@@ -148,7 +148,7 @@ func TestUserMailboxAccountHTTPLifecycleAndIsolation(t *testing.T) {
 	// Canceling the HTTP request after acceptance must not cancel external cleanup.
 	requestCtx, cancelRequest := context.WithCancel(t.Context())
 	req := httptest.NewRequest(http.MethodDelete, "/api/accounts/"+id, nil).WithContext(requestCtx)
-	req.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.sessions["alice"].Token})
+	req.AddCookie(&http.Cookie{Name: "raven_session", Value: f.sessions["alice"].Token})
 	rec = httptest.NewRecorder()
 	f.http.ServeHTTP(rec, req)
 	cancelRequest()
@@ -334,7 +334,7 @@ func TestUserMailboxHTTPReadsIsolateOverlappingMessageFolderAndThreadIDs(t *test
 			req := httptest.NewRequest(http.MethodGet, request.path, nil)
 			req.Header.Set("HX-Request", "true")
 			req.Header.Set("HX-Target", request.target)
-			req.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.sessions[owner].Token})
+			req.AddCookie(&http.Cookie{Name: "raven_session", Value: f.sessions[owner].Token})
 			rec := httptest.NewRecorder()
 			f.http.ServeHTTP(rec, req)
 			if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), f.accounts[owner].ID) || strings.Contains(rec.Body.String(), f.accounts[other].ID) {
@@ -399,7 +399,7 @@ func TestUserMailboxRenderingReleasesDatabaseBeforeClientWrite(t *testing.T) {
 	seedUserMailbox(t, f)
 	for _, path := range []string{"/folder/same-inbox/full", "/email/1/body"} {
 		req := httptest.NewRequest(http.MethodGet, path, nil)
-		req.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.sessions["alice"].Token})
+		req.AddCookie(&http.Cookie{Name: "raven_session", Value: f.sessions["alice"].Token})
 		w := &mailboxWriteProbe{ResponseRecorder: httptest.NewRecorder(), probe: func() {
 			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 			defer cancel()

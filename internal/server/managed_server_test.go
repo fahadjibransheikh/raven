@@ -42,7 +42,7 @@ func managedRequest(app *managedApplication, method, path, token, body string) *
 	request.Header.Set("Origin", "http://127.0.0.1:8090")
 	request.Header.Set("Content-Type", "application/json")
 	if token != "" {
-		request.AddCookie(&http.Cookie{Name: "gofer_session", Value: token})
+		request.AddCookie(&http.Cookie{Name: "raven_session", Value: token})
 	}
 	recorder := httptest.NewRecorder()
 	app.ServeHTTP(recorder, request)
@@ -344,7 +344,7 @@ func TestManagedMainProcessServesPopulatedUsersAndJoinsOnSignal(t *testing.T) {
 			t.Fatal(err)
 		}
 		request.Host = "127.0.0.1:8090"
-		request.AddCookie(&http.Cookie{Name: "gofer_session", Value: tokens[owner]})
+		request.AddCookie(&http.Cookie{Name: "raven_session", Value: tokens[owner]})
 		response, err := client.Do(request)
 		if err != nil {
 			t.Fatal(err)

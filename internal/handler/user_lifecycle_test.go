@@ -31,7 +31,7 @@ func ownedStatusPost(t *testing.T, f *ownedAdminDiagnosticFixture, owner, status
 	}
 	r := httptest.NewRequest(http.MethodPost, path, strings.NewReader(form.Encode()))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	r.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.session.Token})
+	r.AddCookie(&http.Cookie{Name: "raven_session", Value: f.session.Token})
 	w := httptest.NewRecorder()
 	f.http.ServeHTTP(w, r)
 	return w
@@ -266,7 +266,7 @@ func TestOwnedComposeUploadRechecksAuthorityAfterFilePinWait(t *testing.T) {
 	}
 	req := httptest.NewRequest(http.MethodPost, "/compose/attachments", &body)
 	req.Header.Set("Content-Type", form.FormDataContentType())
-	req.AddCookie(&http.Cookie{Name: "gofer_session", Value: alice.Token})
+	req.AddCookie(&http.Cookie{Name: "raven_session", Value: alice.Token})
 	done := make(chan *httptest.ResponseRecorder, 1)
 	go func() { w := httptest.NewRecorder(); browser.ServeHTTP(w, req); done <- w }()
 	select {

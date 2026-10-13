@@ -36,7 +36,7 @@ func TestOwnedAdminManualContactBackfillHTTP(t *testing.T) {
 		r := httptest.NewRequest(http.MethodPost, path, strings.NewReader(body))
 		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		r.Header.Set("Accept", "application/json")
-		r.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.session.Token})
+		r.AddCookie(&http.Cookie{Name: "raven_session", Value: f.session.Token})
 		w := httptest.NewRecorder()
 		f.http.ServeHTTP(w, r)
 		return w

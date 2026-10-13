@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	securityChallengeCookieName    = "gofer_security_challenge"
+	securityChallengeCookieName    = "raven_security_challenge"
 	securityManagementLifetime     = 10 * time.Minute
 	securityManagementMaxAttempts  = 5
 	securityStepUpMaximumAge       = 10 * time.Minute
@@ -1047,27 +1047,27 @@ func SetSecurityChallengeCookie(w http.ResponseWriter, token string, secure bool
 	if maxAge < 1 {
 		maxAge = 1
 	}
-	http.SetCookie(w, &http.Cookie{
+	setCookie(w, &http.Cookie{
 		Name: securityChallengeCookieName, Value: token, Path: "/",
 		MaxAge: maxAge, HttpOnly: true, Secure: secure, SameSite: http.SameSiteLaxMode,
 	})
 }
 
 func ClearSecurityChallengeCookie(w http.ResponseWriter, secure bool) {
-	http.SetCookie(w, &http.Cookie{
+	setCookie(w, &http.Cookie{
 		Name: securityChallengeCookieName, Value: "", Path: "/",
 		MaxAge: -1, HttpOnly: true, Secure: secure, SameSite: http.SameSiteLaxMode,
 	})
 	// Remove the narrower cookie issued by versions before management and
 	// webmail security surfaces were separated.
-	http.SetCookie(w, &http.Cookie{
+	setCookie(w, &http.Cookie{
 		Name: securityChallengeCookieName, Value: "", Path: "/settings/security",
 		MaxAge: -1, HttpOnly: true, Secure: secure, SameSite: http.SameSiteLaxMode,
 	})
 }
 
 func GetSecurityChallengeToken(r *http.Request) string {
-	cookie, err := r.Cookie(securityChallengeCookieName)
+	cookie, err := readCookie(r, securityChallengeCookieName)
 	if err != nil {
 		return ""
 	}

@@ -88,7 +88,7 @@ func TestSSEStreamEndsWhenItsSessionIsRevoked(t *testing.T) {
 	}))
 	defer srv.Close()
 	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, srv.URL, nil)
-	req.AddCookie(&http.Cookie{Name: "gofer_session", Value: session.Token})
+	req.AddCookie(&http.Cookie{Name: "raven_session", Value: session.Token})
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatal(err)

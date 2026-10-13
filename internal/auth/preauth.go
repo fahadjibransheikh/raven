@@ -16,7 +16,7 @@ import (
 var ErrPreAuthChallengeInvalid = errors.New("pre-authentication challenge is invalid")
 
 const (
-	preAuthCookieName         = "gofer_pre_auth"
+	preAuthCookieName         = "raven_pre_auth"
 	defaultPreAuthLifetime    = 10 * time.Minute
 	maximumPreAuthLifetime    = 15 * time.Minute
 	defaultPreAuthMaxAttempts = 3
@@ -273,7 +273,7 @@ func SetPreAuthCookie(w http.ResponseWriter, token string, secure bool, lifetime
 	if maxAge < 1 {
 		maxAge = 1
 	}
-	http.SetCookie(w, &http.Cookie{
+	setCookie(w, &http.Cookie{
 		Name:     preAuthCookieName,
 		Value:    token,
 		Path:     "/",
@@ -285,7 +285,7 @@ func SetPreAuthCookie(w http.ResponseWriter, token string, secure bool, lifetime
 }
 
 func ClearPreAuthCookie(w http.ResponseWriter, secure bool) {
-	http.SetCookie(w, &http.Cookie{
+	setCookie(w, &http.Cookie{
 		Name:     preAuthCookieName,
 		Value:    "",
 		Path:     "/",
@@ -297,7 +297,7 @@ func ClearPreAuthCookie(w http.ResponseWriter, secure bool) {
 }
 
 func GetPreAuthToken(r *http.Request) string {
-	cookie, err := r.Cookie(preAuthCookieName)
+	cookie, err := readCookie(r, preAuthCookieName)
 	if err != nil {
 		return ""
 	}

@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-const returnToCookieName = "gofer_auth_return_to"
+const returnToCookieName = "raven_auth_return_to"
 
 // SafeReturnTo accepts only same-origin application paths.
 func SafeReturnTo(raw string) string {
@@ -32,7 +32,7 @@ func SetReturnToCookie(w http.ResponseWriter, raw string, secure bool) {
 	if returnTo == "" {
 		return
 	}
-	http.SetCookie(w, &http.Cookie{
+	setCookie(w, &http.Cookie{
 		Name:     returnToCookieName,
 		Value:    base64.RawURLEncoding.EncodeToString([]byte(returnTo)),
 		Path:     "/",
@@ -44,7 +44,7 @@ func SetReturnToCookie(w http.ResponseWriter, raw string, secure bool) {
 }
 
 func GetReturnTo(r *http.Request) string {
-	cookie, err := r.Cookie(returnToCookieName)
+	cookie, err := readCookie(r, returnToCookieName)
 	if err != nil || cookie.Value == "" {
 		return ""
 	}
@@ -56,7 +56,7 @@ func GetReturnTo(r *http.Request) string {
 }
 
 func ClearReturnToCookie(w http.ResponseWriter, secure bool) {
-	http.SetCookie(w, &http.Cookie{
+	setCookie(w, &http.Cookie{
 		Name:     returnToCookieName,
 		Value:    "",
 		Path:     "/",

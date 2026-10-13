@@ -29,7 +29,7 @@ func TestUserSettingsTabsReadOwnedData(t *testing.T) {
 		for _, tab := range []string{"accounts", "sync", "operations", "contacts", "appearance", "regional", "compose-display", "advanced"} {
 			for _, partial := range []bool{false, true} {
 				req := httptest.NewRequest("GET", "/settings/"+tab+"?user_id=other", nil)
-				req.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.sessions[owner].Token})
+				req.AddCookie(&http.Cookie{Name: "raven_session", Value: f.sessions[owner].Token})
 				if partial {
 					req.Header.Set("HX-Request", "true")
 				}
@@ -91,7 +91,7 @@ func userSecurityProof(t *testing.T, f *userStorageFixture, owner, path string) 
 	t.Helper()
 	var proof string
 	req := httptest.NewRequest("GET", "/settings/security", nil)
-	req.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.sessions[owner].Token})
+	req.AddCookie(&http.Cookie{Name: "raven_session", Value: f.sessions[owner].Token})
 	f.auth.Middleware(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		proof = auth.CSRFToken(r.Context(), "POST", path)
 	})).ServeHTTP(httptest.NewRecorder(), req)
@@ -194,7 +194,7 @@ func TestUserSettingsBrowserWriteReleasesStore(t *testing.T) {
 		t.Run(path, func(t *testing.T) {
 			w := &blockedContactViewWriter{ResponseRecorder: httptest.NewRecorder(), entered: make(chan struct{}), release: make(chan struct{})}
 			req := httptest.NewRequest("GET", path, nil)
-			req.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.sessions["alice"].Token})
+			req.AddCookie(&http.Cookie{Name: "raven_session", Value: f.sessions["alice"].Token})
 			done := make(chan struct{})
 			go func() { defer close(done); f.http.ServeHTTP(w, req) }()
 			t.Cleanup(func() { close(w.release); <-done })

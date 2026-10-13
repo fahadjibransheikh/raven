@@ -86,7 +86,7 @@ func newOwnedAdminDiagnosticFixture(t *testing.T) *ownedAdminDiagnosticFixture {
 
 func (f *ownedAdminDiagnosticFixture) request(path string) *httptest.ResponseRecorder {
 	r := httptest.NewRequest("GET", path, nil)
-	r.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.session.Token})
+	r.AddCookie(&http.Cookie{Name: "raven_session", Value: f.session.Token})
 	w := httptest.NewRecorder()
 	f.http.ServeHTTP(w, r)
 	return w
@@ -152,7 +152,7 @@ func TestOwnedAdminDiagnosticsBrowserReleasesSingleStore(t *testing.T) {
 	f := newOwnedAdminDiagnosticFixture(t)
 	w := &diagnosticBrowserWriter{ResponseRecorder: httptest.NewRecorder(), entered: make(chan struct{}), release: make(chan struct{})}
 	r := httptest.NewRequest("GET", "/api/admin/labels/status?user_id=alice", nil)
-	r.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.session.Token})
+	r.AddCookie(&http.Cookie{Name: "raven_session", Value: f.session.Token})
 	done := make(chan struct{})
 	go func() { defer close(done); f.http.ServeHTTP(w, r) }()
 	unlock := sync.OnceFunc(func() { close(w.release) })

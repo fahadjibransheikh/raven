@@ -41,7 +41,7 @@ func passwordSecurityStack(t *testing.T) (*Handler, *auth.Manager, *http.ServeMu
 func getPasswordSecurityPage(t *testing.T, manager *auth.Manager, mux *http.ServeMux, sessionToken string) *httptest.ResponseRecorder {
 	t.Helper()
 	request := httptest.NewRequest(http.MethodGet, "/settings/security", nil)
-	request.AddCookie(&http.Cookie{Name: "gofer_session", Value: sessionToken})
+	request.AddCookie(&http.Cookie{Name: "raven_session", Value: sessionToken})
 	recorder := httptest.NewRecorder()
 	manager.Middleware(mux).ServeHTTP(recorder, request)
 	return recorder
@@ -132,7 +132,7 @@ func TestPasswordChangeRequiresCSRFAndRotatesOnlyAfterValidCurrentPassword(t *te
 	}
 	request := httptest.NewRequest(http.MethodPost, passwordChangePath, strings.NewReader(form.Encode()))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.AddCookie(&http.Cookie{Name: "gofer_session", Value: current.Token})
+	request.AddCookie(&http.Cookie{Name: "raven_session", Value: current.Token})
 	recorder := httptest.NewRecorder()
 	stack.ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusForbidden {
@@ -149,13 +149,13 @@ func TestPasswordChangeRequiresCSRFAndRotatesOnlyAfterValidCurrentPassword(t *te
 	request = httptest.NewRequest(http.MethodPost, passwordChangePath, strings.NewReader(form.Encode()))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("User-Agent", "Password Settings Test/1.0")
-	request.AddCookie(&http.Cookie{Name: "gofer_session", Value: current.Token})
+	request.AddCookie(&http.Cookie{Name: "raven_session", Value: current.Token})
 	recorder = httptest.NewRecorder()
 	stack.ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusSeeOther || recorder.Header().Get("Location") != "/settings/security?password_changed=1" {
 		t.Fatalf("password change response = %d %q body=%q", recorder.Code, recorder.Header().Get("Location"), recorder.Body.String())
 	}
-	changedCookie := responseCookie(recorder, "gofer_session", true)
+	changedCookie := responseCookie(recorder, "raven_session", true)
 	if changedCookie == nil || !changedCookie.HttpOnly || !changedCookie.Secure || changedCookie.SameSite != http.SameSiteLaxMode || changedCookie.Value == current.Token {
 		t.Fatalf("changed-password session cookie = %#v", changedCookie)
 	}
@@ -193,7 +193,7 @@ func TestPasswordChangeErrorsDoNotEchoCredentialsOrMutateSession(t *testing.T) {
 	}
 	request := httptest.NewRequest(http.MethodPost, passwordChangePath, strings.NewReader(form.Encode()))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.AddCookie(&http.Cookie{Name: "gofer_session", Value: current.Token})
+	request.AddCookie(&http.Cookie{Name: "raven_session", Value: current.Token})
 	recorder := httptest.NewRecorder()
 	manager.Middleware(mux).ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusBadRequest || !strings.Contains(recorder.Body.String(), auth.ErrCurrentPasswordInvalid.Error()) || !strings.Contains(recorder.Body.String(), `role="alert"`) {
@@ -239,7 +239,7 @@ func TestPasswordChangeRequiresStrongVerificationForAdministrator(t *testing.T) 
 		t.Helper()
 		request := httptest.NewRequest(http.MethodPost, passwordChangePath, strings.NewReader(form.Encode()))
 		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-		request.AddCookie(&http.Cookie{Name: "gofer_session", Value: current.Token})
+		request.AddCookie(&http.Cookie{Name: "raven_session", Value: current.Token})
 		recorder := httptest.NewRecorder()
 		stack.ServeHTTP(recorder, request)
 		return recorder
@@ -263,7 +263,7 @@ func TestPasswordChangeRequiresStrongVerificationForAdministrator(t *testing.T) 
 	if recorder.Code != http.StatusSeeOther || recorder.Header().Get("Location") != "/settings/security?password_changed=1" {
 		t.Fatalf("verified administrator password change = %d %q body=%q", recorder.Code, recorder.Header().Get("Location"), recorder.Body.String())
 	}
-	changedCookie := responseCookie(recorder, "gofer_session", true)
+	changedCookie := responseCookie(recorder, "raven_session", true)
 	if changedCookie == nil {
 		t.Fatal("verified administrator password change did not rotate the session cookie")
 	}
@@ -286,7 +286,7 @@ func TestPasswordChangeRejectsOversizedFormBeforeMutation(t *testing.T) {
 	}
 	request := httptest.NewRequest(http.MethodPost, passwordChangePath, strings.NewReader(form.Encode()))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.AddCookie(&http.Cookie{Name: "gofer_session", Value: current.Token})
+	request.AddCookie(&http.Cookie{Name: "raven_session", Value: current.Token})
 	recorder := httptest.NewRecorder()
 	manager.Middleware(mux).ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusForbidden {

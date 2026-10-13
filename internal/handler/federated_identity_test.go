@@ -90,7 +90,7 @@ func googleIdentityLinkHandlerStack(
 	handler := &Handler{db: db, auth: manager}
 	mux := http.NewServeMux()
 	handler.RegisterRoutes(mux)
-	return manager, db, manager.Middleware(mux), &http.Cookie{Name: "gofer_session", Value: session.Token}, verifier
+	return manager, db, manager.Middleware(mux), &http.Cookie{Name: "raven_session", Value: session.Token}, verifier
 }
 
 func startGoogleIdentityLinkHandlerFlow(
@@ -124,7 +124,7 @@ func startGoogleIdentityLinkHandlerFlow(
 		t.Fatalf("Google identity authorization query = %q", location.RawQuery)
 	}
 	verifier.nonce = nonce
-	preAuthCookie := responseCookie(started, "gofer_pre_auth", true)
+	preAuthCookie := responseCookie(started, "raven_pre_auth", true)
 	if preAuthCookie == nil || preAuthCookie.Value != state || preAuthCookie.Path != "/" {
 		t.Fatalf("Google identity-link pre-authentication cookie = %#v", preAuthCookie)
 	}
@@ -219,7 +219,7 @@ func TestGoogleIdentityUnlinkRouteRequiresCSRFRotatesSessionAndPreservesGmailMai
 	if unlinked.Code != http.StatusSeeOther || unlinked.Header().Get("Location") != "/settings/security?google_unlinked=1" {
 		t.Fatalf("Google identity unlink = %d %q body:%q", unlinked.Code, unlinked.Header().Get("Location"), unlinked.Body.String())
 	}
-	rotatedCookie := responseCookie(unlinked, "gofer_session", true)
+	rotatedCookie := responseCookie(unlinked, "raven_session", true)
 	if rotatedCookie == nil || rotatedCookie.Value == "" || rotatedCookie.Value == sessionCookie.Value {
 		t.Fatalf("rotated identity-unlink session cookie = %#v", rotatedCookie)
 	}

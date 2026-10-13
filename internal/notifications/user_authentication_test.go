@@ -38,7 +38,7 @@ func TestUserAuthenticationLoginMailboxAndLogout(t *testing.T) {
 	}
 	var loginCookie *http.Cookie
 	for _, cookie := range response.Result().Cookies() {
-		if cookie.Name == "gofer_session" && cookie.MaxAge > 0 {
+		if cookie.Name == "raven_session" && cookie.MaxAge > 0 {
 			loginCookie = cookie
 		}
 	}
@@ -148,7 +148,7 @@ func TestUserAuthenticationRequiredPasswordChange(t *testing.T) {
 	}
 	var proof string
 	req := httptest.NewRequest("GET", auth.RequiredPasswordChangePath, nil)
-	req.AddCookie(&http.Cookie{Name: "gofer_session", Value: oldToken})
+	req.AddCookie(&http.Cookie{Name: "raven_session", Value: oldToken})
 	f.auth.Middleware(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		proof = auth.CSRFToken(r.Context(), "POST", auth.RequiredPasswordChangePath)
 	})).ServeHTTP(httptest.NewRecorder(), req)
@@ -162,7 +162,7 @@ func TestUserAuthenticationRequiredPasswordChange(t *testing.T) {
 	}
 	var newToken string
 	for _, cookie := range response.Result().Cookies() {
-		if cookie.Name == "gofer_session" && cookie.MaxAge > 0 {
+		if cookie.Name == "raven_session" && cookie.MaxAge > 0 {
 			newToken = cookie.Value
 		}
 	}

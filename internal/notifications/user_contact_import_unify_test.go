@@ -114,7 +114,7 @@ func requestContactImport(ctx context.Context, f *userStorageFixture, owner, tar
 	_ = form.Close()
 	r := httptest.NewRequest("POST", "/api/contacts/import", &body).WithContext(ctx)
 	r.Header.Set("Content-Type", form.FormDataContentType())
-	r.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.sessions[owner].Token})
+	r.AddCookie(&http.Cookie{Name: "raven_session", Value: f.sessions[owner].Token})
 	response := httptest.NewRecorder()
 	f.http.ServeHTTP(response, r)
 	return response

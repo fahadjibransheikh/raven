@@ -370,7 +370,7 @@ func TestUserCalendarMeetingDraftHTTPBrowserDetachShutdownAndProgress(t *testing
 			defer cancel()
 			r := httptest.NewRequest("POST", ownedPreviewPath("outlook"), strings.NewReader(ownedPreviewForm())).WithContext(ctx)
 			r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-			r.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.sessions["alice"].Token})
+			r.AddCookie(&http.Cookie{Name: "raven_session", Value: f.sessions["alice"].Token})
 			rec := httptest.NewRecorder()
 			done := make(chan struct{})
 			go func() { f.http.ServeHTTP(rec, r); close(done) }()

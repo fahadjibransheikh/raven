@@ -127,7 +127,7 @@ func newUserOAuthFixture(t *testing.T, block func(http.ResponseWriter, *http.Req
 func (f *userOAuthFixture) request(owner, method, path, body string) *http.Request {
 	req := httptest.NewRequest(method, path, strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.sessions[owner].Token})
+	req.AddCookie(&http.Cookie{Name: "raven_session", Value: f.sessions[owner].Token})
 	return req.WithContext(context.WithValue(req.Context(), oauth2.HTTPClient, f.client))
 }
 func (f *userOAuthFixture) start(t *testing.T, owner, provider, action string) string {

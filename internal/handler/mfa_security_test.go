@@ -36,7 +36,7 @@ func completedSecuritySettingsStack(t *testing.T) (*auth.Manager, *storage.DB, h
 	if completed.Code != http.StatusSeeOther {
 		t.Fatalf("complete setup = %d %q", completed.Code, completed.Body.String())
 	}
-	sessionCookie := responseCookie(completed, "gofer_session", true)
+	sessionCookie := responseCookie(completed, "raven_session", true)
 	if sessionCookie == nil {
 		t.Fatal("completed setup omitted session cookie")
 	}
@@ -287,7 +287,7 @@ func TestSecuritySettingsStartsAndRejectsPasskeyRegistrationThroughBoundJSONEndp
 			t.Fatalf("passkey creation options missing %q: %s", want, started.Body.String())
 		}
 	}
-	challengeCookie := responseCookie(started, "gofer_security_challenge", true)
+	challengeCookie := responseCookie(started, "raven_security_challenge", true)
 	if challengeCookie == nil || !challengeCookie.HttpOnly || !challengeCookie.Secure ||
 		challengeCookie.Path != "/" || challengeCookie.SameSite != http.SameSiteLaxMode {
 		t.Fatalf("passkey challenge cookie = %#v", challengeCookie)
@@ -343,7 +343,7 @@ func TestSecuritySettingsListsAndRemovesOwnedPasskey(t *testing.T) {
 	if removed.Code != http.StatusSeeOther || removed.Header().Get("Location") != "/settings/security?passkey_removed=1" {
 		t.Fatalf("remove passkey = %d location:%q body:%q", removed.Code, removed.Header().Get("Location"), removed.Body.String())
 	}
-	rotatedCookie := responseCookie(removed, "gofer_session", true)
+	rotatedCookie := responseCookie(removed, "raven_session", true)
 	if rotatedCookie == nil || rotatedCookie.Value == sessionCookie.Value {
 		t.Fatalf("passkey removal session cookie = %#v", rotatedCookie)
 	}
@@ -362,7 +362,7 @@ func TestSecuritySettingsReplacesTOTPThroughSessionBoundChallenge(t *testing.T) 
 	if start.Code != http.StatusSeeOther || start.Header().Get("Location") != "/settings/security?totp_replacement=1" {
 		t.Fatalf("start TOTP replacement = %d location:%q body:%q", start.Code, start.Header().Get("Location"), start.Body.String())
 	}
-	challengeCookie := responseCookie(start, "gofer_security_challenge", true)
+	challengeCookie := responseCookie(start, "raven_security_challenge", true)
 	if challengeCookie == nil || !challengeCookie.HttpOnly || !challengeCookie.Secure ||
 		challengeCookie.SameSite != http.SameSiteLaxMode || challengeCookie.Path != "/" {
 		t.Fatalf("security challenge cookie = %#v", challengeCookie)
@@ -394,11 +394,11 @@ func TestSecuritySettingsReplacesTOTPThroughSessionBoundChallenge(t *testing.T) 
 	if confirm.Code != http.StatusSeeOther || confirm.Header().Get("Location") != "/settings/security?totp_replaced=1" {
 		t.Fatalf("confirm TOTP replacement = %d location:%q body:%q", confirm.Code, confirm.Header().Get("Location"), confirm.Body.String())
 	}
-	rotatedCookie := responseCookie(confirm, "gofer_session", true)
+	rotatedCookie := responseCookie(confirm, "raven_session", true)
 	if rotatedCookie == nil || rotatedCookie.Value == sessionCookie.Value {
 		t.Fatalf("rotated security session cookie = %#v", rotatedCookie)
 	}
-	if cleared := responseCookie(confirm, "gofer_security_challenge", false); cleared == nil || cleared.MaxAge != -1 {
+	if cleared := responseCookie(confirm, "raven_security_challenge", false); cleared == nil || cleared.MaxAge != -1 {
 		t.Fatalf("cleared security challenge cookie = %#v", cleared)
 	}
 	if stored, err := manager.GetSessionByToken(t.Context(), sessionCookie.Value); err != nil || stored != nil {
@@ -444,7 +444,7 @@ func TestSecuritySettingsEnrollsFirstAuthenticatorThroughSessionBoundChallenge(t
 	if start.Code != http.StatusSeeOther || start.Header().Get("Location") != "/settings/security?totp_enrollment=1" {
 		t.Fatalf("start TOTP enrollment = %d location:%q body:%q", start.Code, start.Header().Get("Location"), start.Body.String())
 	}
-	challengeCookie := responseCookie(start, "gofer_security_challenge", true)
+	challengeCookie := responseCookie(start, "raven_security_challenge", true)
 	if challengeCookie == nil || !challengeCookie.HttpOnly || !challengeCookie.Secure ||
 		challengeCookie.SameSite != http.SameSiteLaxMode || challengeCookie.Path != "/" {
 		t.Fatalf("TOTP enrollment challenge cookie = %#v", challengeCookie)
@@ -476,7 +476,7 @@ func TestSecuritySettingsEnrollsFirstAuthenticatorThroughSessionBoundChallenge(t
 	if confirm.Code != http.StatusSeeOther || confirm.Header().Get("Location") != "/settings/security?totp_enrolled=1" {
 		t.Fatalf("confirm TOTP enrollment = %d location:%q body:%q", confirm.Code, confirm.Header().Get("Location"), confirm.Body.String())
 	}
-	rotatedCookie := responseCookie(confirm, "gofer_session", true)
+	rotatedCookie := responseCookie(confirm, "raven_session", true)
 	if rotatedCookie == nil || rotatedCookie.Value == sessionCookie.Value {
 		t.Fatalf("rotated TOTP enrollment session cookie = %#v", rotatedCookie)
 	}
@@ -503,7 +503,7 @@ func TestSecuritySettingsRecoveryBatchIsDisplayedOnceThenAcknowledged(t *testing
 	if generated.Code != http.StatusOK || !strings.Contains(generated.Body.String(), "These plaintext codes are shown once") {
 		t.Fatalf("generate recovery batch = %d %q", generated.Code, generated.Body.String())
 	}
-	challengeCookie := responseCookie(generated, "gofer_security_challenge", true)
+	challengeCookie := responseCookie(generated, "raven_security_challenge", true)
 	if challengeCookie == nil {
 		t.Fatal("recovery generation omitted security challenge cookie")
 	}

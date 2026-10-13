@@ -448,7 +448,7 @@ func TestUserCalendarResponsePostHTTPBrowserDetachRootJoinAndOtherOwnerProgress(
 			form := url.Values{"scope": {"event"}, "response": {"accepted"}, "version": {`"v1"`}}.Encode()
 			req := httptest.NewRequest(http.MethodPost, "/api/calendar/events/same-event/response", strings.NewReader(form)).WithContext(browser)
 			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-			req.AddCookie(&http.Cookie{Name: "gofer_session", Value: f.sessions["alice"].Token})
+			req.AddCookie(&http.Cookie{Name: "raven_session", Value: f.sessions["alice"].Token})
 			done := make(chan *httptest.ResponseRecorder, 1)
 			go func() {
 				r := httptest.NewRecorder()

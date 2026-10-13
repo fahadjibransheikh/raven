@@ -7,7 +7,7 @@ import (
 
 // ListViewCookie is set by the browser while the screen is phone-sized. Phones only
 // have the card layout for the mail and contact lists, whatever the saved setting.
-const ListViewCookie = "gofer_list_view"
+const ListViewCookie = "raven_list_view"
 
 type cardsListViewKey struct{}
 

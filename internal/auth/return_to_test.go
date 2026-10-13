@@ -55,13 +55,13 @@ func TestMiddlewareDoesNotPreserveNonGETRequests(t *testing.T) {
 func TestReturnToCookieRoundTrip(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	SetReturnToCookie(recorder, "/?mailto=mailto%3Ahello%40example.com", false)
-	result := recorder.Result()
-	if len(result.Cookies()) != 1 {
-		t.Fatalf("cookies = %d, want 1", len(result.Cookies()))
+	cookies := currentCookies(recorder.Result())
+	if len(cookies) != 1 {
+		t.Fatalf("cookies = %d, want 1", len(cookies))
 	}
 
 	request := httptest.NewRequest(http.MethodGet, "/login", nil)
-	request.AddCookie(result.Cookies()[0])
+	request.AddCookie(cookies[0])
 	if got := GetReturnTo(request); got != "/?mailto=mailto%3Ahello%40example.com" {
 		t.Fatalf("GetReturnTo() = %q", got)
 	}
@@ -71,14 +71,14 @@ func TestReturnToCookieRespectsSecureConfiguration(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	SetReturnToCookie(recorder, "/settings", true)
 
-	cookies := recorder.Result().Cookies()
+	cookies := currentCookies(recorder.Result())
 	if len(cookies) != 1 || !cookies[0].Secure {
 		t.Fatalf("secure return-to cookie = %#v", cookies)
 	}
 
 	recorder = httptest.NewRecorder()
 	ClearReturnToCookie(recorder, true)
-	cookies = recorder.Result().Cookies()
+	cookies = currentCookies(recorder.Result())
 	if len(cookies) != 1 || !cookies[0].Secure || cookies[0].MaxAge != -1 {
 		t.Fatalf("cleared return-to cookie = %#v", cookies)
 	}
