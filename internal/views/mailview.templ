@@ -1071,9 +1071,12 @@ templ MailViewBodyByID(emailID string) {
 		<div class="h-4 w-4/5 rounded bg-ink/5 animate-pulse"></div>
 		<div class="h-4 w-2/3 rounded bg-ink/5 animate-pulse"></div>
 	</div>
+	// No opacity transition: the frame resizes as its pictures load, and the Mac
+	// web view drops what it painted during a fade when the layer resizes, leaving
+	// the top of the message blank until it is scrolled.
 	<iframe id={ "email-body-frame-" + emailID }
 		sandbox="allow-scripts"
-		class="w-full border-0 min-h-[100px] overflow-hidden opacity-0 transition-opacity duration-150"
+		class="w-full border-0 min-h-[100px] overflow-hidden opacity-0"
 		data-email-body-frame
 		data-email-id={ emailID }>
 	</iframe>
