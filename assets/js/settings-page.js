@@ -606,26 +606,63 @@ document.addEventListener('submit', function(e) {
 
 // Edit account dialog
 var _editWizStep = 0;
-var _editWizPendingStep = null;
-function editWizardSaveAndGo(step) {
+// Mail changes are kept in the form until step 1.d tests and saves them.
+// The form counts as changed when its values differ from those it opened
+// with: its widgets fire change events while loading, so events alone
+// can't say whether the person changed anything.
+var _editAccountSavedKey = null;
+function editAccountFormKey() {
 	var form = document.getElementById('edit-account-form');
-	if (!form) {
-		editWizardGo(step, true);
-		return;
-	}
-	_editWizPendingStep = step;
-	form.requestSubmit();
+	return form ? new URLSearchParams(new FormData(form)).toString() : '';
 }
+function editAccountChanged() {
+	return _editAccountSavedKey !== null && editAccountFormKey() !== _editAccountSavedKey;
+}
+function editAccountMarkSaved() {
+	_editAccountSavedKey = editAccountFormKey();
+}
+function newEditAccountTest() {
+	return accountWizardTest({
+		form: 'edit-account-form',
+		results: 'edit-account-test-results',
+		footer: '#edit-wizard-footer [data-wizard-footer-step="3"]',
+		anywayLabel: 'Skip test and save',
+		anywayFailedLabel: 'Save anyway',
+		request: function(key) {
+			var results = document.getElementById('edit-account-test-results');
+			var typed = results && results.dataset.testTyped === 'true';
+			return { url: results ? results.dataset.testUrl : '', body: typed ? key : '' };
+		},
+		onState: function() {
+			var label = document.querySelector('#edit-wizard-footer [data-edit-account-save-label]');
+			if (label) label.textContent = editAccountChanged() ? 'Save changes' : 'Continue';
+		}
+	});
+}
+var editAccountTest = newEditAccountTest();
+// Each loaded edit dialog starts at its first step with a new test, and
+// remembers its saved settings once its fields have been filled in.
+goferOnContent('#edit-account-dialog', function() {
+	_editWizStep = 0;
+	_editAccountSavedKey = null;
+	window.setTimeout(editAccountMarkSaved, 300);
+	editAccountTest = newEditAccountTest();
+});
 function editWizardGo(step, immediate) {
 	if (step < 0) step = 0;
 	if (step > 5) step = 5;
-	if (!immediate && step > _editWizStep && step <= 3) {
-		editWizardSaveAndGo(step);
-		return;
-	}
 	var track = document.getElementById('edit-wizard-track');
 	var root = document.getElementById('edit-account-dialog');
 	if (!track || !root) return;
+	// Moving on to contacts or calendar with unsaved mail changes would lose
+	// them, so they go through the test step to be saved first.
+	var unsaved = root.querySelector('[data-edit-account-unsaved]');
+	if (step >= 4 && editAccountChanged()) {
+		step = 3;
+		if (unsaved) unsaved.hidden = false;
+	} else if (unsaved) {
+		unsaved.hidden = true;
+	}
 	_editWizStep = step;
 	track.style.transform = 'translateX(-' + (step * (100 / 6)) + '%)';
 	root.querySelectorAll('[data-account-wizard-step]').forEach(function(item) {
@@ -636,32 +673,24 @@ function editWizardGo(step, immediate) {
 		section.dataset.active = String(steps.indexOf(String(step)) !== -1);
 	});
 	setWizardFooter(root, step, !!immediate);
-	if (step === 5) startWizardConnectionTest(root); else resetWizardConnectionTest(root);
+	if (step === 3) editAccountTest.run(false);
 }
-function resetWizardConnectionTest(root) {
-	var results = root && root.querySelector ? root.querySelector('[data-wizard-test-results]') : null;
-	if (!results) return;
-	if (root._wizardTestTimer) {
-		window.clearTimeout(root._wizardTestTimer);
-		root._wizardTestTimer = null;
+// After a passing test: save the changes, or just continue when there are
+// none, so the account isn't saved (and its sync restarted) for nothing.
+function editAccountSaveOrContinue() {
+	var form = document.getElementById('edit-account-form');
+	if (!editAccountChanged() || !form) {
+		editWizardGo(4, true);
+		return;
 	}
-	delete results.dataset.wizardTestStarted;
+	form.requestSubmit();
 }
-function startWizardConnectionTest(root) {
-	var results = root && root.querySelector ? root.querySelector('[data-wizard-test-results]') : null;
-	if (!results || results.dataset.wizardTestStarted === 'true') return;
-	results.dataset.wizardTestStarted = 'true';
-	results.innerHTML = '<div class="flex items-center justify-center py-4 gap-2"><div class="size-4 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin"></div><span class="text-xs text-muted-foreground">Testing connection...</span></div>';
-	root._wizardTestTimer = window.setTimeout(function() {
-		root._wizardTestTimer = null;
-		var activeStep = root.querySelector('[data-account-wizard-step="5"][data-active="true"]');
-		if (!activeStep) {
-			delete results.dataset.wizardTestStarted;
-			return;
-		}
-		if (typeof htmx !== 'undefined') htmx.trigger(results, 'wizard-test');
-	}, 320);
+function editAccountFormChanged(event) {
+	if (!event.target || !event.target.closest || !event.target.closest('#edit-account-form')) return;
+	editAccountTest.invalidate();
 }
+document.addEventListener('input', editAccountFormChanged);
+document.addEventListener('change', editAccountFormChanged);
 function editToggleSmtpAuth(checked) {
 	var fields = document.getElementById('edit-smtp-auth-fields');
 	var inputs = fields.querySelectorAll('input');

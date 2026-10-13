@@ -42,10 +42,15 @@ function wizardGo(step, immediate) {
 	if (step < 0) step = 0;
 	if (step > 5) step = 5;
 	syncAddContactStep();
-	if (step === 3 && !addContactsEnabled()) step = 4;
-	if (step === 3 && !addStepContentReady('add-step-3-content')) return;
-	if (step === 4 && !addStepContentReady('add-step-4-content')) return;
-	if (step === 5 && !addStepContentReady('add-step-5-content')) return;
+	// The Email steps end by creating the account. Going back to them would
+	// create it again, so after that its settings belong to Edit account.
+	if (step <= 3 && addAccountCreated()) return;
+	if (step === 3) {
+		var form = document.getElementById('account-form');
+		if (!form || !form.reportValidity()) return;
+	}
+	if (step >= 4 && !addAccountCreated()) return;
+	if (step === 4 && !addContactsEnabled()) step = 5;
 	_wizStep = step;
 	track.style.transform = 'translateX(-' + (step * (100 / 6)) + '%)';
 	root.querySelectorAll('[data-account-wizard-step]').forEach(function(item) {
@@ -56,35 +61,7 @@ function wizardGo(step, immediate) {
 		section.dataset.active = String(steps.indexOf(String(step)) !== -1);
 	});
 	setWizardFooter(root, step, !!immediate);
-	if (step === 5) startWizardConnectionTest(root); else resetWizardConnectionTest(root);
-}
-function resetWizardConnectionTest(root) {
-	var results = root && root.querySelector ? root.querySelector('[data-wizard-test-results]') : null;
-	if (!results) return;
-	if (root._wizardTestTimer) {
-		window.clearTimeout(root._wizardTestTimer);
-		root._wizardTestTimer = null;
-	}
-	delete results.dataset.wizardTestStarted;
-}
-function startWizardConnectionTest(root) {
-	var results = root && root.querySelector ? root.querySelector('[data-wizard-test-results]') : null;
-	if (!results || results.dataset.wizardTestStarted === 'true') return;
-	results.dataset.wizardTestStarted = 'true';
-	results.innerHTML = '<div class="flex items-center justify-center py-4 gap-2"><div class="size-4 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin"></div><span class="text-xs text-muted-foreground">Testing connection...</span></div>';
-	root._wizardTestTimer = window.setTimeout(function() {
-		root._wizardTestTimer = null;
-		var activeStep = root.querySelector('[data-account-wizard-step="5"][data-active="true"]');
-		if (!activeStep) {
-			delete results.dataset.wizardTestStarted;
-			return;
-		}
-		if (typeof htmx !== 'undefined') htmx.trigger(results, 'wizard-test');
-	}, 320);
-}
-function addStepContentReady(id) {
-	var content = document.getElementById(id);
-	return !!(content && content.children.length);
+	if (step === 3) addAccountTest.run(false);
 }
 function addContactsEnabled() {
 	var toggle = document.querySelector('[data-add-contact-sync-switch]');
@@ -94,13 +71,191 @@ function addAccountFormReady() {
 	var form = document.getElementById('account-form');
 	return !!(form && form.checkValidity());
 }
+function addAccountCreated() {
+	return !!document.querySelector('#add-contacts-content [data-add-account-created]');
+}
 function syncAddAccountSubmitButtons() {
 	var disabled = !addAccountFormReady();
 	document.querySelectorAll('#add-account-dialog [data-add-account-submit-button]').forEach(function(button) {
-		button.setAttribute('aria-label', 'Next');
 		button.disabled = disabled;
 	});
 }
+// Both account wizards end their mail steps with step 1.d, which tests the
+// typed settings before the account is created or saved. Its footer follows
+// the test: while it runs, the account can be saved without waiting; once it
+// passes, saved; once it fails, the settings can be fixed (Back), tested
+// again, or saved anyway. Coming back with the same settings keeps the
+// earlier result instead of testing again.
+function accountWizardTest(options) {
+	var test = { state: 'idle', key: '' };
+	function results() { return document.getElementById(options.results); }
+	function spinner(message) {
+		var row = document.createElement('div');
+		row.className = 'flex items-center gap-2 py-1';
+		row.innerHTML = '<div class="size-4 rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground animate-spin"></div><span class="text-xs text-muted-foreground"></span>';
+		row.querySelector('span').textContent = message;
+		return row;
+	}
+	function setState(state) {
+		test.state = state;
+		var footer = document.querySelector(options.footer);
+		if (!footer) return;
+		// The hidden attribute, not a class: these buttons are inline-flex,
+		// which would win over a "hidden" utility class.
+		// Once created or saved, the person can close the window here or go on
+		// to contacts and calendar.
+		var done = state === 'done';
+		var anyway = footer.querySelector('[data-account-test-anyway]');
+		var retest = footer.querySelector('[data-account-test-retest]');
+		var save = footer.querySelector('[data-account-test-save]');
+		var back = footer.querySelector('[data-account-test-back]');
+		if (anyway) {
+			anyway.textContent = state === 'failed' ? options.anywayFailedLabel : options.anywayLabel;
+			anyway.hidden = state === 'passed' || done;
+		}
+		if (retest) retest.hidden = state !== 'failed';
+		if (save) save.hidden = state !== 'passed';
+		if (back && options.lockWhenDone) back.hidden = done;
+		footer.querySelectorAll('[data-account-test-close], [data-account-test-continue]').forEach(function(button) {
+			button.hidden = !done;
+		});
+		footer.querySelectorAll('[data-account-test-action]').forEach(function(button) {
+			button.disabled = state === 'saving';
+		});
+		if (options.onState) options.onState(state);
+	}
+	function showError(message) {
+		var box = results();
+		if (!box) return;
+		var alert = document.createElement('div');
+		alert.setAttribute('role', 'alert');
+		alert.className = 'rounded-md border border-destructive/20 bg-destructive/10 px-3 py-2 text-xs text-destructive';
+		alert.textContent = message;
+		box.textContent = '';
+		box.appendChild(alert);
+	}
+	function clearSaving() {
+		var box = results();
+		var row = box && box.querySelector('[data-account-test-saving]');
+		if (row) row.remove();
+	}
+	return {
+		state: function() { return test.state; },
+		run: function(force) {
+			var form = document.getElementById(options.form);
+			if (!form) return;
+			var key = new URLSearchParams(new FormData(form)).toString();
+			var current = test.state === 'passed' || test.state === 'failed' || test.state === 'testing';
+			if (!force && key === test.key && current) return;
+			test.key = key;
+			setState('testing');
+			var box = results();
+			if (box) {
+				box.textContent = '';
+				box.appendChild(spinner('Testing connection...'));
+			}
+			var request = options.request(key);
+			fetch(request.url, {
+				method: 'POST',
+				credentials: 'same-origin',
+				headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'text/html' },
+				body: request.body
+			}).then(function(response) {
+				return response.text().then(function(body) {
+					if (test.key !== key || test.state !== 'testing') return;
+					if (!response.ok) throw new Error((body || '').trim() || 'Could not test the connection.');
+					var box = results();
+					if (box) box.innerHTML = body;
+					setState(response.headers.get('X-Gofer-Connection-Test') === 'ok' ? 'passed' : 'failed');
+				});
+			}).catch(function(error) {
+				if (test.key !== key || test.state !== 'testing') return;
+				showError(error && error.message ? error.message : 'Could not test the connection.');
+				setState('failed');
+			});
+		},
+		saving: function(message) {
+			setState('saving');
+			var box = results();
+			if (!box) return;
+			clearSaving();
+			var row = spinner(message);
+			row.setAttribute('data-account-test-saving', '');
+			box.appendChild(row);
+		},
+		saved: function(message) {
+			clearSaving();
+			var box = results();
+			if (box && message) {
+				var note = document.createElement('div');
+				note.setAttribute('role', 'status');
+				note.className = 'rounded-md border border-border bg-muted/35 px-3 py-2 text-xs leading-relaxed text-foreground';
+				note.textContent = message;
+				box.appendChild(note);
+			}
+			setState('done');
+		},
+		saveFailed: function(message) {
+			clearSaving();
+			if (message) showError(message);
+			setState('failed');
+		},
+		// Changing a setting makes an earlier result stale.
+		invalidate: function() {
+			if (test.state === 'saving' || test.state === 'done') return;
+			test.key = '';
+			test.state = 'idle';
+		}
+	};
+}
+function newAddAccountTest() {
+	return accountWizardTest({
+		form: 'account-form',
+		results: 'add-account-test-results',
+		footer: '#add-wizard-footer [data-wizard-footer-step="3"]',
+		anywayLabel: 'Skip test and create',
+		anywayFailedLabel: 'Create anyway',
+		// Going back would create the account a second time.
+		lockWhenDone: true,
+		request: function(key) { return { url: '/api/accounts/test', body: key }; }
+	});
+}
+var addAccountTest = newAddAccountTest();
+// A newly rendered dialog starts at its first step with a new test.
+goferOnContent('#add-account-dialog', function() {
+	_wizStep = 0;
+	_wizardFooterTimers = {};
+	addAccountTest = newAddAccountTest();
+});
+document.body.addEventListener('htmx:beforeRequest', function(event) {
+	if (!event.target || event.target.id !== 'account-form') return;
+	addAccountTest.saving('Creating account...');
+});
+// Creating failed: say why on the test step, where the person is. Managed
+// servers answer with an error status; others send an error card in place
+// of the next steps.
+document.body.addEventListener('htmx:afterRequest', function(event) {
+	if (!event.target || event.target.id !== 'account-form') return;
+	if (event.detail && event.detail.successful) {
+		if (!addAccountCreated() && addAccountTest.state() === 'saving') addAccountTest.saveFailed('');
+		return;
+	}
+	var xhr = event.detail && event.detail.xhr;
+	addAccountTest.saveFailed(xhr && xhr.responseText ? xhr.responseText.trim() : 'Could not create the account.');
+});
+document.body.addEventListener('htmx:afterSwap', function(event) {
+	var content = event.target;
+	if (!content || content.id !== 'add-contacts-content' || addAccountCreated()) return;
+	var errorCard = content.querySelector('[data-account-form-error]');
+	if (!errorCard) return;
+	var message = errorCard.querySelector('p');
+	content.textContent = '';
+	addAccountTest.saveFailed(message ? message.textContent : 'Could not create the account.');
+});
+document.addEventListener('input', function(event) {
+	if (!event.target || !event.target.closest || !event.target.closest('#account-form') || addAccountCreated()) return;
+	addAccountTest.invalidate();
+});
 function setWizardStepDisabled(step, disabled) {
 	if (!step) return;
 	step.disabled = !!disabled;
@@ -110,24 +265,25 @@ function setWizardStepDisabled(step, disabled) {
 function syncAddContactStep() {
 	var root = document.getElementById('add-account-dialog');
 	if (!root) return;
-	var contactStep = root.querySelector('[data-account-wizard-step="3"]');
-	var finishStep = root.querySelector('[data-account-wizard-step="5"]');
-	setWizardStepDisabled(contactStep, !addStepContentReady('add-step-3-content') || !addContactsEnabled());
-	setWizardStepDisabled(finishStep, !addStepContentReady('add-step-5-content'));
+	var contactStep = root.querySelector('[data-account-wizard-step="4"]');
+	var calendarStep = root.querySelector('[data-account-wizard-step="5"]');
+	var created = addAccountCreated();
+	root.querySelectorAll('[data-wizard-section-steps="0,1,2,3"] [data-account-wizard-step], [data-wizard-section-steps="0,1,2,3"] .account-wizard-section-title').forEach(function(button) {
+		button.disabled = created;
+	});
+	setWizardStepDisabled(contactStep, !created || !addContactsEnabled());
+	setWizardStepDisabled(calendarStep, !created);
 	syncAddAccountSubmitButtons();
 }
-function maybeGoAddContacts() {
-	if (!addStepContentReady('add-step-5-content')) return;
+// Runs after the contacts step of the add dialog has been loaded.
+function syncAddContactStepAfterSwap() {
 	syncAddContactStep();
-	var targetStep = addContactsEnabled() ? 3 : 4;
-	if ((targetStep === 3 && !addStepContentReady('add-step-3-content')) || (targetStep === 4 && !addStepContentReady('add-step-4-content'))) {
-		window.setTimeout(function() {
-			syncAddContactStep();
-			wizardGo(targetStep);
-		}, 0);
-		return;
-	}
-	wizardGo(targetStep);
+	maybeGoAddContacts();
+}
+function maybeGoAddContacts() {
+	if (!addAccountCreated()) return;
+	syncAddContactStep();
+	addAccountTest.saved('Account created. Mail is syncing now. You can close this window, or continue to set up this account\'s contacts and calendar.');
 }
 function syncWizardServiceContent(root) {
 	root = root || document;
@@ -160,10 +316,19 @@ function wizardServiceStatus(root, service, message) {
 	messageBox.textContent = message;
 	status.appendChild(messageBox);
 }
+// Calendar is the last step of both wizards: moving on from it finishes.
 function wizardServiceAdvance(root, step) {
 	if (root.id === 'add-account-dialog') {
+		if (step === 'done' || (step >= 5 && _wizStep === 5)) {
+			window.location.href = '/settings/accounts?account_added=1';
+			return;
+		}
 		wizardGo(step);
 	} else if (typeof editWizardGo === 'function') {
+		if (step === 'done' || (step >= 5 && _editWizStep === 5)) {
+			window.location.href = '/settings/accounts';
+			return;
+		}
 		editWizardGo(step, true);
 	}
 }
@@ -233,7 +398,7 @@ document.addEventListener('click', function(event) {
 document.addEventListener('change', function(event) {
 	if (event.target && event.target.matches && event.target.matches('[data-add-contact-sync-switch]')) {
 		syncAddContactStep();
-		if (_wizStep === 3 && !addContactsEnabled()) wizardGo(4);
+		if (_wizStep === 4 && !addContactsEnabled()) wizardGo(5);
 	}
 	if (event.target && event.target.closest && event.target.closest('#account-form')) syncAddContactStep();
 	if (event.target && event.target.matches && event.target.matches('[data-wizard-service-switch]')) {
@@ -825,9 +990,4 @@ function openAddAccountDialog() {
 		bindAddWizardObserver();
 		if (window.tui && window.tui.dialog) window.tui.dialog.open('add-account-dialog');
 	});
-}
-
-function syncAddContactStepAfterSwap() {
-	syncAddContactStep();
-	maybeGoAddContacts();
 }

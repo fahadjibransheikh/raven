@@ -573,12 +573,16 @@ func TestAccountDialogsIncludeCalendarServiceSection(t *testing.T) {
 	if err := AddAccountDialogContent().Render(context.Background(), &addOut); err != nil {
 		t.Fatalf("AddAccountDialog.Render() error = %v", err)
 	}
-	addCalendarButton := renderedWizardButtonForStep(addOut.String(), `data-account-wizard-target-step="4"`)
+	addCalendarButton := renderedWizardButtonForStep(addOut.String(), `data-account-wizard-target-step="5"`)
 	if addCalendarButton == "" {
 		t.Fatalf("add account dialog did not render a Calendar navigation button")
 	}
-	if strings.Contains(addCalendarButton, " disabled") {
-		t.Fatalf("add account Calendar navigation button must remain selectable: %s", addCalendarButton)
+	// Contacts and calendar both wait for the mail account to be created.
+	if !strings.Contains(addCalendarButton, " disabled") {
+		t.Fatalf("add account Calendar navigation button must wait for the mail account: %s", addCalendarButton)
+	}
+	if addContactsButton := renderedWizardButtonForStep(addOut.String(), `data-account-wizard-target-step="4"`); !strings.Contains(addContactsButton, " disabled") {
+		t.Fatalf("add account Contacts navigation button must wait for the mail account: %s", addContactsButton)
 	}
 	for _, want := range []string{
 		"Calendar",
@@ -586,7 +590,8 @@ func TestAccountDialogsIncludeCalendarServiceSection(t *testing.T) {
 		`data-wizard-service-switch="calendar"`,
 		`data-wizard-step="4"`,
 		`data-wizard-step="5"`,
-		`add-step-5-content`,
+		`add-contacts-content`,
+		`add-calendar-content`,
 	} {
 		if !strings.Contains(addOut.String(), want) {
 			t.Fatalf("add account dialog missing Calendar service marker %q: %s", want, addOut.String())
@@ -597,7 +602,7 @@ func TestAccountDialogsIncludeCalendarServiceSection(t *testing.T) {
 	if err := AddAccountPostCreateStep(models.EditAccountData{AccountID: "created-account"}).Render(context.Background(), &postCreateOut); err != nil {
 		t.Fatalf("AddAccountPostCreateStep.Render() error = %v", err)
 	}
-	for _, want := range []string{`add-wizard-footer-step-4`, `add-wizard-footer-step-5`, `add-step-4-content`, `add-step-5-content`, "Contact sync", "Calendar sync"} {
+	for _, want := range []string{`add-wizard-footer-step-4`, `add-wizard-footer-step-5`, `add-calendar-content`, "Contact sync", "Calendar sync"} {
 		if !strings.Contains(postCreateOut.String(), want) {
 			t.Fatalf("post-create account wizard missing separate Calendar marker %q: %s", want, postCreateOut.String())
 		}
@@ -611,7 +616,7 @@ func TestAccountDialogsIncludeCalendarServiceSection(t *testing.T) {
 	}).Render(context.Background(), &editOut); err != nil {
 		t.Fatalf("EditAccountDialog.Render() error = %v", err)
 	}
-	editCalendarButton := renderedWizardButtonForStep(editOut.String(), `data-account-wizard-target-step="4"`)
+	editCalendarButton := renderedWizardButtonForStep(editOut.String(), `data-account-wizard-target-step="5"`)
 	if editCalendarButton == "" {
 		t.Fatalf("edit account dialog did not render a Calendar navigation button")
 	}
@@ -636,11 +641,9 @@ func TestAccountDialogsIncludeCalendarServiceSection(t *testing.T) {
 		`data-wizard-service-switch="calendar"`,
 		`data-on-htmx-before-request='["handleEditAccountSaveStart","$event"]'`,
 		`data-on-htmx-after-request='["handleEditAccountSaveResult","$event"]'`,
-		`data-account-edit-submit-button`,
-		`data-account-edit-submit-spinner`,
+		`hx-target="#edit-account-save-status"`,
 		`data-wizard-step="4"`,
 		`data-wizard-step="5"`,
-		`edit-step-5-content`,
 		`data-wizard-footer-step="5"`,
 		`data-on-click='["editWizardGo",4]'`,
 	} {
@@ -663,15 +666,46 @@ func TestAccountDialogsIncludeCalendarServiceSection(t *testing.T) {
 	if !strings.Contains(postCreateOut.String(), `data-wizard-contact-form`) {
 		t.Fatalf("post-create account wizard is missing the contact Next form")
 	}
-	for name, html := range map[string]string{"post-create": postCreateOut.String(), "edit": editOut.String()} {
-		for _, want := range []string{`data-wizard-test-results`, `hx-trigger="wizard-test"`, "Testing connection..."} {
-			if !strings.Contains(html, want) {
-				t.Fatalf("%s account wizard missing live test marker %q: %s", name, want, html)
-			}
+	// Editing ends its mail steps with 1.d, which tests before saving; an
+	// account without typed mail settings tests its saved connection there.
+	for _, want := range []string{"Test and save", `id="edit-account-test-results"`, `data-test-url="/api/accounts/calendar-account/test?wizard=check"`, `data-test-typed="false"`, `data-account-test-anyway`, `data-account-test-retest`, `data-account-test-save`, `data-account-test-close`, "Continue to Contacts", `data-on-click='["wizardServiceNext","$this","calendar","done"]'`} {
+		if !strings.Contains(editOut.String(), want) {
+			t.Fatalf("edit account wizard missing test-before-save marker %q: %s", want, editOut.String())
 		}
-		if strings.Contains(html, `hx-trigger="load"`) {
-			t.Fatalf("%s account wizard must not test while the Finish step is hidden: %s", name, html)
+	}
+	for _, gone := range []string{"Finish", "Test results", `data-wizard-test-results`} {
+		if strings.Contains(editOut.String(), gone) {
+			t.Fatalf("edit account wizard still has the old Finish step (%q): %s", gone, editOut.String())
 		}
+	}
+	var typedOut bytes.Buffer
+	if err := EditAccountDialog(models.EditAccountData{AccountID: "password-account", Provider: "imap", AuthMethod: "plain", EmailAddress: "ana@example.test"}).Render(context.Background(), &typedOut); err != nil {
+		t.Fatalf("EditAccountDialog.Render() for a password account error = %v", err)
+	}
+	for _, want := range []string{`data-test-url="/api/accounts/password-account/test-changes"`, `data-test-typed="true"`} {
+		if !strings.Contains(typedOut.String(), want) {
+			t.Fatalf("password account edit wizard should test the typed settings (%q): %s", want, typedOut.String())
+		}
+	}
+	// Adding tests the typed settings on their own Email step (1.d), before the
+	// account exists, so the steps shown after creating it don't test again.
+	for _, want := range []string{`data-add-account-test-results`, "Test and create", `data-account-test-anyway`, `data-account-test-retest`, `data-account-test-save`, `data-account-test-close`, "Continue to Contacts", `form="account-form"`} {
+		if !strings.Contains(addOut.String(), want) {
+			t.Fatalf("add account dialog missing test-before-create marker %q: %s", want, addOut.String())
+		}
+	}
+	for _, gone := range []string{"Finish", "Ready to use", `type="submit" data-add-account-submit-button`} {
+		if strings.Contains(addOut.String(), gone) {
+			t.Fatalf("add account dialog still creates the account before testing (%q): %s", gone, addOut.String())
+		}
+	}
+	for _, want := range []string{`data-add-account-created`, `data-on-click='["wizardServiceNext","$this","calendar","done"]'`} {
+		if !strings.Contains(postCreateOut.String(), want) {
+			t.Fatalf("post-create account wizard missing %q: %s", want, postCreateOut.String())
+		}
+	}
+	if strings.Contains(postCreateOut.String(), `data-wizard-test-results`) {
+		t.Fatalf("post-create account wizard tests the connection again: %s", postCreateOut.String())
 	}
 
 	var gmailOut bytes.Buffer

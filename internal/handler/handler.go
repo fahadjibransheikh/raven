@@ -2790,7 +2790,7 @@ func (h *Handler) handleUpdateAccount(w http.ResponseWriter, r *http.Request) {
 	h.syncer.RestartAccount(accountID)
 
 	w.Header().Set("Content-Type", "text/html")
-	views.WizardStepSuccess("Account updated", accountID, "edit").Render(r.Context(), w)
+	views.AccountChangesSaved().Render(r.Context(), w)
 }
 
 func (h *Handler) handleUpdateAccountService(w http.ResponseWriter, r *http.Request) {

@@ -92,52 +92,32 @@ function _settingsEventElement(event) {
   return (event && event.detail && event.detail.elt) || (event && event.currentTarget) || (event && event.target)
 }
 
-function _editAccountSubmitButtons() {
-  return document.querySelectorAll("#edit-account-dialog [data-account-edit-submit-button]")
-}
-
-function _setEditAccountSubmitBusy(busy) {
-  _editAccountSubmitButtons().forEach(function (button) {
-    button.disabled = !!busy
-    button.setAttribute("aria-busy", busy ? "true" : "false")
-    button.classList.toggle("cursor-wait", !!busy)
-    var label = button.querySelector("[data-account-edit-submit-label]")
-    var spinner = button.querySelector("[data-account-edit-submit-spinner]")
-    if (label && busy) label.textContent = "Saving..."
-    if (spinner) spinner.classList.toggle("hidden", !busy)
-  })
-}
-
+// The edit wizard saves mail changes from its test step (1.d). Saving shows
+// progress there; a failure explains itself there and offers to save anyway or
+// test again; success offers to close the window or continue to contacts.
 function handleEditAccountSaveStart(event) {
   var form = _settingsEventElement(event)
   if (!form || form.id !== "edit-account-form") return
-  _setEditAccountSubmitBusy(true)
+  if (typeof editAccountTest !== "undefined") editAccountTest.saving("Saving changes...")
 }
 
 function handleEditAccountSaveResult(event) {
   var form = _settingsEventElement(event)
-  if (!form || form.id !== "edit-account-form") return
+  if (!form || form.id !== "edit-account-form" || typeof editAccountTest === "undefined") return
   var xhr = event && event.detail && event.detail.xhr
-  var ok = !!(event && event.detail && event.detail.successful) && (!xhr || xhr.getResponseHeader("X-Gofer-Status") !== "error")
-	if (ok) {
-		_setEditAccountSubmitBusy(false)
-		_editAccountSubmitButtons().forEach(function (button) {
-			var label = button.querySelector("[data-account-edit-submit-label]")
-			if (label) label.textContent = "Next"
-		})
-		var pendingStep = typeof _editWizPendingStep !== "undefined" ? _editWizPendingStep : null
-		var nextStep = typeof pendingStep === "number" ? pendingStep : 5
-		if (typeof pendingStep !== "number" && typeof _editWizStep !== "undefined" && _editWizStep === 3) nextStep = 4
-		if (typeof _editWizPendingStep !== "undefined") _editWizPendingStep = null
-		if (typeof editWizardGo === "function") editWizardGo(nextStep, true)
+  var status = document.getElementById("edit-account-save-status")
+  var errorCard = status && status.querySelector("[data-account-form-error]")
+  var ok = !!(event && event.detail && event.detail.successful) && !errorCard && (!xhr || xhr.getResponseHeader("X-Gofer-Status") !== "error")
+  if (ok) {
+    if (typeof editAccountMarkSaved === "function") editAccountMarkSaved()
+    var unsaved = document.querySelector("#edit-account-dialog [data-edit-account-unsaved]")
+    if (unsaved) unsaved.hidden = true
+    editAccountTest.saved()
     return
   }
-
-  _setEditAccountSubmitBusy(false)
-  _editAccountSubmitButtons().forEach(function (button) {
-    var label = button.querySelector("[data-account-edit-submit-label]")
-    if (label) label.textContent = "Try again"
-  })
+  var message = errorCard ? (errorCard.querySelector("p") || errorCard).textContent : (xhr && xhr.responseText ? xhr.responseText.trim() : "")
+  if (status) status.textContent = ""
+  editAccountTest.saveFailed(message || "Could not save the changes.")
 }
 
 function _calendarDiscoveryForm(event) {
