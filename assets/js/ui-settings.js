@@ -450,7 +450,7 @@ var GoferSettings;
         if (_cache.mail_list_height) list.style.height = parseInt(_cache.mail_list_height, 10) + "px";
       } else {
         list.style.height = "";
-        list.style.width = mailListWidthCSS(_cache.mail_list_width, list);
+        list.style.width = mailListWidthCSS(_cache[listWidthKey()], list, listWidthKey());
       }
     }
 
@@ -477,7 +477,11 @@ var GoferSettings;
     return trimPercent(Math.max(1, Math.min(99, (pixels / parentWidth) * 100)));
   }
 
-  function mailListWidthCSS(value, panel) {
+  function listWidthKey() {
+    return window.ravenListWidthKey ? window.ravenListWidthKey() : "mail_list_width";
+  }
+
+  function mailListWidthCSS(value, panel, key) {
     var raw = String(value || "").trim();
     if (raw.charAt(raw.length - 1) === "%") {
       var percent = parseFloat(raw);
@@ -488,9 +492,9 @@ var GoferSettings;
     if (!isNaN(px) && px > 0) {
       var converted = mailListPercentFromPixels(panel, Math.max(300, px));
       if (converted) {
-        _cache.mail_list_width = converted;
+        _cache[key || "mail_list_width"] = converted;
         _migratedPanelSize = true;
-        return mailListWidthCSS(converted, panel);
+        return mailListWidthCSS(converted, panel, key);
       }
       return Math.max(300, px) + "px";
     }
@@ -569,10 +573,10 @@ var GoferSettings;
         if (!isNaN(w) && w > 0) panel.style.width = w + "px";
       }
     }
-    if (key === "mail_list_width") {
+    if ((key === "mail_list_width" || key === "contacts_list_width" || key === "calendar_list_width") && key === listWidthKey()) {
       var panel = document.getElementById("mail-list");
       if (panel && value && mailPaneLayout(_cache.mail_pane_layout) !== "stacked") {
-        panel.style.width = mailListWidthCSS(value, panel);
+        panel.style.width = mailListWidthCSS(value, panel, key);
       }
     }
     if (key === "mail_list_height") {

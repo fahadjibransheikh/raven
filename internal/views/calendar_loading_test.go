@@ -72,7 +72,7 @@ func TestCalendarSkeletonSidebarShowsOnlyConfiguredAccounts(t *testing.T) {
 }
 
 func TestCalendarSkeletonTemplatesRespectSavedLayoutAndTimezone(t *testing.T) {
-	settings := map[string]string{"timezone": "Pacific/Kiritimati", "mail_list_width": "62%"}
+	settings := map[string]string{"timezone": "Pacific/Kiritimati", "calendar_list_width": "62%"}
 	data := calendarLoadingData("week", settings)
 	if !data.Loading || data.AutoSync || data.Month.Location().String() != settings["timezone"] {
 		t.Fatalf("Unexpected skeleton data: %+v", data)

@@ -1158,7 +1158,7 @@ templ ContactsPage(contacts []models.Contact, selected *models.Contact, selected
 }
 
 templ ContactsListPane(contacts []models.Contact, selected *models.Contact, filters models.ContactFilters, totalCount int, width string, accounts []models.Account) {
-	<section id="mail-list" class="w-full lg:flex flex-col border-r border-border bg-card h-full overflow-hidden" style={ "width:" + mailListWidthCSS(width) } data-view-mode={ contactViewMode(filters.View) } data-contact-list-shell>
+	<section id="mail-list" class="w-full lg:flex flex-col border-r border-border bg-card h-full overflow-hidden" style={ "width:" + mailListWidthCSS(width) } data-view-mode={ contactViewMode(filters.View) } data-contact-list-shell data-list-width-key="contacts_list_width">
 		<div class="px-4 py-4 space-y-3">
 			<div class="flex items-center justify-between">
 				<div class="flex items-center gap-2">

@@ -1291,7 +1291,7 @@ func ContactsAppPartial(accounts []models.Account, contacts []models.Contact, se
 			templ_7745c5c3_Var59 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = ContactsListPane(contacts, selected, filters, totalCount, uiSettingGet(uiSettings, "mail_list_width", "30%"), accounts).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = ContactsListPane(contacts, selected, filters, totalCount, uiSettingGet(uiSettings, "contacts_list_width", "30%"), accounts).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1772,7 +1772,7 @@ func ContactsShell(accounts []models.Account, contacts []models.Contact, selecte
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = ContactsPage(contacts, selected, selectedProfile, showNew, syncQueued, filters, totalCount, uiSettingGet(uiSettings, "mail_list_width", "30%"), accounts).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = ContactsPage(contacts, selected, selectedProfile, showNew, syncQueued, filters, totalCount, uiSettingGet(uiSettings, "contacts_list_width", "30%"), accounts).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

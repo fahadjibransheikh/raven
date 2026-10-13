@@ -871,7 +871,7 @@ func (h *Handler) handleContacts(w http.ResponseWriter, r *http.Request) {
 			case "app-shell":
 				return views.ContactsShell(accounts, contacts, selected, profile, showNew, syncQueued, filters, total, settings), nil
 			}
-			width := settings["mail_list_width"]
+			width := settings["contacts_list_width"]
 			if width == "" {
 				width = "30%"
 			}

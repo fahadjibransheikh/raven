@@ -8523,6 +8523,8 @@ func defaultUISettings() map[string]string {
 		"thread_order":                      "newest_first",
 		"mail_pane_layout":                  "side",
 		"mail_list_width":                   "30%",
+		"contacts_list_width":               "30%",
+		"calendar_list_width":               "60%",
 		"mail_list_height":                  "360",
 		"mail_list_navigation":              "infinite",
 		"mail_list_sort_by":                 "date",

@@ -53,7 +53,10 @@ var initResizeHandles;
 
   function settingKey(panelName) {
     if (panelName === "sidebar") return "sidebar_width";
-    if (panelName === "maillist") return isStackedMailList(panelName) ? "mail_list_height" : "mail_list_width";
+    if (panelName === "maillist") {
+      if (isStackedMailList(panelName)) return "mail_list_height";
+      return window.ravenListWidthKey ? window.ravenListWidthKey() : "mail_list_width";
+    }
     return panelName + "_width";
   }
 

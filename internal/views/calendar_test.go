@@ -50,7 +50,7 @@ func TestCalendarMonthDataBuildsMondayFirstGrid(t *testing.T) {
 func TestCalendarMainRendersNavigationAndAgendaState(t *testing.T) {
 	month := NewCalendarMonthData(time.Date(2026, time.September, 17, 12, 0, 0, 0, time.UTC))
 	var output bytes.Buffer
-	if err := CalendarPage(month, map[string]string{"mail_list_width": "50%"}).Render(t.Context(), &output); err != nil {
+	if err := CalendarPage(month, map[string]string{"calendar_list_width": "50%"}).Render(t.Context(), &output); err != nil {
 		t.Fatalf("CalendarPage.Render() error = %v", err)
 	}
 
@@ -132,7 +132,7 @@ func TestCalendarPageRendersTimedAndAllDayEvents(t *testing.T) {
 		{Summary: "Holiday", SourceName: "Primary", SourceColor: "#4285f4", AllDay: true, StartDate: "2026-09-18", EndDate: "2026-09-19"},
 	}
 	var output bytes.Buffer
-	if err := CalendarPage(month, map[string]string{"mail_list_width": "50%"}).Render(t.Context(), &output); err != nil {
+	if err := CalendarPage(month, map[string]string{"calendar_list_width": "50%"}).Render(t.Context(), &output); err != nil {
 		t.Fatalf("CalendarPage.Render() error = %v", err)
 	}
 

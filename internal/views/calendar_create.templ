@@ -192,7 +192,7 @@ templ CalendarCreateDialog(data CalendarCreateData) {
 					@button.Button(button.Props{Variant: button.VariantGhost, Class: "font-semibold", Attributes: templ.Attributes{"data-tui-dialog-close": ""}}) {
 						Cancel
 					}
-					@button.Button(button.Props{Type: button.TypeSubmit, Class: "btn-skeuo font-semibold disabled:cursor-not-allowed", Attributes: templ.Attributes{"data-calendar-create-submit": "", "data-on-click": onAction("prepareCalendarDescriptionSubmit", actionEvent, actionElement)}}) {
+					@button.Button(button.Props{Type: button.TypeSubmit, Class: "font-semibold disabled:cursor-not-allowed", Attributes: templ.Attributes{"data-calendar-create-submit": "", "data-on-click": onAction("prepareCalendarDescriptionSubmit", actionEvent, actionElement)}}) {
 						<span data-calendar-create-spinner hidden>
 							@icon.LoaderCircle(icon.Props{Class: "size-4 animate-spin"})
 						</span><span data-calendar-create-submit-label>{ submitLabel }</span>

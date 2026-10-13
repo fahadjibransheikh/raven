@@ -4,6 +4,17 @@
   // Set before first paint so phones never flash the desktop panes; phone-layout.js keeps it in sync.
   if (window.matchMedia && window.matchMedia("(max-width: 1023.98px)").matches) document.documentElement.setAttribute("data-phone", "");
 
+  // Mail, contacts and calendar each keep their own list-pane width.
+  window.ravenListWidthKey = function () {
+    var list = document.getElementById("mail-list");
+    if (list) return list.getAttribute("data-list-width-key") || "mail_list_width";
+    // Before the page is parsed, go by the URL.
+    var path = window.location.pathname || "";
+    if (path === "/calendar" || path.indexOf("/calendar/") === 0) return "calendar_list_width";
+    if (path === "/contacts" || path.indexOf("/contacts/") === 0) return "contacts_list_width";
+    return "mail_list_width";
+  };
+
   var settings = {};
   try {
     settings = JSON.parse(localStorage.getItem("gofer:ui_settings") || "{}") || {};
@@ -27,9 +38,10 @@
   }
 
   var vw = window.innerWidth || 1024;
+  var listKey = window.ravenListWidthKey();
   var stacked = settings.mail_pane_layout === "stacked";
   var sidebar = px(settings.sidebar_width, 180, Math.min(400, vw * 0.25));
-  var mailList = stacked ? px(settings.mail_list_height, 180) : mailListWidth(settings.mail_list_width);
+  var mailList = stacked ? px(settings.mail_list_height, 180) : mailListWidth(settings[listKey]);
   if (!sidebar && !mailList && !stacked) return;
 
   var style = document.createElement("style");

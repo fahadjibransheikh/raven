@@ -217,7 +217,7 @@ templ MailAppPartial(accounts []models.Account, activeFolder string, emails []mo
 }
 
 templ ContactsAppPartial(accounts []models.Account, contacts []models.Contact, selected *models.Contact, selectedProfile *models.ContactProfile, showNew bool, syncQueued bool, filters models.ContactFilters, totalCount int, uiSettings map[string]string) {
-	@ContactsListPane(contacts, selected, filters, totalCount, uiSettingGet(uiSettings, "mail_list_width", "30%"), accounts)
+	@ContactsListPane(contacts, selected, filters, totalCount, uiSettingGet(uiSettings, "contacts_list_width", "30%"), accounts)
 	@ContactsSidebarBody(accounts, "contacts", uiSettings, filters)
 	<div id="sidebar-sync-controls">
 		@SidebarSyncControls(accounts, "contacts")
@@ -295,7 +295,7 @@ templ ContactsShell(accounts []models.Account, contacts []models.Contact, select
 	<div id="app-shell" class="flex h-screen overflow-hidden">
 		@ContactsSidebar(accounts, "contacts", uiSettingGet(uiSettings, "sidebar_width", "240px"), uiSettings, filters)
 		@ResizeHandle("sidebar")
-		@ContactsPage(contacts, selected, selectedProfile, showNew, syncQueued, filters, totalCount, uiSettingGet(uiSettings, "mail_list_width", "30%"), accounts)
+		@ContactsPage(contacts, selected, selectedProfile, showNew, syncQueued, filters, totalCount, uiSettingGet(uiSettings, "contacts_list_width", "30%"), accounts)
 	</div>
 }
 
