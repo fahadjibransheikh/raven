@@ -3,8 +3,8 @@
 
 A solid, hunched raven built from two circles (head, body), their common
 tangent, a wedge bill and a wedge tail. The @ is carved out of the mass as a
-single cut: a ring round the eye plus one sweeping arc down the breast, and the
-eye itself is the @'s lowercase 'a' (a counter and a stem on its right). That
+single cut: an @ glyph engraved round the eye (its bowl's dark centre is the
+eye) whose outer ring runs on into one sweeping arc down the breast. That
 cut is also the colour boundary, so the two-colour split costs no extra line:
 the head, bill and breast are the bird colour, the back, wing and tail are the
 accent colour.
@@ -31,8 +31,8 @@ Q = 128  # circle resolution
 # so it fits a FIT_R circle round the tile centre. CUT_W and RING_* are final px.
 HEAD_C, HEAD_R = np.array([680., 345.]), 205.
 BODY_C, BODY_R = np.array([470., 580.]), 290.
-CUT_W = 54.                    # final px
-RING_OUT = 104.                # final px, outer radius of ring
+CUT_W = 40.                    # final px, width of the breast sweep
+RING_OUT = 116.                # final px; outer ring centreline = RING_OUT - CUT_W / 2
 RING_IN = RING_OUT - CUT_W     # inner counter radius (final px)
 EXIT = np.array([480., 866.])  # where the sweep leaves the hull (spec)
 BILL_TIP = np.array([1120., 445.])
@@ -41,8 +41,11 @@ TAIL_ANG = (165., 112.)        # attach angles on body circle (screen deg, 90 = 
 HOOK = 18.
 FIT_R = 452.
 OFFSET = (6., -10.)
-STEM_W = 0.62                  # 'a' stem width, as a fraction of the cut width
-COUNTER = 0.42                 # 'a' counter radius, as a fraction of the eye radius
+AT_STROKE = 34.                # final px, stroke of the engraved @
+AT_BOWL = 0.40                 # bowl centreline radius, as a fraction of the outer ring
+AT_SHIFT = -0.06               # bowl offset left of the head centre (fraction of ring)
+AT_JOIN = 25.                  # angle where the stem's foot meets the outer ring
+AT_END = 62.                   # angle where the outer ring stops (the @'s open end)
 
 
 def pt(c, r, deg):
@@ -148,21 +151,32 @@ a_hd = math.degrees(math.atan2(*(pt(HEAD_C, HEAD_R, A_ANG) - SW_C)[::-1]))
 a_e, a_hd, a_t = a_e % 360, a_hd % 360, a_t % 360
 arcpts = [pt(SW_C, SW_R, a) for a in np.linspace(a_e - 12, a_t, 400)]
 band = LineString(arcpts).buffer(W / 2, cap_style='flat')
-ring = circle(HEAD_C, r_c + W / 2).difference(circle(HEAD_C, r_c - W / 2))
-cut = unary_union([band, ring])
-G = 50
-cut = cut.buffer(G, quad_segs=32).buffer(-G, quad_segs=32)
 
-# Turn the eye into the @'s lowercase 'a': a counter inside the eye (it doubles
-# as a catchlight) and a stem on its right that bridges the ring down into the
-# breast, so ring + bowl + stem read as an @ rather than a dot in a circle.
-r_in = r_c - W / 2
-stem_w = STEM_W * W
-stem_x = HEAD_C[0] + r_in - stem_w
-stem = Polygon([(stem_x, HEAD_C[1]), (stem_x + stem_w, HEAD_C[1]),
-                (stem_x + stem_w, HEAD_C[1] + r_c + W), (stem_x, HEAD_C[1] + r_c + W)])
-counter = circle(HEAD_C + np.array([-0.12 * r_in, 0]), COUNTER * r_in)
-cut = unary_union([cut.difference(stem), counter])
+# The @ itself, engraved round the eye as one light stroke: the inner bowl (its
+# dark centre is the eye), a stem on the bowl's right whose foot curls into the
+# outer ring, and the outer ring, open at the lower right. The breast sweep
+# leaves the outer ring tangentially, so the @ and the colour boundary are one
+# continuous cut.
+def at_glyph():
+    t = AT_STROKE / s
+    R = r_c
+    br = AT_BOWL * R
+    c = HEAD_C + np.array([AT_SHIFT * R, 0])
+    bowl = LineString([pt(c, br, a) for a in np.linspace(0, 360, 200)]).buffer(t / 2)
+    sx = c[0] + br
+    jp = pt(HEAD_C, R, AT_JOIN)
+    p0 = np.array([sx, c[1] + 0.25 * br])
+    p1 = p0 + np.array([0, 0.9 * br])
+    p2 = jp + np.array([-0.35 * br, 0.55 * br])
+    foot = [np.array([sx, c[1] - br]), p0] + [
+        (1 - u) ** 3 * p0 + 3 * (1 - u) ** 2 * u * p1 + 3 * (1 - u) * u * u * p2 + u ** 3 * jp
+        for u in np.linspace(0, 1, 40)[1:]]
+    stem = LineString(foot).buffer(t / 2, cap_style="flat")
+    outer = LineString([pt(HEAD_C, R, a) for a in np.linspace(AT_JOIN, AT_END - 360, 300)]).buffer(t / 2)
+    return unary_union([bowl, stem, outer, Point(*jp).buffer(t / 2)])
+
+
+cut = unary_union([band, at_glyph()])
 
 disc = circle(SW_C, SW_R)   # colour split follows the sweep circle
 front = unary_union([disc, circle(HEAD_C, HEAD_R + 2)])
