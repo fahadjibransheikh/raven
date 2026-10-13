@@ -94,3 +94,25 @@ func TestAssetExtensionComesFromContentNotURL(t *testing.T) {
 		}
 	}
 }
+
+func TestWriteRemoteAssetReplacesWholeAndLeavesNoTemporaryFiles(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "remote_assets")
+	png := append([]byte("\x89PNG\r\n\x1a\n"), 1, 2, 3)
+	const remote = "https://img.example/a"
+	path, err := WriteRemoteAsset(dir, remote, png)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := filepath.Join(dir, RemoteAssetName(remote)+".png"); path != want {
+		t.Fatalf("path = %s, want %s", path, want)
+	}
+	if _, err := WriteRemoteAsset(dir, remote, append(png, 4)); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := os.ReadFile(path); !bytes.Equal(got, append(png, 4)) {
+		t.Fatalf("file = %v", got)
+	}
+	if entries, _ := os.ReadDir(dir); len(entries) != 1 {
+		t.Fatalf("directory holds %d entries, want 1", len(entries))
+	}
+}

@@ -264,18 +264,41 @@ func (s *BlobStore) RemoteAssetsDir(accountID string, localID int64) string {
 }
 
 func (s *BlobStore) StoreRemoteAsset(accountID string, localID int64, url string, data []byte) (string, error) {
-	dir := s.RemoteAssetsDir(accountID, localID)
-	if err := s.ensureDir(dir); err != nil {
+	return WriteRemoteAsset(s.RemoteAssetsDir(accountID, localID), url, data)
+}
+
+// WriteRemoteAsset saves a remote file in dir under RemoteAssetName plus an
+// extension taken from its bytes. It is written to a temporary file first, so
+// a reader never sees half of it: the same file can be read while another
+// request is still saving it.
+func WriteRemoteAsset(dir, url string, data []byte) (string, error) {
+	if err := os.MkdirAll(dir, 0700); err != nil {
 		return "", fmt.Errorf("create remote assets dir: %w", err)
 	}
-	h := sha256.Sum256([]byte(url))
-	filename := fmt.Sprintf("%x", h[:8])
-	ext := assetExtension(url, data)
-	if ext != "" {
-		filename += ext
+	p := filepath.Join(dir, RemoteAssetName(url)+assetExtension(url, data))
+	tmp, err := os.CreateTemp(dir, ".tmp-*")
+	if err != nil {
+		return "", err
 	}
-	p := filepath.Join(dir, filename)
-	return p, os.WriteFile(p, data, 0600)
+	_, err = tmp.Write(data)
+	if closeErr := tmp.Close(); err == nil {
+		err = closeErr
+	}
+	if err == nil {
+		err = os.Rename(tmp.Name(), p)
+	}
+	if err != nil {
+		_ = os.Remove(tmp.Name())
+		return "", err
+	}
+	return p, nil
+}
+
+// RemoteAssetName is the file name, without extension, that a remote address is
+// saved under: 16 hex digits of its hash.
+func RemoteAssetName(url string) string {
+	h := sha256.Sum256([]byte(url))
+	return fmt.Sprintf("%x", h[:8])
 }
 
 func (s *BlobStore) StoreRemoteBodyHTML(accountID string, localID int64, data []byte) (string, error) {

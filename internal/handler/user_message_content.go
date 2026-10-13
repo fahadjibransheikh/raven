@@ -39,6 +39,7 @@ func (h *Handler) handleUserFetchBody(w http.ResponseWriter, r *http.Request, fo
 		return
 	}
 	if !force {
+		h.warmStoredBodyImages(h.userID(r.Context()), id)
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}

@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/cristianadrielbraun/gofer/internal/auth"
+	"github.com/cristianadrielbraun/gofer/internal/store"
 )
 
 // A message is shown in a sandboxed frame that the browser treats as another
@@ -101,9 +102,10 @@ func messageFileLinkExpiry() int64 {
 	return time.Now().Truncate(time.Hour).Add(messageFileLinkLifetime + time.Hour).Unix()
 }
 
+// messageFileWebName is the name a remote file is kept under, see
+// remote_image_cache.go.
 func messageFileWebName(remoteURL string) string {
-	sum := sha256.Sum256([]byte(remoteURL))
-	return hex.EncodeToString(sum[:8])
+	return store.RemoteAssetName(remoteURL)
 }
 
 // remoteContentLinks returns the loader that RestoreRemoteContent passes each
@@ -208,15 +210,12 @@ func (h *Handler) handleSignedMessageFile(w http.ResponseWriter, r *http.Request
 	}
 }
 
-// relayRemoteContent downloads one remote file of a message for the reader
-// and passes it on as a message file: images show in place, anything else
-// is sent as bytes the page can't run.
+// relayRemoteContent passes one remote file of a message on to the reader, from
+// the copy the message already keeps or a download, as a message file: images
+// show in place, anything else is sent as bytes the page can't run.
 func (h *Handler) relayRemoteContent(w http.ResponseWriter, r *http.Request) {
-	download := h.remoteResourceDownloader
-	if download == nil {
-		download = newRemoteResourceDownloader(privateTargetAllowed(h.db))
-	}
-	data, err := download(r.Context(), r.URL.Query().Get("r"))
+	msgID, _ := strconv.ParseInt(r.PathValue("messageID"), 10, 64)
+	data, err := h.relayedImage(r.Context(), h.userID(r.Context()), msgID, r.URL.Query().Get("r"), false)
 	if err != nil || len(data) == 0 {
 		http.NotFound(w, r)
 		return

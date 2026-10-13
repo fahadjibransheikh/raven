@@ -2,6 +2,7 @@ package handler
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"errors"
 	"io"
@@ -68,15 +69,9 @@ load:
 				}
 			}
 			if !remote {
-				remote = db.IsRemoteContentAllowedForMessageForUser(ctx, number, owner)
-				if !remote {
-					sender, err := db.GetMessageSenderEmailForUser(ctx, number, owner)
-					if err != nil {
-						return err
-					}
-					if sender != "" {
-						remote = db.IsRemoteContentAllowedForSenderForUser(ctx, sender, owner)
-					}
+				remote, err = userRemoteContentAllowed(ctx, db, owner, number)
+				if err != nil {
+					return err
 				}
 			}
 			return nil
@@ -115,6 +110,7 @@ load:
 		return
 	}
 	if remote {
+		h.warmRemoteImages(owner, number, listedURLs(message.ExtractRemoteURLs(string(body))))
 		body = message.RestoreRemoteContent(body, h.remoteContentLinks(r.Context(), owner, number))
 	}
 	body = message.MarkThreadQuote(body, quoteSources)
@@ -125,4 +121,17 @@ load:
 		doc = append(doc, scriptWithNonce(remoteImagesDetectScript(id), nonce)...)
 	}
 	_, _ = w.Write(doc)
+}
+
+// userRemoteContentAllowed reports whether the owner allowed the remote
+// content of a message, or of its sender.
+func userRemoteContentAllowed(ctx context.Context, db *storage.DB, owner string, id int64) (bool, error) {
+	if db.IsRemoteContentAllowedForMessageForUser(ctx, id, owner) {
+		return true, nil
+	}
+	sender, err := db.GetMessageSenderEmailForUser(ctx, id, owner)
+	if err != nil || sender == "" {
+		return false, err
+	}
+	return db.IsRemoteContentAllowedForSenderForUser(ctx, sender, owner), nil
 }

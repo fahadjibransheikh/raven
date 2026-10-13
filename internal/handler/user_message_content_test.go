@@ -1,12 +1,15 @@
 package handler
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -300,5 +303,73 @@ func TestOwnedRemoteContentDeniedPublicationDiscardsCandidate(t *testing.T) {
 				t.Fatal("unpublished candidate left behind", paths, err)
 			}
 		})
+	}
+}
+
+func TestOwnedRemoteImageCacheStaysWithEachOwnersMessage(t *testing.T) {
+	f := newOwnedMessageContentFixture(t)
+	fake := &fakeDownloader{}
+	f.h.remoteResourceDownloader = fake.download
+	const remote = "https://images.example/private.png"
+	relay := func(owner string) []byte {
+		rec := httptest.NewRecorder()
+		f.h.relayRemoteContent(rec, ownedContentRequest(owner, "/api/message-file/web/1/x?r="+url.QueryEscape(remote), ""))
+		if rec.Code != 200 {
+			t.Fatal(owner, rec.Code)
+		}
+		return rec.Body.Bytes()
+	}
+	alice, again, bob := relay("alice"), relay("alice"), relay("bob")
+	if !bytes.Equal(alice, again) || bytes.Equal(alice, bob) || fake.calls.Load() != 2 {
+		t.Fatalf("downloads = %d: owners shared a copy or a repeat downloaded again", fake.calls.Load())
+	}
+	// The copy sits next to the body the owner's message was published with.
+	for _, owner := range []string{"alice", "bob"} {
+		if err := f.h.withUserDB(t.Context(), owner, func(db *storage.DB) error {
+			s, err := db.GetMessageContentSnapshotForUser(t.Context(), owner, 1)
+			if err != nil {
+				return err
+			}
+			if kept, _ := filepath.Glob(filepath.Join(filepath.Dir(s.BodyHTMLPath), "remote_assets", "*.png")); len(kept) != 1 {
+				return fmt.Errorf("%s kept %v", owner, kept)
+			}
+			return nil
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Warming follows each owner's own consent: only alice allowed her message.
+	for _, owner := range []string{"alice", "bob"} {
+		if err := f.h.withUserDB(t.Context(), owner, func(db *storage.DB) error {
+			s, err := db.GetMessageContentSnapshotForUser(t.Context(), owner, 1)
+			if err != nil {
+				return err
+			}
+			return os.RemoveAll(filepath.Join(filepath.Dir(s.BodyHTMLPath), "remote_assets"))
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := f.h.withUserDB(t.Context(), "alice", func(db *storage.DB) error {
+		return db.AllowRemoteContentForMessageForUser(t.Context(), 1, "alice")
+	}); err != nil {
+		t.Fatal(err)
+	}
+	fake.calls.Store(0)
+	f.h.warmStoredBodyImages("bob", 1)
+	waitWarmed(t, f.h)
+	if fake.calls.Load() != 0 {
+		t.Fatal("warmed the images of a message that doesn't allow them")
+	}
+	f.h.warmStoredBodyImages("alice", 1)
+	waitWarmed(t, f.h)
+	if fake.calls.Load() != 1 {
+		t.Fatalf("warmed %d images for the owner who allowed them, want 1", fake.calls.Load())
+	}
+	f.h.warmStoredBodyImages("alice", 1)
+	waitWarmed(t, f.h)
+	if fake.calls.Load() != 1 {
+		t.Fatal("warmed a kept image again")
 	}
 }

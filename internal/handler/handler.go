@@ -136,6 +136,9 @@ type Handler struct {
 	messageMutationIMAPFactory messageMutationIMAPClientFactory
 	folderReadIMAPFactory      func(context.Context, *models.AccountConfig, string) (folderReadIMAPClient, error)
 	remoteResourceDownloader   func(context.Context, string) ([]byte, error)
+	relayMu                    sync.Mutex
+	relayFlights               map[string]*relayFlight // downloads in progress, see remote_image_cache.go
+	warming                    sync.Map                // messages whose images are being fetched ahead of time
 	// messageFileKey signs the image addresses in message pages; see
 	// message_file_links.go.
 	messageFileKey            []byte
@@ -1482,6 +1485,7 @@ func (h *Handler) handleEmailBody(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if loadRemote {
+		h.warmRemoteImages(userID, msgID, listedURLs(message.ExtractRemoteURLs(string(body))))
 		body = message.RestoreRemoteContent(body, h.remoteContentLinks(ctx, userID, msgID))
 	}
 	body = message.MarkThreadQuote(body, threadQuoteSources(ctx, h.db, emailID, userID))
@@ -6685,6 +6689,9 @@ func (h *Handler) handlePrefetchBody(w http.ResponseWriter, r *http.Request) {
 	if !h.db.IsBodyFetchedInternal(ctx, msgID) {
 		h.ensureBodyFetched(message.WithDownloadLimit(ctx, message.AutoDownloadMaxBytes), msgID, info.AccountID)
 	}
+	// Also when the body was stored earlier: warming is skipped for images that
+	// are already kept, and a message hovered before it was allowed catches up.
+	h.warmStoredBodyImages(h.userID(ctx), msgID)
 
 	w.WriteHeader(http.StatusNoContent)
 }
