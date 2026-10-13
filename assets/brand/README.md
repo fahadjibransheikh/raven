@@ -3,11 +3,10 @@
 ![Old logo, then every colourway](preview.png)
 
 A solid, hunched raven built from two circles (head and body), their common
-tangent, a wedge bill and a wedge tail. An `@` is engraved round the eye as one
-light stroke (the bowl's dark centre is the eye), and its outer ring runs on
-into a single sweeping cut down the breast. That cut is also the colour
-boundary, so the two-colour split needs no extra line: head, bill and breast
-are the bird colour; back, wing and tail are the accent.
+tangent, a wedge bill and a wedge tail. The `@` is carved out of the bird as a
+single cut: a ring round the eye plus one sweeping arc down the breast. That
+cut is also the colour boundary, so the two-colour split needs no extra line:
+head, bill and breast are the bird colour; back, wing and tail are the accent.
 
 See `construction.svg` for the circles and tangents.
 
