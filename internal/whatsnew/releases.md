@@ -7,6 +7,12 @@ Then an optional hero line, then "### New", "### Improved", "### Fixed" or
 replaces it with the real version number. GitHub release notes use the same text.
 -->
 
+## 1.0.0 | 2026-10-13 | Raven 1.0
+Raven reaches 1.0: mail, contacts and calendar for Gmail, Outlook, iCloud and any IMAP account, on your desktop and your phone.
+
+### Fixed
+- On Mac, the top of emails with pictures could turn blank right after opening, leaving empty space above the message until you scrolled. Emails now stay fully visible when they open.
+
 ## 0.3.4 | 2026-10-13 | A new calendar, a new logo, and a faster reader
 A rebuilt calendar, a new Raven logo you can recolour, and email that opens faster.
 
