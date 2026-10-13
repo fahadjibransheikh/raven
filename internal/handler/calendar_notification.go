@@ -26,7 +26,7 @@ func calendarNotificationICS(source *ical.Calendar, method string, guests []cale
 		return "", fmt.Errorf("invalid scheduling message")
 	}
 	cal := ical.NewCalendar()
-	cal.Props.SetText("PRODID", "-//Gofer//Calendar//EN")
+	cal.Props.SetText("PRODID", "-//Raven//Calendar//EN")
 	cal.Props.SetText("VERSION", "2.0")
 	cal.Props.SetText("METHOD", method)
 	for _, child := range source.Children {

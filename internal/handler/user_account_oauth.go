@@ -115,13 +115,13 @@ func (h *Handler) handleUserAccountOAuthCallback(w http.ResponseWriter, r *http.
 				if err != nil {
 					var pending *config.PendingAccountCreationError
 					if errors.As(err, &pending) {
-						w.Header().Set("X-Gofer-Account-ID", pending.AccountID)
+						w.Header().Set("X-Raven-Account-ID", pending.AccountID)
 					}
 					return err
 				}
 				id = account.ID
 			}
-			w.Header().Set("X-Gofer-Account-ID", id)
+			w.Header().Set("X-Raven-Account-ID", id)
 			return h.userStorage.WithAccountActivityForUser(ctx, owner, id, func() error {
 				// Missing credentials fail closed in provider workers. If this save
 				// fails, the persisted mailbox is recoverable by authorizing the same

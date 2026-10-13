@@ -247,7 +247,7 @@ func TestUserContactFindingsAndPreviewHTTPProviderIdentityRefreshAndRollback(t *
 				if err != nil {
 					return err
 				}
-				if contact.GoferSyncEnabled {
+				if contact.RavenSyncEnabled {
 					t.Fatal("preview enabled sync")
 				}
 				return nil

@@ -239,7 +239,7 @@ func TestAuthenticatePasswordCreatesRestrictedEnrollmentForFactorlessMFAPolicy(t
 				t.Fatalf("AuthenticatePassword(MFA) = %#v, %v", result, err)
 			}
 			challenge := result.PreAuthChallenge
-			if challenge.Token != "mfa-challenge-token" || challenge.Purpose != ChallengePurposeMFA || challenge.UserID != "person" || challenge.Origin != "https://gofer.example" {
+			if challenge.Token != "mfa-challenge-token" || challenge.Purpose != ChallengePurposeMFA || challenge.UserID != "person" || challenge.Origin != "https://raven.example" {
 				t.Fatalf("MFA challenge = %#v", challenge)
 			}
 			var sessionCount int
@@ -277,7 +277,7 @@ func TestAuthenticatePasswordUsesExistingAuthenticatorWhenMFAIsRequired(t *testi
 	if err != nil || result == nil || result.Session != nil || result.PreAuthChallenge == nil || result.MFAEnrollmentRequired {
 		t.Fatalf("AuthenticatePassword(existing MFA) = %#v, %v", result, err)
 	}
-	if state, err := manager.GetMFAEnrollmentState(t.Context(), result.PreAuthChallenge.Token, "https://gofer.example"); state != nil || !errors.Is(err, ErrMFAEnrollmentInvalid) {
+	if state, err := manager.GetMFAEnrollmentState(t.Context(), result.PreAuthChallenge.Token, "https://raven.example"); state != nil || !errors.Is(err, ErrMFAEnrollmentInvalid) {
 		t.Fatalf("GetMFAEnrollmentState(existing MFA) = %#v, %v", state, err)
 	}
 }
@@ -303,10 +303,10 @@ func TestAuthenticatePasswordReplacesPriorMFAContinuation(t *testing.T) {
 	if err != nil || second == nil || second.PreAuthChallenge == nil {
 		t.Fatalf("replacement MFA continuation = %#v, %v", second, err)
 	}
-	if active, err := manager.GetActivePreAuthChallenge(t.Context(), first.PreAuthChallenge.Token, ChallengePurposeMFA, "https://gofer.example"); err != nil || active != nil {
+	if active, err := manager.GetActivePreAuthChallenge(t.Context(), first.PreAuthChallenge.Token, ChallengePurposeMFA, "https://raven.example"); err != nil || active != nil {
 		t.Fatalf("replaced MFA continuation remained active = %#v, %v", active, err)
 	}
-	if active, err := manager.GetActivePreAuthChallenge(t.Context(), second.PreAuthChallenge.Token, ChallengePurposeMFA, "https://gofer.example"); err != nil || active == nil || active.ID != "second-challenge" {
+	if active, err := manager.GetActivePreAuthChallenge(t.Context(), second.PreAuthChallenge.Token, ChallengePurposeMFA, "https://raven.example"); err != nil || active == nil || active.ID != "second-challenge" {
 		t.Fatalf("replacement MFA continuation = %#v, %v", active, err)
 	}
 	var activeChallenges, consumedChallenges int

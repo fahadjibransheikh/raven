@@ -6,7 +6,7 @@ import (
 )
 
 func TestMigrateV80AddsEncryptedPasskeyRecordsAndUserHandles(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "gofer.db")
+	path := filepath.Join(t.TempDir(), "raven.db")
 	raw, err := openDB(path)
 	if err != nil {
 		t.Fatal(err)
@@ -88,11 +88,11 @@ func TestMigrateV80AddsEncryptedPasskeyRecordsAndUserHandles(t *testing.T) {
 	assertNoForeignKeyViolations(t, db.Read())
 	assertExecFails(t, db.Write(), `
 		INSERT INTO webauthn_users (user_id, rp_id, user_handle)
-		VALUES ('owner', 'gofer.example', x'01')`)
+		VALUES ('owner', 'raven.example', x'01')`)
 }
 
 func TestMigrateV84RepairsIncompletePasskeySchema(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "gofer.db")
+	path := filepath.Join(t.TempDir(), "raven.db")
 	raw, err := openDB(path)
 	if err != nil {
 		t.Fatal(err)

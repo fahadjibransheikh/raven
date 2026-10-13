@@ -46,7 +46,7 @@ const context = vm.createContext({
   window: {tui: {dialog: {close(id) { closes.push(id) }}}},
   fetch(url, options) { return new Promise((resolve, reject) => requests.push({url, options, resolve, reject})) },
   adjustCalendarCreateAllDayRange() {}, setCalendarCreateError(_form, value) { message = value },
-  showGoferToast(value) { toasts.push(value) }, scheduleCalendarCacheRefresh() { refreshes++ },
+  showRavenToast(value) { toasts.push(value) }, scheduleCalendarCacheRefresh() { refreshes++ },
 })
 vm.runInContext(['updateCalendarRecurrenceForm', 'validateCalendarCreatePickers', 'syncCalendarDescription', 'submitCalendarCreate'].map(helper).join('\n'), context)
 context.updateCalendarCreateForm = form => {

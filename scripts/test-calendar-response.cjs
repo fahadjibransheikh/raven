@@ -32,7 +32,7 @@ const loader = {matches(selector) { return selector === '[data-calendar-response
 const context = vm.createContext({
   document: {body: {addEventListener(type, handler) { (handlers[type] ||= []).push(handler) }}},
   window: {tui: {dialog: {close(root) { closed.push(root) }}}, htmx: {ajax(method, url, options) { deliveryRequests.push({method, url, options}); return {catch() {}} }}},
-  showGoferToast(toast) { toasts.push(toast) }, scheduleCalendarCacheRefresh() { refreshes++ },
+  showRavenToast(toast) { toasts.push(toast) }, scheduleCalendarCacheRefresh() { refreshes++ },
 })
 vm.runInContext(source.slice(source.indexOf('function updateCalendarResponseForm('), source.indexOf('function updateCalendarDeleteForm(')), context)
 function fire(type, detail) {

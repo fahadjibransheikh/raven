@@ -15,7 +15,7 @@ import (
 
 func createMainAuthCommandDatabase(t *testing.T) string {
 	t.Helper()
-	databasePath := filepath.Join(t.TempDir(), "data", "gofer.db")
+	databasePath := filepath.Join(t.TempDir(), "data", "raven.db")
 	db, err := storage.New(databasePath)
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
@@ -101,7 +101,7 @@ func TestRunApplicationStartsServerOnlyWithoutArguments(t *testing.T) {
 		var stdout, stderr bytes.Buffer
 		serverStarts = 0
 		code := runApplication(t.Context(), args, &stdout, &stderr, func() { serverStarts++ })
-		if code != 2 || serverStarts != 0 || stdout.Len() != 0 || !strings.Contains(stderr.String(), "unknown command") || !strings.Contains(stderr.String(), "gofer help") {
+		if code != 2 || serverStarts != 0 || stdout.Len() != 0 || !strings.Contains(stderr.String(), "unknown command") || !strings.Contains(stderr.String(), "raven help") {
 			t.Fatalf("Run(%v) = code:%d starts:%d stdout:%q stderr:%q", args, code, serverStarts, stdout.String(), stderr.String())
 		}
 	}
@@ -112,7 +112,7 @@ func TestRunApplicationPrintsHelpWithoutStartingServer(t *testing.T) {
 		var stdout, stderr bytes.Buffer
 		started := false
 		code := runApplication(t.Context(), []string{arg}, &stdout, &stderr, func() { started = true })
-		if code != 0 || started || stderr.Len() != 0 || !strings.Contains(stdout.String(), "gofer auth recover") || !strings.Contains(stdout.String(), "gofer storage inspect") {
+		if code != 0 || started || stderr.Len() != 0 || !strings.Contains(stdout.String(), "raven auth recover") || !strings.Contains(stdout.String(), "raven storage inspect") {
 			t.Fatalf("Run(%s) = code:%d started:%t stdout:%q stderr:%q", arg, code, started, stdout.String(), stderr.String())
 		}
 	}
@@ -121,7 +121,7 @@ func TestRunApplicationPrintsHelpWithoutStartingServer(t *testing.T) {
 func TestRunApplicationDispatchesStorageBeforeServerStartup(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	started := false
-	if code := runApplication(t.Context(), []string{"storage"}, &stdout, &stderr, func() { started = true }); code != 2 || started || !strings.Contains(stderr.String(), "usage: gofer storage") {
+	if code := runApplication(t.Context(), []string{"storage"}, &stdout, &stderr, func() { started = true }); code != 2 || started || !strings.Contains(stderr.String(), "usage: raven storage") {
 		t.Fatalf("storage dispatch: code=%d started=%v stderr=%q", code, started, stderr.String())
 	}
 }

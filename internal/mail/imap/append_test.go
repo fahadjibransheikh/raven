@@ -104,12 +104,12 @@ func TestAppendMessageStoresSeenMessageAndReturnsUID(t *testing.T) {
 		t.Fatalf("flags = %#v, want appended message marked seen", flags)
 	}
 
-	draftRaw := []byte("From: user@example.com\r\nTo: friend@example.com\r\nMessage-ID: <draft@example.com>\r\nX-Gofer-Draft-Revision: revision-1\r\nSubject: Draft\r\n\r\nBody")
+	draftRaw := []byte("From: user@example.com\r\nTo: friend@example.com\r\nMessage-ID: <draft@example.com>\r\nX-Raven-Draft-Revision: revision-1\r\nSubject: Draft\r\n\r\nBody")
 	draftResult, err := client.AppendMessage(context.Background(), "Drafts", draftRaw, []goimap.Flag{goimap.FlagSeen, goimap.FlagDraft}, date)
 	if err != nil {
 		t.Fatalf("AppendMessage(Drafts) error = %v", err)
 	}
-	draftUID, draftUIDValidity, err := client.FindUIDByHeaderWithValidity(context.Background(), "Drafts", "X-Gofer-Draft-Revision", "revision-1")
+	draftUID, draftUIDValidity, err := client.FindUIDByHeaderWithValidity(context.Background(), "Drafts", "X-Raven-Draft-Revision", "revision-1")
 	if err != nil || draftUID != draftResult.UID || draftUIDValidity != draftResult.UIDValidity {
 		t.Fatalf("find draft revision UID=%d validity=%d result=%#v error=%v", draftUID, draftUIDValidity, draftResult, err)
 	}
@@ -131,14 +131,14 @@ func TestAppendMessageStoresSeenMessageAndReturnsUID(t *testing.T) {
 	if err != nil || !validityChanged {
 		t.Fatalf("delete with stale UID validity changed=%v error=%v", validityChanged, err)
 	}
-	if uid, _, err := client.FindUIDByHeaderWithValidity(context.Background(), "Drafts", "X-Gofer-Draft-Revision", "revision-1"); err != nil || uid != draftUID {
+	if uid, _, err := client.FindUIDByHeaderWithValidity(context.Background(), "Drafts", "X-Raven-Draft-Revision", "revision-1"); err != nil || uid != draftUID {
 		t.Fatalf("draft deleted despite stale UID validity: UID=%d error=%v", uid, err)
 	}
 	validityChanged, err = client.DeleteMessagesIfUIDValidity(context.Background(), "Drafts", []uint32{draftUID}, draftUIDValidity)
 	if err != nil || validityChanged {
 		t.Fatalf("delete draft changed=%v error=%v", validityChanged, err)
 	}
-	if uid, _, err := client.FindUIDByHeaderWithValidity(context.Background(), "Drafts", "X-Gofer-Draft-Revision", "revision-1"); err != nil || uid != 0 {
+	if uid, _, err := client.FindUIDByHeaderWithValidity(context.Background(), "Drafts", "X-Raven-Draft-Revision", "revision-1"); err != nil || uid != 0 {
 		t.Fatalf("deleted draft still found: UID=%d error=%v", uid, err)
 	}
 }

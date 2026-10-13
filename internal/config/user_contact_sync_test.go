@@ -14,7 +14,7 @@ func seedUserContactSync(t *testing.T, accounts *UserAccountStore, owner, accoun
 	t.Helper()
 	var op string
 	if err := accounts.WithAccountForUser(t.Context(), owner, account, func(_ *AccountStore, db *storage.DB) error {
-		contact, err := db.SaveContact(t.Context(), owner, models.Contact{ID: "same-profile", Name: owner, Email: "same@example.com", Phone: owner, GoferSyncEnabled: true, SaveTargets: []string{"book:" + owner + "-book"}})
+		contact, err := db.SaveContact(t.Context(), owner, models.Contact{ID: "same-profile", Name: owner, Email: "same@example.com", Phone: owner, RavenSyncEnabled: true, SaveTargets: []string{"book:" + owner + "-book"}})
 		if err != nil {
 			return err
 		}

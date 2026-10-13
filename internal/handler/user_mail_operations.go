@@ -76,7 +76,7 @@ func (h *Handler) handleUserRetryMailOperation(w http.ResponseWriter, r *http.Re
 	// sent-copy queues. A failed wake leaves the committed local intent intact.
 	if err := h.userIMAP.WakeMutations(ctx, owner, operation.AccountID); err != nil {
 		log.Printf("mail operation retry saved; owned wake failed: %v", err)
-		w.Header().Set("X-Gofer-Mail-Delivery", "delayed")
+		w.Header().Set("X-Raven-Mail-Delivery", "delayed")
 	}
 	writeMailOperationsJSON(w, http.StatusOK, mailOperationResponseFrom(operation))
 }

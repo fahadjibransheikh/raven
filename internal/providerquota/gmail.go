@@ -1,8 +1,8 @@
-// Package providerquota keeps Gofer's calls to a mail provider inside the
+// Package providerquota keeps Raven's calls to a mail provider inside the
 // quota the provider gives each mailbox.
 //
 // Gmail allows each mailbox 6,000 quota units a minute per app, and every
-// call costs units: reading a message 5, sending 100. All of Gofer's Gmail
+// call costs units: reading a message 5, sending 100. All of Raven's Gmail
 // work for a mailbox draws on that one allowance: syncing, opening messages,
 // label changes, size lookups. So every Gmail request goes through one budget
 // per mailbox. Background work leaves a reserve for what the reader is doing
@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	// Gofer aims for 80% of Gmail's 6,000 units a minute, leaving room for
+	// Raven aims for 80% of Gmail's 6,000 units a minute, leaving room for
 	// other apps signed in to the same Google project.
 	gmailUnitsPerMinute    = 4800
 	gmailMinUnitsPerMinute = 600

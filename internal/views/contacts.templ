@@ -55,9 +55,9 @@ func contactEditAvatarRemoveClass(hasAvatar bool) string {
 }
 
 // contactAvatarPreviewURL is the address of the larger photo shown when a
-// contact's picture is opened. Google photos are fetched through Gofer, which
+// contact's picture is opened. Google photos are fetched through Raven, which
 // only fetches photos saved for one of the person's contacts, so the address
-// names the saved photo and asks Gofer for its large version.
+// names the saved photo and asks Raven for its large version.
 func contactAvatarPreviewURL(rawURL string) string {
 	rawURL = strings.TrimSpace(rawURL)
 	if _, ok := GoogleAvatarLargeURL(rawURL); ok {
@@ -512,7 +512,7 @@ func contactProfileSyncLabel(profile *models.ContactProfile) string {
 }
 
 func contactSyncLabel(contact *models.Contact) string {
-	if contact != nil && contact.GoferSyncEnabled {
+	if contact != nil && contact.RavenSyncEnabled {
 		return "Enabled"
 	}
 	return "Disabled"
@@ -2156,13 +2156,13 @@ templ ContactLegacySourcePanel(contact *models.Contact, accounts []models.Accoun
 				<h2 class="text-xs font-semibold text-ink/55">Raven Sync</h2>
 			</div>
 			<div class="flex items-center gap-2">
-				<span class={ contactSyncEnabledBadgeClass(contact != nil && contact.GoferSyncEnabled) } data-contact-sync-state-label>
+				<span class={ contactSyncEnabledBadgeClass(contact != nil && contact.RavenSyncEnabled) } data-contact-sync-state-label>
 					{ contactSyncLabel(contact) }
 				</span>
 				@switchcomp.Switch(switchcomp.Props{
 					ID: contactSyncEnabledID(contact),
 					Name: "sync_enabled",
-					Checked: contact != nil && contact.GoferSyncEnabled,
+					Checked: contact != nil && contact.RavenSyncEnabled,
 					Attributes: templ.Attributes{"aria-label": "Enable Raven Sync", "data-contact-sync-enabled": ""},
 				})
 			</div>
@@ -2182,7 +2182,7 @@ templ ContactLegacySourcePanel(contact *models.Contact, accounts []models.Accoun
 				}
 			</div>
 			<div class="w-full">
-				@ContactSyncTargetsSelect(contact, accounts, contact != nil && contact.GoferSyncEnabled)
+				@ContactSyncTargetsSelect(contact, accounts, contact != nil && contact.RavenSyncEnabled)
 			</div>
 		</div>
 	</section>

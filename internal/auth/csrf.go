@@ -13,8 +13,8 @@ const (
 	CSRFFormFieldName           = "_csrf"
 	CSRFHeaderName              = "X-CSRF-Token"
 	sessionCSRFFormMaximumBytes = 8 << 10
-	csrfKeyContext              = "gofer-csrf-session-key-v1"
-	csrfActionContext           = "gofer-csrf-action-v1"
+	csrfKeyContext              = "raven-csrf-session-key-v1"
+	csrfActionContext           = "raven-csrf-action-v1"
 )
 
 type csrfContextKey struct{}

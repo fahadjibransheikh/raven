@@ -17,13 +17,13 @@ import (
 
 func passwordResetRequestStack(t *testing.T) (*storage.DB, http.Handler) {
 	t.Helper()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	manager := auth.NewManager(&auth.Config{
-		Enabled: true, BaseURL: "https://gofer.example", SecureCookies: true,
+		Enabled: true, BaseURL: "https://raven.example", SecureCookies: true,
 	}, db, auth.Dependencies{BucketHashKey: []byte("password-reset-handler-key-32byt")})
 	now := time.Now().UTC().Add(-time.Hour)
 	if _, err := db.Write().ExecContext(t.Context(), `
@@ -49,7 +49,7 @@ func postPasswordResetRequest(stack http.Handler, identifier string) *httptest.R
 	form := url.Values{"identifier": {identifier}}
 	request := httptest.NewRequest(http.MethodPost, passwordResetRequestPath, strings.NewReader(form.Encode()))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Origin", "https://gofer.example")
+	request.Header.Set("Origin", "https://raven.example")
 	request.Header.Set("User-Agent", "Password Reset Handler Test/1.0")
 	request.RemoteAddr = "198.51.100.101:45000"
 	recorder := httptest.NewRecorder()
@@ -133,7 +133,7 @@ func TestPasswordResetRequestResponseDoesNotRevealAccountEligibility(t *testing.
 func TestPasswordResetRequestPostRemainsProtectedByCanonicalOriginGuard(t *testing.T) {
 	db, stack := passwordResetRequestStack(t)
 	t.Setenv("RAVEN_ADDR", "127.0.0.1:8090")
-	t.Setenv("RAVEN_BASE_URL", "https://gofer.example")
+	t.Setenv("RAVEN_BASE_URL", "https://raven.example")
 	t.Setenv("RAVEN_ALLOW_UNAUTHENTICATED_REMOTE", "")
 	guard, err := httpguard.LoadConfig()
 	if err != nil {
@@ -141,7 +141,7 @@ func TestPasswordResetRequestPostRemainsProtectedByCanonicalOriginGuard(t *testi
 	}
 	form := url.Values{"identifier": {"active.user"}}
 	request := httptest.NewRequest(http.MethodPost, passwordResetRequestPath, strings.NewReader(form.Encode()))
-	request.Host = "gofer.example"
+	request.Host = "raven.example"
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Origin", "https://attacker.example")
 	recorder := httptest.NewRecorder()

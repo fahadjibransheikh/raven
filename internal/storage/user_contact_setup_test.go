@@ -64,7 +64,7 @@ func TestUserContactSetupConfirmationAtomicChoicesQueueAndActivity(t *testing.T)
 				t.Fatal(err)
 			}
 			result, err := db.ConfirmUserContactSetup(t.Context(), snapshot, choices, inboundTestGuard)
-			if err != nil || result.Contact.ID != id || !result.Contact.GoferSyncEnabled || result.OperationID == "" || result.Contact.Email != "remote@example.com" || result.Contact.Phone != "222" || result.Contact.Name != "Provider" || result.Contact.AvatarURL != "manual-avatar" || len(events) != 1 {
+			if err != nil || result.Contact.ID != id || !result.Contact.RavenSyncEnabled || result.OperationID == "" || result.Contact.Email != "remote@example.com" || result.Contact.Phone != "222" || result.Contact.Name != "Provider" || result.Contact.AvatarURL != "manual-avatar" || len(events) != 1 {
 				t.Fatal("retry did not commit chosen canonical values", result, err, events)
 			}
 			if result.Contact.EmailLabel != "work" || result.Contact.PhoneLabel != "work" || !reflect.DeepEqual(result.Contact.AdditionalEmails, []string{"manual@example.com"}) || !reflect.DeepEqual(result.Contact.AdditionalEmailLabels, []string{"home"}) || !reflect.DeepEqual(result.Contact.AdditionalPhones, []string{"111"}) || !reflect.DeepEqual(result.Contact.AdditionalPhoneLabels, []string{"home"}) {
@@ -163,7 +163,7 @@ func TestUserContactSetupLocalOnlyNeedsNoQueue(t *testing.T) {
 		t.Fatal(err)
 	}
 	result, err := db.ConfirmUserContactSetup(t.Context(), snapshot, nil, inboundTestGuard)
-	if err != nil || !result.Contact.GoferSyncEnabled || result.Contact.Phone != "123" || result.OperationID != "" {
+	if err != nil || !result.Contact.RavenSyncEnabled || result.Contact.Phone != "123" || result.OperationID != "" {
 		t.Fatal("local confirmation", result, err)
 	}
 }

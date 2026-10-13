@@ -6,7 +6,7 @@ import (
 )
 
 func TestMigrateV92ToV93AddsBoundedAuthenticationEventRetention(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "gofer.db")
+	dbPath := filepath.Join(t.TempDir(), "raven.db")
 	raw, err := openDB(dbPath)
 	if err != nil {
 		t.Fatal(err)

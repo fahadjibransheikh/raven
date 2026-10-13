@@ -1,9 +1,9 @@
-// Gofer's pages run no inline code, so htmx needn't evaluate any either.
+// Raven's pages run no inline code, so htmx needn't evaluate any either.
 if (window.htmx) window.htmx.config.allowEval = false
 
 function setupPageRequestOwnership() {
-  if (window._goferPageRequestOwnershipReady) return
-  window._goferPageRequestOwnershipReady = true
+  if (window._ravenPageRequestOwnershipReady) return
+  window._ravenPageRequestOwnershipReady = true
   var generation = 0
 
   // Register immediately: HTMX processes load triggers in its own
@@ -18,12 +18,12 @@ function setupPageRequestOwnership() {
       (pageTarget && detail.requestConfig && detail.requestConfig.verb === "get" &&
         (trigger.hasAttribute("href") || detail.boosted)))
     if (navigation) generation++
-    detail.xhr.goferPageGeneration = generation
+    detail.xhr.ravenPageGeneration = generation
   }, true)
 
   function rejectPreviousPageResponse(event) {
     var xhr = event.detail && event.detail.xhr
-    if (!xhr || typeof xhr.goferPageGeneration !== "number" || xhr.goferPageGeneration === generation) return
+    if (!xhr || typeof xhr.ravenPageGeneration !== "number" || xhr.ravenPageGeneration === generation) return
     event.detail.shouldSwap = false
     // Cancelling the event also blocks response headers, history/title updates,
     // and out-of-band swaps, rather than just hiding the primary swap.
@@ -249,7 +249,7 @@ document.addEventListener("DOMContentLoaded", function () {
       if (viewBtn) {
         e.preventDefault()
         var mode = viewBtn.getAttribute("data-contact-list-view-button") === "table" ? "table" : "cards"
-        if (window.GoferSettings) GoferSettings.set("contacts_list_view", mode)
+        if (window.RavenSettings) RavenSettings.set("contacts_list_view", mode)
         var group = viewBtn.closest("[data-contact-list-view-toggle]")
         if (group) {
           var buttons = group.querySelectorAll("[data-contact-list-view-button]")
@@ -350,7 +350,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!cancelForm) return
         var initialState = cancelForm.dataset.initialState || contactEditorState(cancelForm)
         var hasChanges = contactEditorState(cancelForm) !== initialState
-        ;(hasChanges ? goferConfirm("Discard changes?", "Your unsaved contact changes will be lost.", "Discard") : Promise.resolve(true)).then(function (ok) {
+        ;(hasChanges ? ravenConfirm("Discard changes?", "Your unsaved contact changes will be lost.", "Discard") : Promise.resolve(true)).then(function (ok) {
           if (!ok) return
           var cancelDialogID = cancelForm.getAttribute("data-contact-edit-dialog") || ""
           if (cancelDialogID && window.tui && window.tui.dialog) window.tui.dialog.close(cancelDialogID)
@@ -430,11 +430,11 @@ document.addEventListener("DOMContentLoaded", function () {
       }
       if (!e.target || (!e.target.matches("[data-contact-filter-form]") && !e.target.matches("[data-contact-search-form]") && !e.target.matches("[data-contact-sort-form]"))) return
       e.preventDefault()
-      if (e.target.matches("[data-contact-sort-form]") && window.GoferSettings) {
+      if (e.target.matches("[data-contact-sort-form]") && window.RavenSettings) {
         var contactSortBy = e.target.querySelector('[name="sort_by"]')
         var contactSortOrder = e.target.querySelector('[name="sort_order"]')
-        GoferSettings.set("contacts_list_sort_by", contactSortBy ? contactSortBy.value || "updated" : "updated")
-        GoferSettings.set("contacts_list_sort_order", contactSortOrder ? contactSortOrder.value || "desc" : "desc")
+        RavenSettings.set("contacts_list_sort_by", contactSortBy ? contactSortBy.value || "updated" : "updated")
+        RavenSettings.set("contacts_list_sort_order", contactSortOrder ? contactSortOrder.value || "desc" : "desc")
       }
       applyFilters()
     }, true)
@@ -465,7 +465,7 @@ document.addEventListener("DOMContentLoaded", function () {
         return res.json()
       }).then(function (data) {
         updateContactSyncLiveState({ contact_id: contactID, status: (data && data.status) || "pending" })
-        showGoferToast({
+        showRavenToast({
           id: "contact-sync-toast",
           title: "Raven Sync queued",
           description: "The selected locations will be synchronized now.",
@@ -477,7 +477,7 @@ document.addEventListener("DOMContentLoaded", function () {
         })
       }).catch(function (err) {
         setContactSyncButtonsBusy(contactID, false)
-        showGoferToast({
+        showRavenToast({
           id: "contact-sync-toast",
           title: "Could not start Raven Sync",
           description: err && err.message ? err.message : "The contact could not be queued for synchronization.",
@@ -541,7 +541,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!res.ok) return res.text().then(function (text) { throw new Error(text || "Could not search sync locations") })
         return res.text()
       }).then(renderContactSyncSetupBody).catch(function (err) {
-        showGoferToast({ id: "contact-sync-setup-error", title: "Sync setup failed", description: err.message || "Could not search sync locations.", variant: "error", icon: "error", position: "bottom-right", duration: 8000, dismissible: true })
+        showRavenToast({ id: "contact-sync-setup-error", title: "Sync setup failed", description: err.message || "Could not search sync locations.", variant: "error", icon: "error", position: "bottom-right", duration: 8000, dismissible: true })
       })
     }
 
@@ -563,7 +563,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }).then(function (html) {
         location.outerHTML = html
       }).catch(function (err) {
-        showGoferToast({ id: "contact-sync-location-search-error", title: "Account search failed", description: err.message || "Could not search this account.", variant: "error", icon: "error", position: "bottom-right", duration: 8000, dismissible: true })
+        showRavenToast({ id: "contact-sync-location-search-error", title: "Account search failed", description: err.message || "Could not search this account.", variant: "error", icon: "error", position: "bottom-right", duration: 8000, dismissible: true })
       }).finally(function () {
         if (button.isConnected) button.disabled = false
       })
@@ -584,7 +584,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }).then(function (html) {
         renderContactSyncSetup(html, replaceDialogID || "")
       }).catch(function (err) {
-        showGoferToast({ id: "contact-sync-setup-error", title: "Sync setup failed", description: err.message || "Could not load sync setup.", variant: "error", icon: "error", position: "bottom-right", duration: 8000, dismissible: true })
+        showRavenToast({ id: "contact-sync-setup-error", title: "Sync setup failed", description: err.message || "Could not load sync setup.", variant: "error", icon: "error", position: "bottom-right", duration: 8000, dismissible: true })
       })
     }
 
@@ -609,9 +609,9 @@ document.addEventListener("DOMContentLoaded", function () {
         var syncQueued = !!data.contact_sync_queued
         if (data.contact_id) refreshContactsDetail(data.contact_id, null, syncQueued)
         if (syncQueued) setupSSE()
-        showGoferToast({ id: "contact-sync-toast", title: "Raven Sync enabled", description: syncQueued ? "The resolved contact is being synchronized across all selected locations." : "Sync is enabled for the selected locations.", variant: "success", icon: "success", position: "bottom-right", duration: 5000, dismissible: true })
+        showRavenToast({ id: "contact-sync-toast", title: "Raven Sync enabled", description: syncQueued ? "The resolved contact is being synchronized across all selected locations." : "Sync is enabled for the selected locations.", variant: "success", icon: "success", position: "bottom-right", duration: 5000, dismissible: true })
       }).catch(function (err) {
-        showGoferToast({ id: "contact-sync-setup-error", title: "Sync setup failed", description: err.message || "Could not finish sync setup.", variant: "error", icon: "error", position: "bottom-right", duration: 8000, dismissible: true })
+        showRavenToast({ id: "contact-sync-setup-error", title: "Sync setup failed", description: err.message || "Could not finish sync setup.", variant: "error", icon: "error", position: "bottom-right", duration: 8000, dismissible: true })
       }).finally(function () {
         if (submit) submit.disabled = false
       })
@@ -670,11 +670,11 @@ document.addEventListener("DOMContentLoaded", function () {
     function prepareContactAvatar(file, editor) {
       if (!file || !editor) return
       if (["image/jpeg", "image/png", "image/webp"].indexOf(file.type) === -1) {
-        showGoferToast({ id: "contact-avatar-error", title: "Unsupported picture", description: "Choose a JPEG, PNG, or WebP image.", variant: "error", icon: "error", position: "bottom-right", duration: 5000, dismissible: true })
+        showRavenToast({ id: "contact-avatar-error", title: "Unsupported picture", description: "Choose a JPEG, PNG, or WebP image.", variant: "error", icon: "error", position: "bottom-right", duration: 5000, dismissible: true })
         return
       }
       if (file.size > 8 * 1024 * 1024) {
-        showGoferToast({ id: "contact-avatar-error", title: "Picture is too large", description: "Choose an image smaller than 8 MB.", variant: "error", icon: "error", position: "bottom-right", duration: 5000, dismissible: true })
+        showRavenToast({ id: "contact-avatar-error", title: "Picture is too large", description: "Choose an image smaller than 8 MB.", variant: "error", icon: "error", position: "bottom-right", duration: 5000, dismissible: true })
         return
       }
       var objectURL = URL.createObjectURL(file)
@@ -697,7 +697,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }
       image.onerror = function () {
         URL.revokeObjectURL(objectURL)
-        showGoferToast({ id: "contact-avatar-error", title: "Could not read picture", description: "The selected image appears to be invalid.", variant: "error", icon: "error", position: "bottom-right", duration: 5000, dismissible: true })
+        showRavenToast({ id: "contact-avatar-error", title: "Could not read picture", description: "The selected image appears to be invalid.", variant: "error", icon: "error", position: "bottom-right", duration: 5000, dismissible: true })
       }
       image.src = objectURL
     }
@@ -760,7 +760,7 @@ document.addEventListener("DOMContentLoaded", function () {
           loadContactSyncSetup(syncSetupURL, editDialogID)
         } else if (syncQueued) {
           setupSSE()
-          showGoferToast({
+          showRavenToast({
             id: "contact-sync-toast",
             title: "Contact saved",
             description: "Raven Sync is updating the selected locations...",
@@ -771,7 +771,7 @@ document.addEventListener("DOMContentLoaded", function () {
             dismissible: false,
           })
         } else {
-          showGoferToast({
+          showRavenToast({
             id: "contact-save-toast",
             title: "Contact saved",
             description: "The aggregate profile has been updated.",
@@ -783,7 +783,7 @@ document.addEventListener("DOMContentLoaded", function () {
           })
         }
       }).catch(function (err) {
-        showGoferToast({
+        showRavenToast({
           id: "contact-save-toast",
           title: "Contact save failed",
           description: err && err.message ? err.message : "Could not save contact.",
@@ -892,7 +892,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function setupEmailTranslation() {
     function setting(key, fallback) {
-      if (window.GoferSettings && GoferSettings.get(key)) return GoferSettings.get(key)
+      if (window.RavenSettings && RavenSettings.get(key)) return RavenSettings.get(key)
       return fallback
     }
 
@@ -1069,7 +1069,7 @@ document.addEventListener("DOMContentLoaded", function () {
       if (typeof applyEmailBodyTheme === "function") applyEmailBodyTheme(frame)
     }
 
-    window.goferEmailTranslationFrameLoaded = function (emailId) {
+    window.ravenEmailTranslationFrameLoaded = function (emailId) {
       var frame = frameForEmail(emailId)
       if (frame && frame.dataset.translationActive === "true") setButtonState(emailId, "translated", true)
     }
@@ -1082,7 +1082,7 @@ document.addEventListener("DOMContentLoaded", function () {
     document.body.addEventListener("htmx:oobAfterSwap", function (event) {
       syncTranslationControls(event.target || document)
     })
-    document.body.addEventListener("gofer:settings-changed", function () {
+    document.body.addEventListener("raven:settings-changed", function () {
       syncTranslationControls(document)
     })
 
@@ -1107,7 +1107,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function setupSidebarAccountCollapse() {
     function readState() {
-      var raw = window.GoferSettings ? GoferSettings.get("sidebar_account_collapsed") : null
+      var raw = window.RavenSettings ? RavenSettings.get("sidebar_account_collapsed") : null
       try {
         return JSON.parse(raw || "{}") || {}
       } catch (_) {
@@ -1116,11 +1116,11 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function writeState(state) {
-      if (window.GoferSettings) GoferSettings.set("sidebar_account_collapsed", JSON.stringify(state))
+      if (window.RavenSettings) RavenSettings.set("sidebar_account_collapsed", JSON.stringify(state))
     }
 
     function readTagState() {
-      var raw = window.GoferSettings ? GoferSettings.get("sidebar_tag_group_collapsed") : null
+      var raw = window.RavenSettings ? RavenSettings.get("sidebar_tag_group_collapsed") : null
       try {
         return JSON.parse(raw || "{}") || {}
       } catch (_) {
@@ -1129,11 +1129,11 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function writeTagState(state) {
-      if (window.GoferSettings) GoferSettings.set("sidebar_tag_group_collapsed", JSON.stringify(state))
+      if (window.RavenSettings) RavenSettings.set("sidebar_tag_group_collapsed", JSON.stringify(state))
     }
 
     function readFolderState() {
-      var raw = window.GoferSettings ? GoferSettings.get("sidebar_folder_collapsed") : null
+      var raw = window.RavenSettings ? RavenSettings.get("sidebar_folder_collapsed") : null
       try {
         return JSON.parse(raw || "{}") || {}
       } catch (_) {
@@ -1142,7 +1142,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function writeFolderState(state) {
-      if (window.GoferSettings) GoferSettings.set("sidebar_folder_collapsed", JSON.stringify(state))
+      if (window.RavenSettings) RavenSettings.set("sidebar_folder_collapsed", JSON.stringify(state))
     }
 
     function setCollapsed(section, collapsed) {
@@ -1761,7 +1761,7 @@ document.addEventListener("DOMContentLoaded", function () {
         })
         .catch(function (err) {
           console.warn(err)
-          showGoferToast({ id: "mail-select-all-error", title: "Couldn't select every message", description: "Try again in a moment.", variant: "error", icon: "error", position: "bottom-right", duration: 6000, dismissible: true })
+          showRavenToast({ id: "mail-select-all-error", title: "Couldn't select every message", description: "Try again in a moment.", variant: "error", icon: "error", position: "bottom-right", duration: 6000, dismissible: true })
         })
         .finally(function () {
           mailSelectAllLoading = false
@@ -1960,7 +1960,7 @@ document.addEventListener("DOMContentLoaded", function () {
           var skipped = (result && result.skipped) || []
           if (skipped.length) {
             // A unified folder skips accounts whose folder has no provider identity; say so instead of reporting plain success.
-            showGoferToast({
+            showRavenToast({
               id: "folder-mark-read-toast",
               title: "Some accounts were not marked as read",
               description: "Could not mark " + skipped.join(", ") + (n ? " (" + n + (n === 1 ? " message" : " messages") + " in the other accounts marked as read)." : "."),
@@ -1968,7 +1968,7 @@ document.addEventListener("DOMContentLoaded", function () {
             })
             return
           }
-          showGoferToast({
+          showRavenToast({
             id: "folder-mark-read-toast",
             title: "Marked as read",
             description: n === 1 ? "1 message marked as read." : n + " messages marked as read.",
@@ -1976,7 +1976,7 @@ document.addEventListener("DOMContentLoaded", function () {
           })
         })
         .catch(function (err) {
-          showGoferToast({
+          showRavenToast({
             id: "folder-mark-read-toast",
             title: "Could not mark all as read",
             description: (err && err.message) || "Try again.",
@@ -1993,7 +1993,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function emptyFolder(folderID, label) {
       if (!folderID) return
-      goferConfirm("Empty " + label + "?", "Every message in " + label + " will be permanently deleted. This cannot be undone.", "Empty " + label).then(function (ok) {
+      ravenConfirm("Empty " + label + "?", "Every message in " + label + " will be permanently deleted. This cannot be undone.", "Empty " + label).then(function (ok) {
         if (!ok) return
         fetch("/api/folders/" + encodeURIComponent(folderID) + "/empty", { method: "POST", keepalive: true })
           .then(function (r) {
@@ -2002,7 +2002,7 @@ document.addEventListener("DOMContentLoaded", function () {
           })
           .then(function (result) {
             var n = (result && result.deleted) || 0
-            showGoferToast({
+            showRavenToast({
               id: "folder-empty-toast",
               title: label + " emptied",
               description: n === 1 ? "1 message permanently deleted." : n + " messages permanently deleted.",
@@ -2010,7 +2010,7 @@ document.addEventListener("DOMContentLoaded", function () {
             })
           })
           .catch(function (err) {
-            showGoferToast({
+            showRavenToast({
               id: "folder-empty-toast",
               title: "Could not empty " + label,
               description: (err && err.message) || "Try again.",
@@ -2100,7 +2100,7 @@ document.addEventListener("DOMContentLoaded", function () {
           if (open && open.dataset.accountId) accountIDs = [open.dataset.accountId]
         }
         if (accountIDs.length !== 1) {
-          showGoferToast({ id: "mail-action-error", title: "Pick messages from one account", description: "Messages can only be moved between folders of the same account.", variant: "error", icon: "error", position: "bottom-right", duration: 6000, dismissible: true })
+          showRavenToast({ id: "mail-action-error", title: "Pick messages from one account", description: "Messages can only be moved between folders of the same account.", variant: "error", icon: "error", position: "bottom-right", duration: 6000, dismissible: true })
           resolve(null)
           return
         }
@@ -2121,7 +2121,7 @@ document.addEventListener("DOMContentLoaded", function () {
           items.push({ label: name.textContent.trim(), run: (function (id, label) { return function () { resolve({ id: id, name: label }) } })(folderID, name.textContent.trim()) })
         }
         if (!items.length || !window.RavenPalette || !window.RavenPalette.pick) {
-          showGoferToast({ id: "mail-action-error", title: "No folders to move to", variant: "error", icon: "error", position: "bottom-right", duration: 6000, dismissible: true })
+          showRavenToast({ id: "mail-action-error", title: "No folders to move to", variant: "error", icon: "error", position: "bottom-right", duration: 6000, dismissible: true })
           resolve(null)
           return
         }
@@ -2214,7 +2214,7 @@ document.addEventListener("DOMContentLoaded", function () {
           if (action === "star") ids.forEach(function (id) { setStarButtonState(id, extra.state === "starred") })
         }).catch(function () {
           if (removesFromFolder) restoreOptimisticRemove(ids)
-          showGoferToast({
+          showRavenToast({
             id: "mail-action-error",
             title: "Could not " + (action === "not-spam" ? "move out of spam" : action) + (ids.length > 1 ? " the messages" : " the message"),
             description: "The change was undone. Try again.",
@@ -2253,8 +2253,8 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function setupMailKeyboardShortcuts() {
-      if (document.body && document.body._goferMailKeyboardShortcutsBound) return
-      if (document.body) document.body._goferMailKeyboardShortcutsBound = true
+      if (document.body && document.body._ravenMailKeyboardShortcutsBound) return
+      if (document.body) document.body._ravenMailKeyboardShortcutsBound = true
 
       // Ctrl/Cmd+A selects every loaded message, outside text fields.
       document.addEventListener("keydown", function (e) {
@@ -3487,11 +3487,11 @@ document.addEventListener("DOMContentLoaded", function () {
       var form = e.target && e.target.closest && e.target.closest("[data-mail-sort-form]")
       if (!form) return
       e.preventDefault()
-      if (window.GoferSettings) {
+      if (window.RavenSettings) {
         var mailSortBy = form.querySelector('[name="sort_by"]')
         var mailSortOrder = form.querySelector('[name="sort_order"]')
-        GoferSettings.set("mail_list_sort_by", mailSortBy ? mailSortBy.value || "date" : "date")
-        GoferSettings.set("mail_list_sort_order", mailSortOrder ? mailSortOrder.value || "desc" : "desc")
+        RavenSettings.set("mail_list_sort_by", mailSortBy ? mailSortBy.value || "date" : "date")
+        RavenSettings.set("mail_list_sort_order", mailSortOrder ? mailSortOrder.value || "desc" : "desc")
       }
       applyCurrentFilters({ delayResults: false })
     })
@@ -3669,7 +3669,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function prefetchRow(row) {
-      if (window.GoferSettings && GoferSettings.get("prefetch_on_hover") === "false") return
+      if (window.RavenSettings && RavenSettings.get("prefetch_on_hover") === "false") return
       if (!row) return
       var emailId = row.dataset.emailId
       if (!emailId || prefetchedBodies[emailId]) return
@@ -3677,7 +3677,7 @@ document.addEventListener("DOMContentLoaded", function () {
       if (accountId && accountsNeedingReconnect[accountId]) return
       prefetchedBodies[emailId] = true
       fetch("/api/messages/" + encodeURIComponent(emailId) + "/prefetch-body", { method: "POST" }).then(function (res) {
-        if (res.headers.get("X-Gofer-Account-Reconnect") === "true") {
+        if (res.headers.get("X-Raven-Account-Reconnect") === "true") {
           delete prefetchedBodies[emailId]
           markAccountNeedsReconnect(accountId)
         }
@@ -3743,8 +3743,8 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function showDeletionStarted(accountId) {
-      if (typeof showGoferToast !== "function") return
-      showGoferToast({
+      if (typeof showRavenToast !== "function") return
+      showRavenToast({
         id: deletionToastId(accountId),
         title: "Deleting account…",
         description: "Removing " + accountEmail(accountId) + ". You can leave this page; cleanup will continue in the background.",
@@ -3767,8 +3767,8 @@ document.addEventListener("DOMContentLoaded", function () {
         card.style.opacity = "0"
         card.style.transform = "translateY(-0.35rem)"
       }
-      if (typeof showGoferToast === "function") {
-        showGoferToast({
+      if (typeof showRavenToast === "function") {
+        showRavenToast({
           id: deletionToastId(accountId),
           title: "Account deleted",
           description: email + " and its local data were removed from Raven.",
@@ -3857,8 +3857,8 @@ document.addEventListener("DOMContentLoaded", function () {
         button.disabled = false
         if (button.dataset.originalContent) button.innerHTML = button.dataset.originalContent
       }
-      if (typeof showGoferToast === "function") {
-        showGoferToast({
+      if (typeof showRavenToast === "function") {
+        showRavenToast({
           id: deletionToastId(accountId),
           title: "Could not delete account",
           description: "Raven could not start account cleanup. Please try again.",
@@ -3895,8 +3895,8 @@ document.addEventListener("DOMContentLoaded", function () {
     var added = params.get("account_added") === "1"
     var reconnected = params.get("account_reconnected") === "1"
     var oauthError = ACCOUNT_OAUTH_ERRORS[params.get("error")]
-    if (oauthError && typeof showGoferToast === "function") {
-      showGoferToast({
+    if (oauthError && typeof showRavenToast === "function") {
+      showRavenToast({
         id: "account-connection-toast", title: oauthError.title, description: oauthError.description,
         variant: "error", icon: "error", position: "bottom-right", duration: 10000, dismissible: true,
       })
@@ -3905,8 +3905,8 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     if (!added && !reconnected) return
 
-    if (typeof showGoferToast === "function") {
-      showGoferToast({
+    if (typeof showRavenToast === "function") {
+      showRavenToast({
         id: "account-connection-toast",
         title: added ? "Account added" : "Account reconnected",
         description: added
@@ -4223,7 +4223,7 @@ document.addEventListener("DOMContentLoaded", function () {
       var data
       try { data = JSON.parse(e.data) } catch (_) { return }
       if (!data || !data.account_id || !data.folder_id) return
-      document.dispatchEvent(new CustomEvent("gofer:idle-folder-status", { detail: data }))
+      document.dispatchEvent(new CustomEvent("raven:idle-folder-status", { detail: data }))
     })
 
     source.addEventListener("sync-started", function (e) {
@@ -4338,7 +4338,7 @@ document.addEventListener("DOMContentLoaded", function () {
       updateMailSyncErrorIndicator()
     }).catch(function () {})
   }
-  window.goferRefreshSidebarAccount = refreshSidebarAccount
+  window.ravenRefreshSidebarAccount = refreshSidebarAccount
 
   function refreshMailSidebarBody() {
     var target = document.getElementById("sidebar-app-body")
@@ -4373,7 +4373,7 @@ document.addEventListener("DOMContentLoaded", function () {
       for (var i = 0; i < nodes.length; i++) {
         var date = parseMailSyncUTCInstant(nodes[i].getAttribute("data-account-sync-error-at"))
         if (!date) continue
-        nodes[i].textContent = formatGoferDateTime(date, {
+        nodes[i].textContent = formatRavenDateTime(date, {
           year: "numeric",
           month: "short",
           day: "numeric",
@@ -4422,11 +4422,11 @@ document.addEventListener("DOMContentLoaded", function () {
       else labels[j].textContent = "No notification method is available for this browser/origin."
     }
     // The switch may have been turned off here without a change event.
-    if (window.goferSyncSettingDependents) window.goferSyncSettingDependents()
+    if (window.ravenSyncSettingDependents) window.ravenSyncSettingDependents()
   }
 
   function showNotificationsUnavailableToast(err) {
-    showGoferToast({
+    showRavenToast({
       id: "desktop-notifications-toast",
       title: "Notifications unavailable",
       description: err && err.message ? err.message : "Could not enable Web Push notifications.",
@@ -4450,13 +4450,13 @@ document.addEventListener("DOMContentLoaded", function () {
       var modeInput = e.target && e.target.closest ? e.target.closest('input[name="notification_mode"]') : null
       if (!toggle && !modeInput) return
 
-      if (modeInput && window.GoferSettings) GoferSettings.set("notification_mode", modeInput.value)
+      if (modeInput && window.RavenSettings) RavenSettings.set("notification_mode", modeInput.value)
       if (modeInput && modeInput.value === "off") {
         var switches = document.querySelectorAll("[data-desktop-notifications-switch]")
         for (var i = 0; i < switches.length; i++) switches[i].checked = false
-        if (window.GoferSettings) GoferSettings.set("desktop_notifications", "false")
+        if (window.RavenSettings) RavenSettings.set("desktop_notifications", "false")
       }
-      if (toggle && window.GoferSettings) GoferSettings.set("desktop_notifications", toggle.checked ? "true" : "false")
+      if (toggle && window.RavenSettings) RavenSettings.set("desktop_notifications", toggle.checked ? "true" : "false")
 
       if (!notificationsEnabled() || notificationMode() === "off") {
         disableClientNotifications().finally(function () {
@@ -4471,7 +4471,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }).catch(function (err) {
         var switches = document.querySelectorAll("[data-desktop-notifications-switch]")
         for (var i = 0; i < switches.length; i++) switches[i].checked = false
-        if (window.GoferSettings) GoferSettings.set("desktop_notifications", "false")
+        if (window.RavenSettings) RavenSettings.set("desktop_notifications", "false")
         disableClientNotifications().catch(function () {})
         setNotificationActiveMethod("none")
         showNotificationsUnavailableToast(err)
@@ -4492,7 +4492,7 @@ document.addEventListener("DOMContentLoaded", function () {
       button.disabled = true
       button.setAttribute("data-busy", "")
       sendTestNotification().then(function () {
-        showGoferToast({
+        showRavenToast({
           id: "desktop-notifications-test-toast",
           title: "Test notification sent",
           description: "It should appear in a moment. If it does not, check your system's notification settings.",
@@ -4503,7 +4503,7 @@ document.addEventListener("DOMContentLoaded", function () {
           dismissible: true,
         })
       }).catch(function (err) {
-        showGoferToast({
+        showRavenToast({
           id: "desktop-notifications-test-toast",
           title: "Test notification failed",
           description: err && err.message ? err.message : "Could not send the test notification.",
@@ -4527,11 +4527,11 @@ document.addEventListener("DOMContentLoaded", function () {
   var _notificationActiveMethod = "off"
 
   function notificationsEnabled() {
-    return window.GoferSettings && GoferSettings.get("desktop_notifications") === "true"
+    return window.RavenSettings && RavenSettings.get("desktop_notifications") === "true"
   }
 
   function notificationMode() {
-    var mode = window.GoferSettings ? GoferSettings.get("notification_mode") : "auto"
+    var mode = window.RavenSettings ? RavenSettings.get("notification_mode") : "auto"
     if (mode === "web_push" || mode === "browser_tab" || mode === "off") return mode
     return "auto"
   }
@@ -4610,7 +4610,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }
       var notification = new Notification("Raven", {
         body: "Test notification. Desktop notifications are working.",
-        tag: "gofer-test-notification",
+        tag: "raven-test-notification",
         icon: "/assets/logo.png",
         badge: "/assets/logo.png",
       })
@@ -4778,7 +4778,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     deliverNotification(title, {
       body: body,
-      tag: "gofer-new-mail-" + (data.account_id || "") + "-" + (data.folder_id || folderName),
+      tag: "raven-new-mail-" + (data.account_id || "") + "-" + (data.folder_id || folderName),
       icon: icon,
       badge: "/assets/logo.png",
       data: { folderID: data.folder_id || "" },
@@ -4803,7 +4803,7 @@ document.addEventListener("DOMContentLoaded", function () {
     setTimeout(function () { notification.close() }, 12000)
   }
 
-  window.goferNotifications = { request: requestNotificationPermission, deliver: deliverNotification }
+  window.ravenNotifications = { request: requestNotificationPermission, deliver: deliverNotification }
 
   function openContactDetail(contactID) {
     var detail = document.getElementById("contacts-detail")
@@ -4884,7 +4884,7 @@ document.addEventListener("DOMContentLoaded", function () {
       duration = 8000
       dismissible = true
     }
-    showGoferToast({
+    showRavenToast({
       id: "contact-sync-toast",
       title: title,
       description: description,
@@ -5121,7 +5121,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!mailListCanChangeForAccount(virtualMailList, data.account_id || "")) return
     scheduleSyncRefresh(virtualMailList, { noAnimation: true, rebase: mailListNearTop(virtualMailList) })
   }
-  window.goferRefreshActiveMailListAfterAccountSync = refreshActiveMailListAfterAccountSync
+  window.ravenRefreshActiveMailListAfterAccountSync = refreshActiveMailListAfterAccountSync
 
   function mailListCanChangeForAccount(vml, accountID) {
     if (!vml || !accountID) return true
@@ -5251,7 +5251,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     }).catch(function () {})
   }
-  window.goferRefreshSidebarUnread = refreshSidebarUnread
+  window.ravenRefreshSidebarUnread = refreshSidebarUnread
 
   function initVirtualScroll() {
     var container = document.getElementById("mail-list-scroll")
@@ -5368,7 +5368,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function readSidebarFolderCollapseState() {
-      var raw = window.GoferSettings ? GoferSettings.get("sidebar_folder_collapsed") : null
+      var raw = window.RavenSettings ? RavenSettings.get("sidebar_folder_collapsed") : null
       try {
         return JSON.parse(raw || "{}") || {}
       } catch (_) {
@@ -5377,7 +5377,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function writeSidebarFolderCollapseState(state) {
-      if (window.GoferSettings) GoferSettings.set("sidebar_folder_collapsed", JSON.stringify(state))
+      if (window.RavenSettings) RavenSettings.set("sidebar_folder_collapsed", JSON.stringify(state))
     }
 
     function toggleSidebarFolderBranch(link) {
@@ -5605,7 +5605,7 @@ document.addEventListener("DOMContentLoaded", function () {
       if (scroll && scroll.dataset.viewSwitchPending === "true") return
 
       var mode = btn.dataset.mailListViewButton === "table" ? "table" : "cards"
-      if (window.GoferSettings) GoferSettings.set("mail_list_view", mode)
+      if (window.RavenSettings) RavenSettings.set("mail_list_view", mode)
       if (mode === "cards" && scroll && typeof window.applyMailCardFieldSettings === "function") {
         window.applyMailCardFieldSettings(scroll)
       }
@@ -5712,7 +5712,7 @@ document.addEventListener("DOMContentLoaded", function () {
         var origin = document.getElementById("sidebar-app-body")
         if (detail && detail.xhr && detail.target && origin &&
             /^(mail-list|mail-view|main-content|sidebar-app-body)$/.test(detail.target.id)) {
-          detail.xhr.goferAppPaneMode = origin.dataset.sidebarAppBody
+          detail.xhr.ravenAppPaneMode = origin.dataset.sidebarAppBody
         }
         return
       }
@@ -5745,16 +5745,16 @@ document.addEventListener("DOMContentLoaded", function () {
         })
       }
       request = detail.xhr
-      request.goferAppSwitchMode = trigger.dataset.sidebarAppButton
-      setSidebarAppNavMode(request.goferAppSwitchMode)
+      request.ravenAppSwitchMode = trigger.dataset.sidebarAppButton
+      setSidebarAppNavMode(request.ravenAppSwitchMode)
       document.getElementById("app-shell").setAttribute("data-hx-history", "false")
-      showAppSwitchPending(request.goferAppSwitchMode)
+      showAppSwitchPending(request.ravenAppSwitchMode)
     })
     document.body.addEventListener("htmx:beforeSwap", function (event) {
       var xhr = event.detail && event.detail.xhr
-      if (xhr && xhr.goferAppSwitchMode && xhr !== request) event.detail.shouldSwap = false
+      if (xhr && xhr.ravenAppSwitchMode && xhr !== request) event.detail.shouldSwap = false
       var sidebar = document.getElementById("sidebar-app-body")
-      if (xhr && xhr.goferAppPaneMode && sidebar && xhr.goferAppPaneMode !== sidebar.dataset.sidebarAppBody) event.detail.shouldSwap = false
+      if (xhr && xhr.ravenAppPaneMode && sidebar && xhr.ravenAppPaneMode !== sidebar.dataset.sidebarAppBody) event.detail.shouldSwap = false
       if (request && xhr !== request && event.detail.target &&
           /^(mail-list|mail-view|main-content|sidebar-app-body)$/.test(event.detail.target.id)) event.detail.shouldSwap = false
     })
@@ -5766,16 +5766,16 @@ document.addEventListener("DOMContentLoaded", function () {
     })
     function completed(event) {
       if (!event.detail || event.detail.xhr !== request || event.detail.successful) return
-      var mode = request.goferAppSwitchMode
+      var mode = request.ravenAppSwitchMode
       restore()
-      if (event.type !== "htmx:sendAbort") showGoferToast({ title: "Could not load " + mode, description: "Please try again.", variant: "error", icon: "error" })
+      if (event.type !== "htmx:sendAbort") showRavenToast({ title: "Could not load " + mode, description: "Please try again.", variant: "error", icon: "error" })
     }
     document.body.addEventListener("htmx:afterRequest", completed)
     document.body.addEventListener("htmx:sendAbort", completed)
   }
 
   function mailMainContentClass() {
-    var layout = window.GoferSettings ? GoferSettings.get("mail_pane_layout") : ""
+    var layout = window.RavenSettings ? RavenSettings.get("mail_pane_layout") : ""
     return layout === "stacked" ? "flex flex-1 min-w-0 flex-col" : "flex flex-1 min-w-0"
   }
 
@@ -5788,7 +5788,7 @@ document.addEventListener("DOMContentLoaded", function () {
       return
     }
     main.className = mailMainContentClass()
-    main.setAttribute("data-mail-pane-layout", window.GoferSettings && GoferSettings.get("mail_pane_layout") === "stacked" ? "stacked" : "side")
+    main.setAttribute("data-mail-pane-layout", window.RavenSettings && RavenSettings.get("mail_pane_layout") === "stacked" ? "stacked" : "side")
   }
 
   function sidebarPendingHTML(mode) {
@@ -5828,7 +5828,7 @@ document.addEventListener("DOMContentLoaded", function () {
     var key = mode === "contacts" ? "contacts_list_view" : "mail_list_view"
     var currentScroll = mode === "contacts" ? document.getElementById("contacts-list-scroll") : document.getElementById("mail-list-scroll")
     var currentShell = mode === "contacts" ? document.querySelector("[data-contact-list-shell]") : document.querySelector("[data-mail-list-view]")
-    var saved = window.GoferSettings ? GoferSettings.get(key) : ""
+    var saved = window.RavenSettings ? RavenSettings.get(key) : ""
     return normalizedListViewMode(
       saved ||
       (currentScroll && currentScroll.dataset.viewMode) ||
@@ -5892,7 +5892,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function mailPendingToolbarHTML(viewMode) {
-    var sortBy = window.GoferSettings ? GoferSettings.get("mail_list_sort_by") : "date"
+    var sortBy = window.RavenSettings ? RavenSettings.get("mail_list_sort_by") : "date"
     var sortLabel = sortBy === "sender" ? "Sender" : (sortBy === "subject" ? "Subject" : "Date")
     return '<div class="mail-list-toolbar flex items-center gap-1 px-3">' +
       pendingViewToggleHTML(viewMode) +
@@ -5904,7 +5904,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function contactsPendingToolbarHTML(viewMode) {
-    var sortBy = window.GoferSettings ? GoferSettings.get("contacts_list_sort_by") : "updated"
+    var sortBy = window.RavenSettings ? RavenSettings.get("contacts_list_sort_by") : "updated"
     var sortLabel = sortBy === "name" ? "Name" : (sortBy === "last_interaction" ? "Last interaction" : "Recently updated")
     return '<div class="flex items-center gap-1 px-4 py-1.5">' +
       pendingFilterButton("Filter contacts") +
@@ -6050,7 +6050,7 @@ document.addEventListener("DOMContentLoaded", function () {
       } else {
         list.removeAttribute("data-contact-list-shell")
         list.dataset.mailListView = viewMode
-        list.dataset.mailNavigationMode = window.GoferSettings ? (GoferSettings.get("mail_list_navigation") || "infinite") : "infinite"
+        list.dataset.mailNavigationMode = window.RavenSettings ? (RavenSettings.get("mail_list_navigation") || "infinite") : "infinite"
       }
       list.innerHTML = listPendingHTML(mode, viewMode, rows)
       if (mode === "mail" && viewMode === "table" && typeof window.applyMailTableColumnSettings === "function") {
@@ -6088,7 +6088,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function currentRatioSetting() {
-      var raw = window.GoferSettings ? GoferSettings.get("mail_table_column_widths") : null
+      var raw = window.RavenSettings ? RavenSettings.get("mail_table_column_widths") : null
       var parts = raw ? String(raw).split(",") : []
       if (parts.length !== columnIds.length) parts = []
       var values = []
@@ -6182,7 +6182,7 @@ document.addEventListener("DOMContentLoaded", function () {
         document.removeEventListener("pointerup", onUp)
         document.body.classList.remove("mail-list-column-resizing")
         handle.removeAttribute("data-resizing")
-        if (window.GoferSettings) GoferSettings.set("mail_table_column_widths", widthSetting(widths, state.ids))
+        if (window.RavenSettings) RavenSettings.set("mail_table_column_widths", widthSetting(widths, state.ids))
       }
 
       document.addEventListener("pointermove", onMove)
@@ -6213,7 +6213,7 @@ document.addEventListener("DOMContentLoaded", function () {
           return
         }
         selected.sort(function (a, b) { return columnIds.indexOf(a) - columnIds.indexOf(b) })
-        if (window.GoferSettings) GoferSettings.set("mail_table_columns", selected.join(","))
+        if (window.RavenSettings) RavenSettings.set("mail_table_columns", selected.join(","))
         var parentMenu = item.closest("[data-mail-list-display-menu]")
         if (parentMenu) syncDisplayMenu(parentMenu)
         else syncColumnMenu(menuPanel)
@@ -6240,7 +6240,7 @@ document.addEventListener("DOMContentLoaded", function () {
     autoMarkReadTimer = null
     autoMarkReadEmailId = emailId
 
-    var delay = window.GoferSettings ? GoferSettings.get("auto_mark_read_after") : null
+    var delay = window.RavenSettings ? RavenSettings.get("auto_mark_read_after") : null
     if (!delay) delay = "0"
     if (delay === "never") return
 
@@ -6792,7 +6792,7 @@ function outgoingSendAction(action, id, button) {
   if (!action || !id) return
   var summary = _outgoingSendStatusByID[id]
   if (action === "retry" && summary && summary.ambiguous_warning_required) {
-    goferConfirm("Retry sending?", "Raven lost the connection after sending this message, so it may already have been delivered. Check Sent before retrying. Retrying can send a duplicate.", "Retry anyway").then(function (ok) {
+    ravenConfirm("Retry sending?", "Raven lost the connection after sending this message, so it may already have been delivered. Check Sent before retrying. Retrying can send a duplicate.", "Retry anyway").then(function (ok) {
       if (ok) _outgoingSendAction(action, id, button, true)
     })
     return
@@ -6882,12 +6882,12 @@ function setupMailOperationActions() {
       } else {
         window.location.reload()
       }
-      if (typeof showGoferToast === "function") {
-        showGoferToast({ id: "mail-operation-toast", title: "Mail operation queued", description: "Raven will try the provider operation again.", variant: "success", icon: "success", position: "bottom-right", duration: 4500, dismissible: true })
+      if (typeof showRavenToast === "function") {
+        showRavenToast({ id: "mail-operation-toast", title: "Mail operation queued", description: "Raven will try the provider operation again.", variant: "success", icon: "success", position: "bottom-right", duration: 4500, dismissible: true })
       }
     }).catch(function (error) {
-      if (typeof showGoferToast === "function") {
-        showGoferToast({ id: "mail-operation-toast", title: "Could not retry operation", description: error && error.message ? error.message : "The operation was not changed.", variant: "error", icon: "error", position: "bottom-right", duration: 7000, dismissible: true })
+      if (typeof showRavenToast === "function") {
+        showRavenToast({ id: "mail-operation-toast", title: "Could not retry operation", description: error && error.message ? error.message : "The operation was not changed.", variant: "error", icon: "error", position: "bottom-right", duration: 7000, dismissible: true })
       }
       button.disabled = false
     })
@@ -6921,7 +6921,7 @@ function showSendStatus(status, text) {
 
   var config = _composeToastConfig(status)
   var duration = status === "sending" ? 0 : (status === "sent" ? 5000 : 8000)
-  _sendStatusToast = showGoferToast({
+  _sendStatusToast = showRavenToast({
     id: "compose-status-toast",
     title: config.title,
     description: text,
@@ -6939,7 +6939,7 @@ function hideSendStatus() {
     clearTimeout(sendStatusTimer)
     sendStatusTimer = null
   }
-  if (_sendStatusToast) dismissGoferToast(_sendStatusToast)
+  if (_sendStatusToast) dismissRavenToast(_sendStatusToast)
   _sendStatusToast = null
 }
 
@@ -6953,19 +6953,19 @@ function _composeToastConfig(status) {
   return { title: "Action failed", variant: "error", icon: "error" }
 }
 
-function _goferToastIcon(icon) {
-  if (icon === "success") return '<svg class="gofer-toast-icon-success size-[22px] mr-3 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>'
+function _ravenToastIcon(icon) {
+  if (icon === "success") return '<svg class="raven-toast-icon-success size-[22px] mr-3 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>'
   if (icon === "warning") return '<svg class="size-[22px] text-muted-foreground mr-3 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>'
   if (icon === "error") return '<svg class="size-[22px] text-destructive mr-3 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>'
   if (icon === "spinner") return '<svg class="size-[22px] text-muted-foreground mr-3 flex-shrink-0 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-linecap="round" opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>'
   return '<svg class="size-[22px] text-muted-foreground mr-3 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>'
 }
 
-function dismissGoferToast(toast) {
+function dismissRavenToast(toast) {
   if (!toast || !toast.isConnected) return
-  if (toast._goferToastDismissing) return
-  toast._goferToastDismissing = true
-  if (toast._goferToastTimer) clearTimeout(toast._goferToastTimer)
+  if (toast._ravenToastDismissing) return
+  toast._ravenToastDismissing = true
+  if (toast._ravenToastTimer) clearTimeout(toast._ravenToastTimer)
   toast.style.transition = "opacity 300ms, transform 300ms"
   toast.style.opacity = "0"
   toast.style.transform = "translateY(1rem)"
@@ -6978,21 +6978,21 @@ function dismissGoferToast(toast) {
   }, 300)
 }
 
-function removeGoferToastNow(toast) {
+function removeRavenToastNow(toast) {
   if (!toast || !toast.isConnected) return
-  if (toast._goferToastTimer) clearTimeout(toast._goferToastTimer)
+  if (toast._ravenToastTimer) clearTimeout(toast._ravenToastTimer)
   if (toast.matches && toast.matches(":popover-open") && toast.hidePopover) {
     try { toast.hidePopover() } catch (_) {}
   }
   toast.remove()
 }
 
-function showGoferToast(opts) {
+function showRavenToast(opts) {
   opts = opts || {}
-  var id = opts.id || "gofer-toast-" + Date.now()
+  var id = opts.id || "raven-toast-" + Date.now()
   var existing = document.getElementById(id)
   while (existing) {
-    removeGoferToastNow(existing)
+    removeRavenToastNow(existing)
     existing = document.getElementById(id)
   }
   var duration = Number(opts.duration || 0)
@@ -7000,7 +7000,7 @@ function showGoferToast(opts) {
   if (opts.actionLabel || opts.secondaryActionLabel) {
     actionHTML = '<div class="mt-2 flex items-center gap-3 text-xs font-semibold">'
     if (opts.actionLabel) actionHTML += '<span class="underline underline-offset-2">' + _escapeComposeHTML(opts.actionLabel) + '</span>'
-    if (opts.secondaryActionLabel) actionHTML += '<button type="button" class="text-xs font-semibold underline underline-offset-2 opacity-80 hover:opacity-100 disabled:opacity-50" data-gofer-toast-secondary' + (opts.secondaryActionDisabled ? ' disabled aria-disabled="true"' : '') + '>' + _escapeComposeHTML(opts.secondaryActionLabel) + '</button>'
+    if (opts.secondaryActionLabel) actionHTML += '<button type="button" class="text-xs font-semibold underline underline-offset-2 opacity-80 hover:opacity-100 disabled:opacity-50" data-raven-toast-secondary' + (opts.secondaryActionDisabled ? ' disabled aria-disabled="true"' : '') + '>' + _escapeComposeHTML(opts.secondaryActionLabel) + '</button>'
     actionHTML += '</div>'
   }
   var toast = document.createElement("div")
@@ -7012,21 +7012,21 @@ function showGoferToast(opts) {
   toast.dataset.variant = opts.variant || "default"
   toast.className = "z-50 fixed m-0 border-0 bg-transparent overflow-visible pointer-events-auto p-4 w-fit max-w-[calc(100vw-2rem)] md:max-w-[680px] animate-in fade-in slide-in-from-bottom-4 duration-300 data-[position=top-right]:top-0 data-[position=top-right]:right-0 data-[position=top-left]:top-0 data-[position=top-left]:left-0 data-[position=top-center]:top-0 data-[position=top-center]:left-1/2 data-[position=top-center]:-translate-x-1/2 data-[position=bottom-right]:bottom-0 data-[position=bottom-right]:right-0 data-[position=bottom-left]:bottom-0 data-[position=bottom-left]:left-0 data-[position=bottom-center]:bottom-0 data-[position=bottom-center]:left-1/2 data-[position=bottom-center]:-translate-x-1/2 data-[position*=top]:slide-in-from-top-4 data-[position*=bottom]:slide-in-from-bottom-4"
   if (opts.width) toast.style.width = opts.width
-  positionGoferToast(toast, toast.dataset.position)
+  positionRavenToast(toast, toast.dataset.position)
   toast.innerHTML =
-    '<div class="gofer-toast-card" data-variant="' + _escapeComposeHTML(opts.variant || "default") + '">' +
-      (duration > 0 ? '<div class="gofer-toast-progress-wrap"><div class="toast-progress gofer-toast-progress" data-variant="' + _escapeComposeHTML(opts.variant || "default") + '"></div></div>' : '') +
-      _goferToastIcon(opts.icon || "info") +
+    '<div class="raven-toast-card" data-variant="' + _escapeComposeHTML(opts.variant || "default") + '">' +
+      (duration > 0 ? '<div class="raven-toast-progress-wrap"><div class="toast-progress raven-toast-progress" data-variant="' + _escapeComposeHTML(opts.variant || "default") + '"></div></div>' : '') +
+      _ravenToastIcon(opts.icon || "info") +
       '<span class="flex-1 min-w-0">' +
         (opts.title ? '<p class="text-sm font-semibold truncate">' + _escapeComposeHTML(opts.title) + '</p>' : '') +
         (opts.description ? '<p class="text-sm opacity-90 mt-1">' + _escapeComposeHTML(opts.description) + '</p>' : '') +
         actionHTML +
       '</span>' +
-      (opts.dismissible ? '<button type="button" class="gofer-toast-dismiss" aria-label="Close" data-tui-toast-dismiss>x</button>' : '') +
+      (opts.dismissible ? '<button type="button" class="raven-toast-dismiss" aria-label="Close" data-tui-toast-dismiss>x</button>' : '') +
     '</div>'
   var dismiss = toast.querySelector("[data-tui-toast-dismiss]")
-  if (dismiss) dismiss.addEventListener("click", function () { dismissGoferToast(toast) })
-  var secondary = toast.querySelector("[data-gofer-toast-secondary]")
+  if (dismiss) dismiss.addEventListener("click", function () { dismissRavenToast(toast) })
+  var secondary = toast.querySelector("[data-raven-toast-secondary]")
   if (secondary && !opts.secondaryActionDisabled && typeof opts.onSecondaryAction === "function") {
     secondary.addEventListener("click", function (e) {
       e.preventDefault()
@@ -7035,19 +7035,19 @@ function showGoferToast(opts) {
     })
   }
   if (typeof opts.onClick === "function") {
-    var card = toast.querySelector(".gofer-toast-card")
+    var card = toast.querySelector(".raven-toast-card")
     if (card) {
       card.setAttribute("role", "button")
       card.setAttribute("tabindex", "0")
       card.style.cursor = "pointer"
       card.addEventListener("click", function (e) {
         if (e.target && e.target.closest && e.target.closest("[data-tui-toast-dismiss]")) return
-        if (e.target && e.target.closest && e.target.closest("[data-gofer-toast-secondary]")) return
+        if (e.target && e.target.closest && e.target.closest("[data-raven-toast-secondary]")) return
         opts.onClick(e)
       })
       card.addEventListener("keydown", function (e) {
         if (e.key !== "Enter" && e.key !== " ") return
-        if (e.target && e.target.closest && e.target.closest("[data-gofer-toast-secondary]")) return
+        if (e.target && e.target.closest && e.target.closest("[data-raven-toast-secondary]")) return
         e.preventDefault()
         opts.onClick(e)
       })
@@ -7058,19 +7058,19 @@ function showGoferToast(opts) {
     try { toast.showPopover() } catch (_) {}
   }
   if (duration > 0) {
-    var progress = toast.querySelector(".gofer-toast-progress")
+    var progress = toast.querySelector(".raven-toast-progress")
     if (progress) {
       progress.style.width = "100%"
       progress.offsetWidth
       progress.style.transition = "width " + duration + "ms linear"
       progress.style.width = "0px"
     }
-    toast._goferToastTimer = setTimeout(function () { dismissGoferToast(toast) }, duration)
+    toast._ravenToastTimer = setTimeout(function () { dismissRavenToast(toast) }, duration)
   }
   return toast
 }
 
-function positionGoferToast(toast, position) {
+function positionRavenToast(toast, position) {
   toast.style.position = "fixed"
   toast.style.inset = "auto"
   toast.style.top = "auto"
@@ -7338,7 +7338,7 @@ function cancelMailSync() {
   fetch("/api/mail/sync/cancel", { method: "POST" }).catch(function () {
     _mailSyncCancelRequested = false
     renderMailSyncProgressDialog()
-    showGoferToast({
+    showRavenToast({
       id: "mail-sync-toast",
       title: "Could not cancel sync",
       description: "Try again in a moment.",
@@ -7351,7 +7351,7 @@ function cancelMailSync() {
   })
 }
 
-function _goferResponseText(xhr, fallback) {
+function _ravenResponseText(xhr, fallback) {
   if (xhr && xhr.responseText) {
     var div = document.createElement("div")
     div.innerHTML = xhr.responseText
@@ -7466,7 +7466,7 @@ function showMailSyncToast(opts) {
     opts.onSecondaryAction = opts.onSecondaryAction || cancelMailSync
     opts.secondaryActionDisabled = !(_mailSyncRunID || _mailSyncState.runID)
   }
-  return showGoferToast(opts)
+  return showRavenToast(opts)
 }
 
 function _mailSyncStatusLabel(status) {
@@ -7718,7 +7718,7 @@ function updateSettingsAccountSyncError(data) {
     if (failedAtNode) {
       failedAtNode.setAttribute("data-account-sync-error-at", failedAt)
       var date = parseMailSyncUTCInstant(failedAt)
-      failedAtNode.textContent = date ? formatGoferDateTime(date, {
+      failedAtNode.textContent = date ? formatRavenDateTime(date, {
         year: "numeric",
         month: "short",
         day: "numeric",
@@ -7743,7 +7743,7 @@ function mailSyncErrorSummaryHTML(issues) {
     var message = issue.message || "Sync failed"
     var failedAt = issue.failedAt || ""
     var date = parseMailSyncUTCInstant(failedAt)
-    var formattedAt = date ? formatGoferDateTime(date, {
+    var formattedAt = date ? formatRavenDateTime(date, {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -7995,14 +7995,14 @@ function handleAccountSyncStatus(data) {
 }
 
 function refreshSidebarAccountForSync(accountID) {
-  if (typeof window.goferRefreshSidebarAccount === "function") {
-    window.goferRefreshSidebarAccount(accountID)
+  if (typeof window.ravenRefreshSidebarAccount === "function") {
+    window.ravenRefreshSidebarAccount(accountID)
   }
 }
 
 function refreshActiveMailListAfterAccountSyncForSync(data) {
-  if (typeof window.goferRefreshActiveMailListAfterAccountSync === "function") {
-    window.goferRefreshActiveMailListAfterAccountSync(data)
+  if (typeof window.ravenRefreshActiveMailListAfterAccountSync === "function") {
+    window.ravenRefreshActiveMailListAfterAccountSync(data)
   }
 }
 
@@ -8221,9 +8221,9 @@ function handleMailSidebarSyncStart(context, mode) {
 
 function handleMailSidebarSyncResult(event) {
   var xhr = event && event.detail ? event.detail.xhr : null
-  var ok = !!(event && event.detail && event.detail.successful) && (!xhr || xhr.getResponseHeader("X-Gofer-Status") !== "error")
-  var message = _goferResponseText(xhr, "Mail sync started.")
-  var mode = xhr ? (xhr.getResponseHeader("X-Gofer-Mail-Sync-Mode") || "") : ""
+  var ok = !!(event && event.detail && event.detail.successful) && (!xhr || xhr.getResponseHeader("X-Raven-Status") !== "error")
+  var message = _ravenResponseText(xhr, "Mail sync started.")
+  var mode = xhr ? (xhr.getResponseHeader("X-Raven-Mail-Sync-Mode") || "") : ""
   if (mode) _mailSyncState.mode = _mailSyncModeFromData({ mode: mode })
   if (!ok) {
     if (!_mailSyncState.active) {
@@ -8232,7 +8232,7 @@ function handleMailSidebarSyncResult(event) {
     }
     _setMailSyncButtonBusy(_mailSyncState.active)
     if (!_mailSyncState.active) _mailSyncScopedBusyAccountID = ""
-    showGoferToast({
+    showRavenToast({
       id: "mail-sync-toast",
       title: "Mail sync failed",
       description: message,
@@ -8245,14 +8245,14 @@ function handleMailSidebarSyncResult(event) {
     return
   }
 
-  if (xhr && xhr.getResponseHeader("X-Gofer-Mail-Sync-Running") === "true") {
+  if (xhr && xhr.getResponseHeader("X-Raven-Mail-Sync-Running") === "true") {
     if (!_mailSyncState.active) {
       _mailSyncRunID = ""
       stopMailSyncProgressState("already-running")
     }
     _setMailSyncButtonBusy(_mailSyncState.active)
     if (!_mailSyncState.active) _mailSyncScopedBusyAccountID = ""
-    showGoferToast({
+    showRavenToast({
       id: "mail-sync-toast",
       title: "Mail sync already running",
       description: message,
@@ -8265,7 +8265,7 @@ function handleMailSidebarSyncResult(event) {
     return
   }
 
-  _mailSyncRunID = xhr ? (xhr.getResponseHeader("X-Gofer-Mail-Sync-Run-ID") || "") : ""
+  _mailSyncRunID = xhr ? (xhr.getResponseHeader("X-Raven-Mail-Sync-Run-ID") || "") : ""
   if (_mailSyncRunID) _mailSyncState.runID = _mailSyncRunID
   ensureMailSyncRun({ run_id: _mailSyncRunID, mode: mode }, "manual")
   updateMailSyncAggregateFromRuns()
@@ -8482,9 +8482,9 @@ function showCalendarContentPending(event) {
     _calendarContentPrevious.calendar.querySelectorAll("[data-calendar-auto-sync]").forEach(function (node) { node.remove() })
   }
   _calendarContentRequest = detail.xhr
-  detail.xhr.goferCalendarContentPending = true
+  detail.xhr.ravenCalendarContentPending = true
   // Capture the real outgoing grid before installing the empty loading grid.
-  if (typeof detail.xhr.goferCalendarNavigationDirection === "number") {
+  if (typeof detail.xhr.ravenCalendarNavigationDirection === "number") {
     prepareCalendarNavigation({ detail: { xhr: detail.xhr, target: detail.target, shouldSwap: true } })
   }
   var monthGrid = loading.querySelector("[data-calendar-month-grid]")
@@ -8540,7 +8540,7 @@ function handleCalendarContentResult(event) {
       replaceAppPaneContents(document.getElementById("mail-view"), _calendarContentPrevious.agenda, false)
       if (window.htmx) window.htmx.process(calendar)
       initializeCalendarDaySelection()
-      if (event.type !== "htmx:sendAbort") showGoferToast({ title: "Could not load calendar", description: "Please try again.", variant: "error", icon: "error" })
+      if (event.type !== "htmx:sendAbort") showRavenToast({ title: "Could not load calendar", description: "Please try again.", variant: "error", icon: "error" })
     }
   }
   _calendarContentRequest = null
@@ -8576,7 +8576,7 @@ document.body.addEventListener("htmx:beforeRequest", function (event) {
   var trigger = event.detail && event.detail.elt
   if (!trigger || !trigger.hasAttribute("data-calendar-view-switch")) return
   _calendarViewSwitchRequest = event.detail.xhr
-  _calendarViewSwitchRequest.goferCalendarViewSwitch = trigger.dataset.calendarViewSwitch
+  _calendarViewSwitchRequest.ravenCalendarViewSwitch = trigger.dataset.calendarViewSwitch
   setCalendarViewSwitch(trigger.dataset.calendarViewSwitch)
 })
 
@@ -8592,27 +8592,27 @@ document.body.addEventListener("htmx:afterRequest", handleCalendarViewSwitchResu
 document.body.addEventListener("htmx:sendAbort", handleCalendarViewSwitchResult)
 document.body.addEventListener("htmx:beforeSwap", function (event) {
   var xhr = event.detail && event.detail.xhr
-  if (!xhr || typeof xhr.goferCalendarViewSwitch !== "string") return
+  if (!xhr || typeof xhr.ravenCalendarViewSwitch !== "string") return
   if (xhr !== _calendarViewSwitchRequest) {
     event.detail.shouldSwap = false
     return
   }
   var indicator = document.querySelector("[data-calendar-view-indicator]")
-  if (indicator) xhr.goferCalendarViewTransform = window.getComputedStyle(indicator).transform
+  if (indicator) xhr.ravenCalendarViewTransform = window.getComputedStyle(indicator).transform
 })
 document.body.addEventListener("htmx:afterSwap", function (event) {
   var xhr = event.detail && event.detail.xhr
   if (!xhr || xhr !== _calendarViewSwitchRequest) return
   // Continue the slide on the new tabs even when the response is immediate.
   var indicator = document.querySelector("[data-calendar-view-indicator]")
-  if (indicator && xhr.goferCalendarViewTransform) {
+  if (indicator && xhr.ravenCalendarViewTransform) {
     indicator.style.transition = "none"
-    indicator.style.transform = xhr.goferCalendarViewTransform
+    indicator.style.transform = xhr.ravenCalendarViewTransform
     void indicator.offsetWidth
     indicator.style.transition = ""
   }
   _calendarViewSwitchRequest = null
-  setCalendarViewSwitch(xhr.goferCalendarViewSwitch)
+  setCalendarViewSwitch(xhr.ravenCalendarViewSwitch)
 })
 
 function _calendarAgendaEventMatchesDay(event, day) {
@@ -8681,7 +8681,7 @@ function saveCalendarVisibility(sourceID, state, force) {
     }
     state.visible = state.confirmed
     initializeCalendarDaySelection()
-    showGoferToast({ title: "Could not save calendar visibility", description: "Your previous choice has been restored. Please try again.", variant: "error", icon: "error", position: "bottom-right", duration: 6000, dismissible: true })
+    showRavenToast({ title: "Could not save calendar visibility", description: "Your previous choice has been restored. Please try again.", variant: "error", icon: "error", position: "bottom-right", duration: 6000, dismissible: true })
   })
 }
 
@@ -8712,7 +8712,7 @@ function initializeCalendarDaySelection() {
     return
   }
   if (calendar.hasAttribute("data-calendar-loading")) return
-  setCalendarViewSwitch(_calendarViewSwitchRequest ? _calendarViewSwitchRequest.goferCalendarViewSwitch : calendar.dataset.calendarView)
+  setCalendarViewSwitch(_calendarViewSwitchRequest ? _calendarViewSwitchRequest.ravenCalendarViewSwitch : calendar.dataset.calendarView)
   if (_calendarSelectedDay && _calendarSelectedDay.period !== calendar.dataset.calendarPeriod) _calendarSelectedDay = null
   var selected = _calendarSelectedDay && calendar.querySelector('[data-calendar-day="' + _calendarSelectedDay.date + '"]')
   if (!selected) _calendarSelectedDay = null
@@ -9292,8 +9292,8 @@ function prepareCalendarNavigation(event) {
   var detail = event.detail
   var xhr = detail && detail.xhr
   if (!xhr) return
-  if (typeof xhr.goferCalendarCachePeriod === "string" && !calendarCacheResponseCurrent(xhr)) { detail.shouldSwap = false; return }
-  var navigation = typeof xhr.goferCalendarNavigationDirection === "number"
+  if (typeof xhr.ravenCalendarCachePeriod === "string" && !calendarCacheResponseCurrent(xhr)) { detail.shouldSwap = false; return }
+  var navigation = typeof xhr.ravenCalendarNavigationDirection === "number"
   if (navigation && xhr !== _calendarNavigationRequest) {
     detail.shouldSwap = false
     return
@@ -9304,7 +9304,7 @@ function prepareCalendarNavigation(event) {
     // A quick background refresh must not cut the period transition short.
     var incoming = window.getComputedStyle(active.surface)
     var outgoing = window.getComputedStyle(active.snapshot)
-    xhr.goferCalendarNavigationSnapshot = {
+    xhr.ravenCalendarNavigationSnapshot = {
       element: active.snapshot, top: active.snapshot.scrollTop, left: active.snapshot.scrollLeft,
       incoming: { opacity: incoming.opacity, transform: incoming.transform },
       outgoing: { opacity: outgoing.opacity, transform: outgoing.transform },
@@ -9313,7 +9313,7 @@ function prepareCalendarNavigation(event) {
     }
   }
   finishCalendarNavigationTransition()
-  if (navigation && xhr.goferCalendarNavigationSnapshot) return
+  if (navigation && xhr.ravenCalendarNavigationSnapshot) return
   if (!navigation || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
   var surface = document.querySelector("#calendar-main [data-calendar-surface]")
   if (!surface || !surface.clientHeight || !surface.animate) return
@@ -9328,23 +9328,23 @@ function prepareCalendarNavigation(event) {
   snapshot.inert = true
   snapshot.setAttribute("aria-hidden", "true")
   snapshot.setAttribute("data-calendar-navigation-overlay", "")
-  xhr.goferCalendarNavigationSnapshot = {
+  xhr.ravenCalendarNavigationSnapshot = {
     element: snapshot, top: surface.scrollTop, left: surface.scrollLeft,
-    bounds: xhr.goferCalendarNavigationCrossover ? surface.getBoundingClientRect() : null,
+    bounds: xhr.ravenCalendarNavigationCrossover ? surface.getBoundingClientRect() : null,
   }
 }
 
 function animateCalendarNavigation(event) {
   var xhr = event.detail && event.detail.xhr
-  if (!xhr || (typeof xhr.goferCalendarNavigationDirection === "number" && xhr !== _calendarNavigationRequest)) return
+  if (!xhr || (typeof xhr.ravenCalendarNavigationDirection === "number" && xhr !== _calendarNavigationRequest)) return
   if (xhr === _calendarNavigationRequest) _calendarNavigationRequest = null
-  var saved = xhr.goferCalendarNavigationSnapshot
+  var saved = xhr.ravenCalendarNavigationSnapshot
   if (!saved) return
-  delete xhr.goferCalendarNavigationSnapshot
+  delete xhr.ravenCalendarNavigationSnapshot
   var calendar = document.getElementById("calendar-main")
   var surface = calendar && calendar.querySelector("[data-calendar-surface]")
   if (!saved || !surface || !surface.animate || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
-  var crossover = saved.crossover || xhr.goferCalendarNavigationCrossover
+  var crossover = saved.crossover || xhr.ravenCalendarNavigationCrossover
   var bounds = saved.bounds || surface.getBoundingClientRect()
   var parent = calendar.getBoundingClientRect()
   var snapshot = saved.element
@@ -9359,7 +9359,7 @@ function animateCalendarNavigation(event) {
   calendar.appendChild(snapshot)
   snapshot.scrollTop = saved.top
   snapshot.scrollLeft = saved.left
-  var distance = crossover ? 0 : saved.distance || xhr.goferCalendarNavigationDirection * 12
+  var distance = crossover ? 0 : saved.distance || xhr.ravenCalendarNavigationDirection * 12
   var timing = { duration: saved.duration === undefined ? (crossover ? 140 : 220) : saved.duration, easing: crossover ? "ease-out" : "cubic-bezier(0.22, 1, 0.36, 1)" }
   var incoming = crossover ? [{ opacity: 1 }, { opacity: 1 }] : [saved.incoming || { opacity: 0, transform: "translateX(" + distance + "px) scale(0.98)" }, { opacity: 1, transform: "translateX(0) scale(1)" }]
   var outgoing = crossover ? [{ opacity: saved.outgoing ? saved.outgoing.opacity : 1 }, { opacity: 0 }] : [saved.outgoing || { opacity: 1, transform: "translateX(0) scale(1)" }, { opacity: 0, transform: "translateX(" + -distance + "px) scale(0.98)" }]
@@ -9387,22 +9387,22 @@ function configureCalendarNavigationRequest(event) {
     return
   }
   _calendarNavigationRequest = detail.xhr
-  detail.xhr.goferCalendarNavigationCrossover = viewSwitch
+  detail.xhr.ravenCalendarNavigationCrossover = viewSwitch
   if (viewSwitch) finishCalendarNavigationTransition()
-  detail.xhr.goferCalendarNavigationDirection = arrow ? Number(trigger.dataset.calendarNavigate) : trigger.dataset.calendarViewSwitch === "week" ? 1 : -1
+  detail.xhr.ravenCalendarNavigationDirection = arrow ? Number(trigger.dataset.calendarNavigate) : trigger.dataset.calendarViewSwitch === "week" ? 1 : -1
 }
 document.body.addEventListener("htmx:beforeRequest", configureCalendarNavigationRequest)
 document.body.addEventListener("htmx:beforeRequest", showCalendarContentPending)
 document.body.addEventListener("htmx:beforeSwap", function (event) {
   var xhr = event.detail && event.detail.xhr
-  if (xhr && xhr.goferCalendarContentPending && xhr !== _calendarContentRequest) event.detail.shouldSwap = false
+  if (xhr && xhr.ravenCalendarContentPending && xhr !== _calendarContentRequest) event.detail.shouldSwap = false
 })
 document.body.addEventListener("htmx:beforeSwap", prepareCalendarNavigation)
 // Layout/scroll restoration listeners above run before the incoming grid fades in.
 document.body.addEventListener("htmx:afterSwap", animateCalendarNavigation)
 function handleCalendarNavigationResult(event) {
   if (!event.detail || event.detail.xhr !== _calendarNavigationRequest) return
-  delete event.detail.xhr.goferCalendarNavigationSnapshot
+  delete event.detail.xhr.ravenCalendarNavigationSnapshot
   _calendarNavigationRequest = null
 }
 document.body.addEventListener("htmx:afterRequest", handleCalendarNavigationResult)
@@ -9446,21 +9446,21 @@ var _calendarEventRequest = null
 
 function calendarEventRequestCurrent(xhr) {
   var calendar = document.getElementById("calendar-main")
-  var dialog = xhr.goferCalendarEventDialog
+  var dialog = xhr.ravenCalendarEventDialog
   return xhr === _calendarEventRequest && calendar && !calendar.hasAttribute("data-calendar-loading") &&
-    calendar.dataset.calendarPeriod === xhr.goferCalendarEventPeriod &&
-    _calendarSourceIsVisible({dataset: {calendarSourceId: xhr.goferCalendarEventSource}}) &&
+    calendar.dataset.calendarPeriod === xhr.ravenCalendarEventPeriod &&
+    _calendarSourceIsVisible({dataset: {calendarSourceId: xhr.ravenCalendarEventSource}}) &&
     (!dialog || (dialog.isConnected && dialog.open && !dialog.hasAttribute("data-tui-dialog-closing")))
 }
 
 function clearCalendarEventLoading(xhr, removeDialog) {
   if (!xhr) return
-  clearTimeout(xhr.goferCalendarEventTimer)
-  delete xhr.goferCalendarEventTimer
-  var dialog = xhr.goferCalendarEventDialog
-  if (removeDialog && dialog && dialog.isConnected && !xhr.goferCalendarEventSwapped) {
+  clearTimeout(xhr.ravenCalendarEventTimer)
+  delete xhr.ravenCalendarEventTimer
+  var dialog = xhr.ravenCalendarEventDialog
+  if (removeDialog && dialog && dialog.isConnected && !xhr.ravenCalendarEventSwapped) {
     if (dialog.open) dialog.close()
-    xhr.goferCalendarEventRoot.remove()
+    xhr.ravenCalendarEventRoot.remove()
   }
 }
 
@@ -9475,10 +9475,10 @@ function showCalendarEventPending(xhr, trigger) {
   if (!dialog) return
   var summary = trigger.querySelector("[data-calendar-event-text]") || trigger.querySelector("[data-calendar-event-summary]")
   if (summary) dialog.querySelector("#calendar-event-details-title").textContent = summary.textContent
-  xhr.goferCalendarEventRoot = root
-  xhr.goferCalendarEventDialog = dialog
+  xhr.ravenCalendarEventRoot = root
+  xhr.ravenCalendarEventDialog = dialog
   function cancelPending() {
-    if (xhr !== _calendarEventRequest || xhr.goferCalendarEventSwapped) return
+    if (xhr !== _calendarEventRequest || xhr.ravenCalendarEventSwapped) return
     _calendarEventRequest = null
     clearCalendarEventLoading(xhr, false)
     if (window.htmx) window.htmx.trigger(trigger, "htmx:abort")
@@ -9497,41 +9497,41 @@ document.body.addEventListener("htmx:beforeRequest", function (event) {
   clearCalendarEventLoading(_calendarEventRequest, true)
   var calendar = document.getElementById("calendar-main")
   var xhr = _calendarEventRequest = event.detail.xhr
-  xhr.goferCalendarEventPeriod = calendar ? calendar.dataset.calendarPeriod : ""
-  xhr.goferCalendarEventSource = trigger.dataset.calendarSourceId
+  xhr.ravenCalendarEventPeriod = calendar ? calendar.dataset.calendarPeriod : ""
+  xhr.ravenCalendarEventSource = trigger.dataset.calendarSourceId
   // Fast requests open the complete dialog with no loading flash.
-  xhr.goferCalendarEventTimer = setTimeout(function () { showCalendarEventPending(xhr, trigger) }, 250)
+  xhr.ravenCalendarEventTimer = setTimeout(function () { showCalendarEventPending(xhr, trigger) }, 250)
   trigger.setAttribute("aria-busy", "true")
 })
 
 document.body.addEventListener("htmx:beforeSwap", function (event) {
   var xhr = event.detail && event.detail.xhr
-  if (!xhr || typeof xhr.goferCalendarEventPeriod !== "string") return
+  if (!xhr || typeof xhr.ravenCalendarEventPeriod !== "string") return
   clearCalendarEventLoading(xhr, false)
   if (!calendarEventRequestCurrent(xhr)) {
     event.detail.shouldSwap = false
     clearCalendarEventLoading(xhr, true)
     return
   }
-  if (!event.detail.shouldSwap || event.detail.isError || !xhr.goferCalendarEventDialog) return
+  if (!event.detail.shouldSwap || event.detail.isError || !xhr.ravenCalendarEventDialog) return
   var incoming = new DOMParser().parseFromString(event.detail.serverResponse, "text/html").querySelector("#calendar-event-details-dialog [data-tui-dialog-content] > [data-tui-dialog-panel]")
   if (!incoming) { event.detail.shouldSwap = false; return }
   // Keep the open modal in the top layer while its loading panel is filled.
-  event.detail.target = xhr.goferCalendarEventDialog
+  event.detail.target = xhr.ravenCalendarEventDialog
   event.detail.selectOverride = "#calendar-event-details-dialog [data-tui-dialog-content] > [data-tui-dialog-panel]"
   event.detail.swapOverride = "innerHTML"
 })
 
 document.body.addEventListener("htmx:afterSwap", function (event) {
   var xhr = event.detail && event.detail.xhr
-  if (!xhr || typeof xhr.goferCalendarEventPeriod !== "string" || !calendarEventRequestCurrent(xhr)) return
-  xhr.goferCalendarEventSwapped = true
-  if (xhr.goferCalendarEventDialog) xhr.goferCalendarEventDialog.removeAttribute("aria-busy")
+  if (!xhr || typeof xhr.ravenCalendarEventPeriod !== "string" || !calendarEventRequestCurrent(xhr)) return
+  xhr.ravenCalendarEventSwapped = true
+  if (xhr.ravenCalendarEventDialog) xhr.ravenCalendarEventDialog.removeAttribute("aria-busy")
 })
 
 document.body.addEventListener("htmx:sendAbort", function (event) {
   var xhr = event.detail && event.detail.xhr
-  if (!xhr || typeof xhr.goferCalendarEventPeriod !== "string") return
+  if (!xhr || typeof xhr.ravenCalendarEventPeriod !== "string") return
   if (event.detail.elt) event.detail.elt.removeAttribute("aria-busy")
   clearCalendarEventLoading(xhr, true)
   if (xhr === _calendarEventRequest) _calendarEventRequest = null
@@ -9539,7 +9539,7 @@ document.body.addEventListener("htmx:sendAbort", function (event) {
 
 document.body.addEventListener("htmx:afterRequest", function (event) {
   var xhr = event.detail && event.detail.xhr
-  if (!xhr || typeof xhr.goferCalendarEventPeriod !== "string") return
+  if (!xhr || typeof xhr.ravenCalendarEventPeriod !== "string") return
   var trigger = event.detail.elt
   if (trigger) trigger.removeAttribute("aria-busy")
   clearCalendarEventLoading(xhr, false)
@@ -9547,12 +9547,12 @@ document.body.addEventListener("htmx:afterRequest", function (event) {
   var current = calendarEventRequestCurrent(xhr)
   _calendarEventRequest = null
   if (!current) { clearCalendarEventLoading(xhr, true); return }
-  if (event.detail.successful && xhr.goferCalendarEventSwapped) {
-    if (!xhr.goferCalendarEventDialog && window.tui && window.tui.dialog) window.tui.dialog.open("calendar-event-details-dialog")
+  if (event.detail.successful && xhr.ravenCalendarEventSwapped) {
+    if (!xhr.ravenCalendarEventDialog && window.tui && window.tui.dialog) window.tui.dialog.open("calendar-event-details-dialog")
     return
   }
   clearCalendarEventLoading(xhr, true)
-  showGoferToast({
+  showRavenToast({
     title: "Could not open event",
     description: xhr.status === 404 ? "This event is no longer available. Refresh calendars and try again." : "Event details could not be loaded. Please try again.",
     variant: "error", icon: "error", position: "bottom-right", duration: 6000, dismissible: true,
@@ -9578,19 +9578,19 @@ document.body.addEventListener("htmx:beforeRequest", function (event) {
   if (!trigger || !trigger.hasAttribute("data-calendar-create-trigger")) return
   _calendarCreateDialogRequest = event.detail.xhr
   var calendar = document.getElementById("calendar-main")
-  _calendarCreateDialogRequest.goferCalendarCreatePeriod = calendar ? calendar.dataset.calendarPeriod : ""
-  _calendarCreateDialogRequest.goferCalendarEdit = trigger.hasAttribute("data-calendar-edit-trigger")
-  if (_calendarCreateDialogRequest.goferCalendarEdit && window.tui && window.tui.popover) window.tui.popover.closeElement(trigger)
-  var details = _calendarCreateDialogRequest.goferCalendarEdit && document.getElementById("calendar-event-details-dialog")
-  _calendarCreateDialogRequest.goferCalendarEditDialog = details && details.querySelector("[data-tui-dialog-content]")
+  _calendarCreateDialogRequest.ravenCalendarCreatePeriod = calendar ? calendar.dataset.calendarPeriod : ""
+  _calendarCreateDialogRequest.ravenCalendarEdit = trigger.hasAttribute("data-calendar-edit-trigger")
+  if (_calendarCreateDialogRequest.ravenCalendarEdit && window.tui && window.tui.popover) window.tui.popover.closeElement(trigger)
+  var details = _calendarCreateDialogRequest.ravenCalendarEdit && document.getElementById("calendar-event-details-dialog")
+  _calendarCreateDialogRequest.ravenCalendarEditDialog = details && details.querySelector("[data-tui-dialog-content]")
   trigger.setAttribute("aria-busy", "true")
 })
 
 function calendarCreateDialogResponseCurrent(xhr) {
   var calendar = document.getElementById("calendar-main")
-  var details = xhr.goferCalendarEditDialog
+  var details = xhr.ravenCalendarEditDialog
   if (details && (!details.isConnected || !details.open || details.hasAttribute("data-tui-dialog-closing"))) return false
-  return xhr === _calendarCreateDialogRequest && calendar && !calendar.hasAttribute("data-calendar-loading") && calendar.dataset.calendarPeriod === xhr.goferCalendarCreatePeriod
+  return xhr === _calendarCreateDialogRequest && calendar && !calendar.hasAttribute("data-calendar-loading") && calendar.dataset.calendarPeriod === xhr.ravenCalendarCreatePeriod
 }
 
 function transitionCalendarEditDialog(details, editor, from) {
@@ -9651,17 +9651,17 @@ function transitionCalendarEditDialog(details, editor, from) {
 
 document.body.addEventListener("htmx:beforeSwap", function (event) {
   var xhr = event.detail && event.detail.xhr
-  if (!xhr || typeof xhr.goferCalendarCreatePeriod !== "string") return
+  if (!xhr || typeof xhr.ravenCalendarCreatePeriod !== "string") return
   if (!calendarCreateDialogResponseCurrent(xhr)) { event.detail.shouldSwap = false; return }
   if (!event.detail.shouldSwap || event.detail.isError) return
-  var details = xhr.goferCalendarEditDialog
+  var details = xhr.ravenCalendarEditDialog
   if (details) {
     var editor = new DOMParser().parseFromString(event.detail.serverResponse, "text/html").querySelector("#calendar-create-dialog [data-tui-dialog-content]")
     if (!editor || !editor.querySelector("[data-tui-dialog-panel]")) { event.detail.shouldSwap = false; return }
     // Swap only the panel: keep the native modal in the top layer so its backdrop
     // never closes or replays its entrance transition during the handoff.
-    xhr.goferCalendarEditContent = editor
-    xhr.goferCalendarEditBounds = details.getBoundingClientRect()
+    xhr.ravenCalendarEditContent = editor
+    xhr.ravenCalendarEditBounds = details.getBoundingClientRect()
     event.detail.target = details
     event.detail.selectOverride = "#calendar-create-dialog [data-tui-dialog-content] > [data-tui-dialog-panel]"
     event.detail.swapOverride = "innerHTML"
@@ -9670,39 +9670,39 @@ document.body.addEventListener("htmx:beforeSwap", function (event) {
 
 document.body.addEventListener("htmx:afterSwap", function (event) {
   var xhr = event.detail && event.detail.xhr
-  if (!xhr || typeof xhr.goferCalendarCreatePeriod !== "string" || !calendarCreateDialogResponseCurrent(xhr)) return
-  var details = xhr.goferCalendarEditDialog
-  var editor = xhr.goferCalendarEditContent
-  if (details && editor) xhr.goferCalendarEditAnimation = transitionCalendarEditDialog(details, editor, xhr.goferCalendarEditBounds)
-  xhr.goferCalendarCreateSwapped = true
+  if (!xhr || typeof xhr.ravenCalendarCreatePeriod !== "string" || !calendarCreateDialogResponseCurrent(xhr)) return
+  var details = xhr.ravenCalendarEditDialog
+  var editor = xhr.ravenCalendarEditContent
+  if (details && editor) xhr.ravenCalendarEditAnimation = transitionCalendarEditDialog(details, editor, xhr.ravenCalendarEditBounds)
+  xhr.ravenCalendarCreateSwapped = true
 })
 
 document.body.addEventListener("htmx:sendAbort", function (event) {
   var xhr = event.detail && event.detail.xhr
-  if (!xhr || typeof xhr.goferCalendarCreatePeriod !== "string") return
+  if (!xhr || typeof xhr.ravenCalendarCreatePeriod !== "string") return
   if (event.detail.elt) event.detail.elt.removeAttribute("aria-busy")
   if (xhr === _calendarCreateDialogRequest) _calendarCreateDialogRequest = null
 })
 
 document.body.addEventListener("htmx:afterRequest", function (event) {
   var xhr = event.detail && event.detail.xhr
-  if (!xhr || typeof xhr.goferCalendarCreatePeriod !== "string") return
+  if (!xhr || typeof xhr.ravenCalendarCreatePeriod !== "string") return
   if (event.detail.elt) event.detail.elt.removeAttribute("aria-busy")
   if (xhr !== _calendarCreateDialogRequest) return
   var current = calendarCreateDialogResponseCurrent(xhr)
   _calendarCreateDialogRequest = null
   if (!current) return
   if (!event.detail.successful) {
-    showGoferToast({title: xhr.goferCalendarEdit ? "Could not open Edit event" : "Could not open New event", description: "Please try again.", variant: "error", icon: "error", duration: 5000})
+    showRavenToast({title: xhr.ravenCalendarEdit ? "Could not open Edit event" : "Could not open New event", description: "Please try again.", variant: "error", icon: "error", duration: 5000})
     return
   }
-  if (!xhr.goferCalendarCreateSwapped) return
-  if (!xhr.goferCalendarEditDialog) {
+  if (!xhr.ravenCalendarCreateSwapped) return
+  if (!xhr.ravenCalendarEditDialog) {
     initializeCalendarCreateForm()
     if (window.tui && window.tui.dialog) window.tui.dialog.open("calendar-create-dialog")
   }
   var input = document.getElementById("calendar-create-summary")
-  if (input && !xhr.goferCalendarEditAnimation) setTimeout(function () { if (input.isConnected) input.focus() }, 80)
+  if (input && !xhr.ravenCalendarEditAnimation) setTimeout(function () { if (input.isConnected) input.focus() }, 80)
 })
 
 function adjustCalendarCreateAllDayRange(form) {
@@ -10208,7 +10208,7 @@ function calendarTeamsSwapAllowed(detail) {
   var root = detail.target
   var form = root.closest("[data-calendar-create-form]")
   var source = form && form.querySelector('[name="source_id"]')
-  return !!(form && form.isConnected && !form._calendarCreateBusy && !form._calendarCreateUncertain && !form._calendarCreateConflict && source && detail.xhr.getResponseHeader("X-Gofer-Calendar-Source") === source.value)
+  return !!(form && form.isConnected && !form._calendarCreateBusy && !form._calendarCreateUncertain && !form._calendarCreateConflict && source && detail.xhr.getResponseHeader("X-Raven-Calendar-Source") === source.value)
 }
 
 document.body.addEventListener("htmx:beforeSwap", function (event) {
@@ -10682,7 +10682,7 @@ function submitCalendarCreate(form) {
       // Close only this form; a delayed save must not close a newer dialog.
       if (form.isConnected && window.tui && window.tui.dialog) window.tui.dialog.close("calendar-create-dialog")
       var warning = result.data.teams_unconfirmed || result.data.google_meet_unconfirmed || result.data.refresh_pending
-      showGoferToast({title: editing ? (form.dataset.calendarEditSeries === "true" ? "Series updated" : "Event updated") : result.data.series_id ? "Recurring event created" : "Event created", description: result.data.teams_unconfirmed ? "Event saved, but Microsoft did not confirm a Teams link. Check the event in Outlook; do not create it again." : result.data.google_meet_unconfirmed ? "Event saved, but its Google Meet link is not ready. Refresh the calendar or check Google Calendar; do not create it again." : result.data.refresh_pending ? "Series saved. Its occurrences could not refresh yet; refresh the calendar to load them." : result.data.notify_guests ? "Meeting saved. Guest notifications are being delivered." : result.data.hidden ? "Saved to a hidden calendar. Enable its visibility to see it." : "Saved to your calendar.", variant: warning ? "warning" : "success", icon: warning ? "warning" : "success", duration: warning ? 10000 : 4500})
+      showRavenToast({title: editing ? (form.dataset.calendarEditSeries === "true" ? "Series updated" : "Event updated") : result.data.series_id ? "Recurring event created" : "Event created", description: result.data.teams_unconfirmed ? "Event saved, but Microsoft did not confirm a Teams link. Check the event in Outlook; do not create it again." : result.data.google_meet_unconfirmed ? "Event saved, but its Google Meet link is not ready. Refresh the calendar or check Google Calendar; do not create it again." : result.data.refresh_pending ? "Series saved. Its occurrences could not refresh yet; refresh the calendar to load them." : result.data.notify_guests ? "Meeting saved. Guest notifications are being delivered." : result.data.hidden ? "Saved to a hidden calendar. Enable its visibility to see it." : "Saved to your calendar.", variant: warning ? "warning" : "success", icon: warning ? "warning" : "success", duration: warning ? 10000 : 4500})
       scheduleCalendarCacheRefresh()
     })
     .catch(function () {
@@ -10763,7 +10763,7 @@ document.body.addEventListener("htmx:beforeRequest", function (event) {
   if (trigger.matches("[data-calendar-response-load]")) {
     var loading = trigger.closest("[data-calendar-response-form]")
     if (!loading || loading._calendarResponseBusy || loading._calendarResponseBlocked) { event.preventDefault(); return }
-    event.detail.xhr.goferCalendarResponseLoader = loading
+    event.detail.xhr.ravenCalendarResponseLoader = loading
     loading._calendarResponseLoader = event.detail.xhr
     loading.dataset.calendarResponseReady = "false"
     setCalendarResponseError(loading, "")
@@ -10773,14 +10773,14 @@ document.body.addEventListener("htmx:beforeRequest", function (event) {
   if (!trigger.matches("[data-calendar-response-form]")) return
   var response = event.detail.requestConfig && event.detail.requestConfig.parameters.response
   if (trigger._calendarResponseBusy || trigger._calendarResponseBlocked || trigger.dataset.calendarResponseReady !== "true" || ["accepted", "tentative", "declined"].indexOf(response) < 0) { event.preventDefault(); return }
-  event.detail.xhr.goferCalendarResponse = {form: trigger, response: response, scope: trigger.dataset.calendarResponseScope}
+  event.detail.xhr.ravenCalendarResponse = {form: trigger, response: response, scope: trigger.dataset.calendarResponseScope}
   trigger._calendarResponseBusy = true
   setCalendarResponseError(trigger, "")
   updateCalendarResponseForm(trigger)
 })
 
 document.body.addEventListener("htmx:beforeSwap", function (event) {
-  var form = event.detail && event.detail.xhr && event.detail.xhr.goferCalendarResponseLoader
+  var form = event.detail && event.detail.xhr && event.detail.xhr.ravenCalendarResponseLoader
   if (!form) return
   var dialog = form.closest("[data-tui-dialog-content]")
   if (!form.isConnected || form._calendarResponseLoader !== event.detail.xhr || (dialog && (!dialog.open || dialog.hasAttribute("data-tui-dialog-closing")))) event.detail.shouldSwap = false
@@ -10788,9 +10788,9 @@ document.body.addEventListener("htmx:beforeSwap", function (event) {
 
 document.body.addEventListener("htmx:afterRequest", function (event) {
   var xhr = event.detail && event.detail.xhr
-  var loading = xhr && xhr.goferCalendarResponseLoader
+  var loading = xhr && xhr.ravenCalendarResponseLoader
   if (loading) {
-    delete xhr.goferCalendarResponseLoader
+    delete xhr.ravenCalendarResponseLoader
     if (loading._calendarResponseLoader !== xhr) return
     delete loading._calendarResponseLoader
     if (!event.detail.successful && loading.isConnected) {
@@ -10800,9 +10800,9 @@ document.body.addEventListener("htmx:afterRequest", function (event) {
     }
     return
   }
-  var request = xhr && xhr.goferCalendarResponse
+  var request = xhr && xhr.ravenCalendarResponse
   if (!request) return
-  delete xhr.goferCalendarResponse
+  delete xhr.ravenCalendarResponse
   var form = request.form
   form._calendarResponseBusy = false
   try {
@@ -10823,7 +10823,7 @@ document.body.addEventListener("htmx:afterRequest", function (event) {
             setCalendarResponseError(form, "Reply queued. Reopen this invitation to check delivery; do not send it again.")
           })
         }
-        showGoferToast({title: "Reply queued", description: "The email reply will send in the background. Reopen the invitation to check delivery.", variant: "info", duration: 5000})
+        showRavenToast({title: "Reply queued", description: "The email reply will send in the background. Reopen the invitation to check delivery.", variant: "info", duration: 5000})
         return
       }
       var responseDialog = form.closest("[data-tui-dialog]")
@@ -10853,7 +10853,7 @@ document.body.addEventListener("htmx:afterRequest", function (event) {
           })
         }
       }
-      showGoferToast({title: result.pending ? "Response submitted" : "Response saved", description: result.pending ? "The provider is still processing your reply. Refresh the calendar to check its status; don't send it again." : result.refresh_pending ? "Your response was confirmed, but the calendar could not refresh yet." : request.scope === "series" ? "Your response to the series was confirmed." : "Your response was confirmed.", variant: pending ? "warning" : "success", icon: pending ? "warning" : "success", duration: pending ? 8000 : 4500})
+      showRavenToast({title: result.pending ? "Response submitted" : "Response saved", description: result.pending ? "The provider is still processing your reply. Refresh the calendar to check its status; don't send it again." : result.refresh_pending ? "Your response was confirmed, but the calendar could not refresh yet." : request.scope === "series" ? "Your response to the series was confirmed." : "Your response was confirmed.", variant: pending ? "warning" : "success", icon: pending ? "warning" : "success", duration: pending ? 8000 : 4500})
       scheduleCalendarCacheRefresh()
     }
   } catch (_) {
@@ -10897,7 +10897,7 @@ document.body.addEventListener("htmx:beforeRequest", function (event) {
   if (form && form.matches("[data-calendar-delete-load]")) {
     form = form.closest("[data-tui-popover-root]").querySelector("[data-calendar-delete-form]")
     if (!form || form._calendarDeleteBusy || form._calendarDeleteBlocked) { event.preventDefault(); return }
-    event.detail.xhr.goferCalendarDeleteLoader = form
+    event.detail.xhr.ravenCalendarDeleteLoader = form
     form._calendarDeleteLoader = event.detail.xhr
     form.dataset.calendarDeleteReady = "false"
     form.querySelector("[data-calendar-delete-check]").hidden = false
@@ -10907,22 +10907,22 @@ document.body.addEventListener("htmx:beforeRequest", function (event) {
   }
   if (!form || !form.matches("[data-calendar-delete-form]")) return
   if (form._calendarDeleteBusy || form._calendarDeleteBlocked || form.dataset.calendarDeleteReady === "false") { event.preventDefault(); return }
-  event.detail.xhr.goferCalendarDeleteForm = form
+  event.detail.xhr.ravenCalendarDeleteForm = form
   form._calendarDeleteBusy = true
   setCalendarDeleteError(form, "")
   updateCalendarDeleteForm(form)
 })
 
 document.body.addEventListener("htmx:beforeSwap", function (event) {
-  var form = event.detail && event.detail.xhr && event.detail.xhr.goferCalendarDeleteLoader
+  var form = event.detail && event.detail.xhr && event.detail.xhr.ravenCalendarDeleteLoader
   if (form && (!form.isConnected || form._calendarDeleteLoader !== event.detail.xhr)) event.detail.shouldSwap = false
 })
 
 document.body.addEventListener("htmx:afterRequest", function (event) {
   var xhr = event.detail && event.detail.xhr
-  var loading = xhr && xhr.goferCalendarDeleteLoader
+  var loading = xhr && xhr.ravenCalendarDeleteLoader
   if (loading) {
-    delete xhr.goferCalendarDeleteLoader
+    delete xhr.ravenCalendarDeleteLoader
     if (loading._calendarDeleteLoader !== xhr) return
     delete loading._calendarDeleteLoader
     if (!event.detail.successful && loading.isConnected) {
@@ -10933,11 +10933,11 @@ document.body.addEventListener("htmx:afterRequest", function (event) {
     }
     return
   }
-  var form = xhr && xhr.goferCalendarDeleteForm
+  var form = xhr && xhr.ravenCalendarDeleteForm
   if (!form) return
   // Detached triggers can bubble afterRequest through their surviving ancestor.
   // Handle a response once, and never close a newer event dialog.
-  delete xhr.goferCalendarDeleteForm
+  delete xhr.ravenCalendarDeleteForm
   form._calendarDeleteBusy = false
   try {
     var result = JSON.parse(xhr.responseText)
@@ -10953,7 +10953,7 @@ document.body.addEventListener("htmx:afterRequest", function (event) {
         if (window.tui.popover) window.tui.popover.closeElement(form)
         if (window.tui.dialog) window.tui.dialog.close(form.closest("[data-tui-dialog]"))
       }
-      showGoferToast({title: form.dataset.calendarDeleteSeries === "true" ? "Series deleted" : "Event deleted", description: form.dataset.calendarDeleteSeries === "true" ? "All occurrences were removed from your calendar." : form.dataset.calendarDeleteOccurrence === "true" ? "Only this occurrence was removed. The rest of the series is unchanged." : "Removed from your calendar.", variant: "success", icon: "success", duration: 4500})
+      showRavenToast({title: form.dataset.calendarDeleteSeries === "true" ? "Series deleted" : "Event deleted", description: form.dataset.calendarDeleteSeries === "true" ? "All occurrences were removed from your calendar." : form.dataset.calendarDeleteOccurrence === "true" ? "Only this occurrence was removed. The rest of the series is unchanged." : "Removed from your calendar.", variant: "success", icon: "success", duration: 4500})
       scheduleCalendarCacheRefresh()
     }
   } catch (_) {
@@ -11081,30 +11081,30 @@ function configureCalendarCacheRequest(event) {
   var calendar = document.getElementById("calendar-main")
   if (!calendar) return
   _calendarCacheRequest = event.detail.xhr
-  _calendarCacheRequest.goferCalendarCachePeriod = calendar.dataset.calendarPeriod
+  _calendarCacheRequest.ravenCalendarCachePeriod = calendar.dataset.calendarPeriod
 }
 
 function calendarCacheResponseCurrent(xhr) {
   var calendar = document.getElementById("calendar-main")
-  return xhr === _calendarCacheRequest && calendar && !calendar.hasAttribute("data-calendar-loading") && calendar.dataset.calendarPeriod === xhr.goferCalendarCachePeriod
+  return xhr === _calendarCacheRequest && calendar && !calendar.hasAttribute("data-calendar-loading") && calendar.dataset.calendarPeriod === xhr.ravenCalendarCachePeriod
 }
 
 document.body.addEventListener("htmx:beforeSwap", function (event) {
   var xhr = event.detail && event.detail.xhr
-  if (!xhr || typeof xhr.goferCalendarCachePeriod !== "string") return
+  if (!xhr || typeof xhr.ravenCalendarCachePeriod !== "string") return
   if (!calendarCacheResponseCurrent(xhr)) { event.detail.shouldSwap = false; return }
   var calendar = document.getElementById("calendar-main")
   var agenda = document.getElementById("calendar-agenda-list")
-  xhr.goferCalendarAgendaScroll = agenda ? agenda.scrollTop : 0
+  xhr.ravenCalendarAgendaScroll = agenda ? agenda.scrollTop : 0
   var scroller = calendar.querySelector("[data-calendar-week-scroll]")
   if (scroller) _calendarWeekScrollState = { period: calendar.dataset.calendarPeriod, zoom: _calendarWeekZoom, top: scroller.scrollTop, left: scroller.scrollLeft }
 })
 
 document.body.addEventListener("htmx:afterSwap", function (event) {
   var xhr = event.detail && event.detail.xhr
-  if (xhr && typeof xhr.goferCalendarCachePeriod === "string" && calendarCacheResponseCurrent(xhr)) {
+  if (xhr && typeof xhr.ravenCalendarCachePeriod === "string" && calendarCacheResponseCurrent(xhr)) {
     var agenda = document.getElementById("calendar-agenda-list")
-    if (agenda) agenda.scrollTop = xhr.goferCalendarAgendaScroll || 0
+    if (agenda) agenda.scrollTop = xhr.ravenCalendarAgendaScroll || 0
   }
   updateCalendarSyncPresentation()
   if (_calendarCacheRefreshPending) scheduleCalendarCacheRefresh()
@@ -11131,7 +11131,7 @@ function configureCalendarSyncRequest(event) {
 }
 
 function _setCalendarSyncBusy(busy) {
-  var accountID = _calendarSyncRequest && _calendarSyncRequest.goferCalendarSyncAccount
+  var accountID = _calendarSyncRequest && _calendarSyncRequest.ravenCalendarSyncAccount
   document.querySelectorAll("[data-calendar-sync-button]").forEach(function (button) {
     var buttonAccountID = button.dataset && button.dataset.calendarAccountSyncButton
     var active = busy && (!accountID || !buttonAccountID || buttonAccountID === accountID)
@@ -11160,19 +11160,19 @@ function _setCalendarSyncBusy(busy) {
 function handleCalendarSyncStart(event) {
   _calendarSyncRequest = event.detail.xhr
   var button = event.detail.elt
-  _calendarSyncRequest.goferCalendarSyncAccount = button && button.getAttribute("data-calendar-account-sync-button") || ""
+  _calendarSyncRequest.ravenCalendarSyncAccount = button && button.getAttribute("data-calendar-account-sync-button") || ""
   var menu = button && button.closest("[data-tui-popover-content]")
   if (menu && window.tui && window.tui.popover) window.tui.popover.closeElement(menu)
   var calendar = document.getElementById("calendar-main")
-  _calendarSyncRequest.goferCalendarSyncPeriod = calendar ? calendar.dataset.calendarPeriod : ""
+  _calendarSyncRequest.ravenCalendarSyncPeriod = calendar ? calendar.dataset.calendarPeriod : ""
   _setCalendarSyncBusy(true)
 }
 
 document.body.addEventListener("htmx:beforeSwap", function (event) {
   var xhr = event.detail && event.detail.xhr
-  if (!xhr || typeof xhr.goferCalendarSyncPeriod !== "string") return
+  if (!xhr || typeof xhr.ravenCalendarSyncPeriod !== "string") return
   var calendar = document.getElementById("calendar-main")
-  if (xhr !== _calendarSyncRequest || !calendar || calendar.dataset.calendarPeriod !== xhr.goferCalendarSyncPeriod) {
+  if (xhr !== _calendarSyncRequest || !calendar || calendar.dataset.calendarPeriod !== xhr.ravenCalendarSyncPeriod) {
     event.detail.shouldSwap = false
   }
 })
@@ -11217,7 +11217,7 @@ function handleContactSidebarSyncStart(event) {
     _setContactSidebarSyncButtonBusy(button, true)
   }
   var label = _contactSidebarSyncButtonLabel(button)
-  showGoferToast({
+  showRavenToast({
     id: "contact-sync-toast",
     title: "Syncing contacts",
     description: label ? "Checking " + label + " address books..." : "Checking connected address books...",
@@ -11234,14 +11234,14 @@ function handleContactSidebarSyncResult(event) {
   var button = _contactSidebarSyncButtonFromContext(event) || _contactSidebarSyncActiveButton
   _setContactSidebarSyncButtonBusy(button, false)
   _contactSidebarSyncActiveButton = null
-  var ok = !!(event && event.detail && event.detail.successful) && (!xhr || xhr.getResponseHeader("X-Gofer-Status") !== "error")
+  var ok = !!(event && event.detail && event.detail.successful) && (!xhr || xhr.getResponseHeader("X-Raven-Status") !== "error")
   var message = "Contact sync finished."
   if (xhr && xhr.responseText) {
     var div = document.createElement("div")
     div.innerHTML = xhr.responseText
     message = (div.textContent || "").trim() || message
   }
-  showGoferToast({
+  showRavenToast({
     id: "contact-sync-toast",
     title: ok ? "Contacts synced" : "Contact sync failed",
     description: message,
@@ -11361,32 +11361,32 @@ function loadComposeSignatures(form, refresh) {
 
 function composeSignatureHTML(sig, source) {
   var html = sig && sig.html_body ? _sanitizeComposeHTML(sig.html_body) : _composePlainToHTML((sig && sig.text_body) || "")
-  return '<div data-gofer-signature="' + source + '" data-signature-id="' + _escapeComposeHTML(sig.id || "") + '" data-signature-html="' + _escapeComposeHTML(html) + '">' + html + '</div>'
+  return '<div data-raven-signature="' + source + '" data-signature-id="' + _escapeComposeHTML(sig.id || "") + '" data-signature-html="' + _escapeComposeHTML(html) + '">' + html + '</div>'
 }
 
 function existingComposeSignature(editor) {
-  return editor && editor.querySelector('[data-gofer-signature]')
+  return editor && editor.querySelector('[data-raven-signature]')
 }
 
 function autoComposeSignatureWasEdited(node) {
-  if (!node || node.getAttribute("data-gofer-signature") !== "auto") return false
+  if (!node || node.getAttribute("data-raven-signature") !== "auto") return false
   return (node.getAttribute("data-signature-html") || "") !== node.innerHTML
 }
 
 function autoComposeSignatureSpacerHTML() {
-  return '<p data-gofer-signature-cursor="true"><br></p><p><br></p><p><br></p><p><br></p>'
+  return '<p data-raven-signature-cursor="true"><br></p><p><br></p><p><br></p><p><br></p>'
 }
 
 function placeComposeCursorBeforeSignature(editor, signatureNode) {
   if (!editor || !signatureNode) return
   editor.focus()
-  var target = editor.querySelector('[data-gofer-signature-cursor]')
+  var target = editor.querySelector('[data-raven-signature-cursor]')
   if (!target) target = signatureNode.previousSibling
   if (!target || target.nodeType !== Node.ELEMENT_NODE) {
     signatureNode.insertAdjacentHTML("beforebegin", autoComposeSignatureSpacerHTML())
-    target = editor.querySelector('[data-gofer-signature-cursor]') || signatureNode.previousSibling
+    target = editor.querySelector('[data-raven-signature-cursor]') || signatureNode.previousSibling
   }
-  if (target.removeAttribute) target.removeAttribute("data-gofer-signature-cursor")
+  if (target.removeAttribute) target.removeAttribute("data-raven-signature-cursor")
   var range = document.createRange()
   if (target.nodeType === Node.ELEMENT_NODE) {
     range.selectNodeContents(target)
@@ -12207,7 +12207,7 @@ function composeCreateLink(el) {
   // overwrites editor._composeRange with a collapsed caret at the start.
   _saveComposeSelection(editor)
   var range = editor._composeRange ? editor._composeRange.cloneRange() : null
-  goferPrompt("Insert link", "Paste a URL or email address", { placeholder: "https://example.com", confirmLabel: "Insert" }).then(function (url) {
+  ravenPrompt("Insert link", "Paste a URL or email address", { placeholder: "https://example.com", confirmLabel: "Insert" }).then(function (url) {
     url = String(url == null ? "" : url).trim()
     if (!url) return
     if (url.indexOf("@") > 0 && !/^[a-z][a-z0-9+.-]*:/i.test(url)) url = "mailto:" + url
@@ -12414,7 +12414,7 @@ function cancelComposeAutosave(form) {
 }
 
 function composeAutosaveSetting(key, fallback) {
-  return window.GoferSettings ? (GoferSettings.get(key) || fallback) : fallback
+  return window.RavenSettings ? (RavenSettings.get(key) || fallback) : fallback
 }
 
 function composeAutosaveConditions() {
@@ -12979,7 +12979,7 @@ document.addEventListener("drop", function (event) {
 
 function composeInlineContentID(att) {
   var id = att && att.id ? String(att.id) : String(Date.now())
-  return "inline-" + id.replace(/[^a-z0-9._-]/gi, "") + "@gofer"
+  return "inline-" + id.replace(/[^a-z0-9._-]/gi, "") + "@raven"
 }
 
 function insertComposeInlineImage(form, att) {
@@ -13673,8 +13673,8 @@ function _guardComposeNavigation() {
 
 function composeViewPreference(kind) {
   var key = kind === "reply" ? "default_reply_compose_view" : "default_new_compose_view"
-  var view = window.GoferSettings ? GoferSettings.get(key) : null
-  if (!view && window.GoferSettings) view = GoferSettings.get("default_compose_view")
+  var view = window.RavenSettings ? RavenSettings.get(key) : null
+  if (!view && window.RavenSettings) view = RavenSettings.get("default_compose_view")
   return view === "pane" || view === "full" ? view : "dialog"
 }
 
@@ -13720,7 +13720,7 @@ function _continueEditingDraft(emailId) {
 }
 
 function discardReadPaneDraft(emailId) {
-  goferConfirm("Discard draft?", "This draft will be deleted permanently.", "Discard").then(function (ok) {
+  ravenConfirm("Discard draft?", "This draft will be deleted permanently.", "Discard").then(function (ok) {
     if (ok) _discardReadPaneDraft(emailId)
   })
 }
@@ -13729,7 +13729,7 @@ function _discardReadPaneDraft(emailId) {
   fetch("/api/drafts/" + encodeURIComponent(emailId), { method: "DELETE" })
     .then(function (r) {
       if (!r.ok) throw new Error("Failed to discard draft")
-      if (window.goferRefreshSidebarUnread) window.goferRefreshSidebarUnread()
+      if (window.ravenRefreshSidebarUnread) window.ravenRefreshSidebarUnread()
       // In a thread, only the draft goes; the rest of the thread stays open.
       var card = document.querySelector('[data-thread-card="' + CSS.escape(String(emailId)) + '"]')
       var slot = card && card.closest("[data-thread-slot]")
@@ -13822,7 +13822,7 @@ function chooseComposeCloseAction(form, anchor, popoverId) {
       window.tui.popover.open(root.id)
     })
   }
-  return goferChoice("Close compose?", "Keep this message as a draft, discard it permanently, or continue editing.", [
+  return ravenChoice("Close compose?", "Keep this message as a draft, discard it permanently, or continue editing.", [
     { label: "Exit and keep draft", action: "keep", primary: true },
     { label: "Exit and discard", action: "discard" },
     { label: "Cancel", action: "cancel" }
@@ -13917,7 +13917,7 @@ function confirmComposeSend(form) {
     checks.push(["Forgot an attachment?", "Your message mentions an attachment, but nothing is attached.", "Send anyway"])
   }
   return checks.reduce(function (chain, check) {
-    return chain.then(function (ok) { return ok ? goferConfirm(check[0], check[1], check[2]) : false })
+    return chain.then(function (ok) { return ok ? ravenConfirm(check[0], check[1], check[2]) : false })
   }, Promise.resolve(true))
 }
 
@@ -13926,7 +13926,7 @@ function composeMentionsAttachment(form) {
   var editor = form.querySelector("[data-compose-editor]")
   if (!editor) return false
   var clone = editor.cloneNode(true)
-  var skip = clone.querySelectorAll("blockquote, [data-gofer-signature]")
+  var skip = clone.querySelectorAll("blockquote, [data-raven-signature]")
   for (var i = 0; i < skip.length; i++) skip[i].remove()
   return /\battach(?:ed|ment|ments|ing)?\b/i.test(clone.textContent || "")
 }
@@ -13992,7 +13992,7 @@ function initComposeSchedulePanel(panel) {
   if (!panel || !panel.querySelector("[data-compose-schedule-content]")) return
   var dateInput = panel.querySelector("[data-tui-calendar-hidden-input]")
   var timeInputs = getComposeScheduleTimeInputs(panel)
-  var timezone = getGoferTimezone()
+  var timezone = getRavenTimezone()
   var date = new Date(Date.now() + 60 * 60 * 1000)
   date = new Date(Math.ceil(date.getTime() / (5 * 60 * 1000)) * 5 * 60 * 1000)
   var zoned = datePartsInTimezone(date, timezone)
@@ -14032,8 +14032,8 @@ function pad2(n) {
   return String(n).padStart(2, "0")
 }
 
-function getGoferTimezone() {
-  var timezone = window.GoferSettings ? GoferSettings.get("timezone") : null
+function getRavenTimezone() {
+  var timezone = window.RavenSettings ? RavenSettings.get("timezone") : null
   if (!timezone || timezone === "local") {
     try { timezone = Intl.DateTimeFormat().resolvedOptions().timeZone } catch (_) {}
   }
@@ -14140,11 +14140,11 @@ function timezoneOffsetLabel(timezone, date) {
   return "UTC" + sign + hours + (minutes ? ":" + pad2(minutes) : "")
 }
 
-function formatGoferDateTime(date, options) {
+function formatRavenDateTime(date, options) {
   options = options || {}
   try {
     return new Intl.DateTimeFormat(undefined, Object.assign({
-      timeZone: getGoferTimezone(),
+      timeZone: getRavenTimezone(),
       month: "short",
       day: "numeric",
       hour: "numeric",
@@ -14162,7 +14162,7 @@ function disableComposeSchedulePastDates(panel) {
   var year = parseInt(calendar.dataset.tuiCalendarCurrentYear, 10)
   if (isNaN(month) || isNaN(year)) return
 
-  var today = datePartsInTimezone(new Date(), getGoferTimezone())
+  var today = datePartsInTimezone(new Date(), getRavenTimezone())
   var todayKey = today.year * 10000 + today.month * 100 + today.day
   var days = calendar.querySelectorAll("[data-tui-calendar-day]")
   for (var i = 0; i < days.length; i++) {
@@ -14190,9 +14190,9 @@ function getComposeScheduleTimeInputs(panel) {
 function updateComposeScheduleTimezone(panel) {
   var timezoneEl = panel && panel.querySelector("[data-compose-schedule-timezone]")
   if (!timezoneEl) return
-  var label = timezoneOffsetLabel(getGoferTimezone(), new Date())
+  var label = timezoneOffsetLabel(getRavenTimezone(), new Date())
   timezoneEl.textContent = label
-  timezoneEl.parentElement.title = "Timezone: " + getGoferTimezone() + " (" + label + ")"
+  timezoneEl.parentElement.title = "Timezone: " + getRavenTimezone() + " (" + label + ")"
 }
 
 function scheduleCompose(fromPane, trigger) {
@@ -14232,7 +14232,7 @@ function scheduleCompose(fromPane, trigger) {
     showSendStatus("failed", "Choose a send time")
     return
   }
-  var scheduledAt = zonedDateTimeToDate(dateValue, hourValue, minuteValue, getGoferTimezone())
+  var scheduledAt = zonedDateTimeToDate(dateValue, hourValue, minuteValue, getRavenTimezone())
   if (isNaN(scheduledAt.getTime())) {
     showSendStatus("failed", "Choose a valid schedule time")
     return
@@ -14249,7 +14249,7 @@ function scheduleCompose(fromPane, trigger) {
   params.set("schedule_date", dateValue)
   params.set("schedule_hour", hourValue)
   params.set("schedule_minute", minuteValue)
-  params.set("schedule_timezone", getGoferTimezone())
+  params.set("schedule_timezone", getRavenTimezone())
 
   closeComposeSchedulePopover(trigger)
   showSendStatus("sending", "Scheduling...")
@@ -14270,7 +14270,7 @@ function scheduleCompose(fromPane, trigger) {
     _setComposeSending(form, false)
     form.dataset.composeDirty = "false"
     var labelDate = data && data.scheduled_for ? new Date(data.scheduled_for) : scheduledAt
-    showSendStatus("scheduled", "Will send " + formatGoferDateTime(labelDate))
+    showSendStatus("scheduled", "Will send " + formatRavenDateTime(labelDate))
     setTimeout(function () {
       if (fromPane) {
         setMailViewEmpty(true)
@@ -14587,7 +14587,7 @@ function parseMailtoIntent(raw) {
     references: "",
     attachments: [],
     inline_images: [],
-    _handlerTestToken: (headers["x-gofer-handler-test"] && headers["x-gofer-handler-test"][0]) || "",
+    _handlerTestToken: (headers["x-raven-handler-test"] && headers["x-raven-handler-test"][0]) || "",
     _ccVisible: !!cc,
     _bccVisible: !!bcc,
     _composeDirty: "true"
@@ -14614,8 +14614,8 @@ function setupMailtoIntent() {
   var values = parseMailtoIntent(params.get("mailto"))
   if (!values) {
     clearMailtoIntentFromURL()
-    if (typeof showGoferToast === "function") {
-      showGoferToast({
+    if (typeof showRavenToast === "function") {
+      showRavenToast({
         id: "mailto-intent-error",
         title: "Could not open email link",
         description: "The mail link is invalid or too large.",
@@ -14631,16 +14631,16 @@ function setupMailtoIntent() {
 
   var handlerTest = false
   try {
-    var expectedTestToken = window.localStorage.getItem("gofer_mailto_handler_test_token") || ""
+    var expectedTestToken = window.localStorage.getItem("raven_mailto_handler_test_token") || ""
     handlerTest = !!values._handlerTestToken && values._handlerTestToken === expectedTestToken
-    if (handlerTest) window.localStorage.removeItem("gofer_mailto_handler_test_token")
-    window.localStorage.setItem("gofer_mailto_handler_state", JSON.stringify({ status: "confirmed", updated_at: Date.now() }))
+    if (handlerTest) window.localStorage.removeItem("raven_mailto_handler_test_token")
+    window.localStorage.setItem("raven_mailto_handler_state", JSON.stringify({ status: "confirmed", updated_at: Date.now() }))
   } catch (_) {}
 
   if (handlerTest) {
     clearMailtoIntentFromURL()
-    if (typeof showGoferToast === "function") {
-      showGoferToast({
+    if (typeof showRavenToast === "function") {
+      showRavenToast({
         id: "mailto-handler-confirmed",
         title: "Raven opened the email link",
         description: "Email-link handling was confirmed on this browser.",
@@ -14681,7 +14681,7 @@ function handleReply(el, mode) {
 // With no account there is no sender: say so instead of opening a form whose From is "<>".
 function _composeBlockedWithoutAccount() {
   if (!document.getElementById("compose-form") || document.querySelector("[data-compose-account-item]")) return false
-  showGoferToast({ id: "compose-no-account", title: "Add an account first", description: "Connect an email account in Settings to write mail.", variant: "error", icon: "error", position: "bottom-right", duration: 6000, dismissible: true })
+  showRavenToast({ id: "compose-no-account", title: "Add an account first", description: "Connect an email account in Settings to write mail.", variant: "error", icon: "error", position: "bottom-right", duration: 6000, dismissible: true })
   return true
 }
 
@@ -14716,10 +14716,10 @@ function composeOpeningHTML() {
 }
 
 function savedMailListWidth() {
-  var value = window.GoferSettings ? GoferSettings.get("mail_list_width") : null
+  var value = window.RavenSettings ? RavenSettings.get("mail_list_width") : null
   if (!value) {
     try {
-      var settings = JSON.parse(localStorage.getItem("gofer:ui_settings") || "{}") || {}
+      var settings = JSON.parse(localStorage.getItem("raven:ui_settings") || "{}") || {}
       value = settings.mail_list_width
     } catch (_) {}
   }
@@ -15014,7 +15014,7 @@ function restoreOptimisticMailRemoval(emailId, vml) {
 // Deleting from Trash is permanent (no Undo), so it asks first. Resolves true elsewhere.
 function confirmPermanentDelete(count) {
   if (!mailFolderIsTrash(mailActionCurrentFolderID())) return Promise.resolve(true)
-  return goferConfirm(
+  return ravenConfirm(
     "Delete permanently?",
     (count > 1 ? "These " + count + " messages" : "This message") + " will be deleted permanently. This cannot be undone.",
     "Delete permanently"
@@ -15039,7 +15039,7 @@ function deleteMessageNow(emailId) {
 // Opens the row after (or, at the end of the list, before) the open email when
 // it is among removedIds. Returns true if another email was opened.
 function openNextMailAfterRemoval(removedIds) {
-  if (window.GoferSettings && GoferSettings.get("open_next_after_remove") === "false") return false
+  if (window.RavenSettings && RavenSettings.get("open_next_after_remove") === "false") return false
   var container = document.getElementById("mail-list-scroll")
   var vml = container && container._virtualMailList
   var current = vml && vml.selectedEmailId ? String(vml.selectedEmailId) : ""
@@ -15190,13 +15190,13 @@ function markSpamState(emailId, notSpam, thread) {
 // Top level on purpose: performMailAction (selection toolbar) lives in a different closure than
 // the filter code this used to be declared in, so it threw a ReferenceError.
 function promptMailLabelName(title) {
-  return goferPrompt(title, "Label name", { placeholder: "Label name", confirmLabel: title }).then(function (value) {
+  return ravenPrompt(title, "Label name", { placeholder: "Label name", confirmLabel: title }).then(function (value) {
     return value == null ? "" : String(value).trim()
   })
 }
 
 function promptLabelMessage(emailId, thread) {
-  goferPrompt("Add label", "Label name", { placeholder: "Label name", confirmLabel: "Add label" }).then(function (labelName) {
+  ravenPrompt("Add label", "Label name", { placeholder: "Label name", confirmLabel: "Add label" }).then(function (labelName) {
     labelName = String(labelName == null ? "" : labelName).trim()
     if (labelName) addLabelToMessage(emailId, labelName, thread)
   })
@@ -15230,7 +15230,7 @@ function unsubscribeFromMessage(btn) {
   var detail = method === "one-click" ? "Raven will send the unsubscribe request."
     : method === "mailto" ? "Raven will email " + (btn.dataset.unsubscribeTarget || "the sender") + " to unsubscribe."
     : "Opens the sender's unsubscribe page in your browser."
-  goferConfirm("Unsubscribe from " + sender + "?", detail, "Unsubscribe").then(function (ok) {
+  ravenConfirm("Unsubscribe from " + sender + "?", detail, "Unsubscribe").then(function (ok) {
     if (!ok) return
     btn.disabled = true
     fetch("/api/messages/" + encodeURIComponent(id) + "/unsubscribe", { method: "POST" })
@@ -15243,7 +15243,7 @@ function unsubscribeFromMessage(btn) {
           window.open(result.url, "_blank", "noopener,noreferrer")
           return
         }
-        showGoferToast({ id: "mail-unsubscribe", title: "Unsubscribed from " + sender, variant: "success", icon: "success", position: "bottom-right", duration: 5000, dismissible: true })
+        showRavenToast({ id: "mail-unsubscribe", title: "Unsubscribed from " + sender, variant: "success", icon: "success", position: "bottom-right", duration: 5000, dismissible: true })
       })
       .catch(function (err) { showMailActionError("Could not unsubscribe", err && err.message) })
       .then(function () { btn.disabled = false })
@@ -15306,7 +15306,7 @@ function mailActionJSON(response) {
 }
 
 function showMailActionError(title, description) {
-  showGoferToast({
+  showRavenToast({
     id: "mail-action-error", title: title, description: description || "Nothing was changed. Try again.",
     variant: "error", icon: "error", position: "bottom-right", duration: 6000, dismissible: true,
   })
@@ -15334,13 +15334,13 @@ function showUndoToastFromResponse(response, label) {
 
 function showUndoToast(label, moved) {
   if (!label || !moved || !moved.length) return
-  var toast = showGoferToast({
+  var toast = showRavenToast({
     id: "mail-undo-toast",
     title: label,
     variant: "success", icon: "success", position: "bottom-right", duration: 7000, dismissible: true,
     secondaryActionLabel: "Undo",
     onSecondaryAction: function () {
-      dismissGoferToast(toast)
+      dismissRavenToast(toast)
       undoMailMoves(moved)
     },
   })
@@ -15362,7 +15362,7 @@ function undoMailMoves(moved) {
     })
   })
   Promise.all(requests).catch(function () {
-    showGoferToast({
+    showRavenToast({
       id: "mail-action-error", title: "Could not undo", description: "The message was not moved back. Find it in its new folder.",
       variant: "error", icon: "error", position: "bottom-right", duration: 6000, dismissible: true,
     })
@@ -15409,8 +15409,8 @@ window.addEventListener("message", function (e) {
     if (loader) loader.remove()
     revealUnsubscribeButton(emailId)
     clearEmailBodyError(emailId)
-    if (iframe.dataset.translationActive === "true" && typeof window.goferEmailTranslationFrameLoaded === "function") {
-      window.goferEmailTranslationFrameLoaded(emailId)
+    if (iframe.dataset.translationActive === "true" && typeof window.ravenEmailTranslationFrameLoaded === "function") {
+      window.ravenEmailTranslationFrameLoaded(emailId)
     }
     return
   }
@@ -15680,7 +15680,7 @@ function allowRemoteContent(emailId, mode) {
 }
 
 function getEmailBodyBaseTheme() {
-  if (window.GoferSettings && GoferSettings.get("theme")) return GoferSettings.get("theme")
+  if (window.RavenSettings && RavenSettings.get("theme")) return RavenSettings.get("theme")
   return document.documentElement.classList.contains("dark") ? "dark" : "light"
 }
 
@@ -15689,7 +15689,7 @@ function oppositeEmailBodyTheme(theme) {
 }
 
 function readEmailBodyPalette(theme) {
-  var themeStyle = (window.GoferSettings && GoferSettings.get("theme_style")) || document.documentElement.getAttribute("data-theme") || "raven"
+  var themeStyle = (window.RavenSettings && RavenSettings.get("theme_style")) || document.documentElement.getAttribute("data-theme") || "raven"
   var probe = document.createElement("div")
   probe.setAttribute("data-theme", themeStyle)
   if (theme === "dark") probe.className = "dark"
@@ -15833,7 +15833,7 @@ function downloadMessageRaw(emailId) {
       a.remove()
     })
     .catch(function () {
-      showGoferToast({ id: "message-download-error", title: "Couldn't download message", description: "The original message isn't available yet. Open it and try again.", variant: "error", icon: "error", position: "bottom-right", duration: 6000, dismissible: true })
+      showRavenToast({ id: "message-download-error", title: "Couldn't download message", description: "The original message isn't available yet. Open it and try again.", variant: "error", icon: "error", position: "bottom-right", duration: 6000, dismissible: true })
     })
 }
 
@@ -16519,7 +16519,7 @@ function collapseComposeFullWidth() {
     preview.src = sourceURL
     preview.alt = trigger.getAttribute('data-contact-avatar-preview-alt') || source.alt || 'Profile picture'
     if (window.console && window.console.info) {
-      window.console.info('[Gofer] contact avatar preview', {
+      window.console.info('[Raven] contact avatar preview', {
         originalURL: originalURL,
         previewURL: sourceURL,
         upgraded: !!originalURL && sourceURL !== originalURL,

@@ -247,7 +247,7 @@ func TestUserStorageMigrationCopyRefusesSourceAlias(t *testing.T) {
 }
 
 func TestUserStorageMigrationCopyRecognizesHistoricalColumnsWithoutUpgradingSource(t *testing.T) {
-	// Raven's 119/120/121 are upstream gofer's 105/106/107 (docs/upstream-merge-plan.md).
+	// Raven's 119/120/121 are upstream's 105/106/107 (docs/upstream-merge-plan.md).
 	for _, version := range []int{119, 120, 121} {
 		t.Run(map[int]string{119: "119", 120: "120", 121: "121"}[version], func(t *testing.T) {
 			source := sharedMigrationFixture(t)

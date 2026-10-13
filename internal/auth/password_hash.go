@@ -58,7 +58,7 @@ var currentPasswordHashParameters = passwordHashParameters{
 
 var dummyPasswordHash = encodePasswordHash(
 	currentPasswordHashParameters,
-	[]byte("gofer-auth-dummy"),
+	[]byte("raven-auth-dummy"),
 	make([]byte, passwordHashKeyLength),
 )
 

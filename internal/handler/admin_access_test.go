@@ -81,7 +81,7 @@ func TestAdminRootRedirectsToFirstSidebarSection(t *testing.T) {
 }
 
 func TestLocalModeAdminUsesOperationalHomeAndNavigation(t *testing.T) {
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,7 +142,7 @@ func TestLocalModeAdminUsesOperationalHomeAndNavigation(t *testing.T) {
 
 func TestAdminContactAndLabelStatusAggregateWebmailUsers(t *testing.T) {
 	ctx := context.Background()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -2152,7 +2152,7 @@ func SidebarMailSyncErrorSummaryTooltip(accounts []models.Account) templ.Compone
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 139, " data-on-click='[\"goferClickElement\",\"[data-mail-sidebar-sync-button]\"]' class=\"pointer-events-auto relative inline-flex h-8 w-8 items-center justify-center\" aria-label=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 139, " data-on-click='[\"ravenClickElement\",\"[data-mail-sidebar-sync-button]\"]' class=\"pointer-events-auto relative inline-flex h-8 w-8 items-center justify-center\" aria-label=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

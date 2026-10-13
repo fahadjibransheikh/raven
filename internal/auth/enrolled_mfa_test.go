@@ -125,7 +125,7 @@ func TestPasskeyEnrollmentRevokesOtherSessionsAtomically(t *testing.T) {
 			if _, err := m.db.Write().Exec(`INSERT INTO sessions (id,user_id,token_hash,auth_version,authentication_method,assurance_level,user_agent,authenticated_at,last_used_at,idle_expires_at,absolute_expires_at,created_at) SELECT 'other-session',user_id,?,auth_version,authentication_method,assurance_level,user_agent,authenticated_at,last_used_at,idle_expires_at,absolute_expires_at,created_at FROM sessions WHERE id=?`, hashToken("other-token"), f.session.ID); err != nil {
 				t.Fatal(err)
 			}
-			start, err := m.StartPasskeyRegistration(t.Context(), f.session.Token, "https://gofer.example", "Laptop")
+			start, err := m.StartPasskeyRegistration(t.Context(), f.session.Token, "https://raven.example", "Laptop")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -134,7 +134,7 @@ func TestPasskeyEnrollmentRevokesOtherSessionsAtomically(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			_, err = m.FinishPasskeyRegistration(t.Context(), start.Challenge.Token, f.session.Token, "https://gofer.example", []byte(`{}`), "Browser")
+			_, err = m.FinishPasskeyRegistration(t.Context(), start.Challenge.Token, f.session.Token, "https://raven.example", []byte(`{}`), "Browser")
 			if (err != nil) != failAudit {
 				t.Fatalf("registration error: %v", err)
 			}

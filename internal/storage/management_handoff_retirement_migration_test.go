@@ -46,7 +46,7 @@ func seedV88HandoffDatabase(t *testing.T, path, handoffStatus string) {
 }
 
 func TestMigrateV88RetiresCompletedManagementHandoffWithoutChangingUsers(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "gofer.db")
+	path := filepath.Join(t.TempDir(), "raven.db")
 	seedV88HandoffDatabase(t, path, "completed")
 
 	db, err := New(path)
@@ -76,7 +76,7 @@ func TestMigrateV88RetiresCompletedManagementHandoffWithoutChangingUsers(t *test
 }
 
 func TestMigrateV88RejectsIncompleteManagementHandoffWithoutDroppingState(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "gofer.db")
+	path := filepath.Join(t.TempDir(), "raven.db")
 	seedV88HandoffDatabase(t, path, "pending")
 
 	if db, err := New(path); err == nil {

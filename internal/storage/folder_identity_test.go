@@ -207,7 +207,7 @@ func TestMigrateV65FolderIdentityRejectsDuplicateProviderIdentity(t *testing.T) 
 
 func seedV65FolderIdentityDB(t *testing.T, duplicate bool) string {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), "gofer.db")
+	path := filepath.Join(t.TempDir(), "raven.db")
 	initial, err := New(path)
 	if err != nil {
 		t.Fatalf("create current database: %v", err)

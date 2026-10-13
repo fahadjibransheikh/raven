@@ -82,7 +82,7 @@ func TestUserContactPreviewHTTPAtomicStoredValuesAndOwnerIsolation(t *testing.T)
 			if err != nil {
 				return err
 			}
-			if contact == nil || contact.GoferSyncEnabled || contact.Email != owner+"-setup@example.com" {
+			if contact == nil || contact.RavenSyncEnabled || contact.Email != owner+"-setup@example.com" {
 				t.Fatal("preview changed canonical values", contact)
 			}
 			var donorCard sql.NullString

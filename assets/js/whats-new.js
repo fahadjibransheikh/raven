@@ -5,11 +5,11 @@
 
   var ID = "whats-new-dialog";
 
-  // GoferSettings keeps a cache that later settings saves send back in full,
+  // RavenSettings keeps a cache that later settings saves send back in full,
   // so it has to learn the value too or a later save would erase it.
   function remember(version) {
     if (!version) return;
-    if (window.GoferSettings && window.GoferSettings.set) window.GoferSettings.set("whats_new_seen", version);
+    if (window.RavenSettings && window.RavenSettings.set) window.RavenSettings.set("whats_new_seen", version);
     fetch("/api/settings/ui", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },

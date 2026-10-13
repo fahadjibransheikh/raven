@@ -9,7 +9,7 @@ import (
 )
 
 // The shared layout stored message and upload paths relative to the working
-// directory Gofer was started from. Relative paths only resolve, and retention
+// directory Raven was started from. Relative paths only resolve, and retention
 // only recognizes them as referenced, from that directory.
 const relativeStoredPath = `(%[1]s<>'' AND substr(%[1]s,1,1) NOT IN ('/','\'))`
 

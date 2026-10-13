@@ -82,7 +82,7 @@ func TestUserMailboxAccountHTTPLifecycleAndIsolation(t *testing.T) {
 		}
 	}
 	rec := f.request("alice", http.MethodPost, "/api/accounts", userAccountForm("shared@example.com", "Alice extra", "alice-extra-password"))
-	id := rec.Header().Get("X-Gofer-Account-ID")
+	id := rec.Header().Get("X-Raven-Account-ID")
 	if rec.Code != http.StatusOK || id == "" || !strings.Contains(rec.Body.String(), "shared@example.com") {
 		t.Fatalf("create: %d %s", rec.Code, rec.Body.String())
 	}
@@ -95,7 +95,7 @@ func TestUserMailboxAccountHTTPLifecycleAndIsolation(t *testing.T) {
 		t.Fatal("create hook not called")
 	}
 	rec = f.request("bob", http.MethodPost, "/api/accounts", userAccountForm("shared@example.com", "Bob extra", "bob-extra-password"))
-	bobID := rec.Header().Get("X-Gofer-Account-ID")
+	bobID := rec.Header().Get("X-Raven-Account-ID")
 	if rec.Code != http.StatusOK || bobID == "" || bobID == id {
 		t.Fatalf("shared mailbox create: %d %s", rec.Code, rec.Body.String())
 	}
@@ -417,7 +417,7 @@ func TestUserMailboxRenderingReleasesDatabaseBeforeClientWrite(t *testing.T) {
 func TestUserMailboxWorkerStartFailureReportsSavedAccount(t *testing.T) {
 	f := newUserStorageFixture(t, handler.UserAccountHooks{Created: func(context.Context, string) error { return errors.New("start failed") }, Updated: func(context.Context, string) error { return nil }, Cleanup: func(context.Context, string) error { return nil }})
 	rec := f.request("alice", http.MethodPost, "/api/accounts", userAccountForm("persisted@example.com", "Persisted", "password"))
-	id := rec.Header().Get("X-Gofer-Account-ID")
+	id := rec.Header().Get("X-Raven-Account-ID")
 	if rec.Code != http.StatusServiceUnavailable || id == "" {
 		t.Fatalf("start failure: %d %s", rec.Code, rec.Body.String())
 	}

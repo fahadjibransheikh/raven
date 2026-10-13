@@ -74,7 +74,7 @@ func TestGlobalProcessingStatusRequiresAdmin(t *testing.T) {
 func TestSSEStreamEndsWhenItsSessionIsRevoked(t *testing.T) {
 	h, db := newAccountOwnershipTestHandler(t)
 	h.syncer = mail.NewSyncOrchestrator(db, nil, nil, nil)
-	h.auth = auth.NewManager(&auth.Config{Enabled: true, BaseURL: "https://gofer.example"}, db, auth.Dependencies{BucketHashKey: []byte("0123456789abcdef0123456789abcdef")})
+	h.auth = auth.NewManager(&auth.Config{Enabled: true, BaseURL: "https://raven.example"}, db, auth.Dependencies{BucketHashKey: []byte("0123456789abcdef0123456789abcdef")})
 	session, err := h.auth.CreateAuthenticatedSession(t.Context(), "owner", "test", auth.AuthenticationMethodPassword, auth.AssuranceLevelSingleFactor)
 	if err != nil {
 		t.Fatal(err)

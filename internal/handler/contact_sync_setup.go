@@ -15,10 +15,10 @@ import (
 )
 
 func contactSyncSetupRequired(requested models.Contact, previous *models.Contact) bool {
-	if !requested.GoferSyncEnabled {
+	if !requested.RavenSyncEnabled {
 		return false
 	}
-	if previous == nil || !previous.GoferSyncEnabled {
+	if previous == nil || !previous.RavenSyncEnabled {
 		return true
 	}
 	existing := make(map[string]bool, len(previous.SaveTargets))

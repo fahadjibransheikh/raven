@@ -63,9 +63,9 @@ func contactEditAvatarRemoveClass(hasAvatar bool) string {
 }
 
 // contactAvatarPreviewURL is the address of the larger photo shown when a
-// contact's picture is opened. Google photos are fetched through Gofer, which
+// contact's picture is opened. Google photos are fetched through Raven, which
 // only fetches photos saved for one of the person's contacts, so the address
-// names the saved photo and asks Gofer for its large version.
+// names the saved photo and asks Raven for its large version.
 func contactAvatarPreviewURL(rawURL string) string {
 	rawURL = strings.TrimSpace(rawURL)
 	if _, ok := GoogleAvatarLargeURL(rawURL); ok {
@@ -520,7 +520,7 @@ func contactProfileSyncLabel(profile *models.ContactProfile) string {
 }
 
 func contactSyncLabel(contact *models.Contact) string {
-	if contact != nil && contact.GoferSyncEnabled {
+	if contact != nil && contact.RavenSyncEnabled {
 		return "Enabled"
 	}
 	return "Disabled"
@@ -6364,7 +6364,7 @@ func ContactLegacySourcePanel(contact *models.Contact, accounts []models.Account
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var247 = []any{contactSyncEnabledBadgeClass(contact != nil && contact.GoferSyncEnabled)}
+		var templ_7745c5c3_Var247 = []any{contactSyncEnabledBadgeClass(contact != nil && contact.RavenSyncEnabled)}
 		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var247...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -6402,7 +6402,7 @@ func ContactLegacySourcePanel(contact *models.Contact, accounts []models.Account
 		templ_7745c5c3_Err = switchcomp.Switch(switchcomp.Props{
 			ID:         contactSyncEnabledID(contact),
 			Name:       "sync_enabled",
-			Checked:    contact != nil && contact.GoferSyncEnabled,
+			Checked:    contact != nil && contact.RavenSyncEnabled,
 			Attributes: templ.Attributes{"aria-label": "Enable Raven Sync", "data-contact-sync-enabled": ""},
 		}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
@@ -6463,7 +6463,7 @@ func ContactLegacySourcePanel(contact *models.Contact, accounts []models.Account
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = ContactSyncTargetsSelect(contact, accounts, contact != nil && contact.GoferSyncEnabled).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = ContactSyncTargetsSelect(contact, accounts, contact != nil && contact.RavenSyncEnabled).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

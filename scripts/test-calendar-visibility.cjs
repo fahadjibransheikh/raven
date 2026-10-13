@@ -15,7 +15,7 @@ const context = vm.createContext({
   document: {querySelectorAll() { return [] }},
   fetch(url, options) { return new Promise((resolve, reject) => requests.push({url, options, resolve, reject})) },
   initializeCalendarDaySelection() { restores++ },
-  showGoferToast(message) { errors.push(message) },
+  showRavenToast(message) { errors.push(message) },
 })
 vm.runInContext('var _calendarVisibility = new Map();\n' +
   ['_calendarSourceIsVisible', 'initializeCalendarVisibility', 'saveCalendarVisibility', '_calendarMonthVisibleCount', '_calendarAllDayEventRows', 'layoutCalendarMonth'].map(helper).join('\n'), context)

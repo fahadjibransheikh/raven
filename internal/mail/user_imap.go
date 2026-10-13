@@ -549,7 +549,7 @@ func (s *UserIMAP) EnsureBody(ctx context.Context, owner string, msgID int64) er
 }
 
 // EnsureFullBody is EnsureBody for a message the reader asked to see although
-// it is larger than Gofer downloads on its own.
+// it is larger than Raven downloads on its own.
 func (s *UserIMAP) EnsureFullBody(ctx context.Context, owner string, msgID int64) error {
 	_, err := s.ensureBody(ctx, owner, msgID, bodyEnsureFull)
 	return err

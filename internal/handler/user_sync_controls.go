@@ -222,14 +222,14 @@ func (h *Handler) handleUserManualSync(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	w.Header().Set("X-Gofer-Mail-Sync-Run-ID", id)
+	w.Header().Set("X-Raven-Mail-Sync-Run-ID", id)
 	if !started {
-		w.Header().Set("X-Gofer-Mail-Sync-Running", "true")
+		w.Header().Set("X-Raven-Mail-Sync-Running", "true")
 		htmlStatus(w, http.StatusOK, "Mail sync is already running.")
 		return
 	}
-	w.Header().Set("X-Gofer-Mail-Sync-Accounts", strconv.Itoa(len(ids)))
-	w.Header().Set("X-Gofer-Mail-Sync-Mode", "sync")
+	w.Header().Set("X-Raven-Mail-Sync-Accounts", strconv.Itoa(len(ids)))
+	w.Header().Set("X-Raven-Mail-Sync-Mode", "sync")
 	message := fmt.Sprintf("Mail sync started for %d accounts.", len(ids))
 	if len(ids) == 1 {
 		message = "Mail sync started for 1 account."

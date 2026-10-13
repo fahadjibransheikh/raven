@@ -121,8 +121,8 @@ var initResizeHandles;
       } else {
         setSize(panel, finalSize, axis);
       }
-      if (typeof GoferSettings !== "undefined") {
-        GoferSettings.set(settingKey(panelName), settingValue);
+      if (typeof RavenSettings !== "undefined") {
+        RavenSettings.set(settingKey(panelName), settingValue);
       }
       document.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseup", onUp);
@@ -143,8 +143,8 @@ var initResizeHandles;
   initResizeHandles = function () {
     document.querySelectorAll(".resize-handle").forEach(function (h) {
       var name = h.dataset.panel;
-      if (typeof GoferSettings !== "undefined" && !(name === "sidebar" && phoneQuery.matches)) {
-        var saved = GoferSettings.get(settingKey(name));
+      if (typeof RavenSettings !== "undefined" && !(name === "sidebar" && phoneQuery.matches)) {
+        var saved = RavenSettings.get(settingKey(name));
         if (saved) {
           var b = getBounds(name);
           var panel = getPanel(h);

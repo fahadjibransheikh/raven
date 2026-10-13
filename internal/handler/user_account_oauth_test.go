@@ -107,13 +107,13 @@ func newUserOAuthFixture(t *testing.T, block func(http.ResponseWriter, *http.Req
 	t.Cleanup(server.Close)
 	address, _ := url.Parse(server.URL)
 	f.client = &http.Client{Transport: userOAuthTransport{address}}
-	cfg := &mailauth.Config{BaseURL: "https://gofer.test", GoogleClient: &oauth2.Config{ClientID: "client", ClientSecret: "secret", Endpoint: oauth2.Endpoint{AuthURL: "https://authorize.test/google", TokenURL: server.URL + "/token", AuthStyle: oauth2.AuthStyleInParams}}, MicrosoftClient: &oauth2.Config{ClientID: "client", Endpoint: oauth2.Endpoint{AuthURL: "https://authorize.test/microsoft", TokenURL: server.URL + "/token", AuthStyle: oauth2.AuthStyleInParams}}}
+	cfg := &mailauth.Config{BaseURL: "https://raven.test", GoogleClient: &oauth2.Config{ClientID: "client", ClientSecret: "secret", Endpoint: oauth2.Endpoint{AuthURL: "https://authorize.test/google", TokenURL: server.URL + "/token", AuthStyle: oauth2.AuthStyleInParams}}, MicrosoftClient: &oauth2.Config{ClientID: "client", Endpoint: oauth2.Endpoint{AuthURL: "https://authorize.test/microsoft", TokenURL: server.URL + "/token", AuthStyle: oauth2.AuthStyleInParams}}}
 	credentials, err := mailauth.NewUserCredentials(ctx, cfg, routing, testMailboxCredentialKey)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { cancel(); credentials.Wait() })
-	manager := auth.NewManager(&auth.Config{Enabled: true, Mode: auth.ModeManaged, BaseURL: "https://gofer.test"}, db, auth.Dependencies{BucketHashKey: testMailboxCredentialKey})
+	manager := auth.NewManager(&auth.Config{Enabled: true, Mode: auth.ModeManaged, BaseURL: "https://raven.test"}, db, auth.Dependencies{BucketHashKey: testMailboxCredentialKey})
 	for _, owner := range []string{"alice", "bob"} {
 		f.sessions[owner], err = manager.CreateSession(t.Context(), owner, "oauth test")
 		if err != nil {
@@ -554,7 +554,7 @@ func TestUserOAuthPartialSetupReportsFailures(t *testing.T) {
 			if !strings.Contains(rec.Header().Get("Location"), expected) {
 				t.Fatalf("partial %s: %s", stage, rec.Header())
 			}
-			id := rec.Header().Get("X-Gofer-Account-ID")
+			id := rec.Header().Get("X-Raven-Account-ID")
 			if id == "" {
 				t.Fatal("durable account ID was lost")
 			}

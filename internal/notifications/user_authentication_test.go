@@ -117,7 +117,7 @@ func TestUserAuthenticationAssetsAndUnknownRoutes(t *testing.T) {
 			t.Fatal("public auth route", path, response.Code, response.Header())
 		}
 	}
-	if response := f.request("alice", "GET", "/not-a-gofer-route", ""); response.Code != 404 {
+	if response := f.request("alice", "GET", "/not-a-raven-route", ""); response.Code != 404 {
 		t.Fatal("unknown route reached mailbox home", response.Code)
 	}
 	// Unsupported administrator data paths must not fall through to the private

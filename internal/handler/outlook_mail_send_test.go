@@ -41,7 +41,7 @@ func TestSendOutlookGraphMessageIgnoresNonOutlook(t *testing.T) {
 
 func TestSaveOutlookGraphDraftCreatesMIMEDraftAndCachesProviderID(t *testing.T) {
 	ctx := context.Background()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}
@@ -137,7 +137,7 @@ func TestSaveOutlookGraphDraftCreatesMIMEDraftAndCachesProviderID(t *testing.T) 
 
 func TestSendOutlookGraphMessageUsesSendMailMIMEAndCachesSentID(t *testing.T) {
 	ctx := context.Background()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}

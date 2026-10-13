@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-const administratorUserInvitationActionReferenceContext = "gofer/auth/administrator-user-invitation-action-reference/v1"
+const administratorUserInvitationActionReferenceContext = "raven/auth/administrator-user-invitation-action-reference/v1"
 
 var (
 	ErrAdministratorUserInvitationTargetInvalid = errors.New("administrator user invitation target is invalid")
@@ -66,7 +66,7 @@ type administratorUserInvitationTarget struct {
 	Username string
 }
 
-// CreateAdministratorUserInvitation creates an ordinary pending Gofer user
+// CreateAdministratorUserInvitation creates an ordinary pending Raven user
 // and its first enrollment token in one security transition. The raw token is
 // returned only from this call; SQLite stores only its SHA-256 hash.
 func (m *Manager) CreateAdministratorUserInvitation(ctx context.Context, options CreateAdministratorUserInvitationOptions) (*AdministratorUserInvitation, error) {

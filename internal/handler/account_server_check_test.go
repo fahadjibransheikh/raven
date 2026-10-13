@@ -27,11 +27,11 @@ func serverCheck(t *testing.T, h *Handler, values url.Values) []accountServerNot
 	return body.Notes
 }
 
-// The account form learns that Gofer will refuse a server before the account
+// The account form learns that Raven will refuse a server before the account
 // is saved and tested.
 func TestAccountServerCheckReportsRefusedServersWhileTyping(t *testing.T) {
 	h, db := newAccountOwnershipTestHandler(t)
-	h.auth = auth.NewManager(&auth.Config{Enabled: true, Mode: auth.ModeManaged, BaseURL: "https://gofer.example"}, db)
+	h.auth = auth.NewManager(&auth.Config{Enabled: true, Mode: auth.ModeManaged, BaseURL: "https://raven.example"}, db)
 	check := func(host, port, tls string) []accountServerNote {
 		return serverCheck(t, h, url.Values{"protocol": {"imap"}, "host": {host}, "port": {port}, "tls_mode": {tls}})
 	}
@@ -81,7 +81,7 @@ func TestAccountServerCheckLinksWhereThePersonCanApprove(t *testing.T) {
 		{auth.ModeManaged, ""},
 	} {
 		h, db := newAccountOwnershipTestHandler(t)
-		h.auth = auth.NewManager(&auth.Config{Enabled: tc.mode != auth.ModeOpen, Mode: tc.mode, BaseURL: "https://gofer.example"}, db)
+		h.auth = auth.NewManager(&auth.Config{Enabled: tc.mode != auth.ModeOpen, Mode: tc.mode, BaseURL: "https://raven.example"}, db)
 		notes := serverCheck(t, h, url.Values{"protocol": {"smtp"}, "host": {"127.0.0.1"}, "port": {"25"}, "tls_mode": {"starttls"}})
 		if len(notes) != 1 || notes[0].Link != tc.link {
 			t.Fatalf("%s mode notes = %#v, want link %q", tc.mode, notes, tc.link)
@@ -95,7 +95,7 @@ func TestAccountServerCheckLinksWhereThePersonCanApprove(t *testing.T) {
 // Calendar and contacts server addresses get the same note as mail servers.
 func TestAccountServerCheckReportsRefusedDAVAddresses(t *testing.T) {
 	h, db := newAccountOwnershipTestHandler(t)
-	h.auth = auth.NewManager(&auth.Config{Enabled: true, Mode: auth.ModeManaged, BaseURL: "https://gofer.example"}, db)
+	h.auth = auth.NewManager(&auth.Config{Enabled: true, Mode: auth.ModeManaged, BaseURL: "https://raven.example"}, db)
 	check := func(address string) []accountServerNote {
 		return serverCheck(t, h, url.Values{"url": {address}})
 	}

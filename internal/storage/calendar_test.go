@@ -7,7 +7,7 @@ import (
 )
 
 func TestReplaceCalendarSourcesReconcilesAndPreservesSelection(t *testing.T) {
-	db, err := New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func TestReplaceCalendarSourcesReconcilesAndPreservesSelection(t *testing.T) {
 }
 
 func TestSetCalendarSourceSelectionValidatesAndReplacesSelection(t *testing.T) {
-	db, err := New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +130,7 @@ func TestSetCalendarSourceSelectionValidatesAndReplacesSelection(t *testing.T) {
 }
 
 func TestReplaceCalendarEventsReconcilesWindowAndListsSelected(t *testing.T) {
-	db, err := New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatal(err)
 	}

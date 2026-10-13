@@ -61,7 +61,7 @@ func (a *ownedCalendarDeleteAPI) serve(base http.Handler) http.Handler {
 			if r.URL.Path != collection || !strings.Contains(string(body), "calendar-multiget") || !strings.Contains(string(body), "<c:expand start=") {
 				a.t.Error("unsafe occurrence membership request", r.URL.Path, string(body))
 			}
-			expanded := "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Gofer//Test//EN\r\nBEGIN:VEVENT\r\nUID:private-uid\r\nDTSTAMP:20261003T090000Z\r\nRECURRENCE-ID:20261003T100000Z\r\nDTSTART:20261003T100000Z\r\nDTEND:20261003T110000Z\r\nSUMMARY:Private appointment\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+			expanded := "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Raven//Test//EN\r\nBEGIN:VEVENT\r\nUID:private-uid\r\nDTSTAMP:20261003T090000Z\r\nRECURRENCE-ID:20261003T100000Z\r\nDTSTART:20261003T100000Z\r\nDTEND:20261003T110000Z\r\nSUMMARY:Private appointment\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
 			var escaped bytes.Buffer
 			_ = xml.EscapeText(&escaped, []byte(expanded))
 			w.WriteHeader(207)
@@ -146,7 +146,7 @@ func (a *ownedCalendarDeleteAPI) serve(base http.Handler) http.Handler {
 				return
 			}
 			w.Header().Set("Content-Type", "text/calendar")
-			_, _ = fmt.Fprintf(w, "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Gofer//Test//EN\r\nBEGIN:VEVENT\r\nUID:private-uid\r\nDTSTAMP:20261003T090000Z\r\nDTSTART:20261003T100000Z\r\nDTEND:20261003T110000Z\r\nSUMMARY:Private appointment\r\n%sEND:VEVENT\r\nEND:VCALENDAR\r\n", recurrence)
+			_, _ = fmt.Fprintf(w, "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Raven//Test//EN\r\nBEGIN:VEVENT\r\nUID:private-uid\r\nDTSTAMP:20261003T090000Z\r\nDTSTART:20261003T100000Z\r\nDTEND:20261003T110000Z\r\nSUMMARY:Private appointment\r\n%sEND:VEVENT\r\nEND:VCALENDAR\r\n", recurrence)
 			return
 		}
 		id := "event"

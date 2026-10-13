@@ -150,7 +150,7 @@ func (a *ownedCalendarSyncAPI) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	if a.base.provider == "caldav" {
-		ics := "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Gofer//Test//EN\r\nBEGIN:VEVENT\r\nUID:private-uid\r\nDTSTART:20261003T100000Z\r\nDTEND:20261003T110000Z\r\nSUMMARY:" + owner + " private refreshed appointment\r\nDESCRIPTION:Full notes\r\nORGANIZER:mailto:" + owner + "@example.com\r\nATTENDEE;PARTSTAT=ACCEPTED:mailto:guest@example.com\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+		ics := "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Raven//Test//EN\r\nBEGIN:VEVENT\r\nUID:private-uid\r\nDTSTART:20261003T100000Z\r\nDTEND:20261003T110000Z\r\nSUMMARY:" + owner + " private refreshed appointment\r\nDESCRIPTION:Full notes\r\nORGANIZER:mailto:" + owner + "@example.com\r\nATTENDEE;PARTSTAT=ACCEPTED:mailto:guest@example.com\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
 		href := r.URL.Path + "event.ics"
 		if foreign != "" {
 			href = foreign
@@ -238,7 +238,7 @@ func TestUserCalendarSyncHTTPProvidersRefreshOwnerIsolationAndEvents(t *testing.
 			defer f.events.Unsubscribe(events)
 			for _, owner := range []string{"alice", "bob"} {
 				r := calendarSyncRequest(f, owner)
-				if r.Code != 200 || r.Header().Get("X-Gofer-Status") == "error" || !strings.Contains(r.Body.String(), owner+" private refreshed appointment") {
+				if r.Code != 200 || r.Header().Get("X-Raven-Status") == "error" || !strings.Contains(r.Body.String(), owner+" private refreshed appointment") {
 					t.Fatal("refresh", provider, owner, r.Code, r.Body.String())
 				}
 				if strings.Contains(r.Body.String(), map[string]string{"alice": "bob", "bob": "alice"}[owner]+" private refreshed") {
@@ -320,7 +320,7 @@ func TestUserCalendarSyncHTTPPartialProviderAndLocalFailureRetry(t *testing.T) {
 					}
 				}
 				r := calendarSyncRequest(f, "alice")
-				if r.Code != 200 || r.Header().Get("X-Gofer-Status") != "error" {
+				if r.Code != 200 || r.Header().Get("X-Raven-Status") != "error" {
 					t.Fatal("failure response", r.Code, r.Body.String())
 				}
 				if err := f.routing.WithUser(t.Context(), "alice", func(db *storage.DB) error {
@@ -343,7 +343,7 @@ func TestUserCalendarSyncHTTPPartialProviderAndLocalFailureRetry(t *testing.T) {
 						t.Fatal(err)
 					}
 				}
-				if r := calendarSyncRequest(f, "alice"); r.Code != 200 || r.Header().Get("X-Gofer-Status") == "error" {
+				if r := calendarSyncRequest(f, "alice"); r.Code != 200 || r.Header().Get("X-Raven-Status") == "error" {
 					t.Fatal("retry", r.Code, r.Body.String())
 				}
 			})
@@ -441,11 +441,11 @@ func TestUserCalendarSyncHTTPThrottleForeignContinuationAndRedirect(t *testing.T
 		t.Run(provider, func(t *testing.T) {
 			f, api := newOwnedCalendarSyncFixture(t, provider)
 			api.throttle = true
-			if r := calendarSyncRequest(f, "alice"); r.Header().Get("X-Gofer-Status") != "error" {
+			if r := calendarSyncRequest(f, "alice"); r.Header().Get("X-Raven-Status") != "error" {
 				t.Fatal("throttle", r.Code)
 			}
 			before := api.count("alice")
-			if r := calendarSyncRequest(f, "alice"); r.Code != 200 || r.Header().Get("X-Gofer-Status") != "error" {
+			if r := calendarSyncRequest(f, "alice"); r.Code != 200 || r.Header().Get("X-Raven-Status") != "error" {
 				t.Fatal("durable throttle", r.Code)
 			}
 			if api.count("alice") != before {
@@ -471,7 +471,7 @@ func TestUserCalendarSyncHTTPThrottleForeignContinuationAndRedirect(t *testing.T
 			case "dav-resource":
 				api.foreignHref = "/users/bob/calendars/primary/other.ics"
 			}
-			if r := calendarSyncRequest(f, "alice"); r.Code != 200 || r.Header().Get("X-Gofer-Status") != "error" {
+			if r := calendarSyncRequest(f, "alice"); r.Code != 200 || r.Header().Get("X-Raven-Status") != "error" {
 				t.Fatal("foreign endpoint", r.Code, r.Body.String())
 			}
 			if leaked.Load() != 0 {

@@ -57,7 +57,7 @@ func seedV79ChallengeSchema(t *testing.T, path string) {
 }
 
 func TestMigrateV79AddsOriginBindingAndInvalidatesLegacyChallenges(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "gofer.db")
+	path := filepath.Join(t.TempDir(), "raven.db")
 	seedV79ChallengeSchema(t, path)
 
 	db, err := New(path)
@@ -86,14 +86,14 @@ func TestMigrateV79AddsOriginBindingAndInvalidatesLegacyChallenges(t *testing.T)
 	assertNoForeignKeyViolations(t, db.Read())
 	assertExecFails(t, db.Write(), `
 		INSERT INTO auth_challenges (id, challenge_hash, purpose, origin, expires_at)
-		VALUES ('invalid-hash', 'not-a-hash', 'login', 'https://gofer.example', datetime('now', '+1 minute'))`)
+		VALUES ('invalid-hash', 'not-a-hash', 'login', 'https://raven.example', datetime('now', '+1 minute'))`)
 	assertExecFails(t, db.Write(), `
 		INSERT INTO auth_challenges (id, challenge_hash, purpose, origin, expires_at)
 		VALUES ('missing-origin', '`+strings.Repeat("a", 64)+`', 'login', '', datetime('now', '+1 minute'))`)
 }
 
 func TestMigrateV79ChallengeFailureRollsBack(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "gofer.db")
+	path := filepath.Join(t.TempDir(), "raven.db")
 	seedV79ChallengeSchema(t, path)
 	raw, err := openDB(path)
 	if err != nil {

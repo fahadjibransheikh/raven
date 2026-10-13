@@ -18,7 +18,7 @@ async function run(response) {
     await new Promise(function (resolve) { w.document.addEventListener("DOMContentLoaded", resolve) })
   }
   const toasts = []
-  w.showGoferToast = function (opts) { toasts.push(opts) }
+  w.showRavenToast = function (opts) { toasts.push(opts) }
   w.document.querySelector("[data-folder-mark-all-read]").click()
   await new Promise(function (resolve) { setTimeout(resolve, 20) })
   return toasts

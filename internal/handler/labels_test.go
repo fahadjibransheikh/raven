@@ -19,7 +19,7 @@ import (
 
 func TestLabelActionFallsBackToLocalLabelWhenRemoteApplyFails(t *testing.T) {
 	ctx := context.Background()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}
@@ -106,7 +106,7 @@ func TestLabelActionFallsBackToLocalLabelWhenRemoteApplyFails(t *testing.T) {
 
 func TestIMAPKeywordForMessageLabelUsesPredefinedProviderID(t *testing.T) {
 	ctx := context.Background()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}

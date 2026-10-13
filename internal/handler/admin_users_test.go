@@ -347,7 +347,7 @@ func TestAdministratorCanRequireAndClearIndividualUserMFA(t *testing.T) {
 		INSERT INTO totp_credentials (
 			id, user_id, encrypted_seed, key_version, algorithm, digits,
 			period, issuer, enabled, created_at
-		) VALUES ('policy-target-totp', 'policy-target', x'01', 1, 'SHA1', 6, 30, 'Gofer', 1, ?)`,
+		) VALUES ('policy-target-totp', 'policy-target', x'01', 1, 'SHA1', 6, 30, 'Raven', 1, ?)`,
 		now, now, now,
 	); err != nil {
 		t.Fatal(err)
@@ -598,7 +598,7 @@ func TestAdministratorCanIssueAndRedeemWebmailUserCredentialReset(t *testing.T) 
 		INSERT INTO totp_credentials (
 			id, user_id, encrypted_seed, key_version, algorithm, digits,
 			period, issuer, enabled, created_at
-		) VALUES ('reset-target-totp', 'reset-target', x'01', 1, 'SHA1', 6, 30, 'Gofer', 1, ?)`,
+		) VALUES ('reset-target-totp', 'reset-target', x'01', 1, 'SHA1', 6, 30, 'Raven', 1, ?)`,
 		now, now, now, now,
 	); err != nil {
 		t.Fatal(err)
@@ -651,7 +651,7 @@ func TestAdministratorCanIssueAndRedeemWebmailUserCredentialReset(t *testing.T) 
 	rawToken := match[1]
 	for _, want := range []string{
 		"Password-reset token created", "Reset token ready for reset-target",
-		"Raven stores only a hash of the token", "https://gofer.example/account/redeem",
+		"Raven stores only a hash of the token", "https://raven.example/account/redeem",
 		"Successful redemption signs the user out everywhere, preserves MFA",
 	} {
 		if !strings.Contains(issued.Body.String(), want) {
@@ -779,7 +779,7 @@ func TestAdministratorCanCreateAndRedeemSingleUseUserInvitation(t *testing.T) {
 	rawToken := match[1]
 	for _, want := range []string{
 		"Invitation created", "invited.person is pending enrollment",
-		"https://gofer.example/account/enroll", "Copy invitation details",
+		"https://raven.example/account/enroll", "Copy invitation details",
 		"token is deliberately not placed in the URL", "2 users",
 	} {
 		if !strings.Contains(html, want) {

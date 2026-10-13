@@ -10,13 +10,13 @@ import (
 	"time"
 )
 
-// Gofer's pages may run only scripts loaded from Gofer's own files: no
+// Raven's pages may run only scripts loaded from Raven's own files: no
 // inline scripts, no inline event handlers, no eval. If HTML is ever injected
 // into a page, the browser then refuses to run it. Responses with their own
 // policy, such as message bodies and message files, replace it.
 //
 // The browser reports what the policy blocks to ScriptPolicyReportPath, and
-// Gofer logs it, so a page that still depends on inline code shows up as a
+// Raven logs it, so a page that still depends on inline code shows up as a
 // log line rather than only as a button that does nothing.
 const (
 	ScriptPolicyReportPath = "/api/csp-report"
@@ -24,7 +24,7 @@ const (
 	scriptPolicy           = "script-src 'self'; report-uri " + ScriptPolicyReportPath
 )
 
-// PagePolicy is the Content-Security-Policy of Gofer's own pages.
+// PagePolicy is the Content-Security-Policy of Raven's own pages.
 const PagePolicy = pagePolicy + "; " + scriptPolicy
 
 func setPagePolicy(headers http.Header) {

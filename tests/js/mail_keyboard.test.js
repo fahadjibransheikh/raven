@@ -23,7 +23,7 @@ async function setup(opts) {
     return Promise.resolve({ ok: true, json: function () { return Promise.resolve({ moved: [] }) } })
   }
   w.VirtualMailList = function () { return new Proxy({}, { get: function (_, prop) { return prop === "folderID" ? (opts.folder || "f-inbox") : function () { return Promise.resolve() } } }) }
-  w.goferConfirm = function (title) { confirms.push(title); return Promise.resolve(!!opts.confirmYes) }
+  w.ravenConfirm = function (title) { confirms.push(title); return Promise.resolve(!!opts.confirmYes) }
   w.eval(appJS)
   if (w.document.readyState === "loading") {
     await new Promise(function (resolve) { w.document.addEventListener("DOMContentLoaded", resolve) })

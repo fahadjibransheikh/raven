@@ -145,7 +145,7 @@ func TestRotateSetupTokenLocallyReplacesSecretAndResetsAttempts(t *testing.T) {
 	if _, err := manager.db.Write().ExecContext(t.Context(), `
 		INSERT INTO auth_challenges (
 			id, challenge_hash, purpose, origin, attempts, max_attempts, created_at, expires_at
-		) VALUES ('old-setup-access', ?, 'enrollment', 'https://gofer.example', 0, 3, ?, ?)`,
+		) VALUES ('old-setup-access', ?, 'enrollment', 'https://raven.example', 0, 3, ?, ?)`,
 		hashToken("old-setup-access-secret"), now.Add(-time.Minute), now.Add(time.Minute)); err != nil {
 		t.Fatal(err)
 	}
@@ -249,7 +249,7 @@ func TestRotateSetupTokenLocallyRollsBackWhenAuditFails(t *testing.T) {
 	if _, err := manager.db.Write().ExecContext(t.Context(), `
 		INSERT INTO auth_challenges (
 			id, challenge_hash, purpose, origin, attempts, max_attempts, created_at, expires_at
-		) VALUES ('rollback-setup-access', ?, 'enrollment', 'https://gofer.example', 0, 3, ?, ?)`,
+		) VALUES ('rollback-setup-access', ?, 'enrollment', 'https://raven.example', 0, 3, ?, ?)`,
 		hashToken("rollback-setup-access-secret"), now.Add(-time.Minute), now.Add(time.Minute)); err != nil {
 		t.Fatal(err)
 	}

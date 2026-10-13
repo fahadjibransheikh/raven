@@ -47,7 +47,7 @@ vm.runInContext('var _calendarNavigationRequest = null; var _calendarNavigationT
   ['finishCalendarNavigationTransition', 'configureCalendarNavigationRequest', 'prepareCalendarNavigation', 'animateCalendarNavigation', 'handleCalendarNavigationResult'].map(helper).join('\n'), context)
 function event(xhr, shouldSwap = true) { return {detail: {xhr, shouldSwap, target: {id: 'main-content'}}} }
 function navigate(direction) {
-  const xhr = {goferCalendarNavigationDirection: direction}
+  const xhr = {ravenCalendarNavigationDirection: direction}
   context._calendarNavigationRequest = xhr
   context.prepareCalendarNavigation(event(xhr))
   context.animateCalendarNavigation(event(xhr))
@@ -77,10 +77,10 @@ for (const [from, to, direction] of [['month', 'week', 1], ['week', 'month', -1]
   const xhr = {}, request = event(xhr)
   request.detail.elt = {dataset: {calendarViewSwitch: to}, hasAttribute(name) { return name === 'data-calendar-view-switch' }}
   context.configureCalendarNavigationRequest(request)
-  assert.equal(xhr.goferCalendarNavigationDirection, direction, 'View switches must follow the tab direction')
+  assert.equal(xhr.ravenCalendarNavigationDirection, direction, 'View switches must follow the tab direction')
   assert.ok(previous.snapshot.removed && previous.incoming.cancelled, 'View switches must stop any existing grid transition')
   context.prepareCalendarNavigation(request)
-  assert.equal(xhr.goferCalendarNavigationSnapshot.bounds.height, 700, 'The outgoing view must retain its original geometry')
+  assert.equal(xhr.ravenCalendarNavigationSnapshot.bounds.height, 700, 'The outgoing view must retain its original geometry')
   calendar.dataset.calendarView = to
   context.animateCalendarNavigation(request)
   const transition = context._calendarNavigationTransition
@@ -107,7 +107,7 @@ for (const [from, to, direction] of [['month', 'week', 1], ['week', 'month', -1]
   const unchanged = event({})
   unchanged.detail.elt = request.detail.elt
   context.configureCalendarNavigationRequest(unchanged)
-  assert.equal(unchanged.detail.xhr.goferCalendarNavigationDirection, undefined, 'The active tab must not replay the transition')
+  assert.equal(unchanged.detail.xhr.ravenCalendarNavigationDirection, undefined, 'The active tab must not replay the transition')
   assert.equal(context._calendarNavigationRequest, null)
 }
 const first = navigate(1)
@@ -127,31 +127,31 @@ assert.equal(resumed.outgoing.frames[0].transform, 'matrix(0.99, 0, 0, 0.99, 3, 
 assert.equal(resumed.incoming.timing.duration, 150, 'Refresh should only animate the remaining time')
 resumed.incoming.onfinish()
 
-const pending = {goferCalendarNavigationDirection: 1}
+const pending = {ravenCalendarNavigationDirection: 1}
 context._calendarNavigationRequest = pending
 context.prepareCalendarNavigation(event(pending))
-const original = pending.goferCalendarNavigationSnapshot.element
+const original = pending.ravenCalendarNavigationSnapshot.element
 context.prepareCalendarNavigation(event(pending))
-assert.equal(pending.goferCalendarNavigationSnapshot.element, original, 'A pending skeleton must not replace the real outgoing snapshot')
+assert.equal(pending.ravenCalendarNavigationSnapshot.element, original, 'A pending skeleton must not replace the real outgoing snapshot')
 context.animateCalendarNavigation(event(pending))
 context._calendarNavigationTransition.incoming.onfinish()
 
-const stale = event({goferCalendarNavigationDirection: 1})
+const stale = event({ravenCalendarNavigationDirection: 1})
 context._calendarNavigationRequest = {}
 context.prepareCalendarNavigation(stale)
 assert.equal(stale.detail.shouldSwap, false, 'A replaced navigation response must not animate or swap')
-const rejected = {goferCalendarNavigationDirection: 1}
+const rejected = {ravenCalendarNavigationDirection: 1}
 context._calendarNavigationRequest = rejected
 context.prepareCalendarNavigation(event(rejected, false))
-assert.equal(rejected.goferCalendarNavigationSnapshot, undefined)
+assert.equal(rejected.ravenCalendarNavigationSnapshot, undefined)
 context.handleCalendarNavigationResult({detail: {xhr: rejected, successful: false}})
 assert.equal(context._calendarNavigationRequest, null, 'Errors/aborts must not leave a pending navigation')
 reducedMotion = true
-const immediate = {goferCalendarNavigationDirection: 1}
+const immediate = {ravenCalendarNavigationDirection: 1}
 context._calendarNavigationRequest = immediate
 context.prepareCalendarNavigation(event(immediate))
 context.animateCalendarNavigation(event(immediate))
-assert.equal(immediate.goferCalendarNavigationSnapshot, undefined)
+assert.equal(immediate.ravenCalendarNavigationSnapshot, undefined)
 assert.equal(context._calendarNavigationTransition, null)
 assert.equal(context._calendarNavigationRequest, null)
 console.log('Calendar navigation: period slide/fade/scale, opaque view crossover, active-tab no-op, inert snapshots, cleanup, refresh continuation, rapid requests, failures, and reduced motion passed.')

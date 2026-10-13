@@ -16,7 +16,7 @@ function feedback(search) {
       location: {search, pathname: '/settings/accounts', hash: '#mail'},
       history: {state: {keep: true}, replaceState(state, title, url) { replacements.push({state, url}) }},
     },
-    showGoferToast(toast) { toasts.push(toast) },
+    showRavenToast(toast) { toasts.push(toast) },
   })
   vm.runInContext(source.slice(start, end) + '\nsetupAccountResultFeedback()', context)
   return {toasts, replacements}

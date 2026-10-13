@@ -21,7 +21,7 @@ func RunStorageCommand(ctx context.Context, args []string, stdout, stderr io.Wri
 		return true, runStorageMigrationCommand(ctx, args[2:], stdout, stderr)
 	}
 	if len(args) < 2 || args[1] != "inspect" {
-		fmt.Fprintln(stderr, "usage: gofer storage inspect [--db PATH] | migrate [--db PATH] --to PATH [--working-dir PATH] [--retry]")
+		fmt.Fprintln(stderr, "usage: raven storage inspect [--db PATH] | migrate [--db PATH] --to PATH [--working-dir PATH] [--retry]")
 		return true, 2
 	}
 	flags := flag.NewFlagSet("storage inspect", flag.ContinueOnError)
@@ -34,7 +34,7 @@ func RunStorageCommand(ctx context.Context, args []string, stdout, stderr io.Wri
 		return true, 2
 	}
 	if flags.NArg() != 0 || *path == "" {
-		fmt.Fprintln(stderr, "usage: gofer storage inspect [--db PATH]")
+		fmt.Fprintln(stderr, "usage: raven storage inspect [--db PATH]")
 		return true, 2
 	}
 	report, err := storage.InspectUserStorageMigration(ctx, *path)
@@ -65,7 +65,7 @@ func runStorageMigrationCommand(ctx context.Context, args []string, stdout, stde
 		return 2
 	}
 	if flags.NArg() != 0 || *source == "" || *destination == "" {
-		fmt.Fprintln(stderr, "usage: gofer storage migrate [--db PATH] --to PATH [--working-dir PATH] [--retry]")
+		fmt.Fprintln(stderr, "usage: raven storage migrate [--db PATH] --to PATH [--working-dir PATH] [--retry]")
 		return 2
 	}
 	key, err := loadExistingMigrationKey(*source)

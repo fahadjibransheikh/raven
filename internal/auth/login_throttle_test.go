@@ -59,7 +59,7 @@ func TestLoginThrottleAppliesIdentifierSourceAndInstancePolicies(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			clock := &fixedClock{now: now}
-			manager, db := openLoginThrottleTestManager(t, filepath.Join(t.TempDir(), "gofer.db"), clock, loginThrottleTestKey)
+			manager, db := openLoginThrottleTestManager(t, filepath.Join(t.TempDir(), "raven.db"), clock, loginThrottleTestKey)
 			t.Cleanup(func() { _ = db.Close() })
 
 			for attempt := 1; attempt <= test.attempts; attempt++ {
@@ -85,7 +85,7 @@ func TestLoginThrottleAppliesIdentifierSourceAndInstancePolicies(t *testing.T) {
 func TestLoginThrottleExponentialBackoffCapAndRecovery(t *testing.T) {
 	now := time.Date(2026, time.August, 5, 10, 0, 0, 0, time.UTC)
 	clock := &fixedClock{now: now}
-	manager, db := openLoginThrottleTestManager(t, filepath.Join(t.TempDir(), "gofer.db"), clock, loginThrottleTestKey)
+	manager, db := openLoginThrottleTestManager(t, filepath.Join(t.TempDir(), "raven.db"), clock, loginThrottleTestKey)
 	t.Cleanup(func() { _ = db.Close() })
 
 	identifierPolicy := loginThrottlePolicies[loginThrottleBucketIdentifier]
@@ -129,7 +129,7 @@ func TestLoginThrottleExponentialBackoffCapAndRecovery(t *testing.T) {
 func TestLoginThrottleSuccessClearsOnlyIdentifierBucket(t *testing.T) {
 	now := time.Date(2026, time.August, 5, 11, 0, 0, 0, time.UTC)
 	clock := &fixedClock{now: now}
-	manager, db := openLoginThrottleTestManager(t, filepath.Join(t.TempDir(), "gofer.db"), clock, loginThrottleTestKey)
+	manager, db := openLoginThrottleTestManager(t, filepath.Join(t.TempDir(), "raven.db"), clock, loginThrottleTestKey)
 	t.Cleanup(func() { _ = db.Close() })
 
 	for attempt := int64(1); attempt <= loginThrottlePolicies[loginThrottleBucketIdentifier].delayStartsAt; attempt++ {
@@ -163,7 +163,7 @@ func TestLoginThrottleSuccessClearsOnlyIdentifierBucket(t *testing.T) {
 func TestLoginThrottleStoresOnlyKeyedHashes(t *testing.T) {
 	now := time.Date(2026, time.August, 5, 12, 0, 0, 0, time.UTC)
 	clock := &fixedClock{now: now}
-	manager, db := openLoginThrottleTestManager(t, filepath.Join(t.TempDir(), "gofer.db"), clock, loginThrottleTestKey)
+	manager, db := openLoginThrottleTestManager(t, filepath.Join(t.TempDir(), "raven.db"), clock, loginThrottleTestKey)
 	t.Cleanup(func() { _ = db.Close() })
 
 	identifier := " Sensitive.User@Example.COM "
@@ -214,7 +214,7 @@ func TestLoginThrottleStoresOnlyKeyedHashes(t *testing.T) {
 func TestLoginThrottlePersistsAcrossRestart(t *testing.T) {
 	now := time.Date(2026, time.August, 5, 13, 0, 0, 0, time.UTC)
 	clock := &fixedClock{now: now}
-	path := filepath.Join(t.TempDir(), "gofer.db")
+	path := filepath.Join(t.TempDir(), "raven.db")
 	manager, db := openLoginThrottleTestManager(t, path, clock, loginThrottleTestKey)
 
 	for attempt := int64(1); attempt <= loginThrottlePolicies[loginThrottleBucketIdentifier].delayStartsAt; attempt++ {
@@ -238,7 +238,7 @@ func TestLoginThrottlePersistsAcrossRestart(t *testing.T) {
 func TestLoginThrottleConcurrentFailuresAreNotLost(t *testing.T) {
 	now := time.Date(2026, time.August, 5, 14, 0, 0, 0, time.UTC)
 	clock := &fixedClock{now: now}
-	manager, db := openLoginThrottleTestManager(t, filepath.Join(t.TempDir(), "gofer.db"), clock, loginThrottleTestKey)
+	manager, db := openLoginThrottleTestManager(t, filepath.Join(t.TempDir(), "raven.db"), clock, loginThrottleTestKey)
 	t.Cleanup(func() { _ = db.Close() })
 
 	const attempts = 50
@@ -266,7 +266,7 @@ func TestLoginThrottleConcurrentFailuresAreNotLost(t *testing.T) {
 	}{
 		{loginThrottleBucketIdentifier, "person@example.com"},
 		{loginThrottleBucketSource, "198.51.100.15"},
-		{loginThrottleBucketInstance, "gofer"},
+		{loginThrottleBucketInstance, "raven"},
 	} {
 		hash, err := manager.loginThrottleBucketHash(bucket.kind, bucket.value)
 		if err != nil {
@@ -285,10 +285,10 @@ func TestLoginThrottleConcurrentFailuresAreNotLost(t *testing.T) {
 func TestLoginThrottleFailureRollsBackEveryBucket(t *testing.T) {
 	now := time.Date(2026, time.August, 5, 14, 30, 0, 0, time.UTC)
 	clock := &fixedClock{now: now}
-	manager, db := openLoginThrottleTestManager(t, filepath.Join(t.TempDir(), "gofer.db"), clock, loginThrottleTestKey)
+	manager, db := openLoginThrottleTestManager(t, filepath.Join(t.TempDir(), "raven.db"), clock, loginThrottleTestKey)
 	t.Cleanup(func() { _ = db.Close() })
 
-	instanceHash, err := manager.loginThrottleBucketHash(loginThrottleBucketInstance, "gofer")
+	instanceHash, err := manager.loginThrottleBucketHash(loginThrottleBucketInstance, "raven")
 	if err != nil {
 		t.Fatalf("loginThrottleBucketHash(instance) error = %v", err)
 	}
@@ -317,7 +317,7 @@ func TestLoginThrottleFailureRollsBackEveryBucket(t *testing.T) {
 func TestLoginThrottleCleanupUsesBoundedBatches(t *testing.T) {
 	now := time.Date(2026, time.August, 5, 15, 0, 0, 0, time.UTC)
 	clock := &fixedClock{now: now}
-	manager, db := openLoginThrottleTestManager(t, filepath.Join(t.TempDir(), "gofer.db"), clock, loginThrottleTestKey)
+	manager, db := openLoginThrottleTestManager(t, filepath.Join(t.TempDir(), "raven.db"), clock, loginThrottleTestKey)
 	t.Cleanup(func() { _ = db.Close() })
 
 	tx, err := db.Write().BeginTx(t.Context(), nil)
@@ -365,7 +365,7 @@ func TestLoginThrottleCleanupUsesBoundedBatches(t *testing.T) {
 func TestLoginThrottleRequiresKeyedHashSecret(t *testing.T) {
 	now := time.Date(2026, time.August, 5, 16, 0, 0, 0, time.UTC)
 	clock := &fixedClock{now: now}
-	manager, db := openLoginThrottleTestManager(t, filepath.Join(t.TempDir(), "gofer.db"), clock, nil)
+	manager, db := openLoginThrottleTestManager(t, filepath.Join(t.TempDir(), "raven.db"), clock, nil)
 	t.Cleanup(func() { _ = db.Close() })
 
 	if _, err := manager.CheckLoginThrottle(t.Context(), "person@example.com", "source"); err == nil {
@@ -384,7 +384,7 @@ const sha256HexLength = 64
 func TestLoginThrottleOneAttackerCannotLockOutOtherUsers(t *testing.T) {
 	now := time.Date(2026, time.August, 6, 9, 0, 0, 0, time.UTC)
 	clock := &fixedClock{now: now}
-	manager, db := openLoginThrottleTestManager(t, filepath.Join(t.TempDir(), "gofer.db"), clock, loginThrottleTestKey)
+	manager, db := openLoginThrottleTestManager(t, filepath.Join(t.TempDir(), "raven.db"), clock, loginThrottleTestKey)
 	t.Cleanup(func() { _ = db.Close() })
 
 	// One attacker address sprays far past the source and instance thresholds.

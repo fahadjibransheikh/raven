@@ -12,7 +12,7 @@ import (
 // A conversion that fails on the original database's contents fails the same
 // way on every start, after minutes of checks. The failure is remembered next
 // to the database so later starts report it at once, until the database or the
-// Gofer executable changes. Interruptions and environment problems such as
+// Raven executable changes. Interruptions and environment problems such as
 // disk space are never remembered, so they are always retried.
 type migrationFailure struct {
 	Error      string    `json:"error"`

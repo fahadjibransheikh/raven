@@ -89,13 +89,13 @@ func TestEmailBodyRestoresRemoteBackgroundsOnlyWhenAllowed(t *testing.T) {
 		t.Fatalf("SetUISettings: %v", err)
 	}
 	body, csp := fetch()
-	// Allowed remote content is relayed through Gofer's signed message-file
+	// Allowed remote content is relayed through Raven's signed message-file
 	// route, so the page never contacts the sender's servers.
 	if !strings.Contains(body, `url("/api/message-file/web/`) || !strings.Contains(body, `background="/api/message-file/web/`) || strings.Contains(body, "img.example/hero.png\")") {
 		t.Errorf("allowed: backgrounds not restored through the relay: %s", body)
 	}
 	if !strings.Contains(csp, "img-src 'self' data:;") || strings.Contains(csp, "http") || strings.Contains(csp, "font-src") {
-		t.Errorf("allowed: CSP = %s, want images from Gofer only and no font-src", csp)
+		t.Errorf("allowed: CSP = %s, want images from Raven only and no font-src", csp)
 	}
 
 	if err := db.SetUISettings(ctx, "owner", map[string]string{"load_remote_images": "false"}); err != nil {

@@ -228,7 +228,7 @@ func TestContactSyncRequiresExplicitEnablement(t *testing.T) {
 	if err := h.preflightNewContactSyncTargets(ctx, "default", contact, nil); err != nil {
 		t.Fatalf("disabled contact ran provider preflight: %v", err)
 	}
-	contact.GoferSyncEnabled = true
+	contact.RavenSyncEnabled = true
 	if !h.contactNeedsAccountSync(ctx, "default", contact, nil) {
 		t.Fatal("enabled contact with an account target did not request provider sync")
 	}

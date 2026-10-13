@@ -105,7 +105,7 @@ func seedV87Users(t *testing.T, path, users string, dependencies bool) {
 }
 
 func TestMigrateV87RemovesAccountEmailsAndPreservesUserDependencies(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "gofer.db")
+	path := filepath.Join(t.TempDir(), "raven.db")
 	seedV87Users(t, path, `
 		INSERT INTO users (
 			id, email, email_normalized, username, username_normalized, name, user_type, is_admin
@@ -187,7 +187,7 @@ func TestMigrateV87RejectsUnsafeUsernamesWithoutChangingSchema(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			path := filepath.Join(t.TempDir(), "gofer.db")
+			path := filepath.Join(t.TempDir(), "raven.db")
 			seedV87Users(t, path, test.users, false)
 			if db, err := New(path); err == nil {
 				_ = db.Close()

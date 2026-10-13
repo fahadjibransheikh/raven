@@ -7,7 +7,7 @@ import (
 )
 
 func TestMigrateV90AddsResumableUserDeletionStateWithoutChangingUsers(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "gofer.db")
+	path := filepath.Join(t.TempDir(), "raven.db")
 	raw, err := openDB(path)
 	if err != nil {
 		t.Fatal(err)

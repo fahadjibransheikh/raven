@@ -23,12 +23,12 @@ const localLoginPassword = "a safe local login passphrase"
 
 func newLocalLoginHandler(t *testing.T, status auth.UserStatus, isAdmin, mfaRequired, insertUser, showGoogle bool) (*Handler, *auth.Manager, *storage.DB) {
 	t.Helper()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	config := &auth.Config{Enabled: true, BaseURL: "https://gofer.example", SecureCookies: true}
+	config := &auth.Config{Enabled: true, BaseURL: "https://raven.example", SecureCookies: true}
 	if showGoogle {
 		config.GoogleLoginClient = &oauth2.Config{ClientID: "client-id"}
 	}
@@ -300,7 +300,7 @@ func TestLocalLoginCompletesRequiredMFAEnrollmentBeforeCreatingSession(t *testin
 			t.Fatalf("challenge granted ordinary access: %s %d", path, w.Code)
 		}
 	}
-	state, err := manager.GetMFAEnrollmentState(t.Context(), challengeCookie.Value, "https://gofer.example")
+	state, err := manager.GetMFAEnrollmentState(t.Context(), challengeCookie.Value, "https://raven.example")
 	if err != nil || state == nil || state.Enrollment == nil {
 		t.Fatalf("GetMFAEnrollmentState() = %#v, %v", state, err)
 	}
@@ -406,7 +406,7 @@ func TestAdminPasswordMFASeedsManagementReturnTarget(t *testing.T) {
 
 func TestLocalLoginTOTPContinuationCreatesMultiFactorSession(t *testing.T) {
 	manager, _, stack, setupCookie := prepareHandlerSetupReview(t)
-	state, err := manager.GetSetupOwnerState(t.Context(), setupCookie.Value, "https://gofer.example")
+	state, err := manager.GetSetupOwnerState(t.Context(), setupCookie.Value, "https://raven.example")
 	if err != nil || state == nil || state.Draft == nil || state.Draft.TOTPSecret == "" {
 		t.Fatalf("prepared setup state = %#v, %v", state, err)
 	}
@@ -425,7 +425,7 @@ func TestLocalLoginTOTPContinuationCreatesMultiFactorSession(t *testing.T) {
 	}
 	request := httptest.NewRequest(http.MethodPost, "/admin/login", strings.NewReader(loginForm.Encode()))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Origin", "https://gofer.example")
+	request.Header.Set("Origin", "https://raven.example")
 	request.Header.Set("User-Agent", "Owner MFA Browser/1.0")
 	request.RemoteAddr = "198.51.100.88:41412"
 	request.AddCookie(returnCookie)
@@ -456,7 +456,7 @@ func TestLocalLoginTOTPContinuationCreatesMultiFactorSession(t *testing.T) {
 	invalidForm := url.Values{"code": {invalidCode}}
 	request = httptest.NewRequest(http.MethodPost, "/login/mfa", strings.NewReader(invalidForm.Encode()))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Origin", "https://gofer.example")
+	request.Header.Set("Origin", "https://raven.example")
 	request.RemoteAddr = "198.51.100.88:41412"
 	request.AddCookie(challengeCookie)
 	invalid := httptest.NewRecorder()
@@ -470,7 +470,7 @@ func TestLocalLoginTOTPContinuationCreatesMultiFactorSession(t *testing.T) {
 	validForm := url.Values{"code": {validCode}}
 	request = httptest.NewRequest(http.MethodPost, "/login/mfa", strings.NewReader(validForm.Encode()))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Origin", "https://gofer.example")
+	request.Header.Set("Origin", "https://raven.example")
 	request.Header.Set("User-Agent", "Owner MFA Browser/1.0")
 	request.RemoteAddr = "198.51.100.88:41412"
 	request.AddCookie(challengeCookie)
@@ -506,7 +506,7 @@ func TestLocalLoginMFAPostIsProtectedByCanonicalOriginGuard(t *testing.T) {
 		t.Fatal("MFA origin test omitted challenge cookie")
 	}
 	t.Setenv("RAVEN_ADDR", "127.0.0.1:8090")
-	t.Setenv("RAVEN_BASE_URL", "https://gofer.example")
+	t.Setenv("RAVEN_BASE_URL", "https://raven.example")
 	t.Setenv("RAVEN_ALLOW_UNAUTHENTICATED_REMOTE", "")
 	guard, err := httpguard.LoadConfig()
 	if err != nil {
@@ -514,7 +514,7 @@ func TestLocalLoginMFAPostIsProtectedByCanonicalOriginGuard(t *testing.T) {
 	}
 	form := url.Values{"code": {"123456"}}
 	request := httptest.NewRequest(http.MethodPost, "/login/mfa", strings.NewReader(form.Encode()))
-	request.Host = "gofer.example"
+	request.Host = "raven.example"
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Origin", "https://attacker.example")
 	request.AddCookie(challengeCookie)
@@ -603,14 +603,14 @@ func TestLocalLoginMFAOffersOnlyRegisteredFactors(t *testing.T) {
 		totp, passkey bool
 		rp            string
 	}{
-		{name: "passkey only", passkey: true, rp: "gofer.example"},
+		{name: "passkey only", passkey: true, rp: "raven.example"},
 		{name: "TOTP only", totp: true},
-		{name: "both", totp: true, passkey: true, rp: "gofer.example"},
+		{name: "both", totp: true, passkey: true, rp: "raven.example"},
 		{name: "foreign RP requires enrollment", passkey: true, rp: "foreign.example"},
 		{name: "no factors requires enrollment"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			handler, manager, db := newLocalLoginHandler(t, auth.UserStatusActive, false, !tc.totp && (!tc.passkey || tc.rp != "gofer.example"), true, false)
+			handler, manager, db := newLocalLoginHandler(t, auth.UserStatusActive, false, !tc.totp && (!tc.passkey || tc.rp != "raven.example"), true, false)
 			if tc.totp {
 				if _, err := db.Write().ExecContext(t.Context(), `INSERT INTO totp_credentials (id,user_id,encrypted_seed,key_version,algorithm,digits,period,issuer,enabled) VALUES ('totp','person',x'01',1,'SHA1',6,30,'Raven',1)`); err != nil {
 					t.Fatal(err)
@@ -637,7 +637,7 @@ func TestLocalLoginMFAOffersOnlyRegisteredFactors(t *testing.T) {
 			if cookie == nil {
 				t.Fatal("missing primary authentication challenge")
 			}
-			usablePasskey := tc.passkey && tc.rp == "gofer.example"
+			usablePasskey := tc.passkey && tc.rp == "raven.example"
 			if !tc.totp && !usablePasskey {
 				if login.Header().Get("Location") != "/login/mfa/enroll" {
 					t.Fatal("factorless account did not require enrollment")
@@ -675,13 +675,13 @@ func TestLocalLoginMFAOffersOnlyRegisteredFactors(t *testing.T) {
 			if err := db.Read().QueryRowContext(t.Context(), `SELECT COUNT(*) FROM sessions`).Scan(&sessions); err != nil || sessions != 0 {
 				t.Fatal("primary verification created a session")
 			}
-			if _, err := manager.GetMFAContinuationFactors(t.Context(), "invalid", "https://gofer.example"); err == nil {
+			if _, err := manager.GetMFAContinuationFactors(t.Context(), "invalid", "https://raven.example"); err == nil {
 				t.Fatal("exposed factor inventory without a valid challenge")
 			}
 			if _, err := db.Write().ExecContext(t.Context(), `UPDATE users SET auth_version=auth_version+1 WHERE id='person'`); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := manager.GetMFAContinuationFactors(t.Context(), cookie.Value, "https://gofer.example"); err == nil {
+			if _, err := manager.GetMFAContinuationFactors(t.Context(), cookie.Value, "https://raven.example"); err == nil {
 				t.Fatal("exposed factor inventory for stale challenge")
 			}
 		})

@@ -211,7 +211,7 @@ func managementAdminLayout(uiSettings map[string]string, activeSection string, s
 		if err := content.Render(ctx, w); err != nil {
 			return err
 		}
-		return writeHTML(w, `</div></div></div><script src="`, escaped(AssetURL("/assets/js/ui-settings.js")), `"></script><script src="`, escaped(AssetURL("/assets/js/passkey-authentication.js")), `"></script><script src="`, escaped(AssetURL("/assets/js/admin.js")), `"></script></body></html>`)
+		return writeHTML(w, `</div></div></div><script src="`, escaped(AssetURL("/assets/js/storage-migrate.js")), `"></script><script src="`, escaped(AssetURL("/assets/js/ui-settings.js")), `"></script><script src="`, escaped(AssetURL("/assets/js/passkey-authentication.js")), `"></script><script src="`, escaped(AssetURL("/assets/js/admin.js")), `"></script></body></html>`)
 	})
 }
 
@@ -241,7 +241,7 @@ func ManagementSecurityLayout(uiSettings map[string]string, content templ.Compon
 		if err := content.Render(ctx, w); err != nil {
 			return err
 		}
-		return writeHTML(w, `</div></main></div></div><script src="`, escaped(AssetURL("/assets/js/htmx.min.js")), `"></script><script src="`, escaped(AssetURL("/assets/js/ui-settings.js")), `"></script><script src="`, escaped(AssetURL("/assets/js/passkey-registration.js")), `"></script><script src="`, escaped(AssetURL("/assets/js/passkey-authentication.js")), `"></script><script src="`, escaped(AssetURL("/assets/js/settings.js")), `"></script></body></html>`)
+		return writeHTML(w, `</div></main></div></div><script src="`, escaped(AssetURL("/assets/js/htmx.min.js")), `"></script><script src="`, escaped(AssetURL("/assets/js/storage-migrate.js")), `"></script><script src="`, escaped(AssetURL("/assets/js/ui-settings.js")), `"></script><script src="`, escaped(AssetURL("/assets/js/passkey-registration.js")), `"></script><script src="`, escaped(AssetURL("/assets/js/passkey-authentication.js")), `"></script><script src="`, escaped(AssetURL("/assets/js/settings.js")), `"></script></body></html>`)
 	})
 }
 

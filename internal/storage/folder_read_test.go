@@ -171,7 +171,7 @@ func TestMarkFolderReadRejectsForeignUserAndUnsupportedFolders(t *testing.T) {
 }
 
 func TestMigrateV94ToV95AddsFolderReadQueue(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "gofer.db")
+	dbPath := filepath.Join(t.TempDir(), "raven.db")
 	raw, err := openDB(dbPath)
 	if err != nil {
 		t.Fatal(err)

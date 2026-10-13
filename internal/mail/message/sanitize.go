@@ -267,17 +267,17 @@ var localImagePrefixes = []string{
 	"data:image/bmp", "data:image/svg+xml", "data:image/x-icon",
 }
 
-// Gofer rewrites inline parts and saved remote images to these paths, and some
+// Raven rewrites inline parts and saved remote images to these paths, and some
 // bodies are sanitized again after that, as when they are translated.
-var goferContentPaths = []string{"/api/inline-content/", "/api/remote-assets/", "/api/attachments/", "/compose/attachments/"}
+var ravenContentPaths = []string{"/api/inline-content/", "/api/remote-assets/", "/api/attachments/", "/compose/attachments/"}
 
-// isGoferContentPath accepts one of Gofer's own content paths, but never one
+// isRavenContentPath accepts one of Raven's own content paths, but never one
 // that climbs out of it or carries a query or fragment.
-func isGoferContentPath(v string) bool {
+func isRavenContentPath(v string) bool {
 	if strings.Contains(v, "..") || strings.Contains(strings.ToLower(v), "%2e") || strings.ContainsAny(v, `\?#`) {
 		return false
 	}
-	for _, p := range goferContentPaths {
+	for _, p := range ravenContentPaths {
 		if strings.HasPrefix(v, p) {
 			return true
 		}
@@ -288,7 +288,7 @@ func isGoferContentPath(v string) bool {
 // isLocalImageURL reports whether v can be fetched without leaving the app or
 // the message: an inline part, a stored remote asset, or an embedded image.
 func isLocalImageURL(v string) bool {
-	if isGoferContentPath(v) {
+	if isRavenContentPath(v) {
 		return true
 	}
 	lower := strings.ToLower(v)
@@ -463,7 +463,7 @@ func RestoreRemoteImages(html []byte) []byte {
 // RestoreRemoteContent turns the blocked remote content of a sanitized body
 // (images, backgrounds, CSS backgrounds) back on, with every web address passed
 // through load, which returns the address the reader's browser should fetch
-// instead. Gofer uses it to send remote content through its own server, so the
+// instead. Raven uses it to send remote content through its own server, so the
 // sender never sees the reader's address. Markers that do not hold a plain
 // http(s) address are dropped rather than restored.
 func RestoreRemoteContent(input []byte, load func(remoteURL string) string) []byte {

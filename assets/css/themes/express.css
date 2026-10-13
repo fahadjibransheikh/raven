@@ -1790,7 +1790,7 @@ html:root[data-theme="express"] :is([data-calendar-month-event], [data-calendar-
 
 /* Notices are small silver alert windows: classic dialog icons, a silver close
    button, and the time left shown as a sunken progress bar of navy blocks. */
-[data-theme="express"] .gofer-toast-card {
+[data-theme="express"] .raven-toast-card {
   border: none;
   border-radius: 0;
   background: var(--background);
@@ -1799,11 +1799,11 @@ html:root[data-theme="express"] :is([data-calendar-month-event], [data-calendar-
   box-shadow: var(--xp-bevel-out), 2px 2px 0 rgba(0,0,0,0.25);
 }
 
-[data-theme="express"] .gofer-toast-card:has(.gofer-toast-progress-wrap) {
+[data-theme="express"] .raven-toast-card:has(.raven-toast-progress-wrap) {
   padding-bottom: 1.375rem;
 }
 
-[data-theme="express"] .gofer-toast-card .gofer-toast-progress-wrap {
+[data-theme="express"] .raven-toast-card .raven-toast-progress-wrap {
   top: auto;
   right: 6px;
   bottom: 6px;
@@ -1814,11 +1814,11 @@ html:root[data-theme="express"] :is([data-calendar-month-event], [data-calendar-
   box-shadow: inset 1px 1px 0 var(--xp-mid), inset -1px -1px 0 var(--xp-light);
 }
 
-[data-theme="express"] .gofer-toast-card .gofer-toast-progress {
+[data-theme="express"] .raven-toast-card .raven-toast-progress {
   background: repeating-linear-gradient(90deg, var(--xp-select) 0 7px, transparent 7px 9px) !important;
 }
 
-[data-theme="express"] .gofer-toast-card .gofer-toast-dismiss {
+[data-theme="express"] .raven-toast-card .raven-toast-dismiss {
   width: 22px;
   height: 20px;
   border-radius: 0;
@@ -1829,42 +1829,42 @@ html:root[data-theme="express"] :is([data-calendar-month-event], [data-calendar-
   transition: none;
 }
 
-[data-theme="express"] .gofer-toast-card .gofer-toast-dismiss:hover {
+[data-theme="express"] .raven-toast-card .raven-toast-dismiss:hover {
   background: var(--xp-face);
   color: var(--foreground);
 }
 
-[data-theme="express"] .gofer-toast-card .gofer-toast-dismiss:active {
+[data-theme="express"] .raven-toast-card .raven-toast-dismiss:active {
   box-shadow: var(--xp-bevel-pressed);
 }
 
-[data-theme="express"] .gofer-toast-card [data-gofer-toast-secondary],
-[data-theme="express"] .gofer-toast-card span.underline {
+[data-theme="express"] .raven-toast-card [data-raven-toast-secondary],
+[data-theme="express"] .raven-toast-card span.underline {
   color: var(--xp-count);
   opacity: 1;
 }
 
-[data-theme="express"] .gofer-toast-card svg[data-toast-icon="info"] {
+[data-theme="express"] .raven-toast-card svg[data-toast-icon="info"] {
   background: image-set(url("/assets/icons/express/dialog-information-22.png") 1x, url("/assets/icons/express/dialog-information-48.png") 2x) center / contain no-repeat;
 }
 
-[data-theme="express"] .gofer-toast-card svg[data-toast-icon="info"] > * {
+[data-theme="express"] .raven-toast-card svg[data-toast-icon="info"] > * {
   visibility: hidden;
 }
 
-[data-theme="express"] .gofer-toast-card svg[data-toast-icon="warning"] {
+[data-theme="express"] .raven-toast-card svg[data-toast-icon="warning"] {
   background: image-set(url("/assets/icons/express/dialog-warning-22.png") 1x, url("/assets/icons/express/dialog-warning-48.png") 2x) center / contain no-repeat;
 }
 
-[data-theme="express"] .gofer-toast-card svg[data-toast-icon="warning"] > * {
+[data-theme="express"] .raven-toast-card svg[data-toast-icon="warning"] > * {
   visibility: hidden;
 }
 
-[data-theme="express"] .gofer-toast-card svg[data-toast-icon="error"] {
+[data-theme="express"] .raven-toast-card svg[data-toast-icon="error"] {
   background: image-set(url("/assets/icons/express/dialog-error-22.png") 1x, url("/assets/icons/express/dialog-error-48.png") 2x) center / contain no-repeat;
 }
 
-[data-theme="express"] .gofer-toast-card svg[data-toast-icon="error"] > * {
+[data-theme="express"] .raven-toast-card svg[data-toast-icon="error"] > * {
   visibility: hidden;
 }
 

@@ -116,8 +116,8 @@ func TestPrepareNewPasswordRejectsCommonAndContextualValues(t *testing.T) {
 		{name: "compromised case folded", password: "PASSWORDPASSWORD"},
 		{name: "username derivative", password: "cristianpassword", context: PasswordPolicyContext{Username: "Cristian"}},
 		{name: "username numeric derivative", password: "longaccountname2042", context: PasswordPolicyContext{Username: "longaccountname"}},
-		{name: "service specific", password: "gofer-authentication"},
-		{name: "service derivative", password: "goferpassword123"},
+		{name: "service specific", password: "raven-authentication"},
+		{name: "service derivative", password: "ravenpassword123"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -128,7 +128,7 @@ func TestPrepareNewPasswordRejectsCommonAndContextualValues(t *testing.T) {
 		})
 	}
 
-	const allowed = "a safe gofer sentence with several words"
+	const allowed = "a safe raven sentence with several words"
 	prepared, err := PrepareNewPassword(allowed, PasswordPolicyContext{Username: "person"})
 	if err != nil || prepared != allowed {
 		t.Fatalf("PrepareNewPassword(non-substring policy) = %q, %v", prepared, err)

@@ -46,11 +46,11 @@ test("with the Tauri bridge, permission and delivery use the plugin, not the web
   const t = { granted: false, result: "granted" }
   const web = {}
   const w = await loadPage(function (w) { stubTauri(w, t); stubWebNotification(w, web) })
-  assert.equal(await w.goferNotifications.request(true), "granted")
+  assert.equal(await w.ravenNotifications.request(true), "granted")
   assert.equal(t.requested, true)
   assert.equal(web.asked, false)
   t.sent.length = 0
-  w.goferNotifications.deliver("Alice", { body: "Hello" })
+  w.ravenNotifications.deliver("Alice", { body: "Hello" })
   assert.equal(t.sent.length, 1)
   assert.equal(t.sent[0].title, "Alice")
   assert.equal(t.sent[0].body, "Hello")
@@ -60,16 +60,16 @@ test("with the Tauri bridge, permission and delivery use the plugin, not the web
 test("with the Tauri bridge, a denied plugin state is reported with the System Settings hint", async function () {
   const t = { granted: false, result: "denied" }
   const w = await loadPage(function (w) { stubTauri(w, t) })
-  assert.equal(await w.goferNotifications.request(true), "denied")
+  assert.equal(await w.ravenNotifications.request(true), "denied")
   assert.equal(t.sent.length, 0)
 })
 
 test("without the Tauri bridge, the web Notification API is used", async function () {
   const web = {}
   const w = await loadPage(function (w) { stubWebNotification(w, web) })
-  assert.equal(await w.goferNotifications.request(true), "granted")
+  assert.equal(await w.ravenNotifications.request(true), "granted")
   assert.equal(web.asked, true)
-  w.goferNotifications.deliver("Bob", { body: "Hi", tag: "x" })
+  w.ravenNotifications.deliver("Bob", { body: "Hi", tag: "x" })
   assert.equal(web.created.length, 1)
   assert.equal(web.created[0].title, "Bob")
 })
@@ -77,7 +77,7 @@ test("without the Tauri bridge, the web Notification API is used", async functio
 test("a partial __TAURI__ object without the notification plugin falls back to the web API", async function () {
   const web = {}
   const w = await loadPage(function (w) { w.__TAURI__ = { core: {} }; stubWebNotification(w, web) })
-  w.goferNotifications.deliver("Carol", { body: "Yo" })
+  w.ravenNotifications.deliver("Carol", { body: "Yo" })
   assert.equal(web.created.length, 1)
 })
 
@@ -86,7 +86,7 @@ function loadAccountNotificationsPage(web, permission) {
     Object.defineProperty(w, "isSecureContext", { value: true })
     Object.defineProperty(w.navigator, "serviceWorker", { value: { ready: new Promise(function () {}) } })
     w.PushManager = function () {}
-    w.GoferSettings = { get: function (k) { return { desktop_notifications: "true", notification_mode: "auto" }[k] }, set: function () { throw new Error("must not change the account setting") } }
+    w.RavenSettings = { get: function (k) { return { desktop_notifications: "true", notification_mode: "auto" }[k] }, set: function () { throw new Error("must not change the account setting") } }
     stubWebNotification(w, web)
     w.Notification.permission = permission
     w.document.body.insertAdjacentHTML("beforeend", '<button class="hidden" data-enable-device-notifications></button>')

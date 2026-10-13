@@ -877,7 +877,7 @@ func TestReplaceAttachmentsPreservesProviderStoragePath(t *testing.T) {
 		Filename:         "old.pdf",
 		ContentType:      "application/pdf",
 		SizeBytes:        10,
-		StoragePath:      "/tmp/gofer-downloaded-old.pdf",
+		StoragePath:      "/tmp/raven-downloaded-old.pdf",
 		ProviderRemoteID: "graph-attachment-1",
 	}}); err != nil {
 		t.Fatalf("ReplaceAttachmentsInternal(initial) error = %v", err)
@@ -898,7 +898,7 @@ func TestReplaceAttachmentsPreservesProviderStoragePath(t *testing.T) {
 	if filename != "new.pdf" {
 		t.Fatalf("filename = %q, want refreshed metadata", filename)
 	}
-	if storagePath != "/tmp/gofer-downloaded-old.pdf" {
+	if storagePath != "/tmp/raven-downloaded-old.pdf" {
 		t.Fatalf("storage_path = %q, want preserved downloaded path", storagePath)
 	}
 }
@@ -2646,7 +2646,7 @@ func TestSyncGmailInboxMembershipPreservesRealUIDAndRemovesOnlySyntheticRows(t *
 }
 
 func TestMigrateV34MarksGmailContainerNonSelectable(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "gofer.db")
+	dbPath := filepath.Join(t.TempDir(), "raven.db")
 	raw, err := openDB(dbPath)
 	if err != nil {
 		t.Fatalf("openDB() error = %v", err)
@@ -2682,7 +2682,7 @@ func TestMigrateV34MarksGmailContainerNonSelectable(t *testing.T) {
 }
 
 func TestFreshSchemaStartsAtCurrentVersion(t *testing.T) {
-	db, err := New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
@@ -2698,7 +2698,7 @@ func TestFreshSchemaStartsAtCurrentVersion(t *testing.T) {
 }
 
 func TestMigrateV63AddsProviderSyncProgress(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "gofer.db")
+	dbPath := filepath.Join(t.TempDir(), "raven.db")
 	raw, err := openDB(dbPath)
 	if err != nil {
 		t.Fatalf("openDB() error = %v", err)
@@ -2735,7 +2735,7 @@ func TestMigrateV63AddsProviderSyncProgress(t *testing.T) {
 }
 
 func TestMigrateV64AddsOutgoingRetrySchedule(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "gofer.db")
+	dbPath := filepath.Join(t.TempDir(), "raven.db")
 	raw, err := openDB(dbPath)
 	if err != nil {
 		t.Fatalf("openDB() error = %v", err)
@@ -2777,7 +2777,7 @@ func TestMigrateV64AddsOutgoingRetrySchedule(t *testing.T) {
 }
 
 func TestMigrateV54ConvertsZeroRemoteUIDsToNull(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "gofer.db")
+	dbPath := filepath.Join(t.TempDir(), "raven.db")
 	raw, err := openDB(dbPath)
 	if err != nil {
 		t.Fatalf("openDB() error = %v", err)
@@ -2823,7 +2823,7 @@ func TestMigrateV54ConvertsZeroRemoteUIDsToNull(t *testing.T) {
 }
 
 func TestMigrateV55AddsMailSecurityExceptions(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "gofer.db")
+	dbPath := filepath.Join(t.TempDir(), "raven.db")
 	raw, err := openDB(dbPath)
 	if err != nil {
 		t.Fatalf("openDB() error = %v", err)
@@ -2859,7 +2859,7 @@ func TestMigrateV55AddsMailSecurityExceptions(t *testing.T) {
 }
 
 func TestMigrateV56AddsOAuthAccountFlows(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "gofer.db")
+	dbPath := filepath.Join(t.TempDir(), "raven.db")
 	raw, err := openDB(dbPath)
 	if err != nil {
 		t.Fatalf("openDB() error = %v", err)
@@ -2906,7 +2906,7 @@ func TestMigrateV56AddsOAuthAccountFlows(t *testing.T) {
 }
 
 func TestMigrateV57MovesScheduledSendsIntoOutgoingQueue(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "gofer.db")
+	dbPath := filepath.Join(t.TempDir(), "raven.db")
 	raw, err := openDB(dbPath)
 	if err != nil {
 		t.Fatalf("openDB() error = %v", err)
@@ -2975,7 +2975,7 @@ func TestMigrateV57MovesScheduledSendsIntoOutgoingQueue(t *testing.T) {
 }
 
 func TestMigrateV58AddsRemoteSentCopyState(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "gofer.db")
+	dbPath := filepath.Join(t.TempDir(), "raven.db")
 	raw, err := openDB(dbPath)
 	if err != nil {
 		t.Fatalf("openDB() error = %v", err)
@@ -3038,7 +3038,7 @@ func TestMigrateV58AddsRemoteSentCopyState(t *testing.T) {
 }
 
 func TestMigrateV59AddsIMAPDraftSyncQueue(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "gofer.db")
+	dbPath := filepath.Join(t.TempDir(), "raven.db")
 	raw, err := openDB(dbPath)
 	if err != nil {
 		t.Fatalf("openDB() error = %v", err)
@@ -3084,7 +3084,7 @@ func TestMigrateV59AddsIMAPDraftSyncQueue(t *testing.T) {
 }
 
 func TestMigrateV60AddsMessageMutationQueueWithMoves(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "gofer.db")
+	dbPath := filepath.Join(t.TempDir(), "raven.db")
 	raw, err := openDB(dbPath)
 	if err != nil {
 		t.Fatalf("openDB() error = %v", err)
@@ -3128,7 +3128,7 @@ func TestMigrateV60AddsMessageMutationQueueWithMoves(t *testing.T) {
 }
 
 func TestMigrateV45AddsLabelMutationQueueFolderID(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "gofer.db")
+	dbPath := filepath.Join(t.TempDir(), "raven.db")
 	raw, err := openDB(dbPath)
 	if err != nil {
 		t.Fatalf("openDB() error = %v", err)
@@ -3186,7 +3186,7 @@ func TestMigrateV45AddsLabelMutationQueueFolderID(t *testing.T) {
 }
 
 func TestMigrateV75AddsGmailMessageFetchQueue(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "gofer.db")
+	dbPath := filepath.Join(t.TempDir(), "raven.db")
 	raw, err := openDB(dbPath)
 	if err != nil {
 		t.Fatalf("openDB() error = %v", err)
@@ -3259,12 +3259,12 @@ func TestUpsertProviderSyncMessagesAdoptsOutlookSentWithRewrittenMessageID(t *te
 				t.Fatalf("UpsertFolders() error = %v", err)
 			}
 			if err := db.UpsertSyncMessages(ctx, []SyncMessage{{
-				AccountID: "acc", FolderID: "acc_sent", MessageID: "<local@gofer>", Subject: "Hello",
+				AccountID: "acc", FolderID: "acc_sent", MessageID: "<local@raven>", Subject: "Hello",
 				FromEmail: "User@Outlook.com", DateSent: base, IsRead: true, ToRecipients: to, CCRecipients: cc,
 			}}); err != nil {
 				t.Fatalf("UpsertSyncMessages() error = %v", err)
 			}
-			localID, err := db.GetMessageLocalIDByInternetIDInternal(ctx, "acc", "<local@gofer>")
+			localID, err := db.GetMessageLocalIDByInternetIDInternal(ctx, "acc", "<local@raven>")
 			if err != nil || localID == 0 {
 				t.Fatalf("local id = %d, %v", localID, err)
 			}
@@ -3401,9 +3401,9 @@ func TestUpsertProviderSyncMessagesDoesNotAdoptAmbiguousOutlookSent(t *testing.T
 	}
 	base := time.Date(2026, 10, 4, 23, 37, 57, 0, time.UTC)
 	to := []Recipient{{Email: "to@example.com"}}
-	for _, id := range []string{"<a@gofer>", "<b@gofer>"} { // equally far from the server copy
+	for _, id := range []string{"<a@raven>", "<b@raven>"} { // equally far from the server copy
 		d := base
-		if id == "<b@gofer>" {
+		if id == "<b@raven>" {
 			d = base.Add(20 * time.Second)
 		}
 		if err := db.UpsertSyncMessages(ctx, []SyncMessage{{AccountID: "acc", FolderID: "acc_sent", MessageID: id, Subject: "Hello", FromEmail: "user@outlook.com", DateSent: d, ToRecipients: to}}); err != nil {

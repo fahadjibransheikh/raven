@@ -6,7 +6,7 @@ import (
 )
 
 func TestMigrateV93ToV94AddsAccountLabelPreservingRows(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "gofer.db")
+	dbPath := filepath.Join(t.TempDir(), "raven.db")
 	raw, err := openDB(dbPath)
 	if err != nil {
 		t.Fatal(err)
@@ -53,7 +53,7 @@ func TestMigrateV93ToV94AddsAccountLabelPreservingRows(t *testing.T) {
 }
 
 func TestMigrateV93ToV94IsIdempotentWhenColumnExists(t *testing.T) {
-	db, err := New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatal(err)
 	}

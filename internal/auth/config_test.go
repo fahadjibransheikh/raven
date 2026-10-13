@@ -12,14 +12,14 @@ func TestLoadConfigSeparatesGoogleLoginFromMailboxOAuth(t *testing.T) {
 	t.Setenv("RAVEN_GOOGLE_LOGIN_CLIENT_ID", "login-client")
 	t.Setenv("RAVEN_GOOGLE_LOGIN_CLIENT_SECRET", "login-secret")
 
-	cfg := LoadConfig("https://gofer.example")
+	cfg := LoadConfig("https://raven.example")
 	if !cfg.Enabled || cfg.GoogleLoginClient == nil {
 		t.Fatalf("authentication config = %#v", cfg)
 	}
 	if cfg.GoogleLoginClient.ClientID != "login-client" || cfg.GoogleLoginClient.ClientSecret != "login-secret" {
 		t.Fatalf("Google login client = %#v", cfg.GoogleLoginClient)
 	}
-	if cfg.GoogleLoginClient.RedirectURL != "https://gofer.example/auth/google/login/callback" {
+	if cfg.GoogleLoginClient.RedirectURL != "https://raven.example/auth/google/login/callback" {
 		t.Fatalf("Google login redirect = %q", cfg.GoogleLoginClient.RedirectURL)
 	}
 	wantScopes := []string{"openid", "email", "profile"}
@@ -38,7 +38,7 @@ func TestLoadConfigKeepsLocalAuthenticationEnabledWithoutGoogleLogin(t *testing.
 	t.Setenv("RAVEN_GOOGLE_LOGIN_CLIENT_ID", "")
 	t.Setenv("RAVEN_GOOGLE_LOGIN_CLIENT_SECRET", "")
 
-	cfg := LoadConfig("https://gofer.example")
+	cfg := LoadConfig("https://raven.example")
 	if !cfg.Enabled {
 		t.Fatal("local authentication was disabled because Google login was not configured")
 	}

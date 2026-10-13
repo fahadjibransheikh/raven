@@ -100,7 +100,7 @@ func (m *Manager) PendingLocalProfile(ctx context.Context) (*LocalProfile, error
 
 // IssueLocalProfilePasswordLink gives a profile without credentials a token
 // to set its first password, replacing any earlier unused one. The raw token
-// is returned only here. The caller holds Gofer's exclusive runtime lock.
+// is returned only here. The caller holds Raven's exclusive runtime lock.
 func (m *Manager) IssueLocalProfilePasswordLink(ctx context.Context) (*EnrollmentToken, error) {
 	result, err := m.recoverUserLocally(ctx, LocalProfileUserID, localProfilePasswordLinkLifetime)
 	if err != nil {

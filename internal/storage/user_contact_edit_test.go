@@ -38,7 +38,7 @@ func TestUserContactUnifyCopiesCurrentFieldsAndRejectsInterveningEdit(t *testing
 		t.Fatal(err)
 	}
 	result, err := db.SaveUserContactEdit(t.Context(), snapshot, false, inboundTestGuard)
-	if err != nil || result.Contact.Phone != "newer-phone" || result.Contact.GoferSyncEnabled || result.OperationID != "" {
+	if err != nil || result.Contact.Phone != "newer-phone" || result.Contact.RavenSyncEnabled || result.OperationID != "" {
 		t.Fatal("fresh unification changed sync behavior", result, err)
 	}
 	var raw, remote, etag string
@@ -52,7 +52,7 @@ func TestUserContactEditRollbackAcrossProfileFieldsTargetsQueueAndActivity(t *te
 		t.Run(fault, func(t *testing.T) {
 			db, profile, _ := newContactSyncFixture(t)
 			request := models.Contact{ID: profile, Name: "Edited", Email: "person@example.com", Phone: "222", PhoneLabel: "home",
-				AdditionalEmails: []string{"alternate@example.com"}, AdditionalEmailLabels: []string{"work"}, GoferSyncEnabled: true,
+				AdditionalEmails: []string{"alternate@example.com"}, AdditionalEmailLabels: []string{"work"}, RavenSyncEnabled: true,
 				SaveTargets: []string{"local", "account:target", "book:dav-book"}}
 			snapshot, err := db.SnapshotUserContactEdit(t.Context(), "default", request, inboundTestGuard, nil)
 			if err != nil {
@@ -116,7 +116,7 @@ func TestUserContactEditRechecksProfileIdentityAndAcceptedTargets(t *testing.T) 
 	for _, change := range []string{"field", "card", "membership", "deleted", "disabled-target", "removed-book"} {
 		t.Run(change, func(t *testing.T) {
 			db, profile, _ := newContactSyncFixture(t)
-			snapshot, err := db.SnapshotUserContactEdit(t.Context(), "default", models.Contact{ID: profile, Email: "person@example.com", Phone: "stale", GoferSyncEnabled: true, SaveTargets: []string{"account:target", "book:dav-book"}}, inboundTestGuard, nil)
+			snapshot, err := db.SnapshotUserContactEdit(t.Context(), "default", models.Contact{ID: profile, Email: "person@example.com", Phone: "stale", RavenSyncEnabled: true, SaveTargets: []string{"account:target", "book:dav-book"}}, inboundTestGuard, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -145,7 +145,7 @@ func TestUserContactEditRechecksProfileIdentityAndAcceptedTargets(t *testing.T) 
 		})
 	}
 	db := newInboundContactFixture(t)
-	request := models.Contact{Email: "new@example.com", Name: "New", GoferSyncEnabled: true, SaveTargets: []string{"account:target", "account:foreign", "book:foreign", "unknown"}}
+	request := models.Contact{Email: "new@example.com", Name: "New", RavenSyncEnabled: true, SaveTargets: []string{"account:target", "account:foreign", "book:foreign", "unknown"}}
 	snapshot, err := db.SnapshotUserContactEdit(t.Context(), "default", request, inboundTestGuard, nil)
 	if err != nil || !reflect.DeepEqual(snapshot.Contact().SaveTargets, []string{"account:target"}) {
 		t.Fatal("invalid target allowlist", err)
@@ -166,7 +166,7 @@ func TestUserContactEditRechecksProfileIdentityAndAcceptedTargets(t *testing.T) 
 
 func TestUserContactEditSetupAndCreationActivityAreAtomic(t *testing.T) {
 	db := newInboundContactFixture(t)
-	request := models.Contact{Name: "Created", Email: "created@example.com", Phone: "123", GoferSyncEnabled: true, SaveTargets: []string{"local", "account:target"}}
+	request := models.Contact{Name: "Created", Email: "created@example.com", Phone: "123", RavenSyncEnabled: true, SaveTargets: []string{"local", "account:target"}}
 	snapshot, err := db.SnapshotUserContactEdit(t.Context(), "default", request, inboundTestGuard, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -187,7 +187,7 @@ func TestUserContactEditSetupAndCreationActivityAreAtomic(t *testing.T) {
 		t.Fatal(err)
 	}
 	result, err := db.SaveUserContactEdit(t.Context(), snapshot, true, inboundTestGuard)
-	if err != nil || result.Contact.ID == "" || !result.SetupDeferred || result.Contact.GoferSyncEnabled || result.OperationID != "" || len(events) != 1 || events[0].EventType != "manual_contact_added" {
+	if err != nil || result.Contact.ID == "" || !result.SetupDeferred || result.Contact.RavenSyncEnabled || result.OperationID != "" || len(events) != 1 || events[0].EventType != "manual_contact_added" {
 		t.Fatal("setup creation", result, err, events)
 	}
 	if !reflect.DeepEqual(result.Contact.SaveTargets, request.SaveTargets) {

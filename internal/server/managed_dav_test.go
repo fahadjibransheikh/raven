@@ -102,7 +102,7 @@ func (a *managedDAVFixture) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				summary += fmt.Sprintf(" #%08d", index)
 				resource = fmt.Sprintf("event-%08d.ics", index)
 			}
-			ics := fmt.Sprintf("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Gofer//Fixture//EN\r\nBEGIN:VEVENT\r\nUID:%s\r\nDTSTART:%s\r\nDTEND:%s\r\nSUMMARY:%s\r\nDESCRIPTION:%s native notes\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n", uid, start.Format("20060102T150405Z"), start.Add(time.Hour).Format("20060102T150405Z"), summary, owner)
+			ics := fmt.Sprintf("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Raven//Fixture//EN\r\nBEGIN:VEVENT\r\nUID:%s\r\nDTSTART:%s\r\nDTEND:%s\r\nSUMMARY:%s\r\nDESCRIPTION:%s native notes\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n", uid, start.Format("20060102T150405Z"), start.Add(time.Hour).Format("20060102T150405Z"), summary, owner)
 			fmt.Fprintf(w, `<d:response><d:href>%s%s</d:href><d:propstat><d:prop><d:getetag>"native-calendar-%d"</d:getetag><c:calendar-data>`, r.URL.Path, resource, index)
 			xml.EscapeText(w, []byte(ics))
 			fmt.Fprint(w, `</c:calendar-data></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>`)
@@ -172,11 +172,11 @@ func TestManagedApplicationNativeDAVWorkersHTTPIsolationAndRestart(t *testing.T)
 	awaitManagedCondition(t, assertImported)
 	for _, owner := range []string{"alice", "bob"} {
 		response := f.form(owner, "POST", "/api/settings/contacts/accounts/sync", url.Values{"account_id": {f.accounts[owner]}})
-		if response.Code != 200 || response.Header().Get("X-Gofer-Status") == "error" {
+		if response.Code != 200 || response.Header().Get("X-Raven-Status") == "error" {
 			t.Fatal("contact HTTP sync", owner, response.Code, response.Body.String())
 		}
 		response = f.form(owner, "POST", "/api/calendar/sync", url.Values{"account_id": {f.accounts[owner]}})
-		if response.Code != 200 || response.Header().Get("X-Gofer-Status") == "error" {
+		if response.Code != 200 || response.Header().Get("X-Raven-Status") == "error" {
 			t.Fatal("calendar HTTP sync", owner, response.Code, response.Body.String())
 		}
 		other := "alice"
@@ -203,14 +203,14 @@ func TestManagedApplicationNativeDAVWorkersHTTPIsolationAndRestart(t *testing.T)
 	api.mu.Lock()
 	api.failingOwner = "alice"
 	api.mu.Unlock()
-	if response := f.form("alice", "POST", "/api/settings/contacts/accounts/sync", url.Values{"account_id": {f.accounts["alice"]}}); response.Header().Get("X-Gofer-Status") != "error" || !strings.Contains(response.Body.String(), "503") {
+	if response := f.form("alice", "POST", "/api/settings/contacts/accounts/sync", url.Values{"account_id": {f.accounts["alice"]}}); response.Header().Get("X-Raven-Status") != "error" || !strings.Contains(response.Body.String(), "503") {
 		t.Fatal("contact outage was hidden", response.Code, response.Body.String())
 	}
-	if response := f.form("alice", "POST", "/api/calendar/sync", url.Values{"account_id": {f.accounts["alice"]}}); response.Header().Get("X-Gofer-Status") != "error" {
+	if response := f.form("alice", "POST", "/api/calendar/sync", url.Values{"account_id": {f.accounts["alice"]}}); response.Header().Get("X-Raven-Status") != "error" {
 		t.Fatal("calendar outage was hidden", response.Code)
 	}
 	for _, path := range []string{"/api/settings/contacts/accounts/sync", "/api/calendar/sync"} {
-		if response := f.form("bob", "POST", path, url.Values{"account_id": {f.accounts["bob"]}}); response.Code != http.StatusOK || response.Header().Get("X-Gofer-Status") == "error" {
+		if response := f.form("bob", "POST", path, url.Values{"account_id": {f.accounts["bob"]}}); response.Code != http.StatusOK || response.Header().Get("X-Raven-Status") == "error" {
 			t.Fatal("foreign provider outage blocked Bob", path, response.Code)
 		}
 	}
@@ -221,7 +221,7 @@ func TestManagedApplicationNativeDAVWorkersHTTPIsolationAndRestart(t *testing.T)
 	api.failingOwner = ""
 	api.mu.Unlock()
 	for _, path := range []string{"/api/settings/contacts/accounts/sync", "/api/calendar/sync"} {
-		if response := f.form("alice", "POST", path, url.Values{"account_id": {f.accounts["alice"]}}); response.Code != http.StatusOK || response.Header().Get("X-Gofer-Status") == "error" {
+		if response := f.form("alice", "POST", path, url.Values{"account_id": {f.accounts["alice"]}}); response.Code != http.StatusOK || response.Header().Get("X-Raven-Status") == "error" {
 			t.Fatal("provider recovery failed", path, response.Code)
 		}
 	}

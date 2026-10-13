@@ -155,7 +155,7 @@ func OpenReadOnly(dbPath string) (*DB, error) {
 
 // OpenExisting opens an existing, current-schema database for an operator
 // mutation without creating directories or applying migrations. The caller is
-// responsible for holding Gofer's exclusive runtime lock for the full lifetime
+// responsible for holding Raven's exclusive runtime lock for the full lifetime
 // of the returned database.
 func OpenExisting(dbPath string) (*DB, error) {
 	if err := requireExistingDatabase(dbPath); err != nil {
@@ -1008,7 +1008,7 @@ func (db *DB) migrate() error {
 			return fmt.Errorf("migrate v105 to v106: %w", err)
 		}
 	}
-	// v107 onwards: Raven's calendar is replaced by upstream gofer's, whose
+	// v107 onwards: Raven's calendar is replaced by upstream's, whose
 	// migrations (upstream v93 to v105) are renumbered v107 to v119.
 	if currentVersion <= 106 {
 		calendarTx, err := db.write.Begin()

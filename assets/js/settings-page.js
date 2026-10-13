@@ -1,7 +1,7 @@
 // Settings pages and account dialogs. This code used to sit in the pages as
-// inline scripts; Gofer's pages may only run scripts from its own files.
+// inline scripts; Raven's pages may only run scripts from its own files.
 // Setup that ran when a part of the page arrived now runs through
-// goferOnContent (actions.js) when that part appears.
+// ravenOnContent (actions.js) when that part appears.
 
 // Compose and display tab
 (function() {
@@ -16,7 +16,7 @@
   function saveComposeAutosaveConditions(values) {
     var input = document.querySelector('[data-compose-autosave-conditions-value]');
     if (input) input.value = values.join(',');
-    if (typeof GoferSettings !== 'undefined') GoferSettings.set('compose_autosave_conditions', values.join(','));
+    if (typeof RavenSettings !== 'undefined') RavenSettings.set('compose_autosave_conditions', values.join(','));
   }
   function composeAutosaveConditionLabel(values) {
     if (!values.length) return 'No conditions';
@@ -50,63 +50,63 @@
   });
   document.addEventListener('change', function(e) {
     var defaultComposeView = e.target.closest('input[name="default_new_compose_view"], input[name="default_reply_compose_view"]');
-    if (defaultComposeView && typeof GoferSettings !== 'undefined') {
-      GoferSettings.set(defaultComposeView.name, defaultComposeView.value);
+    if (defaultComposeView && typeof RavenSettings !== 'undefined') {
+      RavenSettings.set(defaultComposeView.name, defaultComposeView.value);
     }
     var mailPaneLayout = e.target.closest('input[name="mail_pane_layout"]');
-    if (mailPaneLayout && typeof GoferSettings !== 'undefined') {
-      GoferSettings.set('mail_pane_layout', mailPaneLayout.value);
+    if (mailPaneLayout && typeof RavenSettings !== 'undefined') {
+      RavenSettings.set('mail_pane_layout', mailPaneLayout.value);
     }
     var autosaveToggle = e.target.closest('[data-compose-autosave-setting="enabled"]');
-    if (autosaveToggle && typeof GoferSettings !== 'undefined') {
-      GoferSettings.set('compose_autosave_enabled', autosaveToggle.checked ? 'true' : 'false');
+    if (autosaveToggle && typeof RavenSettings !== 'undefined') {
+      RavenSettings.set('compose_autosave_enabled', autosaveToggle.checked ? 'true' : 'false');
       syncComposeAutosaveControls();
     }
     var minChars = e.target.closest('[data-compose-autosave-min-chars]');
-    if (minChars && typeof GoferSettings !== 'undefined') {
+    if (minChars && typeof RavenSettings !== 'undefined') {
       var n = Math.max(1, Math.min(1000, parseInt(minChars.value.replace(/\D/g, '') || '30', 10) || 30));
       minChars.value = n;
-      GoferSettings.set('compose_autosave_min_chars', String(n));
+      RavenSettings.set('compose_autosave_min_chars', String(n));
     }
     var autosaveDebounce = e.target.closest('input[name="compose_autosave_debounce"]');
-    if (autosaveDebounce && typeof GoferSettings !== 'undefined') {
-      GoferSettings.set('compose_autosave_debounce', autosaveDebounce.value);
+    if (autosaveDebounce && typeof RavenSettings !== 'undefined') {
+      RavenSettings.set('compose_autosave_debounce', autosaveDebounce.value);
     }
     var senderDisplay = e.target.closest('input[name="sender_display"]');
-    if (senderDisplay && typeof GoferSettings !== 'undefined') {
-      GoferSettings.set('sender_display', senderDisplay.value);
+    if (senderDisplay && typeof RavenSettings !== 'undefined') {
+      RavenSettings.set('sender_display', senderDisplay.value);
     }
     var mailListNavigation = e.target.closest('input[name="mail_list_navigation"]');
-    if (mailListNavigation && typeof GoferSettings !== 'undefined') {
-      GoferSettings.set('mail_list_navigation', mailListNavigation.value);
+    if (mailListNavigation && typeof RavenSettings !== 'undefined') {
+      RavenSettings.set('mail_list_navigation', mailListNavigation.value);
     }
     var threadOrder = e.target.closest('input[name="thread_order"]');
-    if (threadOrder && typeof GoferSettings !== 'undefined') {
-      GoferSettings.set('thread_order', threadOrder.value);
+    if (threadOrder && typeof RavenSettings !== 'undefined') {
+      RavenSettings.set('thread_order', threadOrder.value);
     }
     var autoMarkRead = e.target.closest('input[name="auto_mark_read_after"]');
-    if (autoMarkRead && typeof GoferSettings !== 'undefined') {
-      GoferSettings.set('auto_mark_read_after', autoMarkRead.value);
+    if (autoMarkRead && typeof RavenSettings !== 'undefined') {
+      RavenSettings.set('auto_mark_read_after', autoMarkRead.value);
     }
     var openNextAfterRemove = e.target.closest('[data-open-next-after-remove-setting]');
-    if (openNextAfterRemove && typeof GoferSettings !== 'undefined') {
-      GoferSettings.set('open_next_after_remove', openNextAfterRemove.checked ? 'true' : 'false');
+    if (openNextAfterRemove && typeof RavenSettings !== 'undefined') {
+      RavenSettings.set('open_next_after_remove', openNextAfterRemove.checked ? 'true' : 'false');
     }
     var loadRemoteImages = e.target.closest('[data-load-remote-images-setting]');
-    if (loadRemoteImages && typeof GoferSettings !== 'undefined') {
-      GoferSettings.set('load_remote_images', loadRemoteImages.checked ? 'true' : 'false');
+    if (loadRemoteImages && typeof RavenSettings !== 'undefined') {
+      RavenSettings.set('load_remote_images', loadRemoteImages.checked ? 'true' : 'false');
     }
     var translationEnabled = e.target.closest('[data-translation-setting="enabled"]');
-    if (translationEnabled && typeof GoferSettings !== 'undefined') {
-      GoferSettings.set('translation_button_enabled', translationEnabled.checked ? 'true' : 'false');
+    if (translationEnabled && typeof RavenSettings !== 'undefined') {
+      RavenSettings.set('translation_button_enabled', translationEnabled.checked ? 'true' : 'false');
     }
     var translationProvider = e.target.closest('input[name="translation_provider"]');
-    if (translationProvider && typeof GoferSettings !== 'undefined') {
-      GoferSettings.set('translation_provider', translationProvider.value);
+    if (translationProvider && typeof RavenSettings !== 'undefined') {
+      RavenSettings.set('translation_provider', translationProvider.value);
     }
     var translationLanguage = e.target.closest('input[name="translation_target_language"]');
-    if (translationLanguage && typeof GoferSettings !== 'undefined') {
-      GoferSettings.set('translation_target_language', translationLanguage.value);
+    if (translationLanguage && typeof RavenSettings !== 'undefined') {
+      RavenSettings.set('translation_target_language', translationLanguage.value);
     }
   });
   document.addEventListener('input', function(e) {
@@ -114,7 +114,7 @@
     if (!minChars) return;
     minChars.value = minChars.value.replace(/\D/g, '').slice(0, 4);
   });
-  goferOnContent('[data-compose-autosave-conditions-value]', function() { syncComposeAutosaveControls(); });
+  ravenOnContent('[data-compose-autosave-conditions-value]', function() { syncComposeAutosaveControls(); });
 })();
 
 // Settings that only matter while a switch is on are marked
@@ -133,8 +133,8 @@
       });
     });
   }
-  window.goferSyncSettingDependents = syncSettingDependents;
-  goferOnContent('[data-setting-depends-on]', function() { syncSettingDependents(); });
+  window.ravenSyncSettingDependents = syncSettingDependents;
+  ravenOnContent('[data-setting-depends-on]', function() { syncSettingDependents(); });
   document.addEventListener('change', function(e) {
     if (e.target && e.target.matches && e.target.matches('input[role="switch"]')) syncSettingDependents();
   });
@@ -145,8 +145,8 @@
   document.addEventListener('click', function(e) {
     var mode = e.target.closest('[data-mode]');
     if (mode) {
-      if (typeof GoferSettings !== 'undefined') {
-        GoferSettings.set('theme', mode.dataset.mode);
+      if (typeof RavenSettings !== 'undefined') {
+        RavenSettings.set('theme', mode.dataset.mode);
       }
       var isDark = mode.dataset.mode === 'dark';
       document.querySelectorAll('[data-theme-preview]').forEach(function(el) {
@@ -157,12 +157,12 @@
   });
   document.addEventListener('change', function(e) {
     var density = e.target.closest('input[name="mail_list_density"]');
-    if (density && typeof GoferSettings !== 'undefined') {
-      GoferSettings.set('mail_list_density', density.value);
+    if (density && typeof RavenSettings !== 'undefined') {
+      RavenSettings.set('mail_list_density', density.value);
     }
     var themeStyle = e.target.closest('input[name="theme_style"]');
-    if (themeStyle && typeof GoferSettings !== 'undefined') {
-      GoferSettings.set('theme_style', themeStyle.value);
+    if (themeStyle && typeof RavenSettings !== 'undefined') {
+      RavenSettings.set('theme_style', themeStyle.value);
     }
   });
 })();
@@ -200,7 +200,7 @@
     var input = root.querySelector('[data-timezone-input]');
     if (!content || !group || !input) return;
     var current = root.getAttribute('data-current-timezone') || '';
-    if (typeof GoferSettings !== 'undefined') current = GoferSettings.get('timezone') || current;
+    if (typeof RavenSettings !== 'undefined') current = RavenSettings.get('timezone') || current;
     if (!current || current === 'local') current = browserTimezone();
     var options = timezoneOptions();
     group.innerHTML = '';
@@ -222,13 +222,13 @@
     input.value = current;
     input.dispatchEvent(new Event('input', { bubbles: true }));
   }
-  goferOnContent('[data-timezone-picker]', function() { populateTimezonePicker(); });
+  ravenOnContent('[data-timezone-picker]', function() { populateTimezonePicker(); });
   document.addEventListener('change', function(e) {
     var timezone = e.target.closest('[data-timezone-input]');
-    if (timezone && typeof GoferSettings !== 'undefined') {
+    if (timezone && typeof RavenSettings !== 'undefined') {
       var valueEl = timezone.closest('.select-trigger') && timezone.closest('.select-trigger').querySelector('.select-value');
       if (valueEl) valueEl.textContent = timezoneLabel(timezone.value);
-      GoferSettings.set('timezone', timezone.value);
+      RavenSettings.set('timezone', timezone.value);
     }
   });
 })();
@@ -237,8 +237,8 @@
 (function() {
   document.addEventListener('change', function(e) {
     var toggle = e.target.closest('[data-ui-setting-switch]');
-    if (!toggle || typeof GoferSettings === 'undefined') return;
-    GoferSettings.set(toggle.getAttribute('data-ui-setting-switch'), toggle.checked ? 'true' : 'false');
+    if (!toggle || typeof RavenSettings === 'undefined') return;
+    RavenSettings.set(toggle.getAttribute('data-ui-setting-switch'), toggle.checked ? 'true' : 'false');
   });
 })();
 
@@ -254,18 +254,18 @@
       section.classList.toggle('saturate-50', !enabled);
     });
   }
-  goferOnContent('[data-contact-autocreate-switch]', function() { syncContactsAutoCreateDependents(); });
+  ravenOnContent('[data-contact-autocreate-switch]', function() { syncContactsAutoCreateDependents(); });
   document.addEventListener('change', function(e) {
     // The switch itself is saved by the advanced settings listener.
     var toggle = e.target.closest('[data-contact-autocreate-switch]');
     if (toggle) syncContactsAutoCreateDependents();
     var source = e.target.closest('[data-contact-source-switch]');
-    if (!source || typeof GoferSettings === 'undefined') return;
+    if (!source || typeof RavenSettings === 'undefined') return;
     var selected = [];
     document.querySelectorAll('[data-contact-source-switch]').forEach(function(el) {
       if (el.checked) selected.push(el.getAttribute('data-contact-source-switch'));
     });
-    GoferSettings.set('contacts_observed_sources', selected.join(','));
+    RavenSettings.set('contacts_observed_sources', selected.join(','));
   });
 })();
 
@@ -438,11 +438,11 @@
     }
   });
 
-  document.addEventListener('gofer:idle-folder-status', function(e) {
+  document.addEventListener('raven:idle-folder-status', function(e) {
     applyIDLEFolderStatus(e.detail || {});
   });
-  if (window.goferIDLEFallbackTimer) window.clearInterval(window.goferIDLEFallbackTimer);
-  window.goferIDLEFallbackTimer = window.setInterval(function() {
+  if (window.ravenIDLEFallbackTimer) window.clearInterval(window.ravenIDLEFallbackTimer);
+  window.ravenIDLEFallbackTimer = window.setInterval(function() {
     document.querySelectorAll('[data-sync-pill][data-idle-fallback-reason]:not([data-idle-fallback-reason=""])').forEach(function(pill) {
       var text = pill.querySelector('[data-idle-fallback-tooltip-text]');
       if (text) text.textContent = fallbackTooltipText(pill);
@@ -470,8 +470,8 @@
   }
 
   function showSaveError() {
-    if (typeof showGoferToast !== 'function') return;
-    showGoferToast({
+    if (typeof showRavenToast !== 'function') return;
+    showRavenToast({
       id: 'sync-settings-toast',
       title: 'Could not save email sync settings',
       description: 'Try again in a moment.',
@@ -548,25 +548,25 @@
 
   document.addEventListener('change', function(e) {
     var unifiedFolders = e.target.closest && e.target.closest('[data-unified-folders-setting="enabled"]');
-    if (unifiedFolders && typeof GoferSettings !== 'undefined') {
-      GoferSettings.set('unified_folders_enabled', unifiedFolders.checked ? 'true' : 'false');
+    if (unifiedFolders && typeof RavenSettings !== 'undefined') {
+      RavenSettings.set('unified_folders_enabled', unifiedFolders.checked ? 'true' : 'false');
       syncUnifiedFolderControls();
       return;
     }
     var unifiedFolder = e.target.closest && e.target.closest('[data-unified-folder-switch]');
-    if (unifiedFolder && typeof GoferSettings !== 'undefined') {
-      GoferSettings.set(unifiedFolder.name, unifiedFolder.checked ? 'true' : 'false');
+    if (unifiedFolder && typeof RavenSettings !== 'undefined') {
+      RavenSettings.set(unifiedFolder.name, unifiedFolder.checked ? 'true' : 'false');
       syncUnifiedFolderControls();
       return;
     }
     var unifiedFolderAccount = e.target.closest && e.target.closest('[data-unified-folder-account-switch]');
-    if (unifiedFolderAccount && typeof GoferSettings !== 'undefined') {
-      GoferSettings.set(unifiedFolderAccount.name, unifiedFolderAccount.checked ? 'true' : 'false');
+    if (unifiedFolderAccount && typeof RavenSettings !== 'undefined') {
+      RavenSettings.set(unifiedFolderAccount.name, unifiedFolderAccount.checked ? 'true' : 'false');
     }
   });
 
   // The form's own listeners are bound each time the sync tab appears.
-  goferOnContent('#sync-settings-form', function(form) {
+  ravenOnContent('#sync-settings-form', function(form) {
     form.addEventListener('submit', function(e) {
       e.preventDefault();
       saveSyncSettings();
@@ -642,7 +642,7 @@ function newEditAccountTest() {
 var editAccountTest = newEditAccountTest();
 // Each loaded edit dialog starts at its first step with a new test, and
 // remembers its saved settings once its fields have been filled in.
-goferOnContent('#edit-account-dialog', function() {
+ravenOnContent('#edit-account-dialog', function() {
 	_editWizStep = 0;
 	_editAccountSavedKey = null;
 	window.setTimeout(editAccountMarkSaved, 300);

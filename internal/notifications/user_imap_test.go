@@ -265,8 +265,8 @@ func (s *routedIMAPServer) serve(conn net.Conn) {
 						continue
 					}
 					header := "Message-ID"
-					if strings.Contains(upper, "X-GOFER-DRAFT-REVISION") {
-						header = "X-Gofer-Draft-Revision"
+					if strings.Contains(upper, "X-RAVEN-DRAFT-REVISION") {
+						header = "X-Raven-Draft-Revision"
 					}
 					if !strings.Contains(line, strings.Trim(msg.Header.Get(header), "<>")) || msg.Header.Get(header) == "" {
 						continue
@@ -274,7 +274,7 @@ func (s *routedIMAPServer) serve(conn net.Conn) {
 					fmt.Fprintf(writer, " %d", uid)
 					continue
 				}
-				if strings.Contains(upper, "X-GOFER-DRAFT-REVISION") {
+				if strings.Contains(upper, "X-RAVEN-DRAFT-REVISION") {
 					continue
 				}
 				if strings.Contains(strings.ReplaceAll(upper, `"`, ""), "HEADER MESSAGE-ID") {
@@ -750,7 +750,7 @@ func TestUserIMAPAccountCreateHookStartsRealReceiveWorker(t *testing.T) {
 	if rec.Code != 200 {
 		t.Fatalf("account create: %d %s", rec.Code, rec.Body.String()[:min(250, rec.Body.Len())])
 	}
-	id := rec.Header().Get("X-Gofer-Account-ID")
+	id := rec.Header().Get("X-Raven-Account-ID")
 	if id == "" {
 		t.Fatal("account create did not return ID")
 	}

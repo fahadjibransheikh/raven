@@ -9,7 +9,7 @@ or real-provider acceptance. No schema migration is needed.
 - Enrolled TOTP or a complete same-RP passkey requires verification after every
   password or federated primary sign-in, independently of mandatory enrollment.
   These sign-ins remain `primary_verified` until MFA succeeds. Google, Microsoft,
-  and OIDC identities do not themselves satisfy Gofer's MFA requirement.
+  and OIDC identities do not themselves satisfy Raven's MFA requirement.
 - Successful passkey enrollment strengthens the current session, advances the
   authentication version, and revokes other sessions in the same transaction as
   its existing `credential_changed` event. Completed first-time TOTP enrollment

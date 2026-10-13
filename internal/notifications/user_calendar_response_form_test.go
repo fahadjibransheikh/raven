@@ -71,7 +71,7 @@ func newOwnedCalendarResponseFormFixture(t *testing.T, provider string, before f
 			if provider == "caldav" {
 				w.Header().Set("Content-Type", "text/calendar")
 				w.Header().Set("ETag", `"v1"`)
-				_, _ = fmt.Fprintf(w, "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Gofer//Test//EN\r\nBEGIN:VEVENT\r\nUID:private-uid\r\nDTSTART:20261003T100000Z\r\nDTEND:20261003T110000Z\r\nSUMMARY:%s native invitation\r\nORGANIZER:mailto:organizer@example.com\r\nATTENDEE;PARTSTAT=NEEDS-ACTION:mailto:%s\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n", owner, address)
+				_, _ = fmt.Fprintf(w, "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Raven//Test//EN\r\nBEGIN:VEVENT\r\nUID:private-uid\r\nDTSTART:20261003T100000Z\r\nDTEND:20261003T110000Z\r\nSUMMARY:%s native invitation\r\nORGANIZER:mailto:organizer@example.com\r\nATTENDEE;PARTSTAT=NEEDS-ACTION:mailto:%s\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n", owner, address)
 				return
 			}
 			w.Header().Set("Content-Type", "application/json")

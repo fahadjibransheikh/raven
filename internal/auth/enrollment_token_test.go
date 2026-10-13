@@ -493,7 +493,7 @@ func TestCleanupEnrollmentTokensIsBoundedAndPreservesActiveRows(t *testing.T) {
 
 func TestEnrollmentTokenMetadataPersistsAcrossDatabaseRestart(t *testing.T) {
 	now := time.Date(2026, time.August, 6, 2, 0, 0, 0, time.UTC)
-	path := filepath.Join(t.TempDir(), "gofer.db")
+	path := filepath.Join(t.TempDir(), "raven.db")
 	db, err := storage.New(path)
 	if err != nil {
 		t.Fatal(err)

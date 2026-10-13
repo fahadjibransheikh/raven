@@ -114,7 +114,7 @@ func (h *Handler) handleCalendarSync(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if month.SyncError {
-		w.Header().Set("X-Gofer-Status", "error")
+		w.Header().Set("X-Raven-Status", "error")
 	}
 	if err := views.CalendarPage(month, uiSettings).Render(ctx, w); err != nil {
 		http.Error(w, "failed to render calendar refresh", http.StatusInternalServerError)

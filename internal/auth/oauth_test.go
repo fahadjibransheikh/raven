@@ -49,7 +49,7 @@ func TestGoogleApplicationLoginUsesVerifiedIDTokenWithoutCreatingMailboxAccess(t
 	manager.config.GoogleLoginClient = &oauth2.Config{
 		ClientID:     "login-client",
 		ClientSecret: "login-secret",
-		RedirectURL:  "https://gofer.example/auth/google/login/callback",
+		RedirectURL:  "https://raven.example/auth/google/login/callback",
 		Scopes:       []string{"openid", "email", "profile"},
 		Endpoint: oauth2.Endpoint{
 			AuthURL:  "https://accounts.example/authorize",

@@ -426,7 +426,7 @@ func TestUserStorageTestPushReachesOnlyTheAskingBrowser(t *testing.T) {
 	if err := f.service.SendTestPush(t.Context(), "alice", "https://push.example/alice"); err != nil {
 		t.Fatal(err)
 	}
-	if len(delivered) != 1 || delivered[0] != "https://push.example/alice" || payload["tag"] != "gofer-test-notification" {
+	if len(delivered) != 1 || delivered[0] != "https://push.example/alice" || payload["tag"] != "raven-test-notification" {
 		t.Fatalf("test push went to %v with %v", delivered, payload)
 	}
 	// Another user's browser, or one that never subscribed, gets nothing.

@@ -14,7 +14,7 @@ const (
 	DefaultListenAddr = "127.0.0.1:8090"
 	DefaultBaseURL    = "http://local.localhost:8090"
 
-	automationHeader = "X-Gofer-Request"
+	automationHeader = "X-Raven-Request"
 )
 
 type requestOrigin struct {
@@ -101,7 +101,7 @@ func newConfig(listenAddr, baseURL string, allowUnauthenticatedRemote bool) (*Co
 		trustedOrigins:             map[requestOrigin]struct{}{baseOrigin: {}},
 	}
 	// Loopback names stay trusted when the base URL is a LAN address, so the
-	// machine running Gofer can keep using localhost. A remote page cannot make
+	// machine running Raven can keep using localhost. A remote page cannot make
 	// a browser send a loopback Host header to this server.
 	for _, host := range []string{"localhost", "local.localhost", "127.0.0.1", "::1"} {
 		cfg.trustedOrigins[requestOrigin{scheme: baseOrigin.scheme, host: host, port: baseOrigin.port}] = struct{}{}

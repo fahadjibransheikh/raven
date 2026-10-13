@@ -140,7 +140,7 @@ func TestUserContactPushGoogleOwnedCreateThenUpdate(t *testing.T) {
 	seed := func() {
 		if err := accounts.WithUser(ctx, "alice", func(_ *config.AccountStore, db *storage.DB) error {
 			if profile == "" {
-				contact, err := db.SaveContact(ctx, "alice", models.Contact{Email: "person@example.com", Phone: "222", GoferSyncEnabled: true, SaveTargets: []string{"account:" + account.ID}})
+				contact, err := db.SaveContact(ctx, "alice", models.Contact{Email: "person@example.com", Phone: "222", RavenSyncEnabled: true, SaveTargets: []string{"account:" + account.ID}})
 				if err != nil {
 					return err
 				}
@@ -309,7 +309,7 @@ func seedUserContactPush(t *testing.T, f *userContactPushFixture, owner, provide
 		target = "book:" + owner + "-book"
 	}
 	if err := f.h.userAccounts.WithUser(t.Context(), owner, func(_ *config.AccountStore, db *storage.DB) error {
-		if _, err := db.SaveContact(t.Context(), owner, models.Contact{ID: id, Email: "same@example.com", Name: owner, Phone: owner, PhoneLabel: "work", GoferSyncEnabled: true, SaveTargets: []string{target}}); err != nil {
+		if _, err := db.SaveContact(t.Context(), owner, models.Contact{ID: id, Email: "same@example.com", Name: owner, Phone: owner, PhoneLabel: "work", RavenSyncEnabled: true, SaveTargets: []string{target}}); err != nil {
 			return err
 		}
 		_, err := db.EnqueueContactSyncOperation(t.Context(), owner, models.Contact{ID: id, Email: "stale@example.com", Phone: "stale"}, nil)
@@ -1011,7 +1011,7 @@ func TestUserContactPushBlockedWriteReleasesLeaseAndRejectsChangedProfile(t *tes
 		t.Fatal("blocked Alice retained the only store slot", n, err)
 	}
 	if err := f.h.userAccounts.WithUser(ctx, "alice", func(_ *config.AccountStore, db *storage.DB) error {
-		_, err := db.SaveContact(ctx, "alice", models.Contact{ID: id, Email: "same@example.com", Name: "changed", Phone: "new-value", GoferSyncEnabled: true, SaveTargets: []string{"account:" + f.accounts["alice"].ID}})
+		_, err := db.SaveContact(ctx, "alice", models.Contact{ID: id, Email: "same@example.com", Name: "changed", Phone: "new-value", RavenSyncEnabled: true, SaveTargets: []string{"account:" + f.accounts["alice"].ID}})
 		return err
 	}); err != nil {
 		t.Fatal("blocked write retained a database lease", err)

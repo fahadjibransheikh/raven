@@ -28,7 +28,7 @@ access private repositories before full completion.
 - `GET /api/message-file/{kind}/{messageID}/{name}` serves one inline part or
   saved remote image of a message without a session. A message is shown in a
   sandboxed frame the browser treats as another site, so its image requests
-  carry no session cookie. When Gofer builds a message page it signs that
+  carry no session cookie. When Raven builds a message page it signs that
   message's own file addresses with a key that is random for each server
   start; the signature names the owner, message, kind, and file and expires
   after twelve hours. The route serves only a file matching a valid
@@ -46,7 +46,7 @@ access private repositories before full completion.
 - Pages under `/admin`, including avatars, contacts, labels, operations, and
   security.
 - Security-exception mutations under `/admin/security/*`. In personal and open
-  mode, where Gofer has a single owner, the same mutations are served under
+  mode, where Raven has a single owner, the same mutations are served under
   `/settings/security/mail/*` instead; they return `404` in managed mode.
 - `GET /api/admin/mail-operations/status`.
 - `GET /api/system/processing`.

@@ -66,7 +66,7 @@ func (a *routedGmailAPI) stopAt(owner, path, format string) *routedGmailBlock {
 	return b
 }
 func routedGmailMIME(owner string) string {
-	return "Message-ID: <" + owner + "-m1@mail.test>\r\nSubject: " + owner + " private message\r\nFrom: Sender <sender@mail.test>\r\nTo: " + owner + "@mail.test\r\nMIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary=gofer\r\n\r\n--gofer\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n" + owner + " private body\r\n--gofer\r\nContent-Type: text/plain\r\nContent-Disposition: attachment; filename=report.txt\r\n\r\n" + owner + " attachment\r\n--gofer--\r\n"
+	return "Message-ID: <" + owner + "-m1@mail.test>\r\nSubject: " + owner + " private message\r\nFrom: Sender <sender@mail.test>\r\nTo: " + owner + "@mail.test\r\nMIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary=raven\r\n\r\n--raven\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n" + owner + " private body\r\n--raven\r\nContent-Type: text/plain\r\nContent-Disposition: attachment; filename=report.txt\r\n\r\n" + owner + " attachment\r\n--raven--\r\n"
 }
 func (a *routedGmailAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	owner := strings.Split(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "), "-")[0]

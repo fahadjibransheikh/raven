@@ -7,7 +7,7 @@ import (
 )
 
 func TestNewRestrictsDatabaseFilesToOwner(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "data", "gofer.db")
+	path := filepath.Join(t.TempDir(), "data", "raven.db")
 	db, err := New(path)
 	if err != nil {
 		t.Fatal(err)

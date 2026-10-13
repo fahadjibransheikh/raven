@@ -250,7 +250,7 @@ func TestAdminUsersPageRendersProtectedCredentialResetActionAndOneTimeResult(t *
 			CredentialResetPath: "/admin/users/webmail-user/credential-reset", CredentialResetCSRFToken: csrfToken,
 		}},
 		CredentialReset: &AdminUserCredentialResetData{
-			Username: "webmail.user", RedemptionURL: "https://gofer.example/account/redeem",
+			Username: "webmail.user", RedemptionURL: "https://raven.example/account/redeem",
 			Token: "private-reset-token", ExpiresAt: expiresAt,
 		},
 	}
@@ -264,7 +264,7 @@ func TestAdminUsersPageRendersProtectedCredentialResetActionAndOneTimeResult(t *
 		`action="/admin/users/webmail-user/credential-reset"`, csrfToken,
 		"does not change the password or sign the user out yet", "Generate reset token",
 		"Password-reset token created", "Reset token ready for webmail.user",
-		"Raven password reset for webmail.user", "https://gofer.example/account/redeem",
+		"Raven password reset for webmail.user", "https://raven.example/account/redeem",
 		"Reset token: private-reset-token", "Raven stores only a hash of the token",
 		"Successful redemption signs the user out everywhere, preserves MFA, and does not enable a disabled account",
 		"I saved the reset token",
@@ -273,7 +273,7 @@ func TestAdminUsersPageRendersProtectedCredentialResetActionAndOneTimeResult(t *
 			t.Fatalf("administrator credential-reset view missing %q: %s", want, html)
 		}
 	}
-	if strings.Contains(html, `https://gofer.example/account/redeem?token=`) {
+	if strings.Contains(html, `https://raven.example/account/redeem?token=`) {
 		t.Fatalf("administrator credential-reset result put token in URL: %s", html)
 	}
 }
@@ -312,7 +312,7 @@ func TestAdminUsersPageRendersProtectedInvitationFormAndOneTimeResult(t *testing
 		},
 		Invitation: &AdminUserInvitationData{
 			Name: "Invited Person", Username: "invited.person",
-			RedemptionURL: "https://gofer.example/account/enroll",
+			RedemptionURL: "https://raven.example/account/enroll",
 			Token:         `private-token</textarea><script>alert("token")</script>`,
 			ExpiresAt:     expiresAt,
 		},
@@ -329,7 +329,7 @@ func TestAdminUsersPageRendersProtectedInvitationFormAndOneTimeResult(t *testing
 		`&lt;Admin &amp; helper&gt;`, `Username &lt;already&gt; exists`,
 		"does not create, connect, or authorize a mailbox", "Invitation created",
 		`data-tui-dialog-disable-click-away="true"`, `data-tui-dialog-disable-esc="true"`,
-		"Raven stores only a hash of the token", "https://gofer.example/account/enroll",
+		"Raven stores only a hash of the token", "https://raven.example/account/enroll",
 		"Copy invitation details", "deliberately not placed in the URL",
 		`private-token&lt;/textarea&gt;&lt;script&gt;alert(&#34;token&#34;)&lt;/script&gt;`,
 	} {
@@ -339,7 +339,7 @@ func TestAdminUsersPageRendersProtectedInvitationFormAndOneTimeResult(t *testing
 	}
 	for _, forbidden := range []string{
 		`<script>alert("token")</script>`,
-		`https://gofer.example/account/enroll?token=`,
+		`https://raven.example/account/enroll?token=`,
 	} {
 		if strings.Contains(html, forbidden) {
 			t.Fatalf("administrator invitation view exposed forbidden value %q", forbidden)

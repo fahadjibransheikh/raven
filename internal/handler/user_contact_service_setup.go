@@ -98,7 +98,7 @@ func (h *Handler) handleUserSaveAccountContactSync(w http.ResponseWriter, r *htt
 		htmlStatus(w, http.StatusServiceUnavailable, "Contact settings saved; worker refresh failed, retry saving.")
 		return
 	}
-	w.Header().Set("X-Gofer-Contact-Sync-Enabled", strconv.FormatBool(cfg.Enabled))
+	w.Header().Set("X-Raven-Contact-Sync-Enabled", strconv.FormatBool(cfg.Enabled))
 	if !cfg.Enabled {
 		htmlStatus(w, http.StatusOK, "Contact sync is disabled for this account.")
 		return

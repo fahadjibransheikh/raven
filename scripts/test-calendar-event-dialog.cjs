@@ -23,7 +23,7 @@ function fixture() {
   document: {body: {addEventListener(type,fn) {(handlers[type] ||= []).push(fn)}}, getElementById(id) {return {'calendar-main':calendar,'calendar-event-loading':template,'app-pane-dialogs':target,'calendar-event-details-dialog':root}[id]}},
   window: {tui: {dialog: {open(id) {opens.push(id);if (root) root.dialog.open = true}}}, htmx: {trigger(trigger,name) {aborts.push(name);fire('htmx:sendAbort',{elt:trigger,xhr:context._calendarEventRequestForTest})}}},
   DOMParser: class {parseFromString(html) {return {querySelector() {return html === 'details' ? {} : null}}}},
-  _calendarSourceIsVisible() {return visible}, showGoferToast(toast) {toasts.push(toast)},
+  _calendarSourceIsVisible() {return visible}, showRavenToast(toast) {toasts.push(toast)},
   setTimeout(fn,delay) {assert.equal(delay,250);timers.set(++timerID,fn);return timerID}, clearTimeout(id) {timers.delete(id)},
  })
  vm.runInContext(source.slice(source.indexOf('var _calendarEventRequest = null'), source.indexOf('var _calendarCreateDialogRequest = null')), context)

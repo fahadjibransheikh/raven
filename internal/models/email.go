@@ -153,7 +153,7 @@ type Contact struct {
 	AvatarURL             string
 	AvatarDataURL         string
 	RemoveAvatar          bool
-	GoferSyncEnabled      bool
+	RavenSyncEnabled      bool
 	SourceBooks           []ContactAddressBook
 	SyncStatus            string
 	SyncError             string

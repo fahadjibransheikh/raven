@@ -59,7 +59,7 @@ func newOwnedCalendarFormsFixture(t *testing.T, provider string, beforeReply fun
 			if provider == "caldav" {
 				w.Header().Set("Content-Type", "text/calendar")
 				w.Header().Set("ETag", `"master-v2"`)
-				_, _ = fmt.Fprintf(w, "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Gofer//Test//EN\r\nBEGIN:VEVENT\r\nUID:uid\r\nDTSTART;VALUE=DATE:20241002\r\nDTEND;VALUE=DATE:20241003\r\nRRULE:FREQ=DAILY;COUNT=10\r\nSUMMARY:%s private master\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n", owner)
+				_, _ = fmt.Fprintf(w, "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Raven//Test//EN\r\nBEGIN:VEVENT\r\nUID:uid\r\nDTSTART;VALUE=DATE:20241002\r\nDTEND;VALUE=DATE:20241003\r\nRRULE:FREQ=DAILY;COUNT=10\r\nSUMMARY:%s private master\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n", owner)
 				return
 			}
 			w.Header().Set("Content-Type", "application/json")

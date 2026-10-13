@@ -113,7 +113,7 @@ func TestUserContactPreviewAtomicAllSelectionsAndCardMetadata(t *testing.T) {
 				t.Fatal(err)
 			}
 			result, err := db.PublishUserContactPreview(t.Context(), snapshot, values, inboundTestGuard)
-			if err != nil || result.Contact.ID != id || result.Contact.GoferSyncEnabled {
+			if err != nil || result.Contact.ID != id || result.Contact.RavenSyncEnabled {
 				t.Fatal("retry preview", result, err)
 			}
 			var profile, raw, kind, status, lastError, etag string

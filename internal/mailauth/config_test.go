@@ -17,11 +17,11 @@ func TestLoadConfigUsesMailboxCredentialsAndScopes(t *testing.T) {
 	t.Setenv("MICROSOFT_OAUTH_CLIENT_SECRET", "microsoft-mailbox-secret")
 	t.Setenv("MICROSOFT_OAUTH_TENANT", "organizations")
 
-	cfg := LoadConfig("https://gofer.example/", true)
+	cfg := LoadConfig("https://raven.example/", true)
 	if !cfg.Enabled || cfg.GoogleClient == nil || cfg.MicrosoftClient == nil {
 		t.Fatalf("mailbox OAuth config = %#v", cfg)
 	}
-	if cfg.GoogleClient.ClientID != "google-mailbox-client" || cfg.GoogleClient.RedirectURL != "https://gofer.example/auth/google/mailbox/callback" {
+	if cfg.GoogleClient.ClientID != "google-mailbox-client" || cfg.GoogleClient.RedirectURL != "https://raven.example/auth/google/mailbox/callback" {
 		t.Fatalf("Google mailbox client = %#v", cfg.GoogleClient)
 	}
 	for _, want := range []string{"https://www.googleapis.com/auth/calendar.calendarlist.readonly", "https://www.googleapis.com/auth/calendar.events"} {
@@ -32,7 +32,7 @@ func TestLoadConfigUsesMailboxCredentialsAndScopes(t *testing.T) {
 	if !slices.Equal(cfg.GoogleClient.Scopes, googleAccountScopes()) {
 		t.Fatalf("Google mailbox scopes = %#v", cfg.GoogleClient.Scopes)
 	}
-	if cfg.MicrosoftClient.ClientID != "microsoft-mailbox-client" || cfg.MicrosoftClient.RedirectURL != "https://gofer.example/auth/microsoft/mailbox/callback" {
+	if cfg.MicrosoftClient.ClientID != "microsoft-mailbox-client" || cfg.MicrosoftClient.RedirectURL != "https://raven.example/auth/microsoft/mailbox/callback" {
 		t.Fatalf("Microsoft mailbox client = %#v", cfg.MicrosoftClient)
 	}
 	if !slices.Equal(cfg.MicrosoftClient.Scopes, microsoftAccountTokenScopes()) {
@@ -51,7 +51,7 @@ func TestLoadConfigDoesNotReuseApplicationLoginCredentialsForMailboxAccess(t *te
 	t.Setenv("MICROSOFT_OAUTH_CLIENT_ID", "")
 	t.Setenv("MICROSOFT_OAUTH_CLIENT_SECRET", "")
 
-	cfg := LoadConfig("https://gofer.example", true)
+	cfg := LoadConfig("https://raven.example", true)
 	if cfg.GoogleClient != nil || cfg.MicrosoftClient != nil {
 		t.Fatalf("mailbox OAuth reused application-login credentials: %#v", cfg)
 	}
@@ -61,7 +61,7 @@ func TestLoadConfigAllowsMicrosoftMailboxWithoutSecret(t *testing.T) {
 	t.Setenv("MICROSOFT_OAUTH_CLIENT_ID", "public-client-id")
 	t.Setenv("MICROSOFT_OAUTH_CLIENT_SECRET", "")
 
-	cfg := LoadConfig("https://gofer.example", true)
+	cfg := LoadConfig("https://raven.example", true)
 	if cfg.MicrosoftClient == nil || cfg.MicrosoftClient.ClientSecret != "" {
 		t.Fatalf("Microsoft mailbox public client = %#v", cfg.MicrosoftClient)
 	}

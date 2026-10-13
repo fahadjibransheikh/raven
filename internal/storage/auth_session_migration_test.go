@@ -83,7 +83,7 @@ func seedV78SessionSchema(t *testing.T, path, tokenHash string) {
 }
 
 func TestMigrateV78RemovesRawSessionTokensAndPreservesReferences(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "gofer.db")
+	path := filepath.Join(t.TempDir(), "raven.db")
 	hash := sha256.Sum256([]byte("raw-cookie-secret"))
 	wantHash := hex.EncodeToString(hash[:])
 	seedV78SessionSchema(t, path, wantHash)
@@ -126,7 +126,7 @@ func TestMigrateV78RemovesRawSessionTokensAndPreservesReferences(t *testing.T) {
 }
 
 func TestMigrateV78RollsBackInvalidSessionHash(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "gofer.db")
+	path := filepath.Join(t.TempDir(), "raven.db")
 	seedV78SessionSchema(t, path, "not-a-canonical-session-hash")
 
 	if db, err := New(path); err == nil {
@@ -160,7 +160,7 @@ func TestMigrateV78RollsBackInvalidSessionHash(t *testing.T) {
 }
 
 func TestMigrateV78RollsBackDuplicateSessionHashes(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "gofer.db")
+	path := filepath.Join(t.TempDir(), "raven.db")
 	hash := strings.Repeat("a", 64)
 	seedV78SessionSchema(t, path, hash)
 	raw, err := openDB(path)
@@ -205,7 +205,7 @@ func TestMigrateV78RollsBackDuplicateSessionHashes(t *testing.T) {
 }
 
 func TestMigrateV78RollsBackMismatchedSessionHash(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "gofer.db")
+	path := filepath.Join(t.TempDir(), "raven.db")
 	hash := sha256.Sum256([]byte("different-cookie-secret"))
 	seedV78SessionSchema(t, path, hex.EncodeToString(hash[:]))
 

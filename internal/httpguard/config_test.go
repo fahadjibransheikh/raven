@@ -142,7 +142,7 @@ func TestConfigRejectsMalformedValues(t *testing.T) {
 		{name: "listen address with invalid port", listenAddr: "127.0.0.1:invalid", baseURL: DefaultBaseURL},
 		{name: "base URL without scheme", listenAddr: DefaultListenAddr, baseURL: "localhost:8090"},
 		{name: "base URL with credentials", listenAddr: DefaultListenAddr, baseURL: "http://user:pass@localhost:8090"},
-		{name: "base URL with path", listenAddr: DefaultListenAddr, baseURL: "http://localhost:8090/gofer"},
+		{name: "base URL with path", listenAddr: DefaultListenAddr, baseURL: "http://localhost:8090/raven"},
 		{name: "base URL with query", listenAddr: DefaultListenAddr, baseURL: "http://localhost:8090?mode=test"},
 		{name: "base URL with unsupported scheme", listenAddr: DefaultListenAddr, baseURL: "ftp://localhost:8090"},
 	}
@@ -167,11 +167,11 @@ func TestLoadConfigRejectsInvalidRemoteOverride(t *testing.T) {
 }
 
 func TestConfigNormalizesBaseURLAndDerivesCookieSecurity(t *testing.T) {
-	cfg, err := newConfig("127.0.0.1:8090", "HTTPS://Gofer.Example:443/", false)
+	cfg, err := newConfig("127.0.0.1:8090", "HTTPS://Raven.Example:443/", false)
 	if err != nil {
 		t.Fatalf("newConfig() error = %v", err)
 	}
-	if cfg.BaseURL != "https://gofer.example:443" {
+	if cfg.BaseURL != "https://raven.example:443" {
 		t.Fatalf("BaseURL = %q, want canonical URL", cfg.BaseURL)
 	}
 	if !cfg.SecureCookies() {

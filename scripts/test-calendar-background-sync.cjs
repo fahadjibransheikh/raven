@@ -95,11 +95,11 @@ assert.equal(requests.length, 3, 'Deferred updates must resume once navigation s
 
 const xhr = {}
 context.configureCalendarCacheRequest({detail: {xhr}})
-assert.equal(xhr.goferCalendarCachePeriod, 'week:2026-09-28')
+assert.equal(xhr.ravenCalendarCachePeriod, 'week:2026-09-28')
 const swap = {xhr, shouldSwap: true}
 emit('htmx:beforeSwap', swap)
 assert.equal(swap.shouldSwap, true)
-assert.equal(xhr.goferCalendarAgendaScroll, 217)
+assert.equal(xhr.ravenCalendarAgendaScroll, 217)
 assert.equal(context._calendarWeekScrollState.top, 643)
 assert.equal(context._calendarWeekScrollState.left, 28)
 assert.equal(context._calendarWeekScrollState.zoom, 2)

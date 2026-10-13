@@ -110,7 +110,7 @@ func createGoogleCalendarEvent(ctx context.Context, token, remoteCalendarID stri
 		start["timeZone"], end["timeZone"] = draft.TimeZone, draft.TimeZone
 	}
 	payload := map[string]any{"id": id, "summary": draft.Summary, "description": calendar.DraftDescription(draft), "location": draft.Location,
-		"start": start, "end": end, "extendedProperties": map[string]any{"private": map[string]string{"goferCreateHash": calendarDraftHash(draft)}}}
+		"start": start, "end": end, "extendedProperties": map[string]any{"private": map[string]string{"ravenCreateHash": calendarDraftHash(draft)}}}
 	if draft.GoogleMeetMeeting {
 		if len(draft.GoogleMeetConference) > 0 {
 			payload["conferenceData"] = draft.GoogleMeetConference
@@ -147,7 +147,7 @@ func createGoogleCalendarEvent(ctx context.Context, token, remoteCalendarID stri
 	if errors.As(err, &conflict) && conflict.Status == http.StatusConflict {
 		// A previous attempt may have succeeded before its response was lost.
 		err = calendarCreateJSON(ctx, http.MethodGet, endpoint+"/"+id, token, nil, &remote)
-		if err == nil && remote.ExtendedProperties.Private["goferCreateHash"] != calendarDraftHash(draft) {
+		if err == nil && remote.ExtendedProperties.Private["ravenCreateHash"] != calendarDraftHash(draft) {
 			return calendar.RemoteEvent{}, calendarCreateProviderError{http.StatusConflict}
 		}
 	}
@@ -267,10 +267,10 @@ func createOutlookCalendarEvent(ctx context.Context, token, remoteCalendarID str
 
 func calendarCreateICS(draft calendar.EventDraft) (string, error) {
 	cal := ical.NewCalendar()
-	cal.Props.SetText("PRODID", "-//Gofer//Calendar//EN")
+	cal.Props.SetText("PRODID", "-//Raven//Calendar//EN")
 	cal.Props.SetText("VERSION", "2.0")
 	event := ical.NewEvent()
-	event.Props.SetText("UID", draft.RequestID+"@gofer")
+	event.Props.SetText("UID", draft.RequestID+"@raven")
 	// iCalendar TEXT escapes LF; normalize Windows/macOS line endings first
 	// so a pasted CR can neither break encoding nor inject another property.
 	text := func(value string) string {
@@ -283,8 +283,8 @@ func calendarCreateICS(draft calendar.EventDraft) (string, error) {
 		event.Props.Get("X-ALT-DESC").Params.Set("FMTTYPE", "text/html")
 	}
 	event.Props.SetText("LOCATION", text(draft.Location))
-	event.Props.SetText("X-GOFER-CREATE-HASH", calendarDraftHash(draft))
-	event.Props.SetText("X-GOFER-TIMEZONE", draft.TimeZone)
+	event.Props.SetText("X-RAVEN-CREATE-HASH", calendarDraftHash(draft))
+	event.Props.SetText("X-RAVEN-TIMEZONE", draft.TimeZone)
 	event.Props.SetDateTime("DTSTAMP", time.Now().UTC())
 	if len(draft.Guests) > 0 {
 		if calendarReplyAddress("mailto:"+draft.OrganizerEmail) == "" {
@@ -402,7 +402,7 @@ func createCalDAVCalendarEvent(ctx context.Context, source storage.CalendarSourc
 		if err != nil || len(decoded.Events()) != 1 {
 			return calendar.RemoteEvent{}, fmt.Errorf("could not confirm previous CalDAV creation")
 		}
-		hash, _ := decoded.Events()[0].Props.Text("X-GOFER-CREATE-HASH")
+		hash, _ := decoded.Events()[0].Props.Text("X-RAVEN-CREATE-HASH")
 		if hash != calendarDraftHash(draft) {
 			return calendar.RemoteEvent{}, calendarCreateProviderError{http.StatusConflict}
 		}
@@ -453,7 +453,7 @@ func createCalDAVCalendarEvent(ctx context.Context, source storage.CalendarSourc
 	if err != nil || len(events) != 1 {
 		return calendar.RemoteEvent{}, fmt.Errorf("could not normalize created CalDAV event")
 	}
-	if events[0].ICalUID != draft.RequestID+"@gofer" {
+	if events[0].ICalUID != draft.RequestID+"@raven" {
 		return calendar.RemoteEvent{}, fmt.Errorf("CalDAV returned a different event identity")
 	}
 	if len(draft.Guests) > 0 {

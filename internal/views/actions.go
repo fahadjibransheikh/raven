@@ -4,7 +4,7 @@ import "encoding/json"
 
 // onAction is the value of a data-on-* attribute: the function
 // assets/js/actions.js calls when the event happens, and its arguments.
-// Gofer's pages run no inline handlers, so this replaces onclick="…".
+// Raven's pages run no inline handlers, so this replaces onclick="…".
 func onAction(name string, args ...any) string {
 	value, err := json.Marshal(append([]any{name}, args...))
 	if err != nil {

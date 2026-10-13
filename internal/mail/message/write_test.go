@@ -81,7 +81,7 @@ func TestBuildMIMEMessageForIMAPDraftIncludesRevisionAndBcc(t *testing.T) {
 	}
 	reader := readBuiltMail(t, raw)
 	bccHeader, err := reader.Header.AddressList("Bcc")
-	if err != nil || len(bccHeader) != 1 || bccHeader[0].Address != "hidden@example.com" || reader.Header.Get("X-Gofer-Draft-Revision") != "revision-1" {
+	if err != nil || len(bccHeader) != 1 || bccHeader[0].Address != "hidden@example.com" || reader.Header.Get("X-Raven-Draft-Revision") != "revision-1" {
 		t.Fatalf("draft MIME = %q, want Bcc and revision headers", raw)
 	}
 }

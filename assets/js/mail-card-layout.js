@@ -1,6 +1,6 @@
 (function () {
-  if (window.__goferMailCardLayoutDialogReady) return
-  window.__goferMailCardLayoutDialogReady = true
+  if (window.__ravenMailCardLayoutDialogReady) return
+  window.__ravenMailCardLayoutDialogReady = true
 
   function setupMailCardLayoutDialog() {
     var fieldIds = ["avatar", "thread", "from", "account", "accountMarker", "to", "date", "subject", "preview", "labels", "attachment", "starred", "unread"]
@@ -478,9 +478,9 @@
       var visible = visibleIdsFromLayout(layout)
       if (!visible.length) return
       var serialized = serializeLayout(layout)
-      if (window.GoferSettings) {
-        GoferSettings.set("mail_card_fields", visible.join(","))
-        GoferSettings.set("mail_card_layout", serialized)
+      if (window.RavenSettings) {
+        RavenSettings.set("mail_card_fields", visible.join(","))
+        RavenSettings.set("mail_card_layout", serialized)
       } else if (typeof window.applyMailCardLayout === "function") {
         window.applyMailCardLayout(serialized, visible.join(","), document)
       }

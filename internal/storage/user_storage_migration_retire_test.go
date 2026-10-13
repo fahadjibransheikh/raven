@@ -11,7 +11,7 @@ func TestRestoreSharedDatabaseRefusesStartedPublication(t *testing.T) {
 	for _, state := range []string{"preparing", "verified", "publishing", "published"} {
 		t.Run(state, func(t *testing.T) {
 			root := t.TempDir()
-			path := filepath.Join(root, "gofer.db")
+			path := filepath.Join(root, "raven.db")
 			retired := path + ".shared"
 			if err := os.WriteFile(retired, []byte("original"), 0600); err != nil {
 				t.Fatal(err)

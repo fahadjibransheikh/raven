@@ -107,7 +107,7 @@ function handleEditAccountSaveResult(event) {
   var xhr = event && event.detail && event.detail.xhr
   var status = document.getElementById("edit-account-save-status")
   var errorCard = status && status.querySelector("[data-account-form-error]")
-  var ok = !!(event && event.detail && event.detail.successful) && !errorCard && (!xhr || xhr.getResponseHeader("X-Gofer-Status") !== "error")
+  var ok = !!(event && event.detail && event.detail.successful) && !errorCard && (!xhr || xhr.getResponseHeader("X-Raven-Status") !== "error")
   if (ok) {
     if (typeof editAccountMarkSaved === "function") editAccountMarkSaved()
     var unsaved = document.querySelector("#edit-account-dialog [data-edit-account-unsaved]")
@@ -197,7 +197,7 @@ function handleCalendarDiscoveryResult(event) {
   var form = _calendarDiscoveryForm(event)
   if (!form) return
   var xhr = event && event.detail && event.detail.xhr
-  var ok = !!(event && event.detail && event.detail.successful) && (!xhr || xhr.getResponseHeader("X-Gofer-Status") !== "error")
+  var ok = !!(event && event.detail && event.detail.successful) && (!xhr || xhr.getResponseHeader("X-Raven-Status") !== "error")
   if (ok) return
 
   _setCalendarDiscoveryBusy(form, false)
@@ -240,7 +240,7 @@ function handleCalendarSourceSaveResult(event) {
   var form = _calendarSourceForm(event)
   if (!form) return
   var xhr = event && event.detail && event.detail.xhr
-  var ok = !!(event && event.detail && event.detail.successful) && (!xhr || xhr.getResponseHeader("X-Gofer-Status") !== "error")
+  var ok = !!(event && event.detail && event.detail.successful) && (!xhr || xhr.getResponseHeader("X-Raven-Status") !== "error")
   var root = form.closest ? form.closest("#add-account-dialog,#edit-account-dialog") : null
   if (!root && form.dataset.calendarWizardRootId) root = document.getElementById(form.dataset.calendarWizardRootId)
   var toggle = root && root.querySelector ? root.querySelector('[data-wizard-service-switch="calendar"]') : null
@@ -268,7 +268,7 @@ function toggleUnencryptedTransportWarning(input) {
   warning.classList.toggle("inline-flex", active)
 }
 
-// While an account form is filled in, say whether Gofer will refuse the server:
+// While an account form is filled in, say whether Raven will refuse the server:
 // one on a private network, or an unencrypted connection, without a Mail
 // security exception. The check runs once typing pauses, and only the answer
 // for the fields' latest values is shown.
@@ -570,7 +570,7 @@ function startAccountLabelEdit(span) {
     }).then(function (data) {
       updateAccountLabelUI(accountId, data.label || "", data.display_label || data.label || "")
     }).catch(function (err) {
-      if (window.showGoferToast) window.showGoferToast({ title: "Rename failed", description: err && err.message ? err.message : "Failed to rename account", variant: "error", icon: "error", duration: 4000 })
+      if (window.showRavenToast) window.showRavenToast({ title: "Rename failed", description: err && err.message ? err.message : "Failed to rename account", variant: "error", icon: "error", duration: 4000 })
     })
   }
 
@@ -802,13 +802,13 @@ function setupAccountSignaturesManager(manager) {
 
   function reloadDialog() {
     if (typeof htmx !== "undefined") {
-      window.__goferReopenSignaturesDialog = manager.closest("#account-signatures-dialog") ? "account-signatures-dialog" : "compose-signatures-dialog"
+      window.__ravenReopenSignaturesDialog = manager.closest("#account-signatures-dialog") ? "account-signatures-dialog" : "compose-signatures-dialog"
       htmx.ajax("GET", refreshURL, { target: refreshTarget, swap: refreshSwap })
     }
   }
 
   function confirmSignatureDelete(signatureName) {
-    return goferConfirm("Delete " + signatureName + "?", "Accounts using it will stop inserting it.", "Delete")
+    return ravenConfirm("Delete " + signatureName + "?", "Accounts using it will stop inserting it.", "Delete")
   }
 
   function resetSignatureForm() {
@@ -949,8 +949,8 @@ function setupAccountSignaturesManager(manager) {
 window.syncSignatureEditor = syncSignatureEditor
 
 function getActiveThemeMode() {
-  if (typeof GoferSettings !== "undefined" && GoferSettings.get) {
-    return GoferSettings.get("theme") || "dark"
+  if (typeof RavenSettings !== "undefined" && RavenSettings.get) {
+    return RavenSettings.get("theme") || "dark"
   }
   return document.documentElement.classList.contains("dark") ? "dark" : "light"
 }
@@ -1129,7 +1129,7 @@ function refreshEmailLinkHandler() {
 
 function readEmailLinkHandlerState() {
   try {
-    var stored = JSON.parse(window.localStorage.getItem("gofer_mailto_handler_state") || "null")
+    var stored = JSON.parse(window.localStorage.getItem("raven_mailto_handler_state") || "null")
     return stored && (stored.status === "requested" || stored.status === "confirmed") ? stored.status : ""
   } catch (_) {
     return ""
@@ -1140,7 +1140,7 @@ function writeEmailLinkHandlerState(status) {
   try {
     var current = readEmailLinkHandlerState()
     if (current === "confirmed" && status === "requested") return
-    window.localStorage.setItem("gofer_mailto_handler_state", JSON.stringify({ status: status, updated_at: Date.now() }))
+    window.localStorage.setItem("raven_mailto_handler_state", JSON.stringify({ status: status, updated_at: Date.now() }))
   } catch (_) {}
 }
 
@@ -1156,9 +1156,9 @@ function setupEmailLinkHandler() {
       var token = ""
       try {
         token = window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() : String(Date.now()) + "-" + Math.random().toString(36).slice(2)
-        window.localStorage.setItem("gofer_mailto_handler_test_token", token)
+        window.localStorage.setItem("raven_mailto_handler_test_token", token)
       } catch (_) {}
-      window.location.href = "mailto:?x-gofer-handler-test=" + encodeURIComponent(token)
+      window.location.href = "mailto:?x-raven-handler-test=" + encodeURIComponent(token)
       return
     }
 
@@ -1171,8 +1171,8 @@ function setupEmailLinkHandler() {
       navigator.registerProtocolHandler("mailto", window.location.origin + "/?mailto=%s")
       writeEmailLinkHandlerState("requested")
       refreshEmailLinkHandler()
-      if (typeof showGoferToast === "function") {
-        showGoferToast({
+      if (typeof showRavenToast === "function") {
+        showRavenToast({
           id: "mailto-handler-registration",
           title: "Email-link registration requested",
           description: "Confirm the request in your browser to open mail links with Raven.",
@@ -1185,8 +1185,8 @@ function setupEmailLinkHandler() {
       }
     } catch (error) {
       if (status) status.textContent = "Raven could not request registration in this browser."
-      if (typeof showGoferToast === "function") {
-        showGoferToast({
+      if (typeof showRavenToast === "function") {
+        showRavenToast({
           id: "mailto-handler-registration",
           title: "Could not register Raven",
           description: error && error.message ? error.message : "Check your browser's protocol-handler settings and try again.",
@@ -1233,9 +1233,9 @@ document.body.addEventListener("htmx:afterSettle", function (e) {
   var signaturesTarget = e.target.matches && e.target.matches("[data-account-signatures-manager]")
   if (signaturesTarget || e.target.querySelector("[data-account-signatures-manager]")) {
     setupAccountSignaturesDialog(signaturesTarget ? e.target.parentNode || e.target : e.target)
-    if (window.__goferReopenSignaturesDialog && window.tui && window.tui.dialog) {
-      var dialogID = window.__goferReopenSignaturesDialog
-      window.__goferReopenSignaturesDialog = ""
+    if (window.__ravenReopenSignaturesDialog && window.tui && window.tui.dialog) {
+      var dialogID = window.__ravenReopenSignaturesDialog
+      window.__ravenReopenSignaturesDialog = ""
       setTimeout(function () { window.tui.dialog.open(dialogID) }, 20)
     }
   }

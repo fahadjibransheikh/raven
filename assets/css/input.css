@@ -615,7 +615,7 @@
   background: color-mix(in srgb, var(--primary) 88%, var(--foreground));
 }
 
-.gofer-toast-card {
+.raven-toast-card {
   position: relative;
   display: flex;
   align-items: center;
@@ -630,7 +630,7 @@
   padding: 1.1rem 1.25rem 1rem;
 }
 
-.gofer-toast-progress-wrap {
+.raven-toast-progress-wrap {
   position: absolute;
   top: 0;
   left: 0;
@@ -639,20 +639,20 @@
   overflow: hidden;
 }
 
-.gofer-toast-progress {
+.raven-toast-progress {
   height: 100%;
   background: var(--muted-foreground);
   transform-origin: left;
 }
 
-.gofer-toast-progress[data-variant="success"] { background: var(--muted-foreground); }
-.gofer-toast-progress[data-variant="error"] { background: var(--destructive); }
-.gofer-toast-progress[data-variant="warning"] { background: var(--muted-foreground); }
-.gofer-toast-progress[data-variant="info"] { background: var(--muted-foreground); }
+.raven-toast-progress[data-variant="success"] { background: var(--muted-foreground); }
+.raven-toast-progress[data-variant="error"] { background: var(--destructive); }
+.raven-toast-progress[data-variant="warning"] { background: var(--muted-foreground); }
+.raven-toast-progress[data-variant="info"] { background: var(--muted-foreground); }
 
-.gofer-toast-icon-success { color: var(--success); }
+.raven-toast-icon-success { color: var(--success); }
 
-.gofer-toast-dismiss {
+.raven-toast-dismiss {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -665,7 +665,7 @@
   transition: background-color 140ms ease, color 140ms ease;
 }
 
-.gofer-toast-dismiss:hover {
+.raven-toast-dismiss:hover {
   background: var(--accent);
   color: var(--accent-foreground);
 }
@@ -896,7 +896,7 @@
   box-shadow: 0 0 0 2px var(--popover), 0 0 0 4px var(--ring), 0 1px 2px rgba(0,0,0,0.16);
 }
 
-input[role="switch"] + .gofer-switch-track::after {
+input[role="switch"] + .raven-switch-track::after {
   position: absolute;
   left: 0;
   top: 50%;
@@ -4036,7 +4036,7 @@ html[data-desktop="macos"] body > div.h-screen {
 .account-wizard-card-footer > [data-wizard-footer-step][data-active="true"] { display:flex !important; }
 
 /* Account wizard on phones: the step list becomes a compact bar above the form
-   (from upstream gofer). Matches the md breakpoint where the shell goes to one column. */
+   (from the original design). Matches the md breakpoint where the shell goes to one column. */
 @media (max-width: 767.98px) {
   .account-wizard-dialog > [data-tui-dialog-panel] {
     height: 100% !important;
@@ -4298,7 +4298,7 @@ html[data-desktop="macos"] body > div.h-screen {
 }
 
 /* === Calendar ===
-   Raven's restyle of the calendar page (upstream gofer markup). Keyed on data attributes
+   Raven's restyle of the calendar page (the original markup). Keyed on data attributes
    so the templ class strings stay close to upstream. Phone rules use html[data-phone]. */
 
 /* Month chips give the title the room. All-day events are a tinted fill with no label;
@@ -4412,7 +4412,7 @@ html[data-desktop="macos"] body > div.h-screen {
   }
 }
 
-/* === SETTINGS: CARD STRUCTURE (ported from upstream gofer) ===
+/* === SETTINGS: CARD STRUCTURE (ported from the original design) ===
    Each settings page is section cards (settings-card). Settings inside a card are rows
    split by thin lines (settings-row); repeated items (accounts, per-account sync,
    background operations, sign-in methods) are boxes that share one tint (settings-item).

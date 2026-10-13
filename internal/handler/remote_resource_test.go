@@ -32,7 +32,7 @@ func approveOnly(server *httptest.Server) func(context.Context, string, string, 
 }
 
 // Remote image addresses come from the sender, so loading images must not
-// reach the Gofer server's own network unless an administrator allowed it.
+// reach the Raven server's own network unless an administrator allowed it.
 func TestRemoteResourceDownloaderRefusesPrivateTargets(t *testing.T) {
 	internal, internalHits := countingServer(t, func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("internal data")) })
 

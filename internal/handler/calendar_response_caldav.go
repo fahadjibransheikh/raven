@@ -352,7 +352,7 @@ func prepareCalDAVResponse(target calendarResponseTarget, response string) (*ica
 	cal := &ical.Calendar{Component: cloneCalendarComponent(target.CalDAV.Calendar.Component)}
 	reply := ical.NewCalendar()
 	reply.Props.SetText("VERSION", "2.0")
-	reply.Props.SetText("PRODID", "-//Gofer//Calendar//EN")
+	reply.Props.SetText("PRODID", "-//Raven//Calendar//EN")
 	reply.Props.SetText("METHOD", "REPLY")
 	zones := make(map[string]bool)
 	for _, child := range cal.Children {

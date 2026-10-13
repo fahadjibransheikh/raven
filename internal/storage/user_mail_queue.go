@@ -15,16 +15,16 @@ func (db *DB) RecoverAccountMailQueue(ctx context.Context, accountID string) err
 	}
 	defer tx.Rollback()
 	for _, q := range []string{
-		`UPDATE outgoing_sends SET status='ambiguous',last_error='Gofer stopped during delivery. This message may have been sent.',locked_at=NULL,updated_at=CURRENT_TIMESTAMP WHERE account_id=? AND status='sending'`,
-		`UPDATE outgoing_sends SET sent_copy_status='ambiguous',sent_copy_last_error='Gofer stopped during Sent copy.',sent_copy_locked_at=NULL,sent_copy_next_attempt_at=CURRENT_TIMESTAMP WHERE account_id=? AND sent_copy_status='copying'`,
-		`UPDATE imap_draft_operations SET status='ambiguous',last_error='Gofer stopped during draft sync.',locked_at=NULL,next_attempt_at=CURRENT_TIMESTAMP WHERE account_id=? AND status='syncing'`,
+		`UPDATE outgoing_sends SET status='ambiguous',last_error='Raven stopped during delivery. This message may have been sent.',locked_at=NULL,updated_at=CURRENT_TIMESTAMP WHERE account_id=? AND status='sending'`,
+		`UPDATE outgoing_sends SET sent_copy_status='ambiguous',sent_copy_last_error='Raven stopped during Sent copy.',sent_copy_locked_at=NULL,sent_copy_next_attempt_at=CURRENT_TIMESTAMP WHERE account_id=? AND sent_copy_status='copying'`,
+		`UPDATE imap_draft_operations SET status='ambiguous',last_error='Raven stopped during draft sync.',locked_at=NULL,next_attempt_at=CURRENT_TIMESTAMP WHERE account_id=? AND status='syncing'`,
 	} {
 		if _, err := tx.ExecContext(ctx, q, accountID); err != nil {
 			return err
 		}
 	}
 	if db.userMailDelivery {
-		if _, err := tx.ExecContext(ctx, `UPDATE gofer_provider_draft_operations SET status='ambiguous',last_error='Gofer stopped during provider draft sync.',next_attempt_at=CURRENT_TIMESTAMP WHERE account_id=? AND status='syncing'`, accountID); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE gofer_provider_draft_operations SET status='ambiguous',last_error='Raven stopped during provider draft sync.',next_attempt_at=CURRENT_TIMESTAMP WHERE account_id=? AND status='syncing'`, accountID); err != nil {
 			return err
 		}
 	}

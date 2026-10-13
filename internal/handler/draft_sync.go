@@ -17,7 +17,7 @@ import (
 	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
-const imapDraftRevisionHeader = "X-Gofer-Draft-Revision"
+const imapDraftRevisionHeader = "X-Raven-Draft-Revision"
 
 func (h *Handler) queueIMAPDraftUpsert(ctx context.Context, accountID string, localMessageID int64, draftKey, folderID, folderRemoteName string, remoteUID, uidValidity uint32, msg *message.OutgoingMessage) error {
 	revisionToken := uuid.NewString()

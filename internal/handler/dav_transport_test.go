@@ -15,7 +15,7 @@ import (
 )
 
 // In managed mode people enter CalDAV and CardDAV servers themselves, so a
-// server on the Gofer host's network is refused unless a mail security
+// server on the Raven host's network is refused unless a mail security
 // exception approves it. (Open and personal mode: TestDAVPrivateAnchorByMode.)
 func TestDAVRequestsRefuseUnapprovedPrivateServers(t *testing.T) {
 	useDAVMode(t, auth.ModeManaged, nil)

@@ -57,7 +57,7 @@ func TestAdminSecurityFormsRequireRenderedSessionCSRFProof(t *testing.T) {
 			'Management Admin', 'active', 1, 'management', 1, ?, ?)`, now, now); err != nil {
 		t.Fatalf("insert management administrator: %v", err)
 	}
-	manager := auth.NewManager(&auth.Config{Enabled: true, BaseURL: "https://gofer.example"}, db)
+	manager := auth.NewManager(&auth.Config{Enabled: true, BaseURL: "https://raven.example"}, db)
 	handler.auth = manager
 	session, err := manager.CreateAuthenticatedSession(
 		t.Context(), "management-admin", "test-agent",
@@ -153,7 +153,7 @@ func TestAdminMailSecurityMutationsRequireRecentStrongStepUp(t *testing.T) {
 			'Management Admin', 'active', 1, 'management', 1, ?, ?)`, now, now); err != nil {
 		t.Fatal(err)
 	}
-	manager := auth.NewManager(&auth.Config{Enabled: true, BaseURL: "https://gofer.example"}, db)
+	manager := auth.NewManager(&auth.Config{Enabled: true, BaseURL: "https://raven.example"}, db)
 	handler.auth = manager
 	session, err := manager.CreateAuthenticatedSession(
 		t.Context(), "management-admin", "admin browser",
@@ -259,12 +259,12 @@ func TestAdminMailSecurityMutationsRequireRecentStrongStepUp(t *testing.T) {
 }
 
 func TestLogoutRequiresSessionCSRFBeforeRevocation(t *testing.T) {
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("new auth session test database: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	manager := auth.NewManager(&auth.Config{Enabled: true, BaseURL: "https://gofer.example"}, db)
+	manager := auth.NewManager(&auth.Config{Enabled: true, BaseURL: "https://raven.example"}, db)
 	now := time.Now().UTC()
 	if _, err := db.Write().ExecContext(t.Context(), `
 		INSERT INTO users (id, username, username_normalized, name, status, auth_version, created_at, updated_at)

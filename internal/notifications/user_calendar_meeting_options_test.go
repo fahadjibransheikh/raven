@@ -78,7 +78,7 @@ func TestUserCalendarMeetingOptionsHTTPNativeCapabilitiesAndIsolation(t *testing
 				for _, path := range []string{"/api/calendar/meeting-options", "/api/calendar/teams-options"} {
 					for _, suffix := range []string{"?source_id=same-source", "?source_id=same-source&event_id=same-event"} {
 						r := f.request(owner, "GET", path+suffix, "")
-						if r.Code != 200 || r.Header().Get("Cache-Control") != "private, no-store" || r.Header().Get("X-Gofer-Calendar-Source") != "same-source" {
+						if r.Code != 200 || r.Header().Get("Cache-Control") != "private, no-store" || r.Header().Get("X-Raven-Calendar-Source") != "same-source" {
 							t.Fatal("capability response", r.Code, r.Body.String())
 						}
 						if provider == "caldav" {

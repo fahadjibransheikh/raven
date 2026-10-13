@@ -2150,7 +2150,7 @@ templ ChooseAccountTypeDialog() {
 				}
 			}
 		<div class="space-y-3 px-1 pt-2 pb-4">
-				<button type="button" data-on-click='["goferSwitchDialog","choose-account-type-dialog","openAddAccountDialog"]' class="w-full group flex items-center gap-4 p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-accent/50 transition-all duration-200 text-left">
+				<button type="button" data-on-click='["ravenSwitchDialog","choose-account-type-dialog","openAddAccountDialog"]' class="w-full group flex items-center gap-4 p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-accent/50 transition-all duration-200 text-left">
 					<div class="flex items-center justify-center w-10 h-10 rounded-lg bg-accent text-muted-foreground group-hover:text-foreground transition-colors">
 						@AccountProviderIcon("imap", "size-5")
 					</div>
@@ -2160,7 +2160,7 @@ templ ChooseAccountTypeDialog() {
 					</div>
 					<svg class="size-4 text-muted-foreground group-hover:text-foreground transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
 				</button>
-				<button type="button" data-account-type="icloud" data-on-click='["goferSwitchDialog","choose-account-type-dialog","openICloudAccountDialog"]' class="w-full group flex items-center gap-4 p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-accent/50 transition-all duration-200 text-left">
+				<button type="button" data-account-type="icloud" data-on-click='["ravenSwitchDialog","choose-account-type-dialog","openICloudAccountDialog"]' class="w-full group flex items-center gap-4 p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-accent/50 transition-all duration-200 text-left">
 					<div class="flex items-center justify-center w-10 h-10 rounded-lg bg-accent text-muted-foreground group-hover:text-foreground transition-colors">
 						@AccountProviderIcon("imap", "size-5")
 					</div>
@@ -2170,7 +2170,7 @@ templ ChooseAccountTypeDialog() {
 					</div>
 					<svg class="size-4 text-muted-foreground group-hover:text-foreground transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
 				</button>
-				<button type="button" data-on-click='["goferSwitchDialog","choose-account-type-dialog","gmail-account-dialog"]' class="w-full group flex items-center gap-4 p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-accent/50 transition-all duration-200 text-left">
+				<button type="button" data-on-click='["ravenSwitchDialog","choose-account-type-dialog","gmail-account-dialog"]' class="w-full group flex items-center gap-4 p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-accent/50 transition-all duration-200 text-left">
 					<div class="flex items-center justify-center w-10 h-10 rounded-lg bg-accent text-muted-foreground group-hover:text-foreground transition-colors">
 						@AccountProviderIcon("gmail", "size-5")
 					</div>
@@ -2180,7 +2180,7 @@ templ ChooseAccountTypeDialog() {
 					</div>
 					<svg class="size-4 text-muted-foreground group-hover:text-foreground transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
 				</button>
-				<button type="button" data-on-click='["goferSwitchDialog","choose-account-type-dialog","outlook-account-dialog"]' class="w-full group flex items-center gap-4 p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-accent/50 transition-all duration-200 text-left">
+				<button type="button" data-on-click='["ravenSwitchDialog","choose-account-type-dialog","outlook-account-dialog"]' class="w-full group flex items-center gap-4 p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-accent/50 transition-all duration-200 text-left">
 					<div class="flex items-center justify-center w-10 h-10 rounded-lg bg-accent text-muted-foreground group-hover:text-foreground transition-colors">
 						@AccountProviderIcon("outlook", "size-5")
 					</div>
@@ -2708,7 +2708,7 @@ templ AccountWizardSectionSwitch(goFn string, accountID string, service string, 
 			Value:      "true",
 			Checked:    enabled,
 			Disabled:   disabled,
-			Attributes: mergeTemplAttrs(attrs, templ.Attributes{"data-wizard-service-switch": service, "data-wizard-service-initial-enabled": strconv.FormatBool(enabled), "data-on-change": onAction("goferSubmitHTMXForm", actionElement)}),
+			Attributes: mergeTemplAttrs(attrs, templ.Attributes{"data-wizard-service-switch": service, "data-wizard-service-initial-enabled": strconv.FormatBool(enabled), "data-on-change": onAction("ravenSubmitHTMXForm", actionElement)}),
 		})
 	</form>
 }
@@ -2766,7 +2766,7 @@ templ AddAccountWizardFooter() {
 					Create account
 					@icon.ChevronRight(icon.Props{Class: "size-4"})
 				</button>
-				<button type="button" data-on-click='["goferNavigate","/settings/accounts?account_added=1"]' data-account-test-close hidden class="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg border border-border text-foreground hover:bg-accent transition-colors disabled:pointer-events-none disabled:opacity-50">Close</button>
+				<button type="button" data-on-click='["ravenNavigate","/settings/accounts?account_added=1"]' data-account-test-close hidden class="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg border border-border text-foreground hover:bg-accent transition-colors disabled:pointer-events-none disabled:opacity-50">Close</button>
 				<button type="button" data-on-click='["wizardGo",4]' data-account-test-continue hidden class="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:pointer-events-none disabled:opacity-50">
 					Continue to Contacts
 					@icon.ChevronRight(icon.Props{Class: "size-4"})
@@ -3224,7 +3224,7 @@ templ EditAccountWizardFooter(data models.EditAccountData) {
 					<span data-edit-account-save-label>Save changes</span>
 					@icon.ChevronRight(icon.Props{Class: "size-4"})
 				</button>
-				<button type="button" data-on-click='["goferNavigate","/settings/accounts"]' data-account-test-close hidden class="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg border border-border text-foreground hover:bg-accent transition-colors disabled:pointer-events-none disabled:opacity-50">Close</button>
+				<button type="button" data-on-click='["ravenNavigate","/settings/accounts"]' data-account-test-close hidden class="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg border border-border text-foreground hover:bg-accent transition-colors disabled:pointer-events-none disabled:opacity-50">Close</button>
 				<button type="button" data-on-click='["editWizardGo",4,true]' data-account-test-continue hidden class="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:pointer-events-none disabled:opacity-50">
 					Continue to Contacts
 					@icon.ChevronRight(icon.Props{Class: "size-4"})

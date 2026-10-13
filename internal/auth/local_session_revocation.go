@@ -17,7 +17,7 @@ type LocalSessionRevocationResult struct {
 
 // RevokeUserSessionsLocally signs the target out everywhere without changing
 // credentials, reset tokens, lifecycle status, or auth version. The caller
-// must enforce exact operator confirmation and hold Gofer's exclusive runtime
+// must enforce exact operator confirmation and hold Raven's exclusive runtime
 // lock for the complete transition.
 func (m *Manager) RevokeUserSessionsLocally(ctx context.Context, userID string) (*LocalSessionRevocationResult, error) {
 	if userID == "" {

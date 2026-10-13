@@ -124,9 +124,9 @@ func normalizePasswordForHashing(value string) (string, error) {
 func isContextSpecificPassword(password string, context PasswordPolicyContext) bool {
 	canonical := canonicalPasswordBlocklistValue(password)
 	bases := []string{
-		"gofer",
-		"gofermail",
-		"gofer-authentication",
+		"raven",
+		"ravenmail",
+		"raven-authentication",
 		context.Username,
 	}
 	for _, base := range bases {

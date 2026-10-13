@@ -26,7 +26,7 @@ const (
 	passwordKindCalDAV  = "caldav"
 
 	// passwordsUpgradedMarker is written to the database header (SQLite's
-	// application_id, otherwise unused by Gofer) once old-format passwords have
+	// application_id, otherwise unused by Raven) once old-format passwords have
 	// been upgraded, so the upgrade runs only once per database. An old-format
 	// password written after that is never re-encrypted for its new row.
 	passwordsUpgradedMarker = 0x47504632

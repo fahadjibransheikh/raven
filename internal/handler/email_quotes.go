@@ -29,7 +29,7 @@ var RULE=/[-_=*]{5,}/,LABEL=/^\s*[^\s:：]{1,30}(\s[^\s:：]{1,30}){0,2}\s*[:：
 var body=document.body;if(!body)return;
 function text(n){return(n.textContent||'').replace(/\s+/g,' ').trim()}
 function attribution(t){return t.length>0&&t.length<=300&&/[:：]$/.test(t)}
-function ignored(n){return n.nodeType===1&&(n.tagName==='SCRIPT'||n.tagName==='STYLE'||n.hasAttribute('data-gofer-quote-toggle'))}
+function ignored(n){return n.nodeType===1&&(n.tagName==='SCRIPT'||n.tagName==='STYLE'||n.hasAttribute('data-raven-quote-toggle'))}
 function content(n,images){if(n.nodeType===3)return /\S/.test(n.nodeValue);if(n.nodeType!==1||ignored(n))return false;if(/\S/.test(n.textContent||''))return true;return images&&(n.tagName==='IMG'||!!n.querySelector('img'))}
 function siblings(el,dir){var out=[];for(var n=el;n&&n!==body;n=n.parentNode){for(var s=n[dir];s;s=s[dir])out.push(s)}return out}
 function any(nodes,images){for(var i=0;i<nodes.length;i++)if(content(nodes[i],images))return true;return false}
@@ -43,7 +43,7 @@ function quoted(n){if(!content(n,false))return true;if(n.nodeType!==1)return fal
 function forwarded(el){return RULE.test(text(el).slice(0,200))}
 function usable(el,header){if(!header&&forwarded(el))return false;if(!any(siblings(el,'previousSibling'),true))return false;if(header)return true;var next=siblings(el,'nextSibling');for(var i=0;i<next.length;i++)if(!quoted(next[i]))return false;return true}
 function collapse(el,nodes){var hidden=[];nodes.forEach(function(n){if(n.nodeType===3){if(!/\S/.test(n.nodeValue))return;var s=document.createElement('span');n.parentNode.insertBefore(s,n);s.appendChild(n);n=s}if(n.nodeType!==1||ignored(n))return;hidden.push(n)});if(!hidden.length)return;
-var wrap=document.createElement('div');wrap.setAttribute('data-gofer-quote-toggle','');wrap.style.cssText='margin:10px 0;line-height:1';
+var wrap=document.createElement('div');wrap.setAttribute('data-raven-quote-toggle','');wrap.style.cssText='margin:10px 0;line-height:1';
 var b=document.createElement('button');b.type='button';b.title='Show quoted text';b.setAttribute('aria-expanded','false');
 // Drawn dots, unlike a text ellipsis, sit in the exact middle of the button.
 b.innerHTML='<svg width="16" height="4" viewBox="0 0 16 4" aria-hidden="true" style="display:block"><circle cx="2" cy="2" r="1.75" fill="currentColor"/><circle cx="8" cy="2" r="1.75" fill="currentColor"/><circle cx="14" cy="2" r="1.75" fill="currentColor"/></svg>';
@@ -53,7 +53,7 @@ b.setAttribute('aria-label','Show quoted text');
 wrap.appendChild(b);el.parentNode.insertBefore(wrap,el);
 function set(open){hidden.forEach(function(n){if(open)n.style.removeProperty('display');else n.style.setProperty('display','none','important')});b.setAttribute('aria-expanded',open?'true':'false');b.title=open?'Hide quoted text':'Show quoted text';b.setAttribute('aria-label',b.title)}
 b.addEventListener('click',function(){set(b.getAttribute('aria-expanded')!=='true')});set(false)}
-function marked(){var m=body.querySelector('[data-gofer-quote-start]');if(!m)return false;collapse(m,[m].concat(siblings(m,'nextSibling')));return true}
+function marked(){var m=body.querySelector('[data-raven-quote-start]');if(!m)return false;collapse(m,[m].concat(siblings(m,'nextSibling')));return true}
 function html(){var found=body.querySelectorAll(MARKERS),seen=[];for(var j=0;j<found.length;j++){var s=start(found[j]);if(seen.indexOf(s)!==-1)continue;seen.push(s);if(usable(s,found[j].matches(HEADERS))){collapse(s,[s].concat(siblings(s,'nextSibling')));return true}}return false}
 function quotedFrom(lines,i){var rest=lines.slice(i).filter(function(x){return /\S/.test(x)});return rest.length>0&&rest.every(function(x){return /^\s*>/.test(x)})}
 // at finds where a plain-text quote begins: the first ">" line that only ">"

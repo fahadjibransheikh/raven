@@ -200,7 +200,7 @@ func listGoogleCalendarEventsWithFetch(ctx context.Context, remoteCalendarID str
 			if err := ctx.Err(); err != nil {
 				return calendar.EventPage{}, err
 			}
-			if remote.ExtendedProperties.Private["goferMeetDraft"] == "true" {
+			if remote.ExtendedProperties.Private["ravenMeetDraft"] == "true" {
 				continue
 			}
 			normalized, err := normalizeGoogleCalendarEvent(remote)

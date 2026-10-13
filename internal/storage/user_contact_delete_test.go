@@ -25,7 +25,7 @@ func seedContactDelete(t *testing.T, db *DB, manual bool) *ContactDeleteSnapshot
 		t.Fatal(err)
 	}
 	for _, status := range []string{"pending", "running"} {
-		id, err := db.EnqueueContactSyncOperation(t.Context(), "default", models.Contact{ID: "delete-profile", Email: "delete@example.com", GoferSyncEnabled: true}, nil)
+		id, err := db.EnqueueContactSyncOperation(t.Context(), "default", models.Contact{ID: "delete-profile", Email: "delete@example.com", RavenSyncEnabled: true}, nil)
 		if err != nil {
 			t.Fatal(err)
 		}

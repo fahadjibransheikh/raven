@@ -11,7 +11,7 @@ import (
 	"github.com/fahadjibransheikh/raven/internal/views"
 )
 
-// In personal and open mode Gofer has a single owner, who manages the mail
+// In personal and open mode Raven has a single owner, who manages the mail
 // security exceptions from Settings, Security; personal mode has no admin area
 // at all. The admin handlers serve both places; this marks which page a
 // request came from, so results and verification return there.
@@ -24,7 +24,7 @@ func mailSecuritySurfaceIsOwner(ctx context.Context) bool {
 	return personal
 }
 
-// ownerManagesMailSecurity reports whether the person using Gofer approves
+// ownerManagesMailSecurity reports whether the person using Raven approves
 // mail security exceptions themselves: in personal mode, and in open mode,
 // where sign-in is off. In managed mode only administrators do.
 func (h *Handler) ownerManagesMailSecurity() bool {
@@ -76,7 +76,7 @@ func (h *Handler) ownerMailSecurityData(r *http.Request) (*models.MailSecurityAd
 	return data, nil
 }
 
-// renderOpenSecurityTab shows the Security tab when Gofer runs without
+// renderOpenSecurityTab shows the Security tab when Raven runs without
 // sign-in. With no sign-in methods or sessions to manage, it holds only the
 // owner's Mail security card.
 func (h *Handler) renderOpenSecurityTab(w http.ResponseWriter, r *http.Request) {

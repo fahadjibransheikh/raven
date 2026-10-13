@@ -15,7 +15,7 @@ func newGoogleEnrollmentTestManager(t *testing.T, now time.Time, tokens *determi
 	t.Helper()
 	manager := newDeterministicManager(t, &fixedClock{now: now}, tokens)
 	configureGoogleOAuthTest(manager)
-	manager.config.GoogleLoginClient.RedirectURL = "https://gofer.example/auth/google/login/callback"
+	manager.config.GoogleLoginClient.RedirectURL = "https://raven.example/auth/google/login/callback"
 	manager.config.GoogleLoginClient.Scopes = []string{"openid", "email", "profile", "https://mail.google.com/"}
 	return manager
 }
@@ -31,7 +31,7 @@ func verifyGoogleEnrollmentClaims(manager *Manager, challenge *PreAuthChallenge,
 	})
 }
 
-func TestGoogleInvitationEnrollmentActivatesOnlyGoferIdentityAndSession(t *testing.T) {
+func TestGoogleInvitationEnrollmentActivatesOnlyRavenIdentityAndSession(t *testing.T) {
 	now := time.Date(2026, time.August, 15, 10, 0, 0, 0, time.UTC)
 	manager := newGoogleEnrollmentTestManager(t, now, &deterministicTokenGenerator{
 		ids:    []string{"google-challenge", "google-identity", "enrollment-event", "session-id"},
@@ -228,7 +228,7 @@ func TestGoogleInvitationEnrollmentStartsRequiredMFAEnrollmentForFactorlessWebma
 	if err != nil || result == nil || result.Session != nil || result.PreAuthChallenge == nil || !result.MFAEnrollmentRequired {
 		t.Fatalf("factorless Google enrollment = %#v, %v", result, err)
 	}
-	state, err := manager.GetMFAEnrollmentState(t.Context(), result.PreAuthChallenge.Token, "https://gofer.example")
+	state, err := manager.GetMFAEnrollmentState(t.Context(), result.PreAuthChallenge.Token, "https://raven.example")
 	if err != nil || state == nil || state.UserID != "invitee" || state.Enrollment == nil {
 		t.Fatalf("factorless Google MFA enrollment state = %#v, %v", state, err)
 	}

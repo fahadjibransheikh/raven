@@ -1065,7 +1065,7 @@ func outlookCategoryBatchRequestURL(msg storage.ProviderLabelSyncMessage) (strin
 		return "/me/messages/" + url.PathEscape(providerMessageID) + "?$select=id,categories", false, true
 	}
 	internetMessageID := strings.TrimSpace(msg.InternetMessageID)
-	if internetMessageID == "" || isSyntheticGoferMessageID(internetMessageID) {
+	if internetMessageID == "" || isSyntheticRavenMessageID(internetMessageID) {
 		return "", false, false
 	}
 	values := url.Values{}
@@ -1096,7 +1096,7 @@ func outlookMessageStateFromBatchResponse(raw json.RawMessage, lookup bool) (out
 	return state, true, nil
 }
 
-func isSyntheticGoferMessageID(messageID string) bool {
+func isSyntheticRavenMessageID(messageID string) bool {
 	normalized := strings.Trim(strings.ToLower(strings.TrimSpace(messageID)), "<>")
 	return strings.HasSuffix(normalized, "@sync.gofer")
 }

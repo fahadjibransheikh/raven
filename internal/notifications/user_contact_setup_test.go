@@ -72,7 +72,7 @@ func TestUserContactSetupHTTPConfirmationCommittedQueueAndIsolation(t *testing.T
 		if err != nil {
 			return err
 		}
-		if contact == nil || contact.GoferSyncEnabled {
+		if contact == nil || contact.RavenSyncEnabled {
 			t.Fatal("failed confirmation enabled contact", contact)
 		}
 		var queued, canonical int
@@ -105,7 +105,7 @@ func TestUserContactSetupHTTPConfirmationCommittedQueueAndIsolation(t *testing.T
 				return err
 			}
 			want := owner == "alice"
-			if contact == nil || contact.GoferSyncEnabled != want || contact.Email != owner+"-setup@example.com" || len(contact.SaveTargets) != 2 || contact.SaveTargets[1] != "book:"+owner+"-owned-book" {
+			if contact == nil || contact.RavenSyncEnabled != want || contact.Email != owner+"-setup@example.com" || len(contact.SaveTargets) != 2 || contact.SaveTargets[1] != "book:"+owner+"-owned-book" {
 				t.Fatal("confirmation used browser values or crossed owners", owner, contact)
 			}
 			var queued int
@@ -182,7 +182,7 @@ func TestUserContactSetupHTTPRootShutdownJoinsBlockedWriter(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		if contact == nil || contact.GoferSyncEnabled {
+		if contact == nil || contact.RavenSyncEnabled {
 			t.Fatal("late confirmation resumed after root drain", contact)
 		}
 		var count int

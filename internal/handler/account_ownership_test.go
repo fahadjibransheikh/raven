@@ -20,7 +20,7 @@ import (
 
 func newAccountOwnershipTestHandler(t *testing.T) (*Handler, *storage.DB) {
 	t.Helper()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}

@@ -26,7 +26,7 @@ import (
 const (
 	oidcLoginDefaultName         = "OpenID Connect"
 	oidcLoginDraftVersion        = 1
-	oidcLoginDraftKey            = "gofer/auth/oidc-login-draft/v1"
+	oidcLoginDraftKey            = "raven/auth/oidc-login-draft/v1"
 	oidcLoginCallbackPath        = "/auth/oidc/callback"
 	oidcApplicationOpenIDScope   = "openid"
 	oidcApplicationProfileScope  = "profile"

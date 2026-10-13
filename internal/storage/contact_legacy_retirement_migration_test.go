@@ -8,7 +8,7 @@ import (
 
 func TestMigrateV91ToV92RetiresLegacyContactsAndPreservesCanonicalData(t *testing.T) {
 	ctx := context.Background()
-	dbPath := filepath.Join(t.TempDir(), "gofer.db")
+	dbPath := filepath.Join(t.TempDir(), "raven.db")
 	db, err := New(dbPath)
 	if err != nil {
 		t.Fatalf("New() initial error = %v", err)

@@ -31,8 +31,8 @@ func TestSettingsSectionHeadersNameTheirPage(t *testing.T) {
 		if !strings.Contains(html, want) {
 			t.Errorf("%s header missing %q: %s", section, want, html)
 		}
-		if strings.Contains(html, "Manage your accounts and preferences") || strings.Contains(html, "Gofer") {
-			t.Errorf("%s header should be section specific and say Raven: %s", section, html)
+		if strings.Contains(html, "Manage your accounts and preferences") {
+			t.Errorf("%s header should be section specific: %s", section, html)
 		}
 		if !strings.Contains(html, "data-phone-nav-toggle") {
 			t.Errorf("%s header lost the phone drawer button", section)

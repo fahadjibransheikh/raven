@@ -78,7 +78,7 @@ func (a *userDraftAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if a.provider == "gmail" {
 			msgID = fmt.Sprintf("message-%d", a.versions[owner])
 		}
-		d := UserProviderDraft{ID: id, MessageID: msgID, InternetMessageID: mime.Header.Get("Message-ID"), RevisionToken: mime.Header.Get("X-Gofer-Draft-Revision")}
+		d := UserProviderDraft{ID: id, MessageID: msgID, InternetMessageID: mime.Header.Get("Message-ID"), RevisionToken: mime.Header.Get("X-Raven-Draft-Revision")}
 		if a.entries[owner] == nil {
 			a.entries[owner] = map[string]UserProviderDraft{}
 			a.raw[owner] = map[string][]byte{}
@@ -144,7 +144,7 @@ func (a *userDraftAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *userDraftAPI) reply(w http.ResponseWriter, d UserProviderDraft) {
-	headers := []map[string]string{{"name": "Message-ID", "value": d.InternetMessageID}, {"name": "x-gofer-draft-revision", "value": d.RevisionToken}}
+	headers := []map[string]string{{"name": "Message-ID", "value": d.InternetMessageID}, {"name": "x-raven-draft-revision", "value": d.RevisionToken}}
 	if a.provider == "gmail" {
 		_ = json.NewEncoder(w).Encode(map[string]any{"id": d.ID, "message": map[string]any{"id": d.MessageID, "payload": map[string]any{"headers": headers}}})
 		return
@@ -313,5 +313,16 @@ func TestUserProviderDraftSearchAndSessionBoundaries(t *testing.T) {
 				t.Fatal("expired session made a provider request")
 			}
 		})
+	}
+}
+
+func TestDraftRevisionHeaderAcceptsTheNameUsedBeforeTheRename(t *testing.T) {
+	for _, name := range []string{"X-Raven-Draft-Revision", "x-raven-draft-revision", "X-Gofer-Draft-Revision"} {
+		if !isDraftRevisionHeader(name) {
+			t.Fatalf("%s should be read as the draft revision", name)
+		}
+	}
+	if isDraftRevisionHeader("X-Other") {
+		t.Fatal("unrelated header read as the draft revision")
 	}
 }

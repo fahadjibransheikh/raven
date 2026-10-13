@@ -20,7 +20,7 @@ import (
 	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
-// Raven numbers upstream gofer schema versions 105/106/107 as 119/120/121.
+// Raven numbers upstream schema versions 105/106/107 as 119/120/121.
 func TestStorageInspectionCommandUsesActualEntryPointAndPreservesMainSource(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "shared-main.db")
 	db, err := storage.New(path)

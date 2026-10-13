@@ -305,7 +305,7 @@ func updateCalDAVCalendarOccurrence(ctx context.Context, source storage.Calendar
 		if err != nil {
 			return preflight(err)
 		}
-		for _, name := range []string{"SUMMARY", "DESCRIPTION", "LOCATION", "DTSTART", "DTEND", "X-GOFER-TIMEZONE"} {
+		for _, name := range []string{"SUMMARY", "DESCRIPTION", "LOCATION", "DTSTART", "DTEND", "X-RAVEN-TIMEZONE"} {
 			if name == "DESCRIPTION" {
 				continue
 			}

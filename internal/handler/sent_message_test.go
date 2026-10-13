@@ -27,7 +27,7 @@ func TestSaveSentMessageKeepsMultipleMessagesWithoutRemoteUIDs(t *testing.T) {
 		t.Fatalf("UpsertFolders() error = %v", err)
 	}
 
-	for _, id := range []string{"<first@gofer>", "<second@gofer>"} {
+	for _, id := range []string{"<first@raven>", "<second@raven>"} {
 		h.saveSentMessage(t.Context(), "victim-account", &message.OutgoingMessage{
 			FromName:  "Owner",
 			FromEmail: "owner@example.com",

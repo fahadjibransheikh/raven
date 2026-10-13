@@ -216,7 +216,7 @@ func TestAddAvatarProviderOutcomesCountsRunStats(t *testing.T) {
 func TestHandleAvatarImageAddsStrictHeadersForSVG(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()
-	db, err := storage.New(filepath.Join(dir, "gofer.db"))
+	db, err := storage.New(filepath.Join(dir, "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}
@@ -266,7 +266,7 @@ func TestHandleAvatarImageAddsStrictHeadersForSVG(t *testing.T) {
 func TestHandleAvatarSendersUsesProviderContactAvatarsFromAllWebmailUsers(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()
-	db, err := storage.New(filepath.Join(dir, "gofer.db"))
+	db, err := storage.New(filepath.Join(dir, "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}
@@ -364,7 +364,7 @@ func TestReuseStoredDomainIconAvatarMarksSenderFound(t *testing.T) {
 
 	ctx := context.Background()
 	dir := t.TempDir()
-	db, err := storage.New(filepath.Join(dir, "gofer.db"))
+	db, err := storage.New(filepath.Join(dir, "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}

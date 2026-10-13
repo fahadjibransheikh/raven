@@ -14,12 +14,12 @@ import (
 )
 
 func TestLogoutRevokesSessionWithTypedMetadata(t *testing.T) {
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	manager := auth.NewManager(&auth.Config{Enabled: true, BaseURL: "https://gofer.example"}, db)
+	manager := auth.NewManager(&auth.Config{Enabled: true, BaseURL: "https://raven.example"}, db)
 	now := time.Now().UTC()
 	if _, err := db.Write().ExecContext(t.Context(), `
 		INSERT INTO users (id, username, username_normalized, name, status, auth_version, created_at, updated_at)
@@ -61,12 +61,12 @@ func TestLogoutRevokesSessionWithTypedMetadata(t *testing.T) {
 }
 
 func TestLogoutAuditFailurePreservesSessionAndCookieForRetry(t *testing.T) {
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	manager := auth.NewManager(&auth.Config{Enabled: true, BaseURL: "https://gofer.example"}, db)
+	manager := auth.NewManager(&auth.Config{Enabled: true, BaseURL: "https://raven.example"}, db)
 	now := time.Now().UTC()
 	if _, err := db.Write().ExecContext(t.Context(), `INSERT INTO users (id,username,username_normalized,name,status,auth_version,created_at,updated_at) VALUES ('person','person','person','Person','active',1,?,?)`, now, now); err != nil {
 		t.Fatal(err)

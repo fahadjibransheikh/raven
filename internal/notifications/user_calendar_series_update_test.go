@@ -288,7 +288,7 @@ func (a *ownedCalendarSeriesUpdateAPI) serveRefresh(w http.ResponseWriter, r *ht
 		// The provider returns the four actual expanded instances of its saved
 		// daily COUNT=4 rule, rather than asking local code to synthesize them.
 		var wire strings.Builder
-		wire.WriteString("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Gofer//Native fixture//EN\r\n")
+		wire.WriteString("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Raven//Native fixture//EN\r\n")
 		for day := 3; day <= 6; day++ {
 			fmt.Fprintf(&wire, "BEGIN:VEVENT\r\nUID:private-uid\r\nDTSTAMP:20261003T090000Z\r\nRECURRENCE-ID:202610%02dT100000Z\r\nDTSTART:202610%02dT100000Z\r\nDTEND:202610%02dT110000Z\r\nSUMMARY:Edited recurring title\r\nEND:VEVENT\r\n", day, day, day)
 		}

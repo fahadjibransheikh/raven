@@ -21,7 +21,7 @@ func ownedNotificationDeliveryFixture(t *testing.T, host string, port int, kind,
 	t.Helper()
 	var f *userContactPushFixture
 	calls := &atomic.Int32{}
-	raw := "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Gofer//Fixture//EN\r\nBEGIN:VEVENT\r\nUID:private-uid\r\nDTSTAMP:20261003T090000Z\r\nSEQUENCE:1\r\nDTSTART:20261003T100000Z\r\nDTEND:20261003T110000Z\r\nSUMMARY:Private meeting\r\nORGANIZER;SCHEDULE-AGENT=CLIENT:mailto:alice@example.com\r\nATTENDEE;PARTSTAT=NEEDS-ACTION:mailto:organizer@example.com\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+	raw := "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Raven//Fixture//EN\r\nBEGIN:VEVENT\r\nUID:private-uid\r\nDTSTAMP:20261003T090000Z\r\nSEQUENCE:1\r\nDTSTART:20261003T100000Z\r\nDTEND:20261003T110000Z\r\nSUMMARY:Private meeting\r\nORGANIZER;SCHEDULE-AGENT=CLIENT:mailto:alice@example.com\r\nATTENDEE;PARTSTAT=NEEDS-ACTION:mailto:organizer@example.com\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
 	cal, err := calendarUpdateDecodeICS([]byte(raw))
 	if err != nil {
 		t.Fatal(err)

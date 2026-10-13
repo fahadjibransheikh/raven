@@ -35,7 +35,7 @@ test("archive shows Undo and undo posts a move back to the source folder", async
   const toast = t.w.document.getElementById("mail-undo-toast")
   assert.ok(toast, "undo toast shown")
   assert.match(toast.textContent, /Archived/)
-  toast.querySelector("[data-gofer-toast-secondary]").click()
+  toast.querySelector("[data-raven-toast-secondary]").click()
   await tick()
   const undo = t.calls.find(function (c) { return c.url === "/api/messages/move" })
   assert.ok(undo, "undo request sent")

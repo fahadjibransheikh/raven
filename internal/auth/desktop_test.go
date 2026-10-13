@@ -14,7 +14,7 @@ const testDesktopToken = "0123456789abcdef0123456789abcdef0123456789abcdef012345
 
 func newDesktopTestHandler(t *testing.T, cfg *Config) (*Manager, http.Handler, *int) {
 	t.Helper()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}
@@ -52,7 +52,7 @@ func TestDesktopGateInactiveWithoutToken(t *testing.T) {
 	_, h, calls := newDesktopTestHandler(t, &Config{})
 	for _, path := range []string{"/", DesktopAuthPath} {
 		req := httptest.NewRequest(http.MethodGet, path, nil)
-		req.Header.Set("X-Gofer-Request", "1")
+		req.Header.Set("X-Raven-Request", "1")
 		if rec := serve(h, req); rec.Code != http.StatusNoContent || rec.Header().Get(desktopMarkerKey) != "" {
 			t.Fatalf("%s without token: status %d marker %q, want untouched passthrough", path, rec.Code, rec.Header().Get(desktopMarkerKey))
 		}
@@ -68,7 +68,7 @@ func TestDesktopGateRejectsRequestsWithoutCookie(t *testing.T) {
 		"plain": httptest.NewRequest(http.MethodGet, "/", nil),
 		"automation header": func() *http.Request {
 			r := httptest.NewRequest(http.MethodGet, "/api/folders/unread", nil)
-			r.Header.Set("X-Gofer-Request", "1")
+			r.Header.Set("X-Raven-Request", "1")
 			return r
 		}(),
 		"sse":   httptest.NewRequest(http.MethodGet, "/api/events", nil),

@@ -53,7 +53,7 @@ func (t refreshingLabelSyncTestTokens) RefreshOAuthTokenForAccount(context.Conte
 
 func newLabelSyncTestDB(t *testing.T) *storage.DB {
 	t.Helper()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}

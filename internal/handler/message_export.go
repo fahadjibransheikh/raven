@@ -138,7 +138,7 @@ func (h *Handler) handlePrintMessage(w http.ResponseWriter, r *http.Request) {
 	hd := w.Header()
 	// Set, not Add: this page's own policy replaces the page-wide script policy,
 	// which would refuse the one nonced print script. Remote content comes
-	// through Gofer, so images load from 'self' only.
+	// through Raven, so images load from 'self' only.
 	hd.Set("Content-Security-Policy", "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; font-src data:; script-src 'nonce-"+nonce+"'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'")
 	hd.Set("X-Content-Type-Options", "nosniff")
 	hd.Set("Content-Type", "text/html; charset=utf-8")

@@ -16,11 +16,11 @@ import (
 )
 
 func TestContactSyncSetupRequired(t *testing.T) {
-	requested := models.Contact{GoferSyncEnabled: true, SaveTargets: []string{"local", "account:a"}}
+	requested := models.Contact{RavenSyncEnabled: true, SaveTargets: []string{"local", "account:a"}}
 	if !contactSyncSetupRequired(requested, nil) {
 		t.Fatal("newly enabled contact did not require setup")
 	}
-	previous := &models.Contact{GoferSyncEnabled: true, SaveTargets: []string{"local", "account:a"}}
+	previous := &models.Contact{RavenSyncEnabled: true, SaveTargets: []string{"local", "account:a"}}
 	if contactSyncSetupRequired(requested, previous) {
 		t.Fatal("unchanged enabled locations unexpectedly required setup")
 	}
@@ -28,7 +28,7 @@ func TestContactSyncSetupRequired(t *testing.T) {
 	if !contactSyncSetupRequired(requested, previous) {
 		t.Fatal("new sync location did not require setup")
 	}
-	requested.GoferSyncEnabled = false
+	requested.RavenSyncEnabled = false
 	if contactSyncSetupRequired(requested, previous) {
 		t.Fatal("disabled sync unexpectedly required setup")
 	}
@@ -69,7 +69,7 @@ func TestContactSyncCandidateMatchingAndScore(t *testing.T) {
 
 func TestSavingNewlyEnabledContactStagesSetupBeforeSync(t *testing.T) {
 	ctx := context.Background()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}
@@ -113,7 +113,7 @@ func TestSavingNewlyEnabledContactStagesSetupBeforeSync(t *testing.T) {
 	if err != nil || contact == nil {
 		t.Fatalf("GetContact() = %#v, %v", contact, err)
 	}
-	if contact.GoferSyncEnabled {
+	if contact.RavenSyncEnabled {
 		t.Fatal("sync became active before setup confirmation")
 	}
 
@@ -125,7 +125,7 @@ func TestSavingNewlyEnabledContactStagesSetupBeforeSync(t *testing.T) {
 		t.Fatalf("confirm status = %d: %s", confirmRec.Code, confirmRec.Body.String())
 	}
 	contact, err = db.GetContact(ctx, "default", response.ContactID)
-	if err != nil || contact == nil || !contact.GoferSyncEnabled {
+	if err != nil || contact == nil || !contact.RavenSyncEnabled {
 		t.Fatalf("confirmed contact = %#v, %v; want enabled", contact, err)
 	}
 	var pending int

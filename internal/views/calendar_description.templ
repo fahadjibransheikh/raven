@@ -8,7 +8,7 @@ import (
 )
 
 templ calendarDescriptionCommand(command, title string, glyph templ.Component) {
-	@button.Button(button.Props{Type: button.TypeButton, Variant: button.VariantGhost, Size: button.SizeIcon, Class: "size-7 shrink-0 text-muted-foreground", Attributes: templ.Attributes{"aria-label": title, "title": title, "data-calendar-description-command": command, "data-on-click": onAction("calendarDescriptionExec", actionElement, actionData("calendarDescriptionCommand")), "data-on-mousedown": onAction("goferPreventDefault", actionEvent)}}) {
+	@button.Button(button.Props{Type: button.TypeButton, Variant: button.VariantGhost, Size: button.SizeIcon, Class: "size-7 shrink-0 text-muted-foreground", Attributes: templ.Attributes{"aria-label": title, "title": title, "data-calendar-description-command": command, "data-on-click": onAction("calendarDescriptionExec", actionElement, actionData("calendarDescriptionCommand")), "data-on-mousedown": onAction("ravenPreventDefault", actionEvent)}}) {
 		@glyph
 	}
 }
@@ -32,7 +32,7 @@ templ CalendarDescriptionEditor(data CalendarCreateData) {
 					@calendarDescriptionCommand("createLink", "Insert link", icon.Link(icon.Props{Class: "size-3.5"}))
 					@dropdown.Dropdown() {
 						@dropdown.Trigger() {
-							@button.Button(button.Props{Type: button.TypeButton, Variant: button.VariantGhost, Size: button.SizeIcon, Class: "size-7 text-muted-foreground", Attributes: templ.Attributes{"aria-label": "More formatting", "data-on-mousedown": onAction("goferPreventDefault", actionEvent)}}) {
+							@button.Button(button.Props{Type: button.TypeButton, Variant: button.VariantGhost, Size: button.SizeIcon, Class: "size-7 text-muted-foreground", Attributes: templ.Attributes{"aria-label": "More formatting", "data-on-mousedown": onAction("ravenPreventDefault", actionEvent)}}) {
 								@icon.Ellipsis(icon.Props{Class: "size-3.5"})
 								}
 						}

@@ -187,7 +187,7 @@ func (m *Manager) passkeyLoginThrottleBuckets(identifier, source string) ([]logi
 		value string
 	}{
 		{kind: loginThrottleBucketSource, value: strings.TrimSpace(source)},
-		{kind: loginThrottleBucketInstance, value: "gofer"},
+		{kind: loginThrottleBucketInstance, value: "raven"},
 	}
 	if identifier = normalizeLoginIdentifier(identifier); identifier != "" {
 		values = append([]struct {
@@ -231,7 +231,7 @@ func (m *Manager) authenticationThrottleBuckets(action, identifier, source strin
 	}{
 		{kind: loginThrottleBucketIdentifier, value: identifier},
 		{kind: loginThrottleBucketSource, value: strings.TrimSpace(source)},
-		{kind: loginThrottleBucketInstance, value: "gofer"},
+		{kind: loginThrottleBucketInstance, value: "raven"},
 	}
 	buckets := make([]loginThrottleBucket, 0, len(values))
 	for _, value := range values {
@@ -258,7 +258,7 @@ func (m *Manager) authenticationThrottleBucketHash(action string, kind loginThro
 		return "", errors.New("login throttle bucket hash key must contain at least 32 bytes")
 	}
 	mac := hmac.New(sha256.New, m.bucketHashKey)
-	for _, part := range []string{"gofer-auth-throttle-v1", action, string(kind), value} {
+	for _, part := range []string{"raven-auth-throttle-v1", action, string(kind), value} {
 		var length [8]byte
 		binary.BigEndian.PutUint64(length[:], uint64(len(part)))
 		_, _ = mac.Write(length[:])

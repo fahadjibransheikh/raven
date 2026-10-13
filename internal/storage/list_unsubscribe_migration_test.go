@@ -6,7 +6,7 @@ import (
 )
 
 func TestMigrateV104ToV105AddsListUnsubscribeColumns(t *testing.T) {
-	db, err := New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatal(err)
 	}

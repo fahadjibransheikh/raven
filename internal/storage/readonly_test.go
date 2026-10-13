@@ -8,7 +8,7 @@ import (
 )
 
 func TestOpenReadOnlyRequiresExistingCurrentDatabaseAndRejectsWrites(t *testing.T) {
-	databasePath := filepath.Join(t.TempDir(), "directory with spaces", "gofer.db")
+	databasePath := filepath.Join(t.TempDir(), "directory with spaces", "raven.db")
 	db, err := New(databasePath)
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
@@ -38,7 +38,7 @@ func TestOpenReadOnlyRequiresExistingCurrentDatabaseAndRejectsWrites(t *testing.
 
 func TestOpenReadOnlyDoesNotCreateMissingPathOrMigrateStaleSchema(t *testing.T) {
 	missingDirectory := filepath.Join(t.TempDir(), "missing")
-	missingPath := filepath.Join(missingDirectory, "gofer.db")
+	missingPath := filepath.Join(missingDirectory, "raven.db")
 	if db, err := OpenReadOnly(missingPath); err == nil || db != nil {
 		t.Fatalf("OpenReadOnly(missing) = %#v, %v", db, err)
 	}
@@ -67,7 +67,7 @@ func TestOpenReadOnlyDoesNotCreateMissingPathOrMigrateStaleSchema(t *testing.T) 
 }
 
 func TestOpenExistingRequiresCurrentSchemaAndPermitsOperatorMutation(t *testing.T) {
-	databasePath := filepath.Join(t.TempDir(), "gofer.db")
+	databasePath := filepath.Join(t.TempDir(), "raven.db")
 	db, err := New(databasePath)
 	if err != nil {
 		t.Fatal(err)

@@ -10,7 +10,7 @@ self.addEventListener("push", function (event) {
     body: data.body || "New notification",
     icon: icon,
     badge: "/assets/logo.png",
-    tag: data.tag || "gofer-notification",
+    tag: data.tag || "raven-notification",
     data: {
       url: data.url || "/",
       folderID: data.folder_id || "",

@@ -837,7 +837,7 @@ func contactValuesFromProfile(ctx context.Context, profile models.ContactProfile
 		AvatarURL:        strings.TrimSpace(profile.AvatarURL),
 		Source:           profile.Origin,
 		IsManual:         profile.Origin == "manual",
-		GoferSyncEnabled: profile.SyncEnabled,
+		RavenSyncEnabled: profile.SyncEnabled,
 		IsDeleted:        profile.IsDeleted,
 	}
 	loc := timezoneLocationFromContext(ctx)
@@ -1669,7 +1669,7 @@ func (db *DB) SaveContact(ctx context.Context, userID string, contact models.Con
 	if err := db.ReplaceContactSyncMemberships(ctx, userID, savedProfile.ID, targets); err != nil {
 		return models.Contact{}, err
 	}
-	if contact.GoferSyncEnabled {
+	if contact.RavenSyncEnabled {
 		contact.ID = savedProfile.ID
 		contact.Name = name
 		contact.Email = email
@@ -1700,7 +1700,7 @@ func contactProfileForSave(userID string, contact models.Contact, existingProfil
 		SortName:     name,
 		PrimaryEmail: email,
 		Notes:        strings.TrimSpace(contact.Notes),
-		SyncEnabled:  contact.GoferSyncEnabled,
+		SyncEnabled:  contact.RavenSyncEnabled,
 		Cards:        nil,
 		Fields: []models.ContactField{{
 			Kind:      "email",

@@ -28,7 +28,7 @@ type ownedReplyFollowupAPI struct {
 }
 
 func newOwnedReplyFollowupAPI(t *testing.T, mode string) *ownedReplyFollowupAPI {
-	return &ownedReplyFollowupAPI{t: t, mode: mode, etag: `"v1"`, body: "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Gofer//Fixture//EN\r\nBEGIN:VEVENT\r\nUID:private-uid\r\nDTSTART:20261003T100000Z\r\nDTEND:20261003T110000Z\r\nSUMMARY:Native invitation\r\nORGANIZER:mailto:organizer@example.com\r\nATTENDEE;PARTSTAT=NEEDS-ACTION:mailto:alice@example.com\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"}
+	return &ownedReplyFollowupAPI{t: t, mode: mode, etag: `"v1"`, body: "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Raven//Fixture//EN\r\nBEGIN:VEVENT\r\nUID:private-uid\r\nDTSTART:20261003T100000Z\r\nDTEND:20261003T110000Z\r\nSUMMARY:Native invitation\r\nORGANIZER:mailto:organizer@example.com\r\nATTENDEE;PARTSTAT=NEEDS-ACTION:mailto:alice@example.com\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"}
 }
 func (a *ownedReplyFollowupAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "OPTIONS" && r.URL.Path == "/alice/primary/" {

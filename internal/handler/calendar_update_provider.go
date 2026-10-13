@@ -774,7 +774,7 @@ func updateCalDAVCalendarEventScope(ctx context.Context, source storage.Calendar
 		return calendar.RemoteEvent{}, errCalendarUpdateConflict
 	}
 	props := current.Events()[0].Props
-	for _, name := range []string{"SUMMARY", "DESCRIPTION", "LOCATION", "DTSTART", "DTEND", "X-GOFER-TIMEZONE"} {
+	for _, name := range []string{"SUMMARY", "DESCRIPTION", "LOCATION", "DTSTART", "DTEND", "X-RAVEN-TIMEZONE"} {
 		if name == "DESCRIPTION" {
 			continue
 		}
@@ -850,7 +850,7 @@ func updateCalDAVCalendarEventScope(ctx context.Context, source storage.Calendar
 	if !calendarUpdateMatchesDraft(updated, draft) {
 		return calendar.RemoteEvent{}, fmt.Errorf("CalDAV did not confirm the submitted event changes")
 	}
-	if zone, _ := confirmed.Events()[0].Props.Text("X-GOFER-TIMEZONE"); zone == draft.TimeZone {
+	if zone, _ := confirmed.Events()[0].Props.Text("X-RAVEN-TIMEZONE"); zone == draft.TimeZone {
 		updated.StartTimeZone, updated.EndTimeZone = zone, zone
 	}
 	return updated, nil

@@ -43,19 +43,19 @@ func main() {
 }
 
 const usage = `Usage:
-  gofer                 start the server
-  gofer help            show this help
+  raven                 start the server
+  raven help            show this help
 
 Authentication:
-  gofer auth status
-  gofer auth users list
-  gofer auth setup-token rotate
-  gofer auth recover (--user-id <id> | --username <name>) --confirm <same value>
-  gofer auth sessions revoke (--user-id <id> | --username <name>) --confirm <same value>
+  raven auth status
+  raven auth users list
+  raven auth setup-token rotate
+  raven auth recover (--user-id <id> | --username <name>) --confirm <same value>
+  raven auth sessions revoke (--user-id <id> | --username <name>) --confirm <same value>
 
 Storage:
-  gofer storage inspect [--db PATH]
-  gofer storage migrate [--db PATH] --to PATH [--working-dir PATH] [--retry]
+  raven storage inspect [--db PATH]
+  raven storage migrate [--db PATH] --to PATH [--working-dir PATH] [--retry]
 `
 
 func runApplication(ctx context.Context, args []string, stdout, stderr io.Writer, serve func()) int {
@@ -70,7 +70,7 @@ func runApplication(ctx context.Context, args []string, stdout, stderr io.Writer
 		return exitCode
 	}
 	if len(args) != 0 {
-		_, _ = fmt.Fprintf(stderr, "gofer: unknown command %q\n\n", strings.Join(args, " "))
+		_, _ = fmt.Fprintf(stderr, "raven: unknown command %q\n\n", strings.Join(args, " "))
 		_, _ = io.WriteString(stderr, usage)
 		return 2
 	}

@@ -10,7 +10,7 @@ import (
 
 // QuoteStartMarker marks where a message's quoted history begins. The body
 // document's quote script collapses everything from it to the end of the body.
-const QuoteStartMarker = `<span data-gofer-quote-start></span>`
+const QuoteStartMarker = `<span data-raven-quote-start></span>`
 
 // QuoteSource is an earlier message of the same thread that a reply may quote.
 type QuoteSource struct {

@@ -27,7 +27,7 @@ func requestContactEditor(ctx context.Context, f *userStorageFixture, owner, pat
 func seedOwnedEditor(t *testing.T, f *userStorageFixture, owner string) {
 	t.Helper()
 	if err := f.routing.WithUser(t.Context(), owner, func(db *storage.DB) error {
-		_, err := db.SaveContact(t.Context(), owner, models.Contact{ID: "same-contact-id", Email: owner + "-contact@example.com", Name: owner, Phone: owner + "-before", AvatarURL: "https://avatar.test/" + owner, GoferSyncEnabled: true, SaveTargets: []string{"local", "book:" + owner + "-owned-book"}})
+		_, err := db.SaveContact(t.Context(), owner, models.Contact{ID: "same-contact-id", Email: owner + "-contact@example.com", Name: owner, Phone: owner + "-before", AvatarURL: "https://avatar.test/" + owner, RavenSyncEnabled: true, SaveTargets: []string{"local", "book:" + owner + "-owned-book"}})
 		return err
 	}); err != nil {
 		t.Fatal(err)
@@ -136,7 +136,7 @@ func TestUserContactEditHTTPSetupNewIdentityAndForeignLocations(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		if contact == nil || contact.GoferSyncEnabled || len(contact.SaveTargets) != 2 {
+		if contact == nil || contact.RavenSyncEnabled || len(contact.SaveTargets) != 2 {
 			t.Fatal("setup state", contact)
 		}
 		var count int

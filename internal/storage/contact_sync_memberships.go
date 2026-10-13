@@ -36,7 +36,7 @@ func contactMembershipsQuery(ctx context.Context, query contactProfileQuery, use
 	return memberships, rows.Err()
 }
 
-// ReplaceContactSyncMemberships changes Gofer's replication targets. Local is
+// ReplaceContactSyncMemberships changes Raven's replication targets. Local is
 // represented by a local card; external targets are memberships. Disabling an
 // external target never deletes its existing provider card.
 func (db *DB) ReplaceContactSyncMemberships(ctx context.Context, userID, profileID string, targets []string) error {

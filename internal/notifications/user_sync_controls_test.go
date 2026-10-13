@@ -92,13 +92,13 @@ func TestUserIMAPControlsManualHTTPDetachDeduplicateCancelAndSSEIsolation(t *tes
 	recorder := httptest.NewRecorder()
 	f.http.ServeHTTP(recorder, req)
 	cancel()
-	runID := recorder.Header().Get("X-Gofer-Mail-Sync-Run-ID")
+	runID := recorder.Header().Get("X-Raven-Mail-Sync-Run-ID")
 	if recorder.Code != 200 || runID == "" {
 		t.Fatalf("manual start: %d %s", recorder.Code, recorder.Body.String())
 	}
 	awaitIMAP(t, blocked)
 	duplicate := f.request("alice", http.MethodPost, "/api/mail/sync", "")
-	if duplicate.Header().Get("X-Gofer-Mail-Sync-Running") != "true" || duplicate.Header().Get("X-Gofer-Mail-Sync-Run-ID") != runID {
+	if duplicate.Header().Get("X-Raven-Mail-Sync-Running") != "true" || duplicate.Header().Get("X-Raven-Mail-Sync-Run-ID") != runID {
 		t.Fatal("duplicate manual run was not coalesced")
 	}
 	if foreign := f.request("bob", http.MethodPost, "/api/mail/sync/accounts/"+f.accounts["alice"].ID, ""); foreign.Code != 404 {

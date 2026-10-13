@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestPagesRunOnlyGoferScripts(t *testing.T) {
+func TestPagesRunOnlyRavenScripts(t *testing.T) {
 	for _, directive := range []string{"script-src 'self'", "object-src 'none'", "base-uri 'self'", "frame-ancestors 'self'"} {
 		if !strings.Contains(PagePolicy, directive) {
 			t.Fatalf("page policy %q lacks %q", PagePolicy, directive)
@@ -31,14 +31,14 @@ func TestScriptPolicyReportsAreLoggedBriefly(t *testing.T) {
 	scriptPolicyReports.count = 0
 	scriptPolicyReports.Unlock()
 
-	body := `{"csp-report":{"document-uri":"https://gofer.example/settings","blocked-uri":"inline","effective-directive":"script-src-attr","source-file":"https://gofer.example/settings","line-number":12,"script-sample":"wizardGo(2)\nnext line"}}`
+	body := `{"csp-report":{"document-uri":"https://raven.example/settings","blocked-uri":"inline","effective-directive":"script-src-attr","source-file":"https://raven.example/settings","line-number":12,"script-sample":"wizardGo(2)\nnext line"}}`
 	rec := httptest.NewRecorder()
 	handleScriptPolicyReport(rec, httptest.NewRequest(http.MethodPost, ScriptPolicyReportPath, strings.NewReader(body)))
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("report = %d", rec.Code)
 	}
 	line := logged.String()
-	if !strings.Contains(line, "script-src-attr blocked inline on https://gofer.example/settings") || strings.Count(strings.TrimSpace(line), "\n") != 0 {
+	if !strings.Contains(line, "script-src-attr blocked inline on https://raven.example/settings") || strings.Count(strings.TrimSpace(line), "\n") != 0 {
 		t.Fatalf("logged %q", line)
 	}
 

@@ -298,7 +298,7 @@ func TestCalendarCalDAVUpdatePreservesResourceAndConfirmsSave(t *testing.T) {
 			davHTTPTransport = server.Client().Transport
 			defer func() { davHTTPTransport = old }()
 			source := storage.CalendarSource{RemoteID: server.URL + "/calendar/", TimeZone: "Europe/Prague"}
-			existing := storage.CalendarEvent{RemoteID: server.URL + "/calendar/original.ics", ETag: `"v1"`, ICalUID: draft.RequestID + "@gofer"}
+			existing := storage.CalendarEvent{RemoteID: server.URL + "/calendar/original.ics", ETag: `"v1"`, ICalUID: draft.RequestID + "@raven"}
 			if series {
 				original := calendarCreatedRemote(before)
 				original.RemoteID, original.ETag, original.ICalUID = existing.RemoteID, existing.ETag, existing.ICalUID

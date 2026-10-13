@@ -6,7 +6,7 @@ needed by mail and contact operations, and owns the authenticated account-OAuth
 flow state.
 
 `internal/auth` owns application users, login sessions, request identity, and
-application-login behavior. A Gofer session must never be accepted as a mailbox
+application-login behavior. A Raven session must never be accepted as a mailbox
 credential, and a mailbox OAuth grant must never establish an application
 session by itself.
 

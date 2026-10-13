@@ -19,7 +19,7 @@ import (
 
 const (
 	recoveryRepairDraftVersion    = 1
-	recoveryRepairDraftKeyContext = "gofer/auth/recovery-repair-draft/v1"
+	recoveryRepairDraftKeyContext = "raven/auth/recovery-repair-draft/v1"
 	recoveryRepairLifetime        = 15 * time.Minute
 	recoveryRepairMaxAttempts     = 3
 )

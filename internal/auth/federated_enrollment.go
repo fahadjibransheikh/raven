@@ -13,7 +13,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-// BeginGoogleEnrollment exchanges a private, one-time Gofer invitation for a
+// BeginGoogleEnrollment exchanges a private, one-time Raven invitation for a
 // short-lived Google OIDC challenge. The invitation secret is verified but is
 // never persisted in the challenge; only the enrollment-token row ID is kept
 // inside the encrypted, purpose-bound PKCE draft.
@@ -133,7 +133,7 @@ func (m *Manager) BeginGoogleEnrollment(ctx context.Context, invitationToken str
 	return &GoogleLoginStart{Challenge: challenge, AuthorizationURL: authorizationURL}, nil
 }
 
-// CompleteGoogleEnrollment verifies Google only as a Gofer authentication
+// CompleteGoogleEnrollment verifies Google only as a Raven authentication
 // identity. It does not persist OAuth access or refresh tokens and does not
 // create an account/mailbox row. Identity linking, invitation consumption,
 // user activation, and the resulting session or MFA continuation are atomic.
@@ -310,7 +310,7 @@ func (m *Manager) CompleteGoogleEnrollment(
 		}
 
 		if conflict {
-			// The verified Google subject belongs to another Gofer user. Consume
+			// The verified Google subject belongs to another Raven user. Consume
 			// this OIDC attempt and audit the generic conflict, but leave the
 			// invitation and pending target untouched.
 		} else if mfaChallenge != nil {

@@ -23,7 +23,7 @@ func calendarMeetDraftEndpoint(source storage.CalendarSource, d storage.Calendar
 }
 
 func calendarMeetDraftIdentity(remote googleCalendarEvent, d storage.CalendarMeetDraft) bool {
-	return remote.ID == d.RemoteID && remote.ExtendedProperties.Private["goferMeetDraft"] == "true" && remote.ExtendedProperties.Private["goferMeetDraftID"] == d.DraftID
+	return remote.ID == d.RemoteID && remote.ExtendedProperties.Private["ravenMeetDraft"] == "true" && remote.ExtendedProperties.Private["ravenMeetDraftID"] == d.DraftID
 }
 
 // Keep Google's conference data, including its signature when supplied. Meet
@@ -61,7 +61,7 @@ func prepareGoogleMeetDraft(ctx context.Context, source storage.CalendarSource, 
 		payload := map[string]any{"id": d.RemoteID, "summary": "Preparing Google Meet", "visibility": "private", "transparency": "transparent",
 			"start": map[string]string{"dateTime": start.Format(time.RFC3339)}, "end": map[string]string{"dateTime": start.Add(5 * time.Minute).Format(time.RFC3339)},
 			"reminders":          map[string]any{"useDefault": false, "overrides": []any{}},
-			"extendedProperties": map[string]any{"private": map[string]string{"goferMeetDraft": "true", "goferMeetDraftID": d.DraftID}},
+			"extendedProperties": map[string]any{"private": map[string]string{"ravenMeetDraft": "true", "ravenMeetDraftID": d.DraftID}},
 			"conferenceData":     calendarGoogleMeetRequest(d.RemoteID)}
 		collection := googleCalendarAPIBaseURL + "/calendars/" + url.PathEscape(source.RemoteID) + "/events?conferenceDataVersion=1&sendUpdates=none"
 		err = calendarCreateJSON(ctx, http.MethodPost, collection, token, payload, &remote)

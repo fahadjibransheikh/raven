@@ -54,7 +54,7 @@ func calendarDescriptionCommand(command, title string, glyph templ.Component) te
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = button.Button(button.Props{Type: button.TypeButton, Variant: button.VariantGhost, Size: button.SizeIcon, Class: "size-7 shrink-0 text-muted-foreground", Attributes: templ.Attributes{"aria-label": title, "title": title, "data-calendar-description-command": command, "data-on-click": onAction("calendarDescriptionExec", actionElement, actionData("calendarDescriptionCommand")), "data-on-mousedown": onAction("goferPreventDefault", actionEvent)}}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = button.Button(button.Props{Type: button.TypeButton, Variant: button.VariantGhost, Size: button.SizeIcon, Class: "size-7 shrink-0 text-muted-foreground", Attributes: templ.Attributes{"aria-label": title, "title": title, "data-calendar-description-command": command, "data-on-click": onAction("calendarDescriptionExec", actionElement, actionData("calendarDescriptionCommand")), "data-on-mousedown": onAction("ravenPreventDefault", actionEvent)}}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -191,7 +191,7 @@ func CalendarDescriptionEditor(data CalendarCreateData) templ.Component {
 					}
 					return nil
 				})
-				templ_7745c5c3_Err = button.Button(button.Props{Type: button.TypeButton, Variant: button.VariantGhost, Size: button.SizeIcon, Class: "size-7 text-muted-foreground", Attributes: templ.Attributes{"aria-label": "More formatting", "data-on-mousedown": onAction("goferPreventDefault", actionEvent)}}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var8), templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = button.Button(button.Props{Type: button.TypeButton, Variant: button.VariantGhost, Size: button.SizeIcon, Class: "size-7 text-muted-foreground", Attributes: templ.Attributes{"aria-label": "More formatting", "data-on-mousedown": onAction("ravenPreventDefault", actionEvent)}}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var8), templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

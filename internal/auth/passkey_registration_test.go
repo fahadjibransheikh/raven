@@ -88,7 +88,7 @@ func newPasskeyTestFixture(t *testing.T, isAdmin bool) *passkeyTestFixture {
 		finishRecord:  testPasskeyCredentialRecord(t, []byte("credential-id-1")),
 	}
 	manager.passkeyRegistrationFactory = func(origin string) (passkeyRegistrationCeremony, error) {
-		if origin != "https://gofer.example" {
+		if origin != "https://raven.example" {
 			return nil, fmt.Errorf("unexpected origin %q", origin)
 		}
 		return registration, nil
@@ -124,13 +124,13 @@ func testPasskeyCredentialRecord(t *testing.T, credentialID []byte) *passkeyCred
 func TestPasskeyRegistrationIsStepUpAndSessionBound(t *testing.T) {
 	fixture := newPasskeyTestFixture(t, false)
 	options, err := fixture.manager.StartPasskeyRegistration(
-		t.Context(), fixture.session.Token, "https://GOFER.example:443/", "  Work laptop  ",
+		t.Context(), fixture.session.Token, "https://RAVEN.example:443/", "  Work laptop  ",
 	)
 	if err != nil || options == nil || options.Challenge == nil {
 		t.Fatalf("StartPasskeyRegistration() = %#v, %v", options, err)
 	}
 	if string(options.CreationJSON) != string(fixture.registration.beginCreation) ||
-		options.Challenge.SessionID != fixture.session.ID || options.Challenge.Origin != "https://gofer.example" ||
+		options.Challenge.SessionID != fixture.session.ID || options.Challenge.Origin != "https://raven.example" ||
 		options.Challenge.MaxAttempts != 1 || len(fixture.registration.beginUsers) != 1 ||
 		len(fixture.registration.beginUsers[0].ID) != 32 {
 		t.Fatalf("passkey registration options = %#v users=%#v", options, fixture.registration.beginUsers)
@@ -154,12 +154,12 @@ func TestPasskeyRegistrationIsStepUpAndSessionBound(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := fixture.manager.StartPasskeyRegistration(
-		t.Context(), fixture.session.Token, "https://gofer.example", "Phone",
+		t.Context(), fixture.session.Token, "https://raven.example", "Phone",
 	); !errors.Is(err, ErrRecentStepUpRequired) {
 		t.Fatalf("stale passkey registration error = %v", err)
 	}
 	if _, err := fixture.manager.StartPasskeyRegistration(
-		t.Context(), fixture.session.Token, "https://gofer.example", "\n",
+		t.Context(), fixture.session.Token, "https://raven.example", "\n",
 	); !errors.Is(err, ErrRecentStepUpRequired) {
 		t.Fatalf("stale session must be rejected before passkey name validation: %v", err)
 	}
@@ -168,13 +168,13 @@ func TestPasskeyRegistrationIsStepUpAndSessionBound(t *testing.T) {
 func TestPasskeyRegistrationPersistsEncryptedCompleteCredentialAndMultipleHandles(t *testing.T) {
 	fixture := newPasskeyTestFixture(t, false)
 	started, err := fixture.manager.StartPasskeyRegistration(
-		t.Context(), fixture.session.Token, "https://gofer.example", "Laptop",
+		t.Context(), fixture.session.Token, "https://raven.example", "Laptop",
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
 	created, err := fixture.manager.FinishPasskeyRegistration(
-		t.Context(), started.Challenge.Token, fixture.session.Token, "https://gofer.example",
+		t.Context(), started.Challenge.Token, fixture.session.Token, "https://raven.example",
 		[]byte(`{"credential":"response"}`), "Passkey Browser/1.0",
 	)
 	if err != nil || created == nil || created.Name != "Laptop" {
@@ -196,7 +196,7 @@ func TestPasskeyRegistrationPersistsEncryptedCompleteCredentialAndMultipleHandle
 	}
 	if !bytes.Equal(credentialID, fixture.registration.finishRecord.CredentialID) ||
 		!bytes.Equal(publicKey, fixture.registration.finishRecord.PublicKey) || keyVersion != 1 ||
-		rpID != "gofer.example" || rawFlags != int(fixture.registration.finishRecord.Flags) ||
+		rpID != "raven.example" || rawFlags != int(fixture.registration.finishRecord.Flags) ||
 		cloneWarning != 0 || name != "Laptop" || len(handle) != 32 ||
 		bytes.Contains(ciphertext, fixture.registration.finishRecord.Record) {
 		t.Fatalf("stored passkey metadata = id:%q key:%q version:%d rp:%q flags:%d clone:%d name:%q handle:%d ciphertext:%q",
@@ -215,13 +215,13 @@ func TestPasskeyRegistrationPersistsEncryptedCompleteCredentialAndMultipleHandle
 		t.Fatalf("consumed registration = consumed:%t payload:%q err:%v", consumed, payload, err)
 	}
 	if _, err := fixture.manager.FinishPasskeyRegistration(
-		t.Context(), started.Challenge.Token, fixture.session.Token, "https://gofer.example", []byte(`{}`), "Browser",
+		t.Context(), started.Challenge.Token, fixture.session.Token, "https://raven.example", []byte(`{}`), "Browser",
 	); !errors.Is(err, ErrPasskeyRegistrationInvalid) {
 		t.Fatalf("replayed passkey registration error = %v", err)
 	}
 
 	second, err := fixture.manager.StartPasskeyRegistration(
-		t.Context(), fixture.session.Token, "https://gofer.example", "Phone",
+		t.Context(), fixture.session.Token, "https://raven.example", "Phone",
 	)
 	if err != nil || second == nil || len(fixture.registration.beginUsers) != 2 ||
 		len(fixture.registration.beginUsers[1].Credentials) != 1 ||
@@ -235,13 +235,13 @@ func TestRejectedAndDuplicatePasskeyRegistrationsAreSingleUse(t *testing.T) {
 		fixture := newPasskeyTestFixture(t, false)
 		fixture.registration.finishErr = errors.New("invalid attestation")
 		started, err := fixture.manager.StartPasskeyRegistration(
-			t.Context(), fixture.session.Token, "https://gofer.example", "Laptop",
+			t.Context(), fixture.session.Token, "https://raven.example", "Laptop",
 		)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if _, err := fixture.manager.FinishPasskeyRegistration(
-			t.Context(), started.Challenge.Token, fixture.session.Token, "https://gofer.example", []byte(`{}`), "Browser",
+			t.Context(), started.Challenge.Token, fixture.session.Token, "https://raven.example", []byte(`{}`), "Browser",
 		); err == nil {
 			t.Fatalf("invalid passkey response error = %v", err)
 		} else {
@@ -263,19 +263,19 @@ func TestRejectedAndDuplicatePasskeyRegistrationsAreSingleUse(t *testing.T) {
 		insertActiveUser(t, fixture.manager, "other-passkey-owner", false, fixture.clock.now)
 		if _, err := fixture.manager.db.Write().ExecContext(t.Context(), `
 			INSERT INTO webauthn_credentials (id, user_id, credential_id, public_key, name, rp_id)
-			VALUES ('existing-passkey', ?, ?, ?, 'Existing', 'gofer.example')`,
+			VALUES ('existing-passkey', ?, ?, ?, 'Existing', 'raven.example')`,
 			"other-passkey-owner", fixture.registration.finishRecord.CredentialID, fixture.registration.finishRecord.PublicKey,
 		); err != nil {
 			t.Fatal(err)
 		}
 		started, err := fixture.manager.StartPasskeyRegistration(
-			t.Context(), fixture.session.Token, "https://gofer.example", "Duplicate",
+			t.Context(), fixture.session.Token, "https://raven.example", "Duplicate",
 		)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if _, err := fixture.manager.FinishPasskeyRegistration(
-			t.Context(), started.Challenge.Token, fixture.session.Token, "https://gofer.example", []byte(`{}`), "Browser",
+			t.Context(), started.Challenge.Token, fixture.session.Token, "https://raven.example", []byte(`{}`), "Browser",
 		); !errors.Is(err, ErrPasskeyDuplicate) {
 			t.Fatalf("duplicate passkey error = %v", err)
 		}
@@ -294,12 +294,12 @@ func TestRejectedAndDuplicatePasskeyRegistrationsAreSingleUse(t *testing.T) {
 func TestPasskeyRemovalRotatesSessionsAndProtectsLastAuthenticator(t *testing.T) {
 	t.Run("removal", func(t *testing.T) {
 		fixture := newPasskeyTestFixture(t, false)
-		started, err := fixture.manager.StartPasskeyRegistration(t.Context(), fixture.session.Token, "https://gofer.example", "Laptop")
+		started, err := fixture.manager.StartPasskeyRegistration(t.Context(), fixture.session.Token, "https://raven.example", "Laptop")
 		if err != nil {
 			t.Fatal(err)
 		}
 		created, err := fixture.manager.FinishPasskeyRegistration(
-			t.Context(), started.Challenge.Token, fixture.session.Token, "https://gofer.example", []byte(`{}`), "Browser",
+			t.Context(), started.Challenge.Token, fixture.session.Token, "https://raven.example", []byte(`{}`), "Browser",
 		)
 		if err != nil {
 			t.Fatal(err)
@@ -321,12 +321,12 @@ func TestPasskeyRemovalRotatesSessionsAndProtectsLastAuthenticator(t *testing.T)
 
 	t.Run("last required strong authenticator", func(t *testing.T) {
 		fixture := newPasskeyTestFixture(t, true)
-		started, err := fixture.manager.StartPasskeyRegistration(t.Context(), fixture.session.Token, "https://gofer.example", "Only passkey")
+		started, err := fixture.manager.StartPasskeyRegistration(t.Context(), fixture.session.Token, "https://raven.example", "Only passkey")
 		if err != nil {
 			t.Fatal(err)
 		}
 		created, err := fixture.manager.FinishPasskeyRegistration(
-			t.Context(), started.Challenge.Token, fixture.session.Token, "https://gofer.example", []byte(`{}`), "Browser",
+			t.Context(), started.Challenge.Token, fixture.session.Token, "https://raven.example", []byte(`{}`), "Browser",
 		)
 		if err != nil {
 			t.Fatal(err)
@@ -347,13 +347,13 @@ func TestPasskeyRemovalRotatesSessionsAndProtectsLastAuthenticator(t *testing.T)
 		fixture := newPasskeyTestFixture(t, false)
 		configureGoogleOAuthTest(fixture.manager)
 		started, err := fixture.manager.StartPasskeyRegistration(
-			t.Context(), fixture.session.Token, "https://gofer.example", "Google alternative",
+			t.Context(), fixture.session.Token, "https://raven.example", "Google alternative",
 		)
 		if err != nil {
 			t.Fatal(err)
 		}
 		created, err := fixture.manager.FinishPasskeyRegistration(
-			t.Context(), started.Challenge.Token, fixture.session.Token, "https://gofer.example", []byte(`{}`), "Browser",
+			t.Context(), started.Challenge.Token, fixture.session.Token, "https://raven.example", []byte(`{}`), "Browser",
 		)
 		if err != nil {
 			t.Fatal(err)

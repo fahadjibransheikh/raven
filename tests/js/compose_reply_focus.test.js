@@ -66,7 +66,7 @@ test("compose with no account shows a toast instead of opening", async () => {
   let opened = false
   const toasts = []
   w.tui = { dialog: { open: function () { opened = true } } }
-  w.showGoferToast = function (o) { toasts.push(o.title) }
+  w.showRavenToast = function (o) { toasts.push(o.title) }
   w.openNewCompose()
   assert.equal(opened, false)
   assert.deepEqual(toasts, ["Add an account first"])

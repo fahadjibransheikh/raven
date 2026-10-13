@@ -45,7 +45,7 @@ func googleIdentityLinkHandlerStack(
 	}))
 	t.Cleanup(provider.Close)
 
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,10 +63,10 @@ func googleIdentityLinkHandlerStack(
 	}
 	verifier := &handlerGoogleIDTokenVerifier{subject: "google-subject", email: "person@gmail.example"}
 	manager := auth.NewManager(&auth.Config{
-		Enabled: true, BaseURL: "https://gofer.example", SecureCookies: true,
+		Enabled: true, BaseURL: "https://raven.example", SecureCookies: true,
 		GoogleLoginClient: &oauth2.Config{
 			ClientID: "client-id", ClientSecret: "client-secret",
-			RedirectURL: "https://gofer.example/auth/google/login/callback",
+			RedirectURL: "https://raven.example/auth/google/login/callback",
 			Scopes:      []string{"openid", "email", "profile"},
 			Endpoint: oauth2.Endpoint{
 				AuthURL: "https://accounts.example/authorize", TokenURL: provider.URL,
@@ -335,7 +335,7 @@ func TestMicrosoftIdentityLinkRedirectUsesGETWithoutForwardingForm(t *testing.T)
 	manager.Config().MicrosoftLoginTenant = "common"
 	manager.Config().MicrosoftLoginClient = &oauth2.Config{
 		ClientID: "microsoft-client", ClientSecret: "microsoft-secret",
-		RedirectURL: "https://gofer.example/auth/microsoft/login/callback",
+		RedirectURL: "https://raven.example/auth/microsoft/login/callback",
 		Endpoint:    oauth2.Endpoint{AuthURL: "https://login.example/authorize", TokenURL: "https://login.example/token"},
 	}
 	form := url.Values{auth.CSRFFormFieldName: {csrfProofForSession(t, manager, cookie.Value, securityMicrosoftIdentityLinkPath)}}

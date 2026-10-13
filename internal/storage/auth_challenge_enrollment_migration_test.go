@@ -8,7 +8,7 @@ import (
 )
 
 func TestMigrateV83AddsFederatedEnrollmentChallengePurpose(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "gofer.db")
+	path := filepath.Join(t.TempDir(), "raven.db")
 	raw, err := openDB(path)
 	if err != nil {
 		t.Fatal(err)
@@ -45,7 +45,7 @@ func TestMigrateV83AddsFederatedEnrollmentChallengePurpose(t *testing.T) {
 	if _, err := raw.Exec(`
 		INSERT INTO auth_challenges (
 			id, challenge_hash, nonce_hash, purpose, origin, expires_at
-		) VALUES ('login-challenge', ?, ?, 'federated_link', 'https://gofer.example', '2026-08-16 10:00:00')`,
+		) VALUES ('login-challenge', ?, ?, 'federated_link', 'https://raven.example', '2026-08-16 10:00:00')`,
 		strings.Repeat("a", 64), strings.Repeat("b", 64),
 	); err != nil {
 		_ = raw.Close()
@@ -70,7 +70,7 @@ func TestMigrateV83AddsFederatedEnrollmentChallengePurpose(t *testing.T) {
 	if _, err := db.Write().Exec(`
 		INSERT INTO auth_challenges (
 			id, user_id, challenge_hash, nonce_hash, purpose, origin, expires_at
-		) VALUES ('enrollment-challenge', 'invitee', ?, ?, 'federated_enrollment', 'https://gofer.example', '2026-08-16 10:00:00')`,
+		) VALUES ('enrollment-challenge', 'invitee', ?, ?, 'federated_enrollment', 'https://raven.example', '2026-08-16 10:00:00')`,
 		strings.Repeat("c", 64), strings.Repeat("d", 64),
 	); err != nil {
 		t.Fatalf("insert federated enrollment challenge: %v", err)
@@ -78,12 +78,12 @@ func TestMigrateV83AddsFederatedEnrollmentChallengePurpose(t *testing.T) {
 	assertExecFails(t, db.Write(), `
 		INSERT INTO auth_challenges (
 			id, challenge_hash, purpose, origin, expires_at
-		) VALUES ('invalid-challenge', '`+strings.Repeat("e", 64)+`', 'invalid', 'https://gofer.example', '2026-08-16 10:00:00')`)
+		) VALUES ('invalid-challenge', '`+strings.Repeat("e", 64)+`', 'invalid', 'https://raven.example', '2026-08-16 10:00:00')`)
 	assertNoForeignKeyViolations(t, db.Read())
 }
 
 func TestMigrateV83FederatedEnrollmentChallengeRollsBackOnConflict(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "gofer.db")
+	path := filepath.Join(t.TempDir(), "raven.db")
 	raw, err := openDB(path)
 	if err != nil {
 		t.Fatal(err)

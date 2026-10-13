@@ -43,25 +43,25 @@ func TestRequiredMFAEnrollmentCreatesFactorAndSessionAndRevokesExistingSessions(
 	if stored, err := manager.GetSessionByToken(t.Context(), existing.Token); err != nil || stored == nil {
 		t.Fatalf("existing session during enrollment = %#v, %v", stored, err)
 	}
-	state, err := manager.GetMFAEnrollmentState(t.Context(), login.PreAuthChallenge.Token, "https://gofer.example")
+	state, err := manager.GetMFAEnrollmentState(t.Context(), login.PreAuthChallenge.Token, "https://raven.example")
 	if err != nil || state == nil || state.Enrollment == nil || state.TOTPConfirmed || state.RecoveryGenerated {
 		t.Fatalf("GetMFAEnrollmentState() = %#v, %v", state, err)
 	}
 	secret := strings.ReplaceAll(state.Enrollment.ManualKey, " ", "")
 	state, err = manager.ConfirmMFAEnrollmentTOTP(
-		t.Context(), login.PreAuthChallenge.Token, "https://gofer.example", setupTOTPCode(t, secret, now),
+		t.Context(), login.PreAuthChallenge.Token, "https://raven.example", setupTOTPCode(t, secret, now),
 	)
 	if err != nil || state == nil || !state.TOTPConfirmed || state.RecoveryGenerated {
 		t.Fatalf("ConfirmMFAEnrollmentTOTP() = %#v, %v", state, err)
 	}
 	batch, err := manager.GenerateMFAEnrollmentRecoveryCodes(
-		t.Context(), login.PreAuthChallenge.Token, "https://gofer.example", false,
+		t.Context(), login.PreAuthChallenge.Token, "https://raven.example", false,
 	)
 	if err != nil || batch == nil || !batch.RecoveryGenerated || len(batch.Codes) != setupRecoveryCodeCount {
 		t.Fatalf("GenerateMFAEnrollmentRecoveryCodes() = %#v, %v", batch, err)
 	}
 	session, err := manager.CompleteMFAEnrollment(t.Context(), CompleteMFAEnrollmentOptions{
-		Token: login.PreAuthChallenge.Token, Origin: "https://gofer.example",
+		Token: login.PreAuthChallenge.Token, Origin: "https://raven.example",
 		BatchID: batch.RecoveryBatchID, Saved: true,
 		Source: "198.51.100.60", UserAgent: "Enrollment browser",
 	})
@@ -149,7 +149,7 @@ func TestRequiredMFAEnrollmentBecomesInvalidWhenPolicyOrFactorStateChanges(t *te
 				t.Fatalf("AuthenticatePassword() = %#v, %v", login, err)
 			}
 			test.change(t, manager)
-			if state, err := manager.GetMFAEnrollmentState(t.Context(), login.PreAuthChallenge.Token, "https://gofer.example"); state != nil || !errors.Is(err, test.err) {
+			if state, err := manager.GetMFAEnrollmentState(t.Context(), login.PreAuthChallenge.Token, "https://raven.example"); state != nil || !errors.Is(err, test.err) {
 				t.Fatalf("GetMFAEnrollmentState(changed) = %#v, %v", state, err)
 			}
 		})
@@ -169,7 +169,7 @@ func TestFederatedPrimaryAuthenticationUsesRequiredMFAEnrollmentForFactorlessUse
 	if err != nil || result == nil || result.Session != nil || result.PreAuthChallenge == nil || !result.MFAEnrollmentRequired {
 		t.Fatalf("completeFederatedPrimaryAuthentication(required enrollment) = %#v, %v", result, err)
 	}
-	if state, err := manager.GetMFAEnrollmentState(t.Context(), result.PreAuthChallenge.Token, "https://gofer.example"); err != nil || state == nil || state.UserID != "person" {
+	if state, err := manager.GetMFAEnrollmentState(t.Context(), result.PreAuthChallenge.Token, "https://raven.example"); err != nil || state == nil || state.UserID != "person" {
 		t.Fatalf("federated MFA enrollment state = %#v, %v", state, err)
 	}
 }

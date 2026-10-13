@@ -566,7 +566,7 @@ templ SidebarMailSyncErrorSummaryTooltip(accounts []models.Account) {
 				tabindex="-1"
 				data-mail-sync-error-indicator
 				hidden?={ mailSyncErrorCount(accounts) == 0 }
-				data-on-click='["goferClickElement","[data-mail-sidebar-sync-button]"]'
+				data-on-click='["ravenClickElement","[data-mail-sidebar-sync-button]"]'
 				class="pointer-events-auto relative inline-flex h-8 w-8 items-center justify-center"
 				aria-label={ fmt.Sprintf("%d mail sync issue(s)", mailSyncErrorCount(accounts)) }
 			>

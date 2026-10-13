@@ -11,7 +11,7 @@ import (
 
 func TestContactSyncWorkerCancelsMissingContactBeforeProviderWork(t *testing.T) {
 	ctx := t.Context()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}
@@ -25,7 +25,7 @@ func TestContactSyncWorkerCancelsMissingContactBeforeProviderWork(t *testing.T) 
 	opID, err := db.EnqueueContactSyncOperation(ctx, "user-a", models.Contact{
 		ID:               "deleted-contact",
 		Email:            "contact@example.com",
-		GoferSyncEnabled: true,
+		RavenSyncEnabled: true,
 		SaveTargets:      []string{"account:account-a"},
 	}, nil)
 	if err != nil || opID == "" {

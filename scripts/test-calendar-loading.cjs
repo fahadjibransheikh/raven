@@ -65,6 +65,6 @@ assert.ok(source.indexOf('setupSidebarAppNavToggle()') < source.indexOf('initVir
 assert.ok(appNav.includes('}, true)'), 'App selection must run in capture, before HTMX starts loading')
 assert.ok(appNav.indexOf('setSidebarAppNavMode(mode)') < appNav.indexOf('showAppSwitchPending(mode)'), 'Indicator must move before placeholders are rendered')
 assert.ok(appNav.includes('xhr !== request'), 'Old app responses must not overwrite the new tab')
-assert.ok(appNav.includes('goferAppPaneMode !== sidebar.dataset.sidebarAppBody'), 'Background replies from the previous app must not overwrite a skeleton or a new app')
+assert.ok(appNav.includes('ravenAppPaneMode !== sidebar.dataset.sidebarAppBody'), 'Background replies from the previous app must not overwrite a skeleton or a new app')
 assert.ok(appNav.includes('htmx:sendAbort'), 'Interrupted loading must have a recovery path')
 console.log('Calendar loading: exact month row counts, week labels/DST, no view-switch skeleton flash, target identity, saved widths, rollback, immediate tab selection, and stale request guards passed.')

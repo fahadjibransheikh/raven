@@ -50,7 +50,7 @@ func (a *providerActionAPI) serveDraftLocked(w http.ResponseWriter, r *http.Requ
 			}
 		}
 		mime, parseErr := stdmail.ReadMessage(bytes.NewReader(raw))
-		if err != nil || parseErr != nil || mime.Header.Get("Message-ID") == "" || mime.Header.Get("X-Gofer-Draft-Revision") == "" {
+		if err != nil || parseErr != nil || mime.Header.Get("Message-ID") == "" || mime.Header.Get("X-Raven-Draft-Revision") == "" {
 			http.Error(w, "invalid draft MIME", 400)
 			return true
 		}
@@ -76,7 +76,7 @@ func (a *providerActionAPI) serveDraftLocked(w http.ResponseWriter, r *http.Requ
 		if a.provider == "gmail" {
 			messageID = fmt.Sprintf("draft-message-%d", a.draftVersions[owner])
 		}
-		d := providerDraftFixtureEntry{ID: id, MessageID: messageID, InternetID: mime.Header.Get("Message-ID"), Revision: mime.Header.Get("X-Gofer-Draft-Revision"), Raw: raw}
+		d := providerDraftFixtureEntry{ID: id, MessageID: messageID, InternetID: mime.Header.Get("Message-ID"), Revision: mime.Header.Get("X-Raven-Draft-Revision"), Raw: raw}
 		a.drafts[owner][id] = d
 		if a.loseDraftAck {
 			conn, _, err := w.(http.Hijacker).Hijack()
@@ -137,7 +137,7 @@ func (a *providerActionAPI) serveDraftLocked(w http.ResponseWriter, r *http.Requ
 }
 
 func (a *providerActionAPI) replyDraftLocked(w http.ResponseWriter, d providerDraftFixtureEntry) {
-	headers := []map[string]string{{"name": "Message-ID", "value": d.InternetID}, {"name": "X-Gofer-Draft-Revision", "value": d.Revision}}
+	headers := []map[string]string{{"name": "Message-ID", "value": d.InternetID}, {"name": "X-Raven-Draft-Revision", "value": d.Revision}}
 	if a.provider == "gmail" {
 		_ = json.NewEncoder(w).Encode(map[string]any{"id": d.ID, "message": map[string]any{"id": d.MessageID, "payload": map[string]any{"headers": headers}}})
 		return

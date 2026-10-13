@@ -50,7 +50,7 @@ scroller = {dataset: {}, clientHeight: 0, scrollTop: 0, scrollLeft: 0}
 context.initializeCalendarWeekScroll()
 assert.equal(scroller.dataset.calendarLayoutKey, undefined, 'Hidden mobile grid should wait until Back to week before restoring scroll')
 
-for (const [property, variable] of [['goferCalendarSyncPeriod', '_calendarSyncRequest'], ['goferCalendarEventPeriod', '_calendarEventRequest']]) {
+for (const [property, variable] of [['ravenCalendarSyncPeriod', '_calendarSyncRequest'], ['ravenCalendarEventPeriod', '_calendarEventRequest']]) {
   const marker = source.indexOf('typeof xhr.' + property)
   const start = source.lastIndexOf('document.body.addEventListener("htmx:beforeSwap"', marker)
   const end = source.indexOf('\n})', marker)

@@ -1,4 +1,4 @@
-// window.prompt is dead in the desktop WKWebView: Add label and Insert link use goferPrompt instead.
+// window.prompt is dead in the desktop WKWebView: Add label and Insert link use ravenPrompt instead.
 const { test } = require("node:test")
 const assert = require("node:assert/strict")
 const fs = require("node:fs")
@@ -9,23 +9,23 @@ const root = path.join(__dirname, "..", "..", "assets", "js")
 const appJS = fs.readFileSync(path.join(root, "app.js"), "utf8")
 const ravenJS = fs.readFileSync(path.join(root, "raven.js"), "utf8")
 
-test("goferPrompt resolves the typed text on OK or Enter and null on Cancel", async () => {
+test("ravenPrompt resolves the typed text on OK or Enter and null on Cancel", async () => {
   const w = new JSDOM("<!doctype html><body></body>", { runScripts: "outside-only" }).window
   w.eval(ravenJS)
-  let p = w.goferPrompt("Add label", "Label name", { confirmLabel: "Add label" })
+  let p = w.ravenPrompt("Add label", "Label name", { confirmLabel: "Add label" })
   const input = w.document.querySelector(".compose-close-choice input")
   assert.ok(input, "prompt shows a text field")
   input.value = "Work"
   w.document.querySelector('[data-compose-close-action="ok"]').click()
   assert.equal(await p, "Work")
 
-  p = w.goferPrompt("Add label", "Label name")
+  p = w.ravenPrompt("Add label", "Label name")
   const input2 = w.document.querySelector(".compose-close-choice input")
   input2.value = "Home"
   input2.dispatchEvent(new w.KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }))
   assert.equal(await p, "Home")
 
-  p = w.goferPrompt("Add label", "Label name")
+  p = w.ravenPrompt("Add label", "Label name")
   w.document.querySelector('[data-compose-close-action="cancel"]').click()
   assert.equal(await p, null)
   assert.equal(w.document.querySelector(".compose-close-choice"), null, "panel removed")
@@ -54,7 +54,7 @@ test("Add label asks in-app and posts the label", async () => {
   const t = await loadApp('<div id="mail-list-scroll"><div class="mail-list-item" data-email-id="m1"><a href="#"></a></div></div>')
   let asked = null
   t.w.prompt = function () { throw new Error("window.prompt must not be used") }
-  t.w.goferPrompt = function (title) { asked = title; return Promise.resolve("  Work ") }
+  t.w.ravenPrompt = function (title) { asked = title; return Promise.resolve("  Work ") }
   t.w.performMailAction("label", ["m1"], { keepSelection: true })
   await tick()
   assert.equal(asked, "Add label")
@@ -72,7 +72,7 @@ test("Insert link asks in-app, normalises the URL and creates the link", async (
   const links = []
   t.w.document.execCommand = function (cmd, _, value) { if (cmd === "createLink") links.push(value); return true }
   t.w.prompt = function () { throw new Error("window.prompt must not be used") }
-  t.w.goferPrompt = function () { return Promise.resolve("example.com") }
+  t.w.ravenPrompt = function () { return Promise.resolve("example.com") }
   t.w.composeCreateLink(t.w.document.querySelector("[data-compose-editor]"))
   await tick()
   assert.deepEqual(links, ["https://example.com"])
@@ -102,7 +102,7 @@ test("Insert link wraps the selection captured before the prompt, even though fo
     if (cmd === "createLink") wrapped.push(w.getSelection().toString() + "|" + value)
     return true
   }
-  w.goferPrompt = function () { return Promise.resolve("example.com") }
+  w.ravenPrompt = function () { return Promise.resolve("example.com") }
   w.composeCreateLink(editor)
   await tick()
   assert.deepEqual(wrapped, ["world|https://example.com"])
@@ -113,6 +113,6 @@ test("opening a prompt closes open hover tooltips", () => {
   let closed = 0
   w.tui = { popover: { closeAll: function () { closed++ } } }
   w.eval(ravenJS)
-  w.goferPrompt("Insert link", "Paste a URL")
+  w.ravenPrompt("Insert link", "Paste a URL")
   assert.equal(closed, 1)
 })

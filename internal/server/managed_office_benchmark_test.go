@@ -468,7 +468,7 @@ func officeHTTP(client *http.Client, base, token, method, path, body, contentTyp
 	if err != nil {
 		return response.StatusCode, "", err
 	}
-	if response.Header.Get("X-Gofer-Status") == "error" {
+	if response.Header.Get("X-Raven-Status") == "error" {
 		return response.StatusCode, string(data), errOfficeApplication
 	}
 	return response.StatusCode, string(data), nil
@@ -1116,7 +1116,7 @@ func TestManagedOfficePairedCalibration(t *testing.T) {
 func TestOfficeHTTPRequiresCompleteResponseBody(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/application-error" {
-			w.Header().Set("X-Gofer-Status", "error")
+			w.Header().Set("X-Raven-Status", "error")
 			io.WriteString(w, "provider unavailable")
 			return
 		}

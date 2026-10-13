@@ -542,7 +542,7 @@ func TestUserIMAPMutationsAtomicQueueRollbackAndSavedResultAfterWakeFailure(t *t
 	}
 	defer f.system.Write().Exec("DROP TRIGGER reject_mail_wake")
 	rec := f.request("alice", http.MethodPost, "/api/messages/1/star", "")
-	if rec.Code != 200 || rec.Header().Get("X-Gofer-Mail-Delivery") != "delayed" || !strings.Contains(rec.Body.String(), `"is_starred":true`) {
+	if rec.Code != 200 || rec.Header().Get("X-Raven-Mail-Delivery") != "delayed" || !strings.Contains(rec.Body.String(), `"is_starred":true`) {
 		t.Fatalf("saved toggle reported as failed: %d %s", rec.Code, rec.Body.String())
 	}
 	waitUserIMAP(t, func() bool {

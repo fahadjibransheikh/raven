@@ -158,7 +158,7 @@ func TestGoogleMeetCreateConvertAndEdit(t *testing.T) {
 						current["start"] = map[string]string{"dateTime": draft.StartAt.Format("2006-01-02T15:04:05Z07:00"), "timeZone": draft.TimeZone}
 						current["end"] = map[string]string{"dateTime": draft.EndAt.Format("2006-01-02T15:04:05Z07:00"), "timeZone": draft.TimeZone}
 						current["conferenceData"] = json.RawMessage(testGoogleMeet)
-						current["extendedProperties"] = map[string]any{"private": map[string]string{"goferCreateHash": calendarDraftHash(draft)}}
+						current["extendedProperties"] = map[string]any{"private": map[string]string{"ravenCreateHash": calendarDraftHash(draft)}}
 						w.WriteHeader(409)
 						return
 					}
@@ -455,7 +455,7 @@ func TestGoogleMeetOptionsAreScopedAndRetryable(t *testing.T) {
 				}
 				return
 			}
-			if w.Code != 200 || w.Header().Get("X-Gofer-Calendar-Source") != "one-source" || !strings.Contains(w.Body.String(), "Google Meet meeting") {
+			if w.Code != 200 || w.Header().Get("X-Raven-Calendar-Source") != "one-source" || !strings.Contains(w.Body.String(), "Google Meet meeting") {
 				t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
 			}
 			if mode == "available" && !strings.Contains(w.Body.String(), `data-calendar-teams-available="true"`) {

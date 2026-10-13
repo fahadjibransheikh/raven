@@ -104,7 +104,7 @@ func seedV77AuthenticationSchema(t *testing.T, path, token string) {
 }
 
 func TestMigrateV77AddsAuthenticationSchemaAndPreservesSessions(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "gofer.db")
+	path := filepath.Join(t.TempDir(), "raven.db")
 	const rawToken = "legacy-session-secret"
 	seedV77AuthenticationSchema(t, path, rawToken)
 
@@ -157,7 +157,7 @@ func TestMigrateV77AddsAuthenticationSchemaAndPreservesSessions(t *testing.T) {
 }
 
 func TestMigrateV77AcceptsLegacyV12AuthenticationTables(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "gofer.db")
+	path := filepath.Join(t.TempDir(), "raven.db")
 	raw, err := openDB(path)
 	if err != nil {
 		t.Fatalf("openDB() error = %v", err)
@@ -221,7 +221,7 @@ func TestMigrateV77AcceptsLegacyV12AuthenticationTables(t *testing.T) {
 }
 
 func TestMigrateV77RollsBackInvalidLegacySession(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "gofer.db")
+	path := filepath.Join(t.TempDir(), "raven.db")
 	seedV77AuthenticationSchema(t, path, "")
 
 	if db, err := New(path); err == nil {
@@ -253,7 +253,7 @@ func TestMigrateV77RollsBackInvalidLegacySession(t *testing.T) {
 }
 
 func TestAuthenticationSchemaConstraints(t *testing.T) {
-	db, err := New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}

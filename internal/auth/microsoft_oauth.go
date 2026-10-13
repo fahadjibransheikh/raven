@@ -28,7 +28,7 @@ const (
 	microsoftLoginDefaultTenant         = "common"
 	microsoftLoginConsumerTenantID      = "9188040d-6c67-4c5b-b112-36a304b66dad"
 	microsoftLoginDraftVersion          = 1
-	microsoftLoginDraftKey              = "gofer/auth/microsoft-login-draft/v1"
+	microsoftLoginDraftKey              = "raven/auth/microsoft-login-draft/v1"
 	microsoftLoginCallbackPath          = "/auth/microsoft/login/callback"
 	microsoftApplicationOpenIDScope     = "openid"
 	microsoftApplicationProfileScope    = "profile"

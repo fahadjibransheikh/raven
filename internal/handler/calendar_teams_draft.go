@@ -16,7 +16,7 @@ import (
 )
 
 // One application-owned property, shared by preparation, sync, save and cleanup.
-const calendarTeamsDraftProperty = "String {534725f9-4d8e-4616-a2ea-3b020983e0c8} Name GoferTeamsDraft"
+const calendarTeamsDraftProperty = "String {534725f9-4d8e-4616-a2ea-3b020983e0c8} Name RavenTeamsDraft"
 
 func calendarTeamsDraftExpand() string {
 	return "singleValueExtendedProperties($filter=id eq '" + calendarTeamsDraftProperty + "')"

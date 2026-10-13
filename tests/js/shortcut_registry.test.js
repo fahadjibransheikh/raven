@@ -132,7 +132,7 @@ test("arrow keys move the highlight and Esc is left to the dialog", async () => 
 test("Label… (l) prompts and labels the selected message", async () => {
   const t = await setup()
   let asked = null
-  t.w.goferPrompt = function (title) { asked = title; return Promise.resolve("Work") }
+  t.w.ravenPrompt = function (title) { asked = title; return Promise.resolve("Work") }
   t.w.document.querySelector("#mail-list-scroll a").click()
   t.w.document.dispatchEvent(new t.w.KeyboardEvent("keydown", { key: "l", bubbles: true, cancelable: true }))
   await tick()
@@ -175,7 +175,7 @@ test("Unsubscribe confirms with the method's wording, posts, then toasts or open
   for (const c of cases) {
     const t = await setup({ open: true })
     const asked = []
-    t.w.goferConfirm = function (title, text) { asked.push([title, text]); return Promise.resolve(true) }
+    t.w.ravenConfirm = function (title, text) { asked.push([title, text]); return Promise.resolve(true) }
     const opened = []
     t.w.open = function (url, target, features) { opened.push([url, target, features]) }
     t.w.fetch = function (url, o) {
@@ -199,12 +199,12 @@ test("Unsubscribe confirms with the method's wording, posts, then toasts or open
 test("Unsubscribe does nothing when the confirmation is declined, and surfaces a server error", async () => {
   const t = await setup({ open: true })
   addUnsubscribeButton(t, "one-click")
-  t.w.goferConfirm = function () { return Promise.resolve(false) }
+  t.w.ravenConfirm = function () { return Promise.resolve(false) }
   t.w.RavenShortcuts.run("unsubscribe")
   await tick()
   assert.equal(t.calls.filter((x) => /unsubscribe/.test(x.url)).length, 0)
 
-  t.w.goferConfirm = function () { return Promise.resolve(true) }
+  t.w.ravenConfirm = function () { return Promise.resolve(true) }
   t.w.fetch = function () { return Promise.resolve({ ok: false, status: 502, text: function () { return Promise.resolve("Could not unsubscribe: the sender answered 403 Forbidden") } }) }
   t.w.RavenShortcuts.run("unsubscribe")
   await tick()

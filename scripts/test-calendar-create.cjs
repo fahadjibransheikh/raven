@@ -50,7 +50,7 @@ const context = vm.createContext({initializeCalendarDialogResize(){},
   FormData: class {constructor() { this.entries = inputs.filter(input => !input.disabled && (input.name !== 'all_day' || input.checked) && (input.name !== 'version' || form.dataset.calendarEventId)).map(input => [input.name, input.value]) } [Symbol.iterator]() { return this.entries[Symbol.iterator]() }},
   window: {crypto: {randomUUID() { return 'fresh-request' }}, tui: {dialog: {close(id) { closed.push(id) }}}},
   fetch(url, options) { return new Promise((resolve, reject) => requests.push({url, options, resolve, reject})) },
-  showGoferToast(data) { toasts.push(data) }, scheduleCalendarCacheRefresh() { refreshes++ },
+  showRavenToast(data) { toasts.push(data) }, scheduleCalendarCacheRefresh() { refreshes++ },
 })
 vm.runInContext('var _calendarSelectedDay = {period: "week:2026-09-28", date: "2026-10-03"};\n' +
   ['configureCalendarCreateDialog', 'adjustCalendarCreateAllDayRange', 'updateCalendarRecurrenceForm', 'updateCalendarTeamsForm', 'updateCalendarCreateForm', 'initializeCalendarCreateForm', 'validateCalendarCreatePickers', 'setCalendarCreateError', 'syncCalendarDescription', 'submitCalendarCreate'].map(helper).join('\n'), context)
@@ -104,7 +104,7 @@ function testDialogLifecycle() {
       open(id) { calls.push('open ' + id) },
     }}},
     initializeCalendarCreateForm() { calls.push('initialize') },
-    showGoferToast(toast) { notices.push(toast) },
+    showRavenToast(toast) { notices.push(toast) },
     setTimeout(callback) { timers.push(callback) },
   })
   vm.runInContext(source.slice(source.indexOf('var _calendarCreateDialogRequest = null'), source.indexOf('function adjustCalendarCreateAllDayRange(')), runtime)
@@ -121,7 +121,7 @@ function testDialogLifecycle() {
     const swap = {...detail, shouldSwap, isError: !successful, serverResponse}
     fire('htmx:beforeSwap', swap)
     if (swap.shouldSwap) {
-      if (detail.xhr.goferCalendarEdit) {
+      if (detail.xhr.ravenCalendarEdit) {
         assert.equal(swap.target, details, 'HTMX must keep the same native dialog and replace only its contents')
         assert.equal(swap.swapOverride, 'innerHTML')
         assert.equal(swap.selectOverride, '#calendar-create-dialog [data-tui-dialog-content] > [data-tui-dialog-panel]')
@@ -234,7 +234,7 @@ function testDialogLifecycle() {
   const aborted = begin()
   fire('htmx:sendAbort', aborted)
   fire('htmx:afterSwap', aborted)
-  assert.equal(aborted.xhr.goferCalendarCreateSwapped, undefined, 'Late afterSwap must not revive an aborted editor')
+  assert.equal(aborted.xhr.ravenCalendarCreateSwapped, undefined, 'Late afterSwap must not revive an aborted editor')
   assert.equal(runtime._calendarCreateDialogRequest, null)
   assert.equal(complete(aborted, false), false)
   assert.deepEqual(notices, [], 'Aborted edit loads must not show errors')
@@ -251,7 +251,7 @@ function testDialogLifecycle() {
   reset()
   const stale = begin(), latest = begin(false)
   fire('htmx:afterSwap', stale)
-  assert.equal(stale.xhr.goferCalendarCreateSwapped, undefined, 'Late afterSwap must not revive a replaced editor')
+  assert.equal(stale.xhr.ravenCalendarCreateSwapped, undefined, 'Late afterSwap must not revive a replaced editor')
   assert.equal(complete(stale), false)
   assert.equal(runtime._calendarCreateDialogRequest, latest.xhr, 'A stale response must not clear the newer request')
   complete(latest)

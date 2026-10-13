@@ -16,7 +16,7 @@ import (
 
 func createOperatorTestDatabase(t *testing.T) string {
 	t.Helper()
-	databasePath := filepath.Join(t.TempDir(), "gofer.db")
+	databasePath := filepath.Join(t.TempDir(), "raven.db")
 	db, err := storage.New(databasePath)
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
@@ -117,7 +117,7 @@ func TestUsersListIsDeterministicScopedAndTerminalSafe(t *testing.T) {
 }
 
 func TestCLIHelpAndUsageDoNotOpenOrCreateDatabase(t *testing.T) {
-	missingPath := filepath.Join(t.TempDir(), "missing", "gofer.db")
+	missingPath := filepath.Join(t.TempDir(), "missing", "raven.db")
 	tests := []struct {
 		name       string
 		args       []string
@@ -147,7 +147,7 @@ func TestCLIHelpAndUsageDoNotOpenOrCreateDatabase(t *testing.T) {
 
 func TestCLIReportsMissingDatabaseWithoutCreatingIt(t *testing.T) {
 	missingDirectory := filepath.Join(t.TempDir(), "missing")
-	missingPath := filepath.Join(missingDirectory, "gofer.db")
+	missingPath := filepath.Join(missingDirectory, "raven.db")
 	var stdout, stderr bytes.Buffer
 	if code := Run(t.Context(), []string{"status"}, missingPath, &stdout, &stderr); code != 1 {
 		t.Fatalf("Run(missing status) code = %d", code)
@@ -162,7 +162,7 @@ func TestCLIReportsMissingDatabaseWithoutCreatingIt(t *testing.T) {
 
 func TestRecoverRequiresExactConfirmationBeforeOpeningDatabase(t *testing.T) {
 	missingDirectory := filepath.Join(t.TempDir(), "missing")
-	databasePath := filepath.Join(missingDirectory, "gofer.db")
+	databasePath := filepath.Join(missingDirectory, "raven.db")
 	tests := [][]string{
 		{"recover", "--user-id", "target", "--confirm", "other"},
 		{"recover", "--user-id", "target", "--username", "target"},
@@ -294,7 +294,7 @@ func TestRecoverRefusesToRunWhileRuntimeLockIsHeld(t *testing.T) {
 
 func TestSessionRevocationRequiresExactConfirmationBeforeOpeningDatabase(t *testing.T) {
 	missingDirectory := filepath.Join(t.TempDir(), "missing")
-	databasePath := filepath.Join(missingDirectory, "gofer.db")
+	databasePath := filepath.Join(missingDirectory, "raven.db")
 	tests := [][]string{
 		{"sessions", "revoke", "--user-id", "target", "--confirm", "other"},
 		{"sessions", "revoke", "--user-id", "target", "--username", "target"},
@@ -399,7 +399,7 @@ func TestSessionRevocationRefusesToRunWhileRuntimeLockIsHeld(t *testing.T) {
 
 func createUninitializedOperatorTestDatabase(t *testing.T) string {
 	t.Helper()
-	databasePath := filepath.Join(t.TempDir(), "gofer.db")
+	databasePath := filepath.Join(t.TempDir(), "raven.db")
 	db, err := storage.New(databasePath)
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)

@@ -450,7 +450,7 @@ func TestTOTPDisableProtectsRequiredLastFactorAndRevokesRecovery(t *testing.T) {
 	if _, err := manager.db.Write().ExecContext(t.Context(), `
 		INSERT INTO webauthn_credentials (
 			id, user_id, credential_id, public_key, name, created_at, rp_id
-		) VALUES ('incomplete-alternative', ?, x'0b', x'02', 'Incomplete', ?, 'gofer.example')`,
+		) VALUES ('incomplete-alternative', ?, x'0b', x'02', 'Incomplete', ?, 'raven.example')`,
 		session.UserID, now,
 	); err != nil {
 		t.Fatal(err)

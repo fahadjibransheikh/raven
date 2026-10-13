@@ -205,7 +205,7 @@ func TestCardDAVSyncFallsBackToFullQuery(t *testing.T) {
 
 func TestPruneMissingCardDAVSourcesRemovesTargetOnly(t *testing.T) {
 	ctx := context.Background()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}
@@ -449,7 +449,7 @@ func TestDeleteCardDAVContactsByEmailSearchFallbackExactMatch(t *testing.T) {
 
 func newCardDAVDeleteTestStore(t *testing.T) (*storage.DB, *config.AccountStore) {
 	t.Helper()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}

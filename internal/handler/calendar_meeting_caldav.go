@@ -229,7 +229,7 @@ func (h *Handler) updateCalDAVMeeting(ctx context.Context, source storage.Calend
 	}
 	old := &ical.Calendar{Component: cloneCalendarComponent(current.Component)}
 	props := current.Events()[0].Props
-	for _, field := range []string{"SUMMARY", "DESCRIPTION", "LOCATION", "DTSTART", "DTEND", "X-GOFER-TIMEZONE"} {
+	for _, field := range []string{"SUMMARY", "DESCRIPTION", "LOCATION", "DTSTART", "DTEND", "X-RAVEN-TIMEZONE"} {
 		if field == "DESCRIPTION" {
 			continue
 		}

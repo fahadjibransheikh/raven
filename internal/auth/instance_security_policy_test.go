@@ -27,7 +27,7 @@ func insertPolicyTestTOTP(t *testing.T, manager *Manager, userID string, now tim
 		INSERT INTO totp_credentials (
 			id, user_id, encrypted_seed, key_version, algorithm, digits,
 			period, issuer, enabled, created_at
-		) VALUES (?, ?, x'01', 1, 'SHA1', 6, 30, 'Gofer', 1, ?)`,
+		) VALUES (?, ?, x'01', 1, 'SHA1', 6, 30, 'Raven', 1, ?)`,
 		"totp-"+userID, userID, now,
 	); err != nil {
 		t.Fatalf("insert policy TOTP for %q: %v", userID, err)
@@ -40,7 +40,7 @@ func insertPolicyTestPasskey(t *testing.T, manager *Manager, userID string, now 
 		INSERT INTO webauthn_credentials (
 			id, user_id, credential_id, public_key, name, created_at,
 			credential_ciphertext, key_version, rp_id
-		) VALUES (?, ?, ?, x'02', 'Policy passkey', ?, x'03', 1, 'gofer.example')`,
+		) VALUES (?, ?, ?, x'02', 'Policy passkey', ?, x'03', 1, 'raven.example')`,
 		"passkey-"+userID, userID, []byte("credential-"+userID), now,
 	); err != nil {
 		t.Fatalf("insert policy passkey for %q: %v", userID, err)
@@ -104,7 +104,7 @@ func TestSetInstanceMFAPolicyRejectsFactorlessActiveUsersWithoutSideEffects(t *t
 	if _, err := manager.db.Write().ExecContext(t.Context(), `
 		INSERT INTO webauthn_credentials (
 			id, user_id, credential_id, public_key, name, created_at, rp_id
-		) VALUES ('incomplete-passkey', 'factorless', x'0a', x'02', 'Incomplete', ?, 'gofer.example')`, now,
+		) VALUES ('incomplete-passkey', 'factorless', x'0a', x'02', 'Incomplete', ?, 'raven.example')`, now,
 	); err != nil {
 		t.Fatal(err)
 	}

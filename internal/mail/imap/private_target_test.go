@@ -10,7 +10,7 @@ import (
 )
 
 // A user could point an account at an internal service. Without an
-// administrator's exception, Gofer must not even open the connection.
+// administrator's exception, Raven must not even open the connection.
 func TestConnectionRefusesUnapprovedPrivateServer(t *testing.T) {
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {

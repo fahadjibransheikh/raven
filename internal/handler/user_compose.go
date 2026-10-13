@@ -73,7 +73,7 @@ func (h *Handler) userComposeHandler(selectHandler func(*Handler) http.HandlerFu
 		for id := range state.wake {
 			if err := h.userIMAP.WakeMutations(ctx, state.owner, id); err != nil {
 				log.Printf("user compose saved; queue wake %s: %v", id, err)
-				response.header.Set("X-Gofer-Mail-Delivery", "delayed")
+				response.header.Set("X-Raven-Mail-Delivery", "delayed")
 			}
 		}
 		for key, values := range response.header {

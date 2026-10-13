@@ -94,7 +94,7 @@ func TestGoogleCalendarCreationUsesStableIDAndRecoversConflict(t *testing.T) {
 			if posts != 2 || gets != 1 {
 				t.Fatalf("posts=%d gets=%d", posts, gets)
 			}
-			stored["extendedProperties"] = map[string]any{"private": map[string]string{"goferCreateHash": "foreign"}}
+			stored["extendedProperties"] = map[string]any{"private": map[string]string{"ravenCreateHash": "foreign"}}
 			if _, err := createGoogleCalendarEvent(t.Context(), "test-token", "work@example.com", draft); err == nil {
 				t.Fatal("foreign conflicting event accepted")
 			}
@@ -217,7 +217,7 @@ func TestCalDAVCreationIsConditionalEscapedAndRetryable(t *testing.T) {
 			source := storage.CalendarSource{RemoteID: server.URL + "/calendar/"}
 			for range 2 {
 				remote, err := createCalDAVCalendarEvent(t.Context(), source, "calendar-user", "calendar-password", draft)
-				if err != nil || remote.AllDay != allDay || remote.ICalUID != draft.RequestID+"@gofer" || remote.Summary != "Planning" || calendarUpdateHasDetails(remote.Recurrence) != recurring {
+				if err != nil || remote.AllDay != allDay || remote.ICalUID != draft.RequestID+"@raven" || remote.Summary != "Planning" || calendarUpdateHasDetails(remote.Recurrence) != recurring {
 					t.Fatalf("created=%#v, err=%v", remote, err)
 				}
 			}

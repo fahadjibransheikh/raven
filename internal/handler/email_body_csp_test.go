@@ -69,7 +69,7 @@ func TestEmailBodyCSPAllowsOnlyOurNoncedScripts(t *testing.T) {
 		t.Error("nonce is reused across responses")
 	}
 
-	// Allowed remote content is relayed through Gofer, so the policy stays closed.
+	// Allowed remote content is relayed through Raven, so the policy stays closed.
 	if got := cspDirectives(t, getEmailBody(t, h, fx.messageID, "?remote=true"))["img-src"]; got != "'self' data:" {
 		t.Errorf("img-src with remote allowed = %q, want no direct web loads", got)
 	}

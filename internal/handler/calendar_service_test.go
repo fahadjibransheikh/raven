@@ -13,7 +13,7 @@ import (
 )
 
 func TestHandleUpdateAccountServiceDoesNotEnableCalendarWithoutSources(t *testing.T) {
-	db, err := storage.New(t.TempDir() + "/gofer.db")
+	db, err := storage.New(t.TempDir() + "/raven.db")
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}

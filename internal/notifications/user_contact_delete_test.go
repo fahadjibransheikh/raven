@@ -163,7 +163,7 @@ func newOwnedContactDeleteFixture(t *testing.T, provider string) (*userStorageFi
 			if err := db.UpsertObservedContact(t.Context(), owner, owner+" deletion", owner+"-delete@example.com", time.Now()); err != nil {
 				return err
 			}
-			_, err = db.EnqueueContactSyncOperation(t.Context(), owner, models.Contact{ID: "same-delete-profile", Email: owner + "-delete@example.com", GoferSyncEnabled: true}, nil)
+			_, err = db.EnqueueContactSyncOperation(t.Context(), owner, models.Contact{ID: "same-delete-profile", Email: owner + "-delete@example.com", RavenSyncEnabled: true}, nil)
 			return err
 		}); err != nil {
 			t.Fatal(err)

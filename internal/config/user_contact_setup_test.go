@@ -51,7 +51,7 @@ func TestUserContactSetupOwnerBindingStoredTargetsAndCacheEviction(t *testing.T)
 	}
 	for _, owner := range []string{"alice", "bob"} {
 		result, err := accounts.ConfirmContactSetup(t.Context(), snapshots[owner], nil)
-		if err != nil || !result.Contact.GoferSyncEnabled || result.Contact.Phone != owner+"-phone" || result.OperationID == "" {
+		if err != nil || !result.Contact.RavenSyncEnabled || result.Contact.Phone != owner+"-phone" || result.OperationID == "" {
 			t.Fatal("confirmation crossed owner or lost copied snapshot", owner, result, err)
 		}
 		if len(result.Contact.SaveTargets) != 2 || result.Contact.SaveTargets[1] != "book:"+owner+"-book" {
@@ -151,7 +151,7 @@ func TestUserContactSetupRechecksLifecycleAndServicesAfterWriterWait(t *testing.
 				if err != nil {
 					return err
 				}
-				if contact == nil || contact.GoferSyncEnabled || contact.Phone != "alice-phone" {
+				if contact == nil || contact.RavenSyncEnabled || contact.Phone != "alice-phone" {
 					t.Fatal("rejected confirmation changed contact", contact)
 				}
 				var count int

@@ -6,7 +6,7 @@ import (
 )
 
 func TestMigrateV81AddsSafeDefaultInstanceMFAPolicy(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "gofer.db")
+	path := filepath.Join(t.TempDir(), "raven.db")
 	raw, err := openDB(path)
 	if err != nil {
 		t.Fatal(err)
@@ -93,7 +93,7 @@ func TestMigrateV81AddsSafeDefaultInstanceMFAPolicy(t *testing.T) {
 }
 
 func TestMigrateV81RepairsPartialAuthenticationPolicyColumns(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "gofer.db")
+	path := filepath.Join(t.TempDir(), "raven.db")
 	raw, err := openDB(path)
 	if err != nil {
 		t.Fatal(err)

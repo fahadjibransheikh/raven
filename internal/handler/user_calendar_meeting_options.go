@@ -90,7 +90,7 @@ func (h *Handler) handleUserCalendarMeetingOptions(w http.ResponseWriter, r *htt
 		userCalendarFormError(w, r, err)
 		return
 	}
-	w.Header().Set("X-Gofer-Calendar-Source", query.Get("source_id"))
+	w.Header().Set("X-Raven-Calendar-Source", query.Get("source_id"))
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if empty {
 		return

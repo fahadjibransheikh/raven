@@ -19,7 +19,7 @@ async function setup(formHTML, answer) {
     return Promise.resolve({ ok: true, json: function () { return Promise.resolve({}) } })
   }
   w.VirtualMailList = function () { return new Proxy({}, { get: function () { return function () {} } }) }
-  w.goferConfirm = function (title) { asked.push(title); return Promise.resolve(answer) }
+  w.ravenConfirm = function (title) { asked.push(title); return Promise.resolve(answer) }
   w.eval(appJS)
   if (w.document.readyState === "loading") {
     await new Promise(function (resolve) { w.document.addEventListener("DOMContentLoaded", resolve) })

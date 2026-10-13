@@ -51,7 +51,7 @@ func TestAvatarDomainMissingRecognizesUnknownDomains(t *testing.T) {
 // lookups have kept failing.
 func TestAvatarEarlyRetryStopsAfterRepeatedFailures(t *testing.T) {
 	ctx := t.Context()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatal(err)
 	}

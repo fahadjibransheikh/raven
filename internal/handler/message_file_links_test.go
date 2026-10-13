@@ -100,7 +100,7 @@ func TestSignedMessageFileLinksRejectTampering(t *testing.T) {
 func TestSignedMessageFileServesWithoutASession(t *testing.T) {
 	h, db := newAccountOwnershipTestHandler(t)
 	fixture := insertVictimReadableMessage(t, h, db)
-	manager := auth.NewManager(&auth.Config{Enabled: true, Mode: auth.ModeManaged, BaseURL: "https://gofer.example"}, db)
+	manager := auth.NewManager(&auth.Config{Enabled: true, Mode: auth.ModeManaged, BaseURL: "https://raven.example"}, db)
 	h.auth = manager
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)

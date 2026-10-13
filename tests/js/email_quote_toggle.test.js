@@ -17,7 +17,7 @@ function load(body) {
 
 test("a quoted reply is hidden behind a toggle that shows and hides it", () => {
   const d = load('<p>Sounds good, thanks.</p><div class="gmail_quote"><p>On Mon, Ada wrote:</p><blockquote>Can we meet?</blockquote></div>')
-  const toggle = d.querySelector("[data-gofer-quote-toggle] button")
+  const toggle = d.querySelector("[data-raven-quote-toggle] button")
   assert.ok(toggle, "toggle is added")
   const quote = d.querySelector(".gmail_quote")
   assert.equal(quote.style.display, "none")
@@ -39,5 +39,5 @@ test("the toggle follows the text colour with a quiet border", () => {
 
 test("a message with nothing above the quote is left alone", () => {
   const d = load('<div class="gmail_quote"><blockquote>old</blockquote></div>')
-  assert.equal(d.querySelector("[data-gofer-quote-toggle]"), null)
+  assert.equal(d.querySelector("[data-raven-quote-toggle]"), null)
 })

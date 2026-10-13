@@ -20,7 +20,7 @@ import (
 // holds the source and central runtime locks; the user manager lock is held
 // here, so no user database is open. Upgrade steps commit with their version,
 // so an interrupted upgrade resumes on the next start. Newer schemas, written
-// by a later Gofer release, are rejected without changes.
+// by a later Raven release, are rejected without changes.
 func UpgradeUserStorageLayout(ctx context.Context, path string) (err error) {
 	if err := ctx.Err(); err != nil {
 		return err

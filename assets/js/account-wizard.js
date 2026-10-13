@@ -166,7 +166,7 @@ function accountWizardTest(options) {
 					if (!response.ok) throw new Error((body || '').trim() || 'Could not test the connection.');
 					var box = results();
 					if (box) box.innerHTML = body;
-					setState(response.headers.get('X-Gofer-Connection-Test') === 'ok' ? 'passed' : 'failed');
+					setState(response.headers.get('X-Raven-Connection-Test') === 'ok' ? 'passed' : 'failed');
 				});
 			}).catch(function(error) {
 				if (test.key !== key || test.state !== 'testing') return;
@@ -222,7 +222,7 @@ function newAddAccountTest() {
 }
 var addAccountTest = newAddAccountTest();
 // A newly rendered dialog starts at its first step with a new test.
-goferOnContent('#add-account-dialog', function() {
+ravenOnContent('#add-account-dialog', function() {
 	_wizStep = 0;
 	_wizardFooterTimers = {};
 	addAccountTest = newAddAccountTest();
@@ -894,7 +894,7 @@ document.body.addEventListener('htmx:afterRequest', function(event) {
 	var form = event.target && event.target.closest ? event.target.closest('[data-contact-sync-form]') : null;
 	if (!form) return;
 	var xhr = event.detail && event.detail.xhr ? event.detail.xhr : null;
-	var ok = !!(event.detail && event.detail.successful) && (!xhr || xhr.getResponseHeader('X-Gofer-Status') !== 'error');
+	var ok = !!(event.detail && event.detail.successful) && (!xhr || xhr.getResponseHeader('X-Raven-Status') !== 'error');
 	contactSyncSaved(form.dataset.accountId || '', ok);
 });
 	document.body.addEventListener('htmx:afterRequest', function(event) {
@@ -902,11 +902,11 @@ document.body.addEventListener('htmx:afterRequest', function(event) {
 		var form = target && target.closest ? target.closest('[data-wizard-contact-form]') : null;
 	if (!form) return;
 		var xhr = event.detail && event.detail.xhr ? event.detail.xhr : null;
-		var ok = !!(event.detail && event.detail.successful) && (!xhr || xhr.getResponseHeader('X-Gofer-Status') !== 'error');
+		var ok = !!(event.detail && event.detail.successful) && (!xhr || xhr.getResponseHeader('X-Raven-Status') !== 'error');
 		if (!ok) return;
 		var root = form.closest('#add-account-dialog,#edit-account-dialog');
 		var toggle = root && root.querySelector('[data-wizard-service-switch="contacts"]');
-		var savedEnabled = xhr ? xhr.getResponseHeader('X-Gofer-Contact-Sync-Enabled') : '';
+		var savedEnabled = xhr ? xhr.getResponseHeader('X-Raven-Contact-Sync-Enabled') : '';
 		if (toggle && (savedEnabled === 'true' || savedEnabled === 'false')) {
 			toggle.checked = savedEnabled === 'true';
 			toggle.dataset.wizardServiceInitialEnabled = savedEnabled;

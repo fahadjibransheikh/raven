@@ -22,7 +22,7 @@ import (
 
 func TestOutlookGraphMutationUsesProviderMessageIDAndCachesMovedID(t *testing.T) {
 	ctx := context.Background()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}
@@ -146,7 +146,7 @@ func TestOutlookGraphMutationUsesProviderMessageIDAndCachesMovedID(t *testing.T)
 
 func TestOutlookGraphPermanentDeleteUsesProviderAPI(t *testing.T) {
 	ctx := t.Context()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}
@@ -212,7 +212,7 @@ func TestOutlookGraphPermanentDeleteUsesProviderAPI(t *testing.T) {
 
 func TestOutlookGraphBodyFetchUsesProviderMessageID(t *testing.T) {
 	ctx := context.Background()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}
@@ -302,7 +302,7 @@ func TestOutlookGraphBodyFetchUsesProviderMessageID(t *testing.T) {
 
 func TestOutlookGraphAttachmentFetchMaterializesProviderAttachment(t *testing.T) {
 	ctx := context.Background()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}
@@ -415,7 +415,7 @@ func TestOutlookGraphAttachmentFetchMaterializesProviderAttachment(t *testing.T)
 
 func TestOutlookGraphInlineContentMaterializesProviderAttachment(t *testing.T) {
 	ctx := context.Background()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}

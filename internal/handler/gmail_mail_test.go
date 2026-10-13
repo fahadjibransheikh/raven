@@ -24,7 +24,7 @@ import (
 func newGmailAPITestHandler(t *testing.T, ctx context.Context) (*Handler, *storage.DB) {
 	t.Helper()
 	t.Setenv("RAVEN_GMAIL_API_SYNC", "1")
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}

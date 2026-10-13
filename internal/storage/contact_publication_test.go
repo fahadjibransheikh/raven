@@ -146,7 +146,7 @@ func TestInboundContactPublicationAtomicFanoutAndNoEcho(t *testing.T) {
 	if err := json.Unmarshal([]byte(payload), &queued); err != nil {
 		t.Fatal(err)
 	}
-	if queued.ExcludedAccountID != "source" || queued.Contact.ID != first.ProfileID || !queued.Contact.GoferSyncEnabled {
+	if queued.ExcludedAccountID != "source" || queued.Contact.ID != first.ProfileID || !queued.Contact.RavenSyncEnabled {
 		t.Fatalf("wrong queue %+v", queued)
 	}
 	current, err := db.GetContact(t.Context(), "default", first.ProfileID)

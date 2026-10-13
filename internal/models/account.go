@@ -9,7 +9,7 @@ type AccountConfig struct {
 	IMAPTLSMode        string
 	IMAPAllowPlaintext bool
 	// IMAPAllowPrivate is set when an administrator approved this private
-	// server; otherwise Gofer refuses to connect to private addresses.
+	// server; otherwise Raven refuses to connect to private addresses.
 	IMAPAllowPrivate   bool
 	SMTPHost           string
 	SMTPPort           int

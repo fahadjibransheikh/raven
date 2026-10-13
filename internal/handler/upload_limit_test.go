@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-// Uploads larger than Gofer accepts are refused instead of being written to
+// Uploads larger than Raven accepts are refused instead of being written to
 // temporary files whatever their size.
 func TestSharedUploadsRefuseOversizedBodies(t *testing.T) {
 	h, _ := newAccountOwnershipTestHandler(t)

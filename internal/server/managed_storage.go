@@ -193,7 +193,7 @@ func initializeManagedStorage(ctx context.Context, path string) (err error) {
 		return migrateManagedStorage(ctx, source, path, false, true)
 	case retired:
 		// Interrupted after retiring the original, or during a fresh install.
-		// Nothing proves this file was moved here by Gofer, so it stays put.
+		// Nothing proves this file was moved here by Raven, so it stays put.
 		if err := requireManagedSharedDatabase(ctx, source); err != nil {
 			return err
 		}

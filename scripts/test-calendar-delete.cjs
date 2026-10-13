@@ -25,7 +25,7 @@ const form = {
 const context = vm.createContext({
   document: {body: {addEventListener(type, handler) { (handlers[type] ||= []).push(handler) }}, addEventListener(type, handler) { clicks[type] = handler }},
   window: {tui: {dialog: {close(root) { closed.push(['dialog', root]) }}, popover: {closeElement(root) { closed.push(['popover', root]) }}}},
-  showGoferToast(toast) { toasts.push(toast) }, scheduleCalendarCacheRefresh() { refreshes++ },
+  showRavenToast(toast) { toasts.push(toast) }, scheduleCalendarCacheRefresh() { refreshes++ },
 })
 vm.runInContext(source.slice(source.indexOf('function updateCalendarDeleteForm('), source.indexOf('var _calendarSyncRequest = null')), context)
 

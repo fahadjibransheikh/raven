@@ -122,7 +122,7 @@ func TestHandleComposePersistsMIMEBeforeReturningAccepted(t *testing.T) {
 
 func TestOutgoingWorkerDeliversStoredGmailSnapshot(t *testing.T) {
 	ctx := context.Background()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}
@@ -199,7 +199,7 @@ func TestOutgoingWorkerDeliversStoredGmailSnapshot(t *testing.T) {
 
 func TestOutgoingWorkerRetriesTemporaryGmailFailureWithSameSnapshot(t *testing.T) {
 	ctx := context.Background()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}

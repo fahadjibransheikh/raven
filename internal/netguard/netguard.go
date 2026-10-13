@@ -1,7 +1,7 @@
-// Package netguard keeps Gofer's outgoing connections to servers named by
+// Package netguard keeps Raven's outgoing connections to servers named by
 // users or by message senders off private networks. A user could otherwise
 // point a mail account at an internal service, and a sender could point a
-// remote image at one, and have the Gofer server connect on their behalf. An
+// remote image at one, and have the Raven server connect on their behalf. An
 // administrator can approve exact private targets, such as a mail server on
 // the local network.
 //

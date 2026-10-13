@@ -34,13 +34,13 @@ func (h *Handler) handleUserRepairMailAccount(w http.ResponseWriter, r *http.Req
 		}
 		return
 	}
-	w.Header().Set("X-Gofer-Mail-Sync-Run-ID", id)
+	w.Header().Set("X-Raven-Mail-Sync-Run-ID", id)
 	if !started {
-		w.Header().Set("X-Gofer-Mail-Sync-Running", "true")
+		w.Header().Set("X-Raven-Mail-Sync-Running", "true")
 		htmlStatus(w, 200, "Mail sync is already running.")
 		return
 	}
-	w.Header().Set("X-Gofer-Mail-Sync-Accounts", "1")
-	w.Header().Set("X-Gofer-Mail-Sync-Mode", "repair")
+	w.Header().Set("X-Raven-Mail-Sync-Accounts", "1")
+	w.Header().Set("X-Raven-Mail-Sync-Mode", "repair")
 	htmlStatus(w, 200, "Gmail repair and full resync started for 1 account.")
 }

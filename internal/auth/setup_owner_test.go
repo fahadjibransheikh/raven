@@ -11,7 +11,7 @@ import (
 
 const (
 	setupOwnerTestToken  = "setup-owner-access-token"
-	setupOwnerTestOrigin = "https://gofer.example"
+	setupOwnerTestOrigin = "https://raven.example"
 )
 
 func setupOwnerTestManager(t *testing.T) (*Manager, *fixedClock) {

@@ -26,7 +26,7 @@ function dom(html, replies) {
   const d = new JSDOM("<!doctype html><body>" + html + "</body>", { runScripts: "outside-only", pretendToBeVisual: true })
   const w = d.window
   const calls = []
-  w.goferOnContent = function (selector, setup) { w.document.querySelectorAll(selector).forEach(setup) }
+  w.ravenOnContent = function (selector, setup) { w.document.querySelectorAll(selector).forEach(setup) }
   w.fetch = function (url, options) {
     calls.push({ url: String(url), body: options && options.body })
     const reply = (replies || []).shift() || { ok: true, header: "ok", body: "<div>result</div>" }

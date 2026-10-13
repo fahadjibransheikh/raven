@@ -33,7 +33,7 @@ func configureOIDCTest(manager *Manager) {
 	manager.config.OIDCLoginName = "Company SSO"
 	manager.config.OIDCLoginClient = &oauth2.Config{
 		ClientID: "oidc-login-client", ClientSecret: "oidc-login-secret",
-		RedirectURL: "https://gofer.example/auth/oidc/callback",
+		RedirectURL: "https://raven.example/auth/oidc/callback",
 		Endpoint: oauth2.Endpoint{
 			AuthURL: "https://identity.example/authorize", TokenURL: "https://identity.example/token",
 		},
@@ -59,11 +59,11 @@ func TestLoadConfigCreatesIdentityOnlyGenericOIDCLogin(t *testing.T) {
 	t.Setenv("RAVEN_OIDC_LOGIN_CLIENT_SECRET", "application-login-secret")
 	t.Setenv("RAVEN_OIDC_LOGIN_NAME", "Company SSO")
 
-	cfg := LoadConfig("https://gofer.example")
+	cfg := LoadConfig("https://raven.example")
 	if cfg.OIDCLoginClient == nil || cfg.OIDCLoginIssuer != oidcTestIssuer || cfg.OIDCLoginName != "Company SSO" {
 		t.Fatalf("OIDC application-login config = %#v", cfg)
 	}
-	if cfg.OIDCLoginClient.RedirectURL != "https://gofer.example/auth/oidc/callback" {
+	if cfg.OIDCLoginClient.RedirectURL != "https://raven.example/auth/oidc/callback" {
 		t.Fatalf("OIDC redirect URL = %q", cfg.OIDCLoginClient.RedirectURL)
 	}
 	wantScopes := []string{"openid", "profile", "email"}
@@ -80,7 +80,7 @@ func TestLoadConfigRejectsUnsafeGenericOIDCIssuer(t *testing.T) {
 			t.Setenv("RAVEN_OIDC_LOGIN_ISSUER", issuer)
 			t.Setenv("RAVEN_OIDC_LOGIN_CLIENT_ID", "client")
 			t.Setenv("RAVEN_OIDC_LOGIN_CLIENT_SECRET", "secret")
-			if cfg := LoadConfig("https://gofer.example"); cfg.OIDCLoginClient != nil {
+			if cfg := LoadConfig("https://raven.example"); cfg.OIDCLoginClient != nil {
 				t.Fatalf("unsafe issuer enabled OIDC login: %#v", cfg)
 			}
 		})

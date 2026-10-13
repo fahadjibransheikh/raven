@@ -293,7 +293,7 @@ func TestUserContactPullHTTPAllProvidersOwnedPagesAndStatus(t *testing.T) {
 			f, api, _ := newOwnedContactPullFixture(t, provider)
 			for _, owner := range []string{"alice", "bob"} {
 				rec := contactPullRequest(f, owner)
-				if rec.Code != 200 || rec.Header().Get("X-Gofer-Status") == "error" || !strings.Contains(rec.Body.String(), "2 imported or updated") {
+				if rec.Code != 200 || rec.Header().Get("X-Raven-Status") == "error" || !strings.Contains(rec.Body.String(), "2 imported or updated") {
 					t.Fatal("provider pull", owner, rec.Code, rec.Body.String())
 				}
 				assertOwnedPulledContacts(t, f, owner, provider)
@@ -334,7 +334,7 @@ func TestUserContactPullHTTPRefreshAndDurableCooldown(t *testing.T) {
 			api.mu.Lock()
 			api.rejectOld = true
 			api.mu.Unlock()
-			if rec := contactPullRequest(f, "alice"); rec.Code != 200 || rec.Header().Get("X-Gofer-Status") == "error" {
+			if rec := contactPullRequest(f, "alice"); rec.Code != 200 || rec.Header().Get("X-Raven-Status") == "error" {
 				t.Fatal("forced contacts refresh failed", rec.Body.String())
 			}
 			api.mu.Lock()
@@ -345,7 +345,7 @@ func TestUserContactPullHTTPRefreshAndDurableCooldown(t *testing.T) {
 			if tokens != 1 || (provider == "outlook" && (len(scopes) != 1 || scopes[0] != "https://graph.microsoft.com/Contacts.ReadWrite")) {
 				t.Fatal("wrong scoped forced refresh", tokens, scopes)
 			}
-			if rec := contactPullRequest(f, "alice"); rec.Header().Get("X-Gofer-Status") != "error" || strings.Contains(rec.Body.String(), "synthetic-secret") {
+			if rec := contactPullRequest(f, "alice"); rec.Header().Get("X-Raven-Status") != "error" || strings.Contains(rec.Body.String(), "synthetic-secret") {
 				t.Fatal("throttle missing/redaction failed", rec.Body.String())
 			}
 			until, err := f.routing.ProviderRetryUntil(t.Context(), "alice", f.accounts["alice"].ID)
@@ -358,7 +358,7 @@ func TestUserContactPullHTTPRefreshAndDurableCooldown(t *testing.T) {
 				before += count
 			}
 			api.mu.Unlock()
-			if rec := contactPullRequest(f, "alice"); rec.Header().Get("X-Gofer-Status") != "error" {
+			if rec := contactPullRequest(f, "alice"); rec.Header().Get("X-Raven-Status") != "error" {
 				t.Fatal("cooldown ignored")
 			}
 			api.mu.Lock()
@@ -381,7 +381,7 @@ func TestUserContactPullHTTPGraphPaginationAndRedirectBoundary(t *testing.T) {
 			api.mu.Lock()
 			api.badNext = target
 			api.mu.Unlock()
-			if rec := contactPullRequest(f, "alice"); rec.Header().Get("X-Gofer-Status") != "error" {
+			if rec := contactPullRequest(f, "alice"); rec.Header().Get("X-Raven-Status") != "error" {
 				t.Fatal("invalid page accepted", rec.Body.String())
 			}
 			api.mu.Lock()
@@ -396,7 +396,7 @@ func TestUserContactPullHTTPGraphPaginationAndRedirectBoundary(t *testing.T) {
 	api.mu.Lock()
 	api.redirect = "https://people.googleapis.com/v1/people/foreign/connections"
 	api.mu.Unlock()
-	if rec := contactPullRequest(f, "alice"); rec.Header().Get("X-Gofer-Status") != "error" {
+	if rec := contactPullRequest(f, "alice"); rec.Header().Get("X-Raven-Status") != "error" {
 		t.Fatal("foreign collection redirect followed", rec.Body.String())
 	}
 	api.mu.Lock()
@@ -411,14 +411,14 @@ func TestUserContactPullHTTPDAVDeltaAndInvalidCursorFallback(t *testing.T) {
 	for _, fallback := range []bool{false, true} {
 		t.Run(fmt.Sprint(fallback), func(t *testing.T) {
 			f, api, server := newOwnedContactPullFixture(t, "carddav")
-			if rec := contactPullRequest(f, "alice"); rec.Header().Get("X-Gofer-Status") == "error" {
+			if rec := contactPullRequest(f, "alice"); rec.Header().Get("X-Raven-Status") == "error" {
 				t.Fatal("initial DAV pull", rec.Body.String())
 			}
 			api.mu.Lock()
 			api.delta = true
 			api.invalidCursor = fallback
 			api.mu.Unlock()
-			if rec := contactPullRequest(f, "alice"); rec.Header().Get("X-Gofer-Status") == "error" {
+			if rec := contactPullRequest(f, "alice"); rec.Header().Get("X-Raven-Status") == "error" {
 				t.Fatal("DAV delta/fallback", rec.Body.String())
 			}
 			if err := f.routing.WithUser(t.Context(), "alice", func(db *storage.DB) error {
@@ -484,7 +484,7 @@ func TestUserContactPullHTTPBlockedRequestReleasesStoreAndRejectsLateSettings(t 
 			if _, err := f.accountStore.SnapshotServices(ctx, "bob", f.accounts["bob"].ID); err != nil {
 				t.Fatal("blocked provider pinned user store", err)
 			}
-			if rec := contactPullRequest(f, "bob"); rec.Header().Get("X-Gofer-Status") == "error" {
+			if rec := contactPullRequest(f, "bob"); rec.Header().Get("X-Raven-Status") == "error" {
 				t.Fatal("Bob blocked behind Alice", rec.Body.String())
 			}
 			if err := f.accountStore.WithAccountForUser(t.Context(), "alice", f.accounts["alice"].ID, func(_ *config.AccountStore, db *storage.DB) error {
@@ -496,7 +496,7 @@ func TestUserContactPullHTTPBlockedRequestReleasesStoreAndRejectsLateSettings(t 
 			api.unblock()
 			select {
 			case rec := <-done:
-				if rec.Header().Get("X-Gofer-Status") != "error" {
+				if rec.Header().Get("X-Raven-Status") != "error" {
 					t.Fatal("late provider result accepted", rec.Body.String())
 				}
 			case <-time.After(5 * time.Second):
@@ -518,7 +518,7 @@ func TestUserContactPullHTTPBlockedRequestReleasesStoreAndRejectsLateSettings(t 
 
 func TestUserContactPullHTTPDAVThrottleDoesNotFallBackOrAdvanceCursor(t *testing.T) {
 	f, api, _ := newOwnedContactPullFixture(t, "carddav")
-	if rec := contactPullRequest(f, "alice"); rec.Header().Get("X-Gofer-Status") == "error" {
+	if rec := contactPullRequest(f, "alice"); rec.Header().Get("X-Raven-Status") == "error" {
 		t.Fatal(rec.Body.String())
 	}
 	before, err := f.accountStore.SnapshotServices(t.Context(), "alice", f.accounts["alice"].ID)
@@ -530,7 +530,7 @@ func TestUserContactPullHTTPDAVThrottleDoesNotFallBackOrAdvanceCursor(t *testing
 	second := api.calls["alice|/books/alice/two/"]
 	api.throttle = true
 	api.mu.Unlock()
-	if rec := contactPullRequest(f, "alice"); rec.Header().Get("X-Gofer-Status") != "error" || strings.Contains(rec.Body.String(), "synthetic-secret") {
+	if rec := contactPullRequest(f, "alice"); rec.Header().Get("X-Raven-Status") != "error" || strings.Contains(rec.Body.String(), "synthetic-secret") {
 		t.Fatal("DAV throttle/redaction", rec.Body.String())
 	}
 	api.mu.Lock()
@@ -565,7 +565,7 @@ func TestUserContactPullHTTPPublicationFailureAndRetry(t *testing.T) {
 			if err := f.routing.WithUser(t.Context(), "alice", func(db *storage.DB) error { _, err := db.Write().Exec(trigger); return err }); err != nil {
 				t.Fatal(err)
 			}
-			if rec := contactPullRequest(f, "alice"); rec.Header().Get("X-Gofer-Status") != "error" {
+			if rec := contactPullRequest(f, "alice"); rec.Header().Get("X-Raven-Status") != "error" {
 				t.Fatal("failed publication succeeded", rec.Body.String())
 			}
 			if err := f.routing.WithUser(t.Context(), "alice", func(db *storage.DB) error {
@@ -594,7 +594,7 @@ func TestUserContactPullHTTPPublicationFailureAndRetry(t *testing.T) {
 					t.Fatal("next DAV book ran after failed checkpoint")
 				}
 			}
-			if rec := contactPullRequest(f, "alice"); rec.Header().Get("X-Gofer-Status") == "error" {
+			if rec := contactPullRequest(f, "alice"); rec.Header().Get("X-Raven-Status") == "error" {
 				t.Fatal("provider retry failed", rec.Body.String())
 			}
 			assertOwnedPulledContacts(t, f, "alice", provider)
@@ -634,7 +634,7 @@ func TestUserContactPullHTTPAccountEditDeletionDisabledOwnerAndShutdownCancelNet
 			}
 			select {
 			case rec := <-done:
-				if rec.Header().Get("X-Gofer-Status") != "error" {
+				if rec.Header().Get("X-Raven-Status") != "error" {
 					t.Fatal("cancelled pull succeeded", rec.Body.String())
 				}
 			case <-time.After(5 * time.Second):
@@ -670,7 +670,7 @@ func TestUserContactPullHTTPAccountEditDeletionDisabledOwnerAndShutdownCancelNet
 
 func TestUserContactPullHTTPOwnerWideSelectionAndDisabledContacts(t *testing.T) {
 	f, api, _ := newOwnedContactPullFixture(t, "gmail")
-	if rec := f.request("alice", "POST", "/api/settings/contacts/providers/gmail/sync", ""); rec.Header().Get("X-Gofer-Status") == "error" || !strings.Contains(rec.Body.String(), "2 imported or updated") {
+	if rec := f.request("alice", "POST", "/api/settings/contacts/providers/gmail/sync", ""); rec.Header().Get("X-Raven-Status") == "error" || !strings.Contains(rec.Body.String(), "2 imported or updated") {
 		t.Fatal("owner-wide provider selection", rec.Body.String())
 	}
 	api.mu.Lock()
@@ -691,7 +691,7 @@ func TestUserContactPullHTTPOwnerWideSelectionAndDisabledContacts(t *testing.T) 
 	api.mu.Lock()
 	before := api.calls["alice|/people/me/connections"]
 	api.mu.Unlock()
-	if rec := contactPullRequest(f, "alice"); rec.Header().Get("X-Gofer-Status") != "error" {
+	if rec := contactPullRequest(f, "alice"); rec.Header().Get("X-Raven-Status") != "error" {
 		t.Fatal("disabled contact account selected")
 	}
 	api.mu.Lock()
@@ -724,7 +724,7 @@ func TestUserContactPullHTTPLateThrottleDoesNotPublishNewIdentityCooldown(t *tes
 	api.unblock()
 	select {
 	case rec := <-done:
-		if rec.Header().Get("X-Gofer-Status") != "error" {
+		if rec.Header().Get("X-Raven-Status") != "error" {
 			t.Fatal("late throttle accepted")
 		}
 	case <-time.After(5 * time.Second):
@@ -740,7 +740,7 @@ func TestUserContactPullHTTPInboundChangeQueuesOwnedFanoutOnce(t *testing.T) {
 	for _, provider := range []string{"gmail", "outlook", "carddav"} {
 		t.Run(provider, func(t *testing.T) {
 			f, api, _ := newOwnedContactPullFixture(t, provider)
-			if rec := contactPullRequest(f, "alice"); rec.Header().Get("X-Gofer-Status") == "error" {
+			if rec := contactPullRequest(f, "alice"); rec.Header().Get("X-Raven-Status") == "error" {
 				t.Fatal("initial pull", rec.Body.String())
 			}
 			target, err := f.accountStore.CreateAccount(t.Context(), "alice", providers.GmailAccountRequest("target@provider.test", "target", "target-subject"))
@@ -768,7 +768,7 @@ func TestUserContactPullHTTPInboundChangeQueuesOwnedFanoutOnce(t *testing.T) {
 			api.delta = true
 			api.mu.Unlock()
 			for repeat := 0; repeat < 2; repeat++ {
-				if rec := contactPullRequest(f, "alice"); rec.Header().Get("X-Gofer-Status") == "error" {
+				if rec := contactPullRequest(f, "alice"); rec.Header().Get("X-Raven-Status") == "error" {
 					t.Fatal("inbound change/readback", rec.Body.String())
 				}
 			}
@@ -831,7 +831,7 @@ func TestUserContactPullHTTPDAVSettingChangeBetweenBooksRejectsOnlyLateBook(t *t
 	api.unblock()
 	select {
 	case rec := <-done:
-		if rec.Header().Get("X-Gofer-Status") != "error" {
+		if rec.Header().Get("X-Raven-Status") != "error" {
 			t.Fatal("late second book accepted", rec.Body.String())
 		}
 	case <-time.After(5 * time.Second):
@@ -856,7 +856,7 @@ func TestUserContactPullHTTPMissingProviderConfigurationDoesNotUseCachedToken(t 
 	for _, provider := range []string{"gmail", "outlook"} {
 		t.Run(provider, func(t *testing.T) {
 			f, api, _ := newOwnedContactPullFixture(t, provider, &mailauth.Config{})
-			if rec := contactPullRequest(f, "alice"); rec.Header().Get("X-Gofer-Status") != "error" || !strings.Contains(rec.Body.String(), "OAuth is not configured") {
+			if rec := contactPullRequest(f, "alice"); rec.Header().Get("X-Raven-Status") != "error" || !strings.Contains(rec.Body.String(), "OAuth is not configured") {
 				t.Fatal("unconfigured provider used cached authorization", rec.Body.String())
 			}
 			api.mu.Lock()

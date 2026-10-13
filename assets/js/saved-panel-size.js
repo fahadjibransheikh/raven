@@ -17,7 +17,7 @@
 
   var settings = {};
   try {
-    settings = JSON.parse(localStorage.getItem("gofer:ui_settings") || "{}") || {};
+    settings = JSON.parse(localStorage.getItem("raven:ui_settings") || "{}") || {};
   } catch (_) {}
 
   function px(value, min, max) {

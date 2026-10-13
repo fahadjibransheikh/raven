@@ -17,19 +17,19 @@ import (
 
 func newPreAuthHandler(t *testing.T, tokenURL string) (*Handler, *storage.DB) {
 	t.Helper()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	manager := auth.NewManager(&auth.Config{
 		Enabled:       true,
-		BaseURL:       "https://gofer.example",
+		BaseURL:       "https://raven.example",
 		SecureCookies: true,
 		GoogleLoginClient: &oauth2.Config{
 			ClientID:     "client-id",
 			ClientSecret: "client-secret",
-			RedirectURL:  "https://gofer.example/auth/google/login/callback",
+			RedirectURL:  "https://raven.example/auth/google/login/callback",
 			Endpoint: oauth2.Endpoint{
 				AuthURL:  "https://accounts.example/authorize",
 				TokenURL: tokenURL,
@@ -41,7 +41,7 @@ func newPreAuthHandler(t *testing.T, tokenURL string) (*Handler, *storage.DB) {
 
 func googleCallbackRequest(target string) *http.Request {
 	request := httptest.NewRequest(http.MethodGet, target, nil)
-	request.Host = "gofer.example"
+	request.Host = "raven.example"
 	return request
 }
 
@@ -79,19 +79,19 @@ func beginGooglePreAuth(t *testing.T, handler *Handler) (*http.Cookie, string) {
 }
 
 func TestGoogleLoginRouteIsUnavailableWithoutApplicationLoginClient(t *testing.T) {
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	handler := &Handler{db: db, auth: auth.NewManager(&auth.Config{
-		Enabled: true, BaseURL: "https://gofer.example", SecureCookies: true,
+		Enabled: true, BaseURL: "https://raven.example", SecureCookies: true,
 	}, db)}
 
 	for _, path := range []string{"/auth/google", "/auth/google/login/callback?state=unused&code=unused"} {
 		request := httptest.NewRequest(http.MethodGet, path, nil)
 		if strings.Contains(path, "callback") {
-			request.Host = "gofer.example"
+			request.Host = "raven.example"
 		}
 		recorder := httptest.NewRecorder()
 		if strings.Contains(path, "callback") {
@@ -186,7 +186,7 @@ func TestGoogleRedirectCreatesHashedStateNonceAndEncryptedPKCEChallenge(t *testi
 		FROM auth_challenges`).Scan(&storedHash, &storedNonceHash, &purpose, &origin, &payload, &active); err != nil {
 		t.Fatalf("query pre-authentication challenge: %v", err)
 	}
-	if storedHash != wantHash || storedHash == state || storedNonceHash == "" || len(payload) == 0 || purpose != string(auth.ChallengePurposeFederatedLogin) || origin != "https://gofer.example" || !active {
+	if storedHash != wantHash || storedHash == state || storedNonceHash == "" || len(payload) == 0 || purpose != string(auth.ChallengePurposeFederatedLogin) || origin != "https://raven.example" || !active {
 		t.Fatalf("stored challenge = hash:%q nonce_hash:%q purpose:%q origin:%q payload:%x active:%t", storedHash, storedNonceHash, purpose, origin, payload, active)
 	}
 	if strings.Contains(string(payload), "code_verifier") {

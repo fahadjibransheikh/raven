@@ -70,12 +70,12 @@ func (generator *deterministicTokenGenerator) Token(byteCount int) (string, erro
 
 func newDeterministicManager(t *testing.T, clock Clock, tokens TokenGenerator) *Manager {
 	t.Helper()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	return NewManager(&Config{Enabled: true, BaseURL: "https://gofer.example"}, db, Dependencies{
+	return NewManager(&Config{Enabled: true, BaseURL: "https://raven.example"}, db, Dependencies{
 		Clock:         clock,
 		Tokens:        tokens,
 		BucketHashKey: []byte("0123456789abcdef0123456789abcdef"),
@@ -206,7 +206,7 @@ func TestCreatePreAuthChallengePropagatesTokenGenerationFailure(t *testing.T) {
 
 	challenge, err := manager.CreatePreAuthChallenge(t.Context(), PreAuthChallengeOptions{
 		Purpose: ChallengePurposeFederatedLogin,
-		Origin:  "https://gofer.example",
+		Origin:  "https://raven.example",
 	})
 	if challenge != nil || !errors.Is(err, tokenErr) {
 		t.Fatalf("CreatePreAuthChallenge() = %#v, %v, want token error", challenge, err)

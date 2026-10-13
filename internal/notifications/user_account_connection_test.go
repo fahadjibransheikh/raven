@@ -35,7 +35,7 @@ func TestUserAccountConnectionHTTPPlainIMAPSMTPAndOwnership(t *testing.T) {
 	if response := f.request("alice", "POST", "/api/mail/sync/accounts/"+f.accounts["bob"].ID+"/repair", ""); response.Code != 404 {
 		t.Fatal("foreign repair", response.Code)
 	}
-	if response := f.request("alice", "POST", "/api/mail/sync/accounts/"+f.accounts["alice"].ID+"/repair", ""); response.Code != 200 || response.Header().Get("X-Gofer-Status") != "error" {
+	if response := f.request("alice", "POST", "/api/mail/sync/accounts/"+f.accounts["alice"].ID+"/repair", ""); response.Code != 200 || response.Header().Get("X-Raven-Status") != "error" {
 		t.Fatal("non-Gmail repair", response.Code)
 	}
 	w := &blockedContactViewWriter{ResponseRecorder: httptest.NewRecorder(), entered: make(chan struct{}), release: make(chan struct{})}
@@ -110,7 +110,7 @@ func TestUserAccountConnectionHTTPProviderAndRepairAdmission(t *testing.T) {
 			api.blockPath = "/users/me/labels"
 			api.mu.Unlock()
 			response = f.request("alice", "POST", "/api/mail/sync/accounts/"+f.accounts["alice"].ID+"/repair", "")
-			if response.Code != 200 || response.Header().Get("X-Gofer-Mail-Sync-Mode") != "repair" || response.Header().Get("X-Gofer-Mail-Sync-Run-ID") == "" || response.Header().Get("X-Gofer-Status") != "ok" {
+			if response.Code != 200 || response.Header().Get("X-Raven-Mail-Sync-Mode") != "repair" || response.Header().Get("X-Raven-Mail-Sync-Run-ID") == "" || response.Header().Get("X-Raven-Status") != "ok" {
 				t.Fatal("HTTP repair admission", response.Code, response.Header())
 			}
 			awaitIMAP(t, api.entered)

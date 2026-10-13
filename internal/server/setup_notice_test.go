@@ -11,20 +11,20 @@ import (
 )
 
 func TestProvisionInitialSetupTokenPrintsGeneratedSecretOnlyOnce(t *testing.T) {
-	databasePath := filepath.Join(t.TempDir(), "gofer.db")
+	databasePath := filepath.Join(t.TempDir(), "raven.db")
 	db, err := storage.New(databasePath)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	manager := auth.NewManager(&auth.Config{Enabled: true, BaseURL: "https://gofer.example"}, db)
+	manager := auth.NewManager(&auth.Config{Enabled: true, BaseURL: "https://raven.example"}, db)
 
 	var console bytes.Buffer
 	if err := provisionInitialSetupToken(t.Context(), manager, "", &console); err != nil {
 		t.Fatal(err)
 	}
 	output := console.String()
-	if !strings.Contains(output, "shown once") || !strings.Contains(output, "Expires: ") || !strings.Contains(output, "setup_token: ") || !strings.Contains(output, "Open: https://gofer.example/setup") || !strings.Contains(output, "server local time") {
+	if !strings.Contains(output, "shown once") || !strings.Contains(output, "Expires: ") || !strings.Contains(output, "setup_token: ") || !strings.Contains(output, "Open: https://raven.example/setup") || !strings.Contains(output, "server local time") {
 		t.Fatalf("initial setup console output = %q", output)
 	}
 	var rawToken string
@@ -68,13 +68,13 @@ func TestProvisionInitialSetupTokenPrintsGeneratedSecretOnlyOnce(t *testing.T) {
 }
 
 func TestProvisionInitialSetupTokenDoesNotEchoOperatorSuppliedSecret(t *testing.T) {
-	databasePath := filepath.Join(t.TempDir(), "gofer.db")
+	databasePath := filepath.Join(t.TempDir(), "raven.db")
 	db, err := storage.New(databasePath)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	manager := auth.NewManager(&auth.Config{Enabled: true, BaseURL: "https://gofer.example"}, db)
+	manager := auth.NewManager(&auth.Config{Enabled: true, BaseURL: "https://raven.example"}, db)
 	configuredToken := strings.Repeat("operator-supplied-secret-", 2)
 
 	var console bytes.Buffer

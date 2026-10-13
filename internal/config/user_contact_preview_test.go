@@ -69,7 +69,7 @@ func TestUserContactPreviewOwnerBindingsSurviveCacheEviction(t *testing.T) {
 			t.Fatal(err)
 		}
 		result, err := accounts.PublishContactPreview(t.Context(), snapshot, previewValues(snapshot))
-		if err != nil || result.Contact.ID != "preview-recipient" || result.Contact.GoferSyncEnabled {
+		if err != nil || result.Contact.ID != "preview-recipient" || result.Contact.RavenSyncEnabled {
 			t.Fatal("wrong owner preview", owner, result, err)
 		}
 		if err := accounts.WithUser(t.Context(), owner, func(_ *AccountStore, db *storage.DB) error {

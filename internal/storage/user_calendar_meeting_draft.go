@@ -21,7 +21,7 @@ func calendarMeetingDraftRequest(source, provider, id string) string {
 
 func CalendarMeetDraftRemoteID(owner, source, id string) string {
 	sum := sha256.Sum256([]byte(owner + "\x00" + source + "\x00" + id))
-	return "gofermeetdraft" + hex.EncodeToString(sum[:])
+	return "ravenmeetdraft" + hex.EncodeToString(sum[:])
 }
 
 type calendarMeetingDraftRecord struct {

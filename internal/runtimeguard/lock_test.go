@@ -12,7 +12,7 @@ import (
 )
 
 func TestAcquireIsExclusiveAndReusable(t *testing.T) {
-	databasePath := filepath.Join(t.TempDir(), "gofer.db")
+	databasePath := filepath.Join(t.TempDir(), "raven.db")
 	first, err := Acquire(databasePath)
 	if err != nil {
 		t.Fatalf("Acquire(first) error = %v", err)
@@ -40,7 +40,7 @@ func TestAcquireIsExclusiveAndReusable(t *testing.T) {
 
 func TestAcquireDoesNotCreateMissingParentDirectory(t *testing.T) {
 	directory := filepath.Join(t.TempDir(), "missing")
-	lock, err := Acquire(filepath.Join(directory, "gofer.db"))
+	lock, err := Acquire(filepath.Join(directory, "raven.db"))
 	if lock != nil || err == nil {
 		t.Fatalf("Acquire(missing parent) = %#v, %v", lock, err)
 	}
@@ -50,7 +50,7 @@ func TestAcquireDoesNotCreateMissingParentDirectory(t *testing.T) {
 }
 
 func TestAcquireExcludesAnotherProcess(t *testing.T) {
-	databasePath := filepath.Join(t.TempDir(), "gofer.db")
+	databasePath := filepath.Join(t.TempDir(), "raven.db")
 	command := exec.Command(os.Args[0], "-test.run=^TestLockHelperProcess$")
 	command.Env = append(os.Environ(),
 		"RAVEN_RUNTIME_LOCK_HELPER=1",

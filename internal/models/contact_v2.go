@@ -19,9 +19,9 @@ type ContactProfile struct {
 	Insights        []ContactInsight
 }
 
-// ContactSyncMembership describes where Gofer should actively replicate a
+// ContactSyncMembership describes where Raven should actively replicate a
 // profile. It is deliberately separate from ContactCard, which describes a
-// copy that already exists in a provider or in Gofer Local.
+// copy that already exists in a provider or in Raven Local.
 type ContactSyncMembership struct {
 	ID            string
 	UserID        string

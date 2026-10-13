@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-const securitySessionActionReferenceContext = "gofer/auth/security-session-action-reference/v1"
+const securitySessionActionReferenceContext = "raven/auth/security-session-action-reference/v1"
 
 var ErrSecuritySessionTargetInvalid = errors.New("security session target is invalid")
 

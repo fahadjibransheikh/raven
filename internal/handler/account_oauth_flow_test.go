@@ -17,14 +17,14 @@ import (
 
 func newAccountOAuthFlowTestHandler(t *testing.T) (*Handler, *mailauth.Service, *storage.DB) {
 	t.Helper()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	manager := auth.NewManager(&auth.Config{Enabled: true, BaseURL: "https://gofer.example"}, db)
+	manager := auth.NewManager(&auth.Config{Enabled: true, BaseURL: "https://raven.example"}, db)
 	mailCredentials := mailauth.New(&mailauth.Config{
-		Enabled: true, BaseURL: "https://gofer.example",
+		Enabled: true, BaseURL: "https://raven.example",
 		GoogleClient: &oauth2.Config{
 			ClientID: "client-id",
 			Endpoint: oauth2.Endpoint{AuthURL: "https://accounts.example/authorize"},

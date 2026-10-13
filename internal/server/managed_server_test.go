@@ -243,7 +243,7 @@ func TestManagedMainProcessHelper(t *testing.T) {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	if err := RunManaged(ctx, os.Stdout, os.Stderr); err != nil {
-		fmt.Fprintf(os.Stderr, "Gofer startup or shutdown failed: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Raven startup or shutdown failed: %v\n", err)
 		os.Exit(1)
 	}
 	os.Exit(0)

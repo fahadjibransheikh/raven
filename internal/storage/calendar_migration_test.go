@@ -23,7 +23,7 @@ func removeCalendarTablesFromLegacyFixture(t *testing.T, db *sql.DB) {
 }
 
 func TestMigrateV93ToCurrentCreatesCalendarSchema(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "gofer.db")
+	dbPath := filepath.Join(t.TempDir(), "raven.db")
 	raw, err := openDB(dbPath)
 	if err != nil {
 		t.Fatal(err)
@@ -74,7 +74,7 @@ func TestMigrateV93ToCurrentCreatesCalendarSchema(t *testing.T) {
 }
 
 func TestCalendarSchemaPreservesAllDayAndTimedEventInvariants(t *testing.T) {
-	db, err := New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,7 +135,7 @@ func TestCalendarSchemaPreservesAllDayAndTimedEventInvariants(t *testing.T) {
 }
 
 func TestGetAccountsReportsOnlySelectedCalendarSources(t *testing.T) {
-	db, err := New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatal(err)
 	}

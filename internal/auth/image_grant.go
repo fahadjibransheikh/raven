@@ -20,7 +20,7 @@ const ImageGrantQuery = "k"
 // mints a fresh grant.
 const imageGrantTTL = time.Hour
 
-const imageGrantContext = "gofer-image-grant-v1"
+const imageGrantContext = "raven-image-grant-v1"
 
 var imageGrantPrefixes = [...]string{"/api/inline-content/", "/api/remote-assets/"}
 

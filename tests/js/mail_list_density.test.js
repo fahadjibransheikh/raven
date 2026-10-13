@@ -96,12 +96,12 @@ test("changing the setting sets the root attribute and tells the list, with no r
   const w = settingsWindow()
   const calls = []
   w.document.getElementById("mail-list-scroll")._virtualMailList = { applyRowDensity() { calls.push(w.document.documentElement.dataset.mailDensity) } }
-  w.GoferSettings.set("mail_list_density", "airy")
+  w.RavenSettings.set("mail_list_density", "airy")
   assert.equal(w.document.documentElement.dataset.mailDensity, "airy")
   assert.deepEqual(calls, ["airy"])
-  w.GoferSettings.set("mail_list_density", "calm")
+  w.RavenSettings.set("mail_list_density", "calm")
   assert.equal(w.document.documentElement.dataset.mailDensity, "calm")
-  w.GoferSettings.set("mail_list_density", "nonsense")
+  w.RavenSettings.set("mail_list_density", "nonsense")
   assert.equal(w.document.documentElement.dataset.mailDensity, "calm")
 })
 

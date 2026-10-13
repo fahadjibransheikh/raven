@@ -11,7 +11,7 @@ import (
 )
 
 // Raven shipped its own calendar cache at v97 (calendars, calendar_events,
-// calendar_account_state). Upstream gofer later built an incompatible calendar
+// calendar_account_state). Upstream later built an incompatible calendar
 // under the same calendar_events name; Raven now uses upstream's, created by
 // migrateV107ToV108 onwards. See docs/upstream-merge-plan.md.
 

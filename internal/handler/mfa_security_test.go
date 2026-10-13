@@ -27,7 +27,7 @@ func securitySessionRevokeActionFromPage(t *testing.T, html string) string {
 func completedSecuritySettingsStack(t *testing.T) (*auth.Manager, *storage.DB, http.Handler, *http.Cookie, string) {
 	t.Helper()
 	manager, db, stack, setupCookie := prepareHandlerSetupReview(t)
-	state, err := manager.GetSetupOwnerState(t.Context(), setupCookie.Value, "https://gofer.example")
+	state, err := manager.GetSetupOwnerState(t.Context(), setupCookie.Value, "https://raven.example")
 	if err != nil || state == nil || state.Draft == nil || state.Draft.TOTPSecret == "" {
 		t.Fatalf("load setup security draft = %#v, %v", state, err)
 	}
@@ -270,7 +270,7 @@ func TestSecuritySettingsRevokeOtherSessionsRequiresFreshVerificationAndPreserve
 func TestSecuritySettingsStartsAndRejectsPasskeyRegistrationThroughBoundJSONEndpoints(t *testing.T) {
 	_, db, stack, sessionCookie, _ := completedSecuritySettingsStack(t)
 	page := getSecuritySettings(t, stack, sessionCookie)
-	startProof := csrfProofForSession(t, auth.NewManager(&auth.Config{Enabled: true, BaseURL: "https://gofer.example"}, db), sessionCookie.Value, securityPasskeyStartPath)
+	startProof := csrfProofForSession(t, auth.NewManager(&auth.Config{Enabled: true, BaseURL: "https://raven.example"}, db), sessionCookie.Value, securityPasskeyStartPath)
 	started := postSecuritySettings(t, stack, securityPasskeyStartPath, url.Values{
 		auth.CSRFFormFieldName: {startProof},
 		"name":                 {"Work laptop"},
@@ -280,7 +280,7 @@ func TestSecuritySettingsStartsAndRejectsPasskeyRegistrationThroughBoundJSONEndp
 		t.Fatalf("start passkey registration = %d headers:%v body:%q", started.Code, started.Header(), started.Body.String())
 	}
 	for _, want := range []string{
-		`"name":"Raven"`, `"id":"gofer.example"`, `"residentKey":"preferred"`,
+		`"name":"Raven"`, `"id":"raven.example"`, `"residentKey":"preferred"`,
 		`"userVerification":"required"`, `"attestation":"none"`,
 	} {
 		if !strings.Contains(started.Body.String(), want) {
@@ -294,7 +294,7 @@ func TestSecuritySettingsStartsAndRejectsPasskeyRegistrationThroughBoundJSONEndp
 	}
 	finishRequest := httptest.NewRequest(http.MethodPost, securityPasskeyFinishPath, strings.NewReader(`{}`))
 	finishRequest.Header.Set("Content-Type", "application/json")
-	finishRequest.Header.Set(auth.CSRFHeaderName, csrfProofForSession(t, auth.NewManager(&auth.Config{Enabled: true, BaseURL: "https://gofer.example"}, db), sessionCookie.Value, securityPasskeyFinishPath))
+	finishRequest.Header.Set(auth.CSRFHeaderName, csrfProofForSession(t, auth.NewManager(&auth.Config{Enabled: true, BaseURL: "https://raven.example"}, db), sessionCookie.Value, securityPasskeyFinishPath))
 	finishRequest.AddCookie(sessionCookie)
 	finishRequest.AddCookie(challengeCookie)
 	finishRecorder := httptest.NewRecorder()
@@ -327,7 +327,7 @@ func TestSecuritySettingsListsAndRemovesOwnedPasskey(t *testing.T) {
 		INSERT INTO webauthn_credentials (
 			id, user_id, credential_id, public_key, name, attachment, transports, rp_id
 		) VALUES ('settings-passkey', ?, x'0102', x'0304', 'Existing security key',
-		          'cross-platform', '["usb"]', 'gofer.example')`, session.UserID,
+		          'cross-platform', '["usb"]', 'raven.example')`, session.UserID,
 	); err != nil {
 		t.Fatalf("insert settings passkey: %v", err)
 	}
@@ -380,7 +380,7 @@ func TestSecuritySettingsReplacesTOTPThroughSessionBoundChallenge(t *testing.T) 
 		}
 	}
 	state, err := manager.GetTOTPManagement(
-		t.Context(), challengeCookie.Value, sessionCookie.Value, "https://gofer.example",
+		t.Context(), challengeCookie.Value, sessionCookie.Value, "https://raven.example",
 	)
 	if err != nil || state == nil || state.Enrollment == nil {
 		t.Fatalf("GetTOTPManagement() = %#v, %v", state, err)
@@ -463,7 +463,7 @@ func TestSecuritySettingsEnrollsFirstAuthenticatorThroughSessionBoundChallenge(t
 		t.Fatal("first-time TOTP enrollment claimed an existing authenticator remains active")
 	}
 	state, err := manager.GetTOTPManagement(
-		t.Context(), challengeCookie.Value, sessionCookie.Value, "https://gofer.example",
+		t.Context(), challengeCookie.Value, sessionCookie.Value, "https://raven.example",
 	)
 	if err != nil || state == nil || state.Enrollment == nil || state.IsReplacement {
 		t.Fatalf("GetTOTPManagement() enrollment = %#v, %v", state, err)
@@ -508,7 +508,7 @@ func TestSecuritySettingsRecoveryBatchIsDisplayedOnceThenAcknowledged(t *testing
 		t.Fatal("recovery generation omitted security challenge cookie")
 	}
 	state, err := manager.GetRecoveryCodeReplacement(
-		t.Context(), challengeCookie.Value, sessionCookie.Value, "https://gofer.example",
+		t.Context(), challengeCookie.Value, sessionCookie.Value, "https://raven.example",
 	)
 	if err != nil || state == nil || state.BatchID == "" {
 		t.Fatalf("GetRecoveryCodeReplacement() = %#v, %v", state, err)

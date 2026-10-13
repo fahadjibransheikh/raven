@@ -16,7 +16,7 @@ import (
 // #settings-content out of the response; a redirect left the page empty and
 // broke every later tab click).
 func TestSettingsTabsRenderContentWithoutLogin(t *testing.T) {
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}

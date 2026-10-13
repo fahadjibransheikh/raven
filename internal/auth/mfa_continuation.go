@@ -18,7 +18,7 @@ import (
 
 const (
 	mfaContinuationDraftVersion = 1
-	mfaContinuationDraftKey     = "gofer/auth/mfa-continuation-draft/v1"
+	mfaContinuationDraftKey     = "raven/auth/mfa-continuation-draft/v1"
 )
 
 var ErrMFAContinuationInvalid = errors.New("multi-factor continuation is invalid")

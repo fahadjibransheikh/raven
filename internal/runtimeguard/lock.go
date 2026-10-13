@@ -12,7 +12,7 @@ type Lock struct {
 	file *os.File
 }
 
-// Acquire takes the non-blocking, cross-process lock shared by the Gofer
+// Acquire takes the non-blocking, cross-process lock shared by the Raven
 // server and local operator mutations. Its parent directory must already
 // exist, and the returned lock must remain open for the protected operation.
 func Acquire(databasePath string) (*Lock, error) {

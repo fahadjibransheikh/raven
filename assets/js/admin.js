@@ -349,7 +349,7 @@
   }
 
   // A page that is left closes its event stream at once, instead of keeping
-  // one of the browser's six connections to Gofer while the browser holds the
+  // one of the browser's six connections to Raven while the browser holds the
   // page for going back. Going back opens a new one.
   function closeOnPageHide(source, reopen) {
     function hide() {

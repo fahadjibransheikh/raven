@@ -23,7 +23,7 @@ import (
 const (
 	passkeyLoginChallengeCookieName  = "raven_passkey_login"
 	passkeyAssertionDraftVersion     = 1
-	passkeyAssertionDraftKey         = "gofer/auth/passkey-assertion-draft/v1"
+	passkeyAssertionDraftKey         = "raven/auth/passkey-assertion-draft/v1"
 	passkeyAssertionMaxBodyBytes     = 1 << 20
 	passkeyAssertionModeIdentifier   = "identifier"
 	passkeyAssertionModeDiscoverable = "discoverable"

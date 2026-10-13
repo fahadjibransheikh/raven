@@ -18,8 +18,8 @@ const (
 	setupRecoveryCodeCount     = 10
 	setupRecoveryCodeByteCount = 15
 	setupRecoveryCodeGroupSize = 4
-	setupRecoveryCodeDomain    = "gofer setup recovery code\x00"
-	setupRecoveryBatchDomain   = "gofer setup recovery batch\x00"
+	setupRecoveryCodeDomain    = "raven setup recovery code\x00"
+	setupRecoveryBatchDomain   = "raven setup recovery batch\x00"
 )
 
 var (

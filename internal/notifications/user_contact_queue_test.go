@@ -44,7 +44,7 @@ func TestUserContactQueueHTTPManualOwnerScopeAndDisabledProfile(t *testing.T) {
 	f, _, _ := newOwnedContactPullFixture(t, "outlook")
 	for _, owner := range []string{"alice", "bob"} {
 		if err := f.routing.WithUser(t.Context(), owner, func(db *storage.DB) error {
-			_, err := db.SaveContact(t.Context(), owner, models.Contact{ID: "same-contact-id", Email: owner + "@contacts.test", Name: owner, GoferSyncEnabled: true, SaveTargets: []string{"account:" + f.accounts[owner].ID}})
+			_, err := db.SaveContact(t.Context(), owner, models.Contact{ID: "same-contact-id", Email: owner + "@contacts.test", Name: owner, RavenSyncEnabled: true, SaveTargets: []string{"account:" + f.accounts[owner].ID}})
 			return err
 		}); err != nil {
 			t.Fatal(err)

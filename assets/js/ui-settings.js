@@ -1,7 +1,7 @@
-var GoferSettings;
+var RavenSettings;
 
 (function () {
-  var LS_KEY = "gofer:ui_settings";
+  var LS_KEY = "raven:ui_settings";
   var _cache = {};
   var _saveTimer = null;
   var _migratedPanelSize = false;
@@ -616,7 +616,7 @@ var GoferSettings;
     }
   }
 
-  GoferSettings = {
+  RavenSettings = {
     init: function () {
       var bodySettings = document.body ? document.body.dataset.uiSettings : null;
       if (bodySettings) {
@@ -664,7 +664,7 @@ var GoferSettings;
       _cache[key] = value;
       writeCache();
       applySetting(key, value);
-      document.body.dispatchEvent(new CustomEvent("gofer:settings-changed", {
+      document.body.dispatchEvent(new CustomEvent("raven:settings-changed", {
         detail: { key: key, value: value, oldValue: oldValue },
       }));
 
@@ -688,5 +688,5 @@ var GoferSettings;
     },
   };
 
-  GoferSettings.init();
+  RavenSettings.init();
 })();

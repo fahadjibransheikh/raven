@@ -29,19 +29,19 @@ func TestBeginSetupExchangesTokenForHashOnlyOriginBoundAccess(t *testing.T) {
 	if _, err := manager.db.Write().ExecContext(t.Context(), `
 		INSERT INTO auth_challenges (
 			id, challenge_hash, purpose, origin, attempts, max_attempts, created_at, expires_at
-		) VALUES ('replaced-setup-access', ?, 'enrollment', 'https://gofer.example', 0, 3, ?, ?)`,
+		) VALUES ('replaced-setup-access', ?, 'enrollment', 'https://raven.example', 0, 3, ?, ?)`,
 		hashToken("replaced-access-secret"), now.Add(-time.Minute), now.Add(time.Minute)); err != nil {
 		t.Fatal(err)
 	}
 
 	challenge, err := manager.BeginSetup(t.Context(), BeginSetupOptions{
-		Token: setupToken, Origin: "https://GOFER.example:443", UserAgent: "  Setup Browser/1.0  ",
+		Token: setupToken, Origin: "https://RAVEN.example:443", UserAgent: "  Setup Browser/1.0  ",
 	})
 	if err != nil {
 		t.Fatalf("BeginSetup() error = %v", err)
 	}
 	if challenge.ID != "setup-access-id" || challenge.Token != "setup-access-secret" ||
-		challenge.Purpose != ChallengePurposeEnrollment || challenge.Origin != "https://gofer.example" ||
+		challenge.Purpose != ChallengePurposeEnrollment || challenge.Origin != "https://raven.example" ||
 		challenge.UserID != "" || challenge.SessionID != "" || challenge.MaxAttempts != defaultPreAuthMaxAttempts ||
 		!challenge.CreatedAt.Equal(now) || !challenge.ExpiresAt.Equal(now.Add(setupAccessChallengeLifetime)) {
 		t.Fatalf("setup access challenge = %#v", challenge)
@@ -68,7 +68,7 @@ func TestBeginSetupExchangesTokenForHashOnlyOriginBoundAccess(t *testing.T) {
 		t.Fatal(err)
 	}
 	if storedChallengeHash != hashToken(challenge.Token) || storedChallengeHash == challenge.Token ||
-		purpose != string(ChallengePurposeEnrollment) || origin != "https://gofer.example" || userID.Valid || sessionID.Valid {
+		purpose != string(ChallengePurposeEnrollment) || origin != "https://raven.example" || userID.Valid || sessionID.Valid {
 		t.Fatalf("stored setup challenge = hash:%q purpose:%q origin:%q user:%#v session:%#v", storedChallengeHash, purpose, origin, userID, sessionID)
 	}
 	var replacedConsumed sql.NullTime
@@ -93,7 +93,7 @@ func TestBeginSetupExchangesTokenForHashOnlyOriginBoundAccess(t *testing.T) {
 		t.Fatalf("setup verification event = type:%q reason:%q agent:%q metadata:%q", eventType, reason, userAgent, metadata)
 	}
 
-	found, err := manager.GetActiveSetupAccess(t.Context(), challenge.Token, "https://gofer.example")
+	found, err := manager.GetActiveSetupAccess(t.Context(), challenge.Token, "https://raven.example")
 	if err != nil || found == nil || found.ID != challenge.ID || found.Token != "" {
 		t.Fatalf("GetActiveSetupAccess() = %#v, %v", found, err)
 	}
@@ -116,7 +116,7 @@ func TestBeginSetupFailuresAreGenericBoundedAndSecretFree(t *testing.T) {
 
 	for index, submitted := range []string{"wrong-secret-one", "wrong-secret-two"} {
 		challenge, err := manager.BeginSetup(t.Context(), BeginSetupOptions{
-			Token: submitted, Origin: "https://gofer.example", UserAgent: "Failure Browser",
+			Token: submitted, Origin: "https://raven.example", UserAgent: "Failure Browser",
 		})
 		if challenge != nil || !errors.Is(err, ErrSetupTokenInvalid) || err.Error() != ErrSetupTokenInvalid.Error() {
 			t.Fatalf("BeginSetup(wrong %d) = %#v, %v", index+1, challenge, err)
@@ -128,7 +128,7 @@ func TestBeginSetupFailuresAreGenericBoundedAndSecretFree(t *testing.T) {
 	}
 
 	challenge, err := manager.BeginSetup(t.Context(), BeginSetupOptions{
-		Token: setupToken, Origin: "https://gofer.example", UserAgent: "Failure Browser",
+		Token: setupToken, Origin: "https://raven.example", UserAgent: "Failure Browser",
 	})
 	if challenge != nil || !errors.Is(err, ErrSetupTokenInvalid) || err.Error() != ErrSetupTokenInvalid.Error() {
 		t.Fatalf("BeginSetup(blocked correct token) = %#v, %v", challenge, err)
@@ -199,7 +199,7 @@ func TestBeginSetupExpiredMissingAndBlockedStatesShareGenericFailure(t *testing.
 				test.insert(t, manager)
 			}
 			challenge, err := manager.BeginSetup(t.Context(), BeginSetupOptions{
-				Token: "setup-secret", Origin: "https://gofer.example",
+				Token: "setup-secret", Origin: "https://raven.example",
 			})
 			if challenge != nil || !errors.Is(err, ErrSetupTokenInvalid) || err.Error() != ErrSetupTokenInvalid.Error() {
 				t.Fatalf("BeginSetup(%s) = %#v, %v", test.name, challenge, err)
@@ -226,7 +226,7 @@ func TestBeginSetupRejectsInitializedStateAndSetupAccessExpires(t *testing.T) {
 	})
 	insertSetupAccessState(t, manager, "setup-secret", now.Add(time.Hour), 0)
 	challenge, err := manager.BeginSetup(t.Context(), BeginSetupOptions{
-		Token: "setup-secret", Origin: "https://gofer.example",
+		Token: "setup-secret", Origin: "https://raven.example",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -246,7 +246,7 @@ func TestBeginSetupRejectsInitializedStateAndSetupAccessExpires(t *testing.T) {
 		ids: []string{"unused-initialized-access", "unused-initialized-event"}, tokens: []string{"unused-initialized-secret"},
 	}
 	result, err := manager.BeginSetup(t.Context(), BeginSetupOptions{
-		Token: "setup-secret", Origin: "https://gofer.example",
+		Token: "setup-secret", Origin: "https://raven.example",
 	})
 	if result != nil || !errors.Is(err, ErrSetupAlreadyInitialized) {
 		t.Fatalf("BeginSetup(initialized) = %#v, %v", result, err)
@@ -273,7 +273,7 @@ func TestBeginSetupRollsBackAttemptsAndChallengeWhenAuditFails(t *testing.T) {
 				if _, err := manager.db.Write().ExecContext(t.Context(), `
 					INSERT INTO auth_challenges (
 						id, challenge_hash, purpose, origin, attempts, max_attempts, created_at, expires_at
-					) VALUES ('preserved-access', ?, 'enrollment', 'https://gofer.example', 0, 3, ?, ?)`,
+					) VALUES ('preserved-access', ?, 'enrollment', 'https://raven.example', 0, 3, ?, ?)`,
 					hashToken("preserved-access-secret"), now.Add(-time.Minute), now.Add(time.Minute)); err != nil {
 					t.Fatal(err)
 				}
@@ -285,7 +285,7 @@ func TestBeginSetupRollsBackAttemptsAndChallengeWhenAuditFails(t *testing.T) {
 				t.Fatal(err)
 			}
 			result, err := manager.BeginSetup(t.Context(), BeginSetupOptions{
-				Token: test.submitted, Origin: "https://gofer.example",
+				Token: test.submitted, Origin: "https://raven.example",
 			})
 			if result != nil || err == nil {
 				t.Fatalf("BeginSetup(audit failure) = %#v, %v", result, err)
@@ -329,7 +329,7 @@ func TestBeginSetupRandomnessFailuresDoNotMutateState(t *testing.T) {
 			manager := newDeterministicManager(t, &fixedClock{now: now}, test.tokens)
 			insertSetupAccessState(t, manager, "setup-secret", now.Add(time.Hour), 3)
 			result, err := manager.BeginSetup(t.Context(), BeginSetupOptions{
-				Token: "setup-secret", Origin: "https://gofer.example",
+				Token: "setup-secret", Origin: "https://raven.example",
 			})
 			if result != nil || err == nil {
 				t.Fatalf("BeginSetup(randomness failure) = %#v, %v", result, err)
@@ -368,7 +368,7 @@ func TestConcurrentSetupVerificationLeavesOneActiveContinuation(t *testing.T) {
 		go func() {
 			defer group.Done()
 			challenge, err := manager.BeginSetup(t.Context(), BeginSetupOptions{
-				Token: "setup-secret", Origin: "https://gofer.example",
+				Token: "setup-secret", Origin: "https://raven.example",
 			})
 			results <- result{challenge: challenge, err: err}
 		}()

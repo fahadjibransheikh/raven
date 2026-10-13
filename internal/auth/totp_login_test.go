@@ -11,7 +11,7 @@ import (
 
 const (
 	totpLoginTestUserID = "totp-person"
-	totpLoginTestOrigin = "https://gofer.example"
+	totpLoginTestOrigin = "https://raven.example"
 )
 
 func prepareTOTPLoginManager(t *testing.T, now time.Time, tokens TokenGenerator) (*Manager, string, int64) {

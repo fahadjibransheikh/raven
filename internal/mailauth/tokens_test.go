@@ -62,7 +62,7 @@ func TestRefreshTokenForScopesClassifiesPermanentAndTemporaryFailures(t *testing
 
 func TestGmailRefreshUsesEncryptedMigratedCredential(t *testing.T) {
 	ctx := context.Background()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}
@@ -116,7 +116,7 @@ func TestGmailRefreshUsesEncryptedMigratedCredential(t *testing.T) {
 
 func TestGoogleCalendarTokenRequiresCalendarScope(t *testing.T) {
 	ctx := context.Background()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}
@@ -153,7 +153,7 @@ func TestGoogleCalendarTokenRequiresCalendarScope(t *testing.T) {
 
 func TestMicrosoftGraphContactsTokenUsesGraphScopeAndPreservesCachedAccessToken(t *testing.T) {
 	ctx := context.Background()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}
@@ -221,7 +221,7 @@ func TestMicrosoftGraphContactsTokenUsesGraphScopeAndPreservesCachedAccessToken(
 
 func TestMicrosoftGraphCalendarTokenUsesCalendarScopeAndPreservesCachedAccessToken(t *testing.T) {
 	ctx := context.Background()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}
@@ -252,7 +252,7 @@ func TestMicrosoftGraphCalendarTokenUsesCalendarScopeAndPreservesCachedAccessTok
 
 func TestMicrosoftGraphMailTokenUsesGraphMailSendAndMailboxSettingsScopesAndPreservesCachedAccessToken(t *testing.T) {
 	ctx := context.Background()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}
@@ -329,7 +329,7 @@ func TestMicrosoftGraphMailTokenUsesGraphMailSendAndMailboxSettingsScopesAndPres
 
 func TestMicrosoftGraphMailTokenUsesFreshCachedGraphAccessToken(t *testing.T) {
 	ctx := context.Background()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}
@@ -360,7 +360,7 @@ func TestMicrosoftGraphMailTokenUsesFreshCachedGraphAccessToken(t *testing.T) {
 
 func TestGetOAuthTokenForOutlookUsesGraphMailScopesAndPreservesStoredAccess(t *testing.T) {
 	ctx := context.Background()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}
@@ -428,7 +428,7 @@ func TestGetOAuthTokenForOutlookUsesGraphMailScopesAndPreservesStoredAccess(t *t
 
 func TestMicrosoftGraphContactsTokenRejectsNonOutlookAccount(t *testing.T) {
 	ctx := context.Background()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}
@@ -452,7 +452,7 @@ func TestMicrosoftGraphContactsTokenRejectsNonOutlookAccount(t *testing.T) {
 func newOutlookSMTPTokenManager(t *testing.T, tokenURL string, cachedScopes string) *Manager {
 	t.Helper()
 	ctx := context.Background()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}

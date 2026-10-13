@@ -1,4 +1,4 @@
-// Raven additions that live outside upstream Gofer's app.js.
+// Raven additions that live outside app.js.
 // Command palette: Cmd/Ctrl+K opens a filterable list of actions and folders.
 (function () {
   if (window.RavenPalette) return
@@ -94,7 +94,7 @@
 
   function toggleMode() {
     var dark = !document.documentElement.classList.contains("dark")
-    if (window.GoferSettings) GoferSettings.set("theme", dark ? "dark" : "light")
+    if (window.RavenSettings) RavenSettings.set("theme", dark ? "dark" : "light")
     else document.documentElement.classList.toggle("dark", dark)
   }
 
@@ -214,13 +214,13 @@
 // Confirm prompts: window.confirm returns false without showing anything in the
 // desktop app's WKWebView, so every confirmation goes through an in-app popover.
 (function () {
-  if (window.goferChoice) return
+  if (window.ravenChoice) return
 
   // Resolves the chosen action, or "cancel" when dismissed. Mounted inside the
   // open modal dialog, if any, so it isn't inert.
   // options.input = { value, placeholder } adds a text field; its final text is written back to
-  // options.input.value (used by goferPrompt).
-  window.goferChoice = function (title, text, actions, options) {
+  // options.input.value (used by ravenPrompt).
+  window.ravenChoice = function (title, text, actions, options) {
     return new Promise(function (resolve) {
       var panel = document.createElement("div")
       panel.className = "compose-close-choice compose-close-choice-floating"
@@ -290,17 +290,17 @@
 
   // In-app replacement for window.prompt (which returns null silently in the desktop WKWebView).
   // Resolves the entered text, or null when cancelled.
-  window.goferPrompt = function (title, text, opts) {
+  window.ravenPrompt = function (title, text, opts) {
     opts = opts || {}
     var input = { value: opts.value || "", placeholder: opts.placeholder || "" }
-    return window.goferChoice(title, text, [
+    return window.ravenChoice(title, text, [
       { label: "Cancel", action: "cancel" },
       { label: opts.confirmLabel || "OK", action: "ok", primary: true }
     ], { input: input }).then(function (action) { return action === "ok" ? input.value : null })
   }
 
-  window.goferConfirm = function (title, text, confirmLabel) {
-    return goferChoice(title, text, [
+  window.ravenConfirm = function (title, text, confirmLabel) {
+    return ravenChoice(title, text, [
       { label: "Cancel", action: "cancel" },
       { label: confirmLabel, action: "ok", primary: true }
     ]).then(function (action) { return action === "ok" })
@@ -317,7 +317,7 @@
     e.preventDefault()
     e.stopImmediatePropagation()
     var submitter = e.submitter || null
-    window.goferConfirm("Are you sure?", form.dataset.confirm, form.dataset.confirmLabel || "Continue").then(function (ok) {
+    window.ravenConfirm("Are you sure?", form.dataset.confirm, form.dataset.confirmLabel || "Continue").then(function (ok) {
       if (!ok) return
       form.dataset.confirmed = "true"
       if (form.requestSubmit) form.requestSubmit(submitter)

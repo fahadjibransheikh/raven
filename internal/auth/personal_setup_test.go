@@ -119,7 +119,7 @@ func TestAuthenticationModeConfiguration(t *testing.T) {
 		t.Run(string(mode), func(t *testing.T) {
 			t.Setenv("RAVEN_AUTH_MODE", string(mode))
 			t.Setenv("RAVEN_AUTH_ENABLED", "false")
-			cfg := LoadConfig("https://gofer.example")
+			cfg := LoadConfig("https://raven.example")
 			if cfg.AuthenticationMode() != mode || cfg.Enabled != (mode != ModeOpen) {
 				t.Fatalf("wrong mode %#v", cfg)
 			}

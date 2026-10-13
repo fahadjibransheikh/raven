@@ -15,7 +15,7 @@ import (
 
 func newMailboxCredentialTestDB(t *testing.T) *storage.DB {
 	t.Helper()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatal(err)
 	}

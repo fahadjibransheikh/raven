@@ -74,13 +74,13 @@ func TestContactReadOnlyViewLoadsRecentConversations(t *testing.T) {
 	}
 }
 
-func TestContactsDetailRendersGoferSyncHeaderAndFullWidthLocations(t *testing.T) {
+func TestContactsDetailRendersRavenSyncHeaderAndFullWidthLocations(t *testing.T) {
 	var out bytes.Buffer
 	contact := models.Contact{
 		ID:               "contact-1",
 		Name:             "Jane",
 		Email:            "jane@example.com",
-		GoferSyncEnabled: true,
+		RavenSyncEnabled: true,
 		SaveTargets:      []string{"local", "account:account-1"},
 		SyncStatus:       "pending",
 	}
@@ -168,7 +168,7 @@ func TestExistingContactRendersFocusedEditDialog(t *testing.T) {
 
 func TestContactEditSyncSwitchEnablesTargetSelector(t *testing.T) {
 	var out bytes.Buffer
-	contact := models.Contact{ID: "contact-1", Name: "Jane Doe", Email: "jane@example.com", GoferSyncEnabled: true}
+	contact := models.Contact{ID: "contact-1", Name: "Jane Doe", Email: "jane@example.com", RavenSyncEnabled: true}
 	profile := models.ContactProfile{ID: "contact-1", Origin: "manual", SyncEnabled: true}
 	if err := ContactEditSyncPanel(&contact, &profile, nil).Render(context.Background(), &out); err != nil {
 		t.Fatalf("ContactEditSyncPanel.Render() error = %v", err)
@@ -307,8 +307,8 @@ func TestContactAvatarPreviewURLRequestsLargerGooglePhoto(t *testing.T) {
 		t.Fatalf("large URL = %q, want Google path size override", got)
 	}
 
-	// The preview asks Gofer for the large version of the saved photo, since
-	// Gofer only fetches photos saved for a contact.
+	// The preview asks Raven for the large version of the saved photo, since
+	// Raven only fetches photos saved for a contact.
 	saved := "https://lh3.googleusercontent.com/a-/ALV-UjV=s96-c"
 	if got := contactAvatarPreviewURL(saved); got != "/api/provider-avatar?url="+url.QueryEscape(saved)+"&size=large" {
 		t.Fatalf("preview URL = %q", got)

@@ -19,8 +19,8 @@ import (
 )
 
 // A message is shown in a sandboxed frame that the browser treats as another
-// site, so the images it loads from Gofer carry no session cookie and would be
-// refused. Gofer therefore signs each image address when it builds the message
+// site, so the images it loads from Raven carry no session cookie and would be
+// refused. Raven therefore signs each image address when it builds the message
 // page: the signature names the owner, the message and the file, and expires.
 // The signed route serves only that file, as its owner, without a session.
 // The signing key is random for each server start, so a restart only means
@@ -28,7 +28,7 @@ import (
 // message and stops working when that session ends, such as at sign-out.
 //
 // Remote content the reader chose to load is signed the same way, as a "web"
-// file named by its address: Gofer downloads it and passes it on, so the
+// file named by its address: Raven downloads it and passes it on, so the
 // sender never sees the reader's IP address or browser, and browsers that
 // block known trackers inside other sites still show the images.
 
@@ -50,7 +50,7 @@ func newMessageFileKey() []byte {
 
 func (h *Handler) messageFileSignature(kind, owner, session string, messageID int64, name string, expires int64) string {
 	mac := hmac.New(sha256.New, h.messageFileKey)
-	for _, part := range []string{"gofer-message-file/v2", kind, owner, session, strconv.FormatInt(messageID, 10), name, strconv.FormatInt(expires, 10)} {
+	for _, part := range []string{"raven-message-file/v2", kind, owner, session, strconv.FormatInt(messageID, 10), name, strconv.FormatInt(expires, 10)} {
 		mac.Write([]byte(part))
 		mac.Write([]byte{0})
 	}
@@ -109,7 +109,7 @@ func messageFileWebName(remoteURL string) string {
 }
 
 // remoteContentLinks returns the loader that RestoreRemoteContent passes each
-// remote address of the message through, giving a signed address on Gofer.
+// remote address of the message through, giving a signed address on Raven.
 func (h *Handler) remoteContentLinks(ctx context.Context, owner string, messageID int64) func(string) string {
 	expires := messageFileLinkExpiry()
 	session := messageFileSession(ctx)

@@ -22,7 +22,7 @@ func localProfileFixture(t *testing.T, personal bool) string {
 	t.Helper()
 	t.Setenv("RAVEN_SECRET_KEY", "")
 	root := t.TempDir()
-	path := filepath.Join(root, "gofer.db")
+	path := filepath.Join(root, "raven.db")
 	key := []byte("0123456789abcdef0123456789abcdef")
 	if err := os.WriteFile(filepath.Join(root, "secret.key"), key, 0600); err != nil {
 		t.Fatal(err)
@@ -71,7 +71,7 @@ func startConvertedManaged(t *testing.T, path string) (*managedStorage, *auth.Ma
 	}
 	t.Cleanup(func() { s.Close() })
 	t.Setenv("RAVEN_AUTH_MODE", "managed")
-	manager := auth.NewManager(auth.LoadConfig("https://gofer.example"), s.central, auth.Dependencies{BucketHashKey: s.key})
+	manager := auth.NewManager(auth.LoadConfig("https://raven.example"), s.central, auth.Dependencies{BucketHashKey: s.key})
 	if _, err := manager.AdoptLocalProfileForManagedSetup(t.Context()); err != nil {
 		t.Fatal(err)
 	}

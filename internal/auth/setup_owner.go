@@ -21,7 +21,7 @@ import (
 const (
 	maximumSetupOwnerCandidates = 100
 	setupOwnerDraftVersion      = 1
-	setupOwnerDraftKeyContext   = "gofer/auth/setup-owner-draft/v1"
+	setupOwnerDraftKeyContext   = "raven/auth/setup-owner-draft/v1"
 )
 
 var (

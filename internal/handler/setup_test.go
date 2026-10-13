@@ -22,13 +22,13 @@ import (
 
 func setupEntryStack(t *testing.T) (*auth.Manager, *storage.DB, http.Handler, string) {
 	t.Helper()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	manager := auth.NewManager(&auth.Config{
-		Enabled: true, BaseURL: "https://gofer.example", SecureCookies: true,
+		Enabled: true, BaseURL: "https://raven.example", SecureCookies: true,
 	}, db, auth.Dependencies{BucketHashKey: []byte("setup-handler-test-key-32-bytes!")})
 	provision, err := manager.EnsureSetupToken(t.Context(), "")
 	if err != nil || provision == nil || provision.Token == "" {
@@ -44,7 +44,7 @@ func postSetup(stack http.Handler, token string) *httptest.ResponseRecorder {
 	form := url.Values{"token": {token}}
 	request := httptest.NewRequest(http.MethodPost, setupPath, strings.NewReader(form.Encode()))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Origin", "https://gofer.example")
+	request.Header.Set("Origin", "https://raven.example")
 	request.Header.Set("User-Agent", "Setup Handler Test/1.0")
 	recorder := httptest.NewRecorder()
 	stack.ServeHTTP(recorder, request)
@@ -54,7 +54,7 @@ func postSetup(stack http.Handler, token string) *httptest.ResponseRecorder {
 func postSetupOwner(stack http.Handler, cookie *http.Cookie, values url.Values) *httptest.ResponseRecorder {
 	request := httptest.NewRequest(http.MethodPost, setupOwnerPath, strings.NewReader(values.Encode()))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Origin", "https://gofer.example")
+	request.Header.Set("Origin", "https://raven.example")
 	if cookie != nil {
 		request.AddCookie(cookie)
 	}
@@ -66,7 +66,7 @@ func postSetupOwner(stack http.Handler, cookie *http.Cookie, values url.Values) 
 func postSetupPassword(stack http.Handler, cookie *http.Cookie, values url.Values) *httptest.ResponseRecorder {
 	request := httptest.NewRequest(http.MethodPost, setupPasswordPath, strings.NewReader(values.Encode()))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Origin", "https://gofer.example")
+	request.Header.Set("Origin", "https://raven.example")
 	if cookie != nil {
 		request.AddCookie(cookie)
 	}
@@ -78,7 +78,7 @@ func postSetupPassword(stack http.Handler, cookie *http.Cookie, values url.Value
 func postSetupMFA(stack http.Handler, cookie *http.Cookie, values url.Values) *httptest.ResponseRecorder {
 	request := httptest.NewRequest(http.MethodPost, setupMFAPath, strings.NewReader(values.Encode()))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Origin", "https://gofer.example")
+	request.Header.Set("Origin", "https://raven.example")
 	if cookie != nil {
 		request.AddCookie(cookie)
 	}
@@ -90,7 +90,7 @@ func postSetupMFA(stack http.Handler, cookie *http.Cookie, values url.Values) *h
 func postSetupRecovery(stack http.Handler, cookie *http.Cookie, values url.Values) *httptest.ResponseRecorder {
 	request := httptest.NewRequest(http.MethodPost, setupRecoveryPath, strings.NewReader(values.Encode()))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Origin", "https://gofer.example")
+	request.Header.Set("Origin", "https://raven.example")
 	if cookie != nil {
 		request.AddCookie(cookie)
 	}
@@ -102,7 +102,7 @@ func postSetupRecovery(stack http.Handler, cookie *http.Cookie, values url.Value
 func postSetupReview(stack http.Handler, cookie *http.Cookie, values url.Values) *httptest.ResponseRecorder {
 	request := httptest.NewRequest(http.MethodPost, setupReviewPath, strings.NewReader(values.Encode()))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Origin", "https://gofer.example")
+	request.Header.Set("Origin", "https://raven.example")
 	request.Header.Set("User-Agent", "Setup Completion Browser/1.0")
 	if cookie != nil {
 		request.AddCookie(cookie)
@@ -133,7 +133,7 @@ func prepareHandlerVerifiedMFA(t *testing.T) (*auth.Manager, *storage.DB, http.H
 	if recorder := postSetupMFA(stack, setupCookie, url.Values{"action": {"start"}}); recorder.Code != http.StatusSeeOther {
 		t.Fatalf("MFA start prerequisite = %d %q", recorder.Code, recorder.Body.String())
 	}
-	state, err := manager.GetSetupOwnerState(t.Context(), setupCookie.Value, "https://gofer.example")
+	state, err := manager.GetSetupOwnerState(t.Context(), setupCookie.Value, "https://raven.example")
 	if err != nil || state == nil || state.Draft == nil {
 		t.Fatalf("MFA prerequisite state = %#v, %v", state, err)
 	}
@@ -152,7 +152,7 @@ func prepareHandlerSetupReview(t *testing.T) (*auth.Manager, *storage.DB, http.H
 	if generated.Code != http.StatusOK {
 		t.Fatalf("recovery generation prerequisite = %d %q", generated.Code, generated.Body.String())
 	}
-	state, err := manager.GetSetupOwnerState(t.Context(), setupCookie.Value, "https://gofer.example")
+	state, err := manager.GetSetupOwnerState(t.Context(), setupCookie.Value, "https://raven.example")
 	if err != nil || state == nil || state.Draft == nil || state.Draft.RecoveryBatchID == "" {
 		t.Fatalf("recovery prerequisite state = %#v, %v", state, err)
 	}
@@ -246,7 +246,7 @@ func TestSetupTokenVerificationCreatesProtectedContinuationWithoutCompletingSetu
 		challengeHash != fmt.Sprintf("%x", wantChallengeHash) || challengeHash == setupCookie.Value {
 		t.Fatalf("setup verification persistence = initialized:%d setupHash:%q attempts:%d challengeHash:%q", initialized, setupHash, attempts, challengeHash)
 	}
-	active, err := manager.GetActiveSetupAccess(t.Context(), setupCookie.Value, "https://gofer.example")
+	active, err := manager.GetActiveSetupAccess(t.Context(), setupCookie.Value, "https://raven.example")
 	if err != nil || active == nil {
 		t.Fatalf("GetActiveSetupAccess() = %#v, %v", active, err)
 	}
@@ -345,7 +345,7 @@ func TestSetupPasswordRequiresCurrentOwnerDraftAndNeverEchoesSecrets(t *testing.
 	}
 	request = httptest.NewRequest(http.MethodPost, setupPasswordPath, strings.NewReader(strings.Repeat("x", setupFormMaximumBytes+1)))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Origin", "https://gofer.example")
+	request.Header.Set("Origin", "https://raven.example")
 	request.AddCookie(setupCookie)
 	oversizedWithoutDraft := httptest.NewRecorder()
 	stack.ServeHTTP(oversizedWithoutDraft, request)
@@ -415,7 +415,7 @@ func TestSetupPasswordRequiresCurrentOwnerDraftAndNeverEchoesSecrets(t *testing.
 	if saved.Code != http.StatusSeeOther || saved.Header().Get("Location") != setupPasswordPath || strings.Contains(saved.Body.String(), password) {
 		t.Fatalf("password save = %d location:%q body:%q", saved.Code, saved.Header().Get("Location"), saved.Body.String())
 	}
-	state, err := manager.GetSetupOwnerState(t.Context(), setupCookie.Value, "https://gofer.example")
+	state, err := manager.GetSetupOwnerState(t.Context(), setupCookie.Value, "https://raven.example")
 	if err != nil || state == nil || !state.PasswordReady || state.Draft == nil || state.Draft.PasswordHash == "" {
 		t.Fatalf("saved password state = %#v, %v", state, err)
 	}
@@ -468,7 +468,7 @@ func TestSetupPasswordPostIsProtectedByCanonicalOriginGuard(t *testing.T) {
 	}
 
 	t.Setenv("RAVEN_ADDR", "127.0.0.1:8090")
-	t.Setenv("RAVEN_BASE_URL", "https://gofer.example")
+	t.Setenv("RAVEN_BASE_URL", "https://raven.example")
 	t.Setenv("RAVEN_ALLOW_UNAUTHENTICATED_REMOTE", "")
 	guard, err := httpguard.LoadConfig()
 	if err != nil {
@@ -477,7 +477,7 @@ func TestSetupPasswordPostIsProtectedByCanonicalOriginGuard(t *testing.T) {
 	const password = "correct horse battery staple for owner"
 	form := url.Values{"password": {password}, "password_confirmation": {password}}
 	request := httptest.NewRequest(http.MethodPost, setupPasswordPath, strings.NewReader(form.Encode()))
-	request.Host = "gofer.example"
+	request.Host = "raven.example"
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Origin", "https://attacker.example")
 	request.AddCookie(setupCookie)
@@ -555,7 +555,7 @@ func TestSetupMFAStartConfirmReplaceIsEncryptedAndNonMutating(t *testing.T) {
 	if started.Code != http.StatusSeeOther || started.Header().Get("Location") != setupMFAPath {
 		t.Fatalf("MFA start = %d location:%q body:%q", started.Code, started.Header().Get("Location"), started.Body.String())
 	}
-	state, err := manager.GetSetupOwnerState(t.Context(), setupCookie.Value, "https://gofer.example")
+	state, err := manager.GetSetupOwnerState(t.Context(), setupCookie.Value, "https://raven.example")
 	if err != nil || state == nil || state.Draft == nil || !state.TOTPStarted || state.TOTPReady || state.Draft.TOTPSecret == "" {
 		t.Fatalf("started MFA state = %#v, %v", state, err)
 	}
@@ -585,7 +585,7 @@ func TestSetupMFAStartConfirmReplaceIsEncryptedAndNonMutating(t *testing.T) {
 	}
 	request = httptest.NewRequest(http.MethodPost, setupMFAPath, strings.NewReader(strings.Repeat("x", setupFormMaximumBytes+1)))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Origin", "https://gofer.example")
+	request.Header.Set("Origin", "https://raven.example")
 	request.AddCookie(setupCookie)
 	oversized := httptest.NewRecorder()
 	stack.ServeHTTP(oversized, request)
@@ -602,7 +602,7 @@ func TestSetupMFAStartConfirmReplaceIsEncryptedAndNonMutating(t *testing.T) {
 	if confirmed.Code != http.StatusSeeOther || confirmed.Header().Get("Location") != setupMFAPath || strings.Contains(confirmed.Body.String(), validCode) {
 		t.Fatalf("MFA confirmation = %d location:%q body:%q", confirmed.Code, confirmed.Header().Get("Location"), confirmed.Body.String())
 	}
-	state, err = manager.GetSetupOwnerState(t.Context(), setupCookie.Value, "https://gofer.example")
+	state, err = manager.GetSetupOwnerState(t.Context(), setupCookie.Value, "https://raven.example")
 	if err != nil || !state.TOTPReady || state.Draft.TOTPConfirmedStep == nil {
 		t.Fatalf("confirmed MFA state = %#v, %v", state, err)
 	}
@@ -620,7 +620,7 @@ func TestSetupMFAStartConfirmReplaceIsEncryptedAndNonMutating(t *testing.T) {
 	if restarted.Code != http.StatusSeeOther || restarted.Header().Get("Location") != setupMFAPath {
 		t.Fatalf("MFA restart = %d location:%q", restarted.Code, restarted.Header().Get("Location"))
 	}
-	replaced, err := manager.GetSetupOwnerState(t.Context(), setupCookie.Value, "https://gofer.example")
+	replaced, err := manager.GetSetupOwnerState(t.Context(), setupCookie.Value, "https://raven.example")
 	if err != nil || !replaced.TOTPStarted || replaced.TOTPReady || replaced.Draft.TOTPSecret == firstSecret {
 		t.Fatalf("replaced MFA state = %#v, %v", replaced, err)
 	}
@@ -723,7 +723,7 @@ func TestSetupRecoveryGenerateAcknowledgeAndReplaceIsOneTimeAndNonMutating(t *te
 		firstCodes = append(firstCodes, match[1])
 	}
 
-	ownerState, err := manager.GetSetupOwnerState(t.Context(), setupCookie.Value, "https://gofer.example")
+	ownerState, err := manager.GetSetupOwnerState(t.Context(), setupCookie.Value, "https://raven.example")
 	if err != nil || ownerState == nil || ownerState.Draft == nil || !ownerState.RecoveryGenerated || ownerState.RecoveryReady || ownerState.Draft.RecoveryBatchID == "" {
 		t.Fatalf("generated recovery handler state = %#v, %v", ownerState, err)
 	}
@@ -737,7 +737,7 @@ func TestSetupRecoveryGenerateAcknowledgeAndReplaceIsOneTimeAndNonMutating(t *te
 	if repeated.Code != http.StatusSeeOther || repeated.Header().Get("Location") != setupRecoveryPath || codePattern.MatchString(repeated.Body.String()) {
 		t.Fatalf("repeated non-replacement generation = %d location:%q body:%q", repeated.Code, repeated.Header().Get("Location"), repeated.Body.String())
 	}
-	repeatedState, err := manager.GetSetupOwnerState(t.Context(), setupCookie.Value, "https://gofer.example")
+	repeatedState, err := manager.GetSetupOwnerState(t.Context(), setupCookie.Value, "https://raven.example")
 	if err != nil || repeatedState.Draft.RecoveryBatchID != firstBatchID {
 		t.Fatalf("repeated generation replaced batch = %#v, %v", repeatedState, err)
 	}
@@ -793,7 +793,7 @@ func TestSetupRecoveryGenerateAcknowledgeAndReplaceIsOneTimeAndNonMutating(t *te
 	if len(replacementMatches) != 10 {
 		t.Fatalf("replacement recovery codes = %d", len(replacementMatches))
 	}
-	replacedState, err := manager.GetSetupOwnerState(t.Context(), setupCookie.Value, "https://gofer.example")
+	replacedState, err := manager.GetSetupOwnerState(t.Context(), setupCookie.Value, "https://raven.example")
 	if err != nil || replacedState.Draft.RecoveryBatchID == firstBatchID || replacedState.RecoveryReady || replacedState.Draft.RecoveryAcknowledged {
 		t.Fatalf("replacement recovery state = %#v, %v", replacedState, err)
 	}
@@ -835,7 +835,7 @@ func TestSetupRecoveryStripsQueriesBoundsFormsAndRejectsCrossOrigin(t *testing.T
 	}
 	request = httptest.NewRequest(http.MethodPost, setupRecoveryPath, strings.NewReader(strings.Repeat("x", setupFormMaximumBytes+1)))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Origin", "https://gofer.example")
+	request.Header.Set("Origin", "https://raven.example")
 	request.AddCookie(setupCookie)
 	oversized := httptest.NewRecorder()
 	stack.ServeHTTP(oversized, request)
@@ -848,7 +848,7 @@ func TestSetupRecoveryStripsQueriesBoundsFormsAndRejectsCrossOrigin(t *testing.T
 		t.Fatal(err)
 	}
 	t.Setenv("RAVEN_ADDR", "127.0.0.1:8090")
-	t.Setenv("RAVEN_BASE_URL", "https://gofer.example")
+	t.Setenv("RAVEN_BASE_URL", "https://raven.example")
 	t.Setenv("RAVEN_ALLOW_UNAUTHENTICATED_REMOTE", "")
 	guard, err := httpguard.LoadConfig()
 	if err != nil {
@@ -856,7 +856,7 @@ func TestSetupRecoveryStripsQueriesBoundsFormsAndRejectsCrossOrigin(t *testing.T
 	}
 	form := url.Values{"action": {"generate"}}
 	request = httptest.NewRequest(http.MethodPost, setupRecoveryPath, strings.NewReader(form.Encode()))
-	request.Host = "gofer.example"
+	request.Host = "raven.example"
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Origin", "https://attacker.example")
 	request.AddCookie(setupCookie)
@@ -896,7 +896,7 @@ func TestSetupReviewRequiresAcknowledgedRecoveryAndIsLinkedFromRecovery(t *testi
 
 func TestSetupReviewIsSecretFreeReadOnlyAndShowsExactFreshImpact(t *testing.T) {
 	manager, db, stack, setupCookie := prepareHandlerSetupReview(t)
-	ownerState, err := manager.GetSetupOwnerState(t.Context(), setupCookie.Value, "https://gofer.example")
+	ownerState, err := manager.GetSetupOwnerState(t.Context(), setupCookie.Value, "https://raven.example")
 	if err != nil || ownerState == nil || ownerState.Draft == nil {
 		t.Fatalf("review owner state = %#v, %v", ownerState, err)
 	}
@@ -1056,7 +1056,7 @@ func TestSetupCompletionPostIsBoundedQueryFreeAndProtectedByCanonicalOrigin(t *t
 
 	queryRequest := httptest.NewRequest(http.MethodPost, setupReviewPath+"?secret=must-not-survive", strings.NewReader("action=complete"))
 	queryRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	queryRequest.Header.Set("Origin", "https://gofer.example")
+	queryRequest.Header.Set("Origin", "https://raven.example")
 	queryRequest.AddCookie(setupCookie)
 	queryResponse := httptest.NewRecorder()
 	stack.ServeHTTP(queryResponse, queryRequest)
@@ -1067,14 +1067,14 @@ func TestSetupCompletionPostIsBoundedQueryFreeAndProtectedByCanonicalOrigin(t *t
 	}
 
 	t.Setenv("RAVEN_ADDR", "127.0.0.1:8090")
-	t.Setenv("RAVEN_BASE_URL", "https://gofer.example")
+	t.Setenv("RAVEN_BASE_URL", "https://raven.example")
 	t.Setenv("RAVEN_ALLOW_UNAUTHENTICATED_REMOTE", "")
 	guard, err := httpguard.LoadConfig()
 	if err != nil {
 		t.Fatal(err)
 	}
 	request := httptest.NewRequest(http.MethodPost, setupReviewPath, strings.NewReader("action=complete"))
-	request.Host = "gofer.example"
+	request.Host = "raven.example"
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Origin", "https://attacker.example")
 	request.AddCookie(setupCookie)
@@ -1143,7 +1143,7 @@ func TestSetupMFAPostIsProtectedByCanonicalOriginGuard(t *testing.T) {
 	}
 
 	t.Setenv("RAVEN_ADDR", "127.0.0.1:8090")
-	t.Setenv("RAVEN_BASE_URL", "https://gofer.example")
+	t.Setenv("RAVEN_BASE_URL", "https://raven.example")
 	t.Setenv("RAVEN_ALLOW_UNAUTHENTICATED_REMOTE", "")
 	guard, err := httpguard.LoadConfig()
 	if err != nil {
@@ -1151,7 +1151,7 @@ func TestSetupMFAPostIsProtectedByCanonicalOriginGuard(t *testing.T) {
 	}
 	form := url.Values{"action": {"start"}}
 	request := httptest.NewRequest(http.MethodPost, setupMFAPath, strings.NewReader(form.Encode()))
-	request.Host = "gofer.example"
+	request.Host = "raven.example"
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Origin", "https://attacker.example")
 	request.AddCookie(setupCookie)
@@ -1261,7 +1261,7 @@ func TestSetupOwnerPostIsProtectedByCanonicalOriginGuard(t *testing.T) {
 	entry := postSetup(stack, setupToken)
 	setupCookie := responseCookie(entry, "raven_pre_auth", true)
 	t.Setenv("RAVEN_ADDR", "127.0.0.1:8090")
-	t.Setenv("RAVEN_BASE_URL", "https://gofer.example")
+	t.Setenv("RAVEN_BASE_URL", "https://raven.example")
 	t.Setenv("RAVEN_ALLOW_UNAUTHENTICATED_REMOTE", "")
 	guard, err := httpguard.LoadConfig()
 	if err != nil {
@@ -1271,7 +1271,7 @@ func TestSetupOwnerPostIsProtectedByCanonicalOriginGuard(t *testing.T) {
 		"owner_target": {"create"}, "name": {"Owner"}, "username": {"owner"},
 	}
 	request := httptest.NewRequest(http.MethodPost, setupOwnerPath, strings.NewReader(form.Encode()))
-	request.Host = "gofer.example"
+	request.Host = "raven.example"
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Origin", "https://attacker.example")
 	request.AddCookie(setupCookie)
@@ -1392,7 +1392,7 @@ func TestSetupRoutesDisappearAfterInitialization(t *testing.T) {
 func TestSetupPostIsProtectedByCanonicalOriginGuard(t *testing.T) {
 	_, db, stack, setupToken := setupEntryStack(t)
 	t.Setenv("RAVEN_ADDR", "127.0.0.1:8090")
-	t.Setenv("RAVEN_BASE_URL", "https://gofer.example")
+	t.Setenv("RAVEN_BASE_URL", "https://raven.example")
 	t.Setenv("RAVEN_ALLOW_UNAUTHENTICATED_REMOTE", "")
 	guard, err := httpguard.LoadConfig()
 	if err != nil {
@@ -1400,7 +1400,7 @@ func TestSetupPostIsProtectedByCanonicalOriginGuard(t *testing.T) {
 	}
 	form := url.Values{"token": {setupToken}}
 	request := httptest.NewRequest(http.MethodPost, setupPath, strings.NewReader(form.Encode()))
-	request.Host = "gofer.example"
+	request.Host = "raven.example"
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Origin", "https://attacker.example")
 	recorder := httptest.NewRecorder()
@@ -1423,7 +1423,7 @@ func TestSetupPostIsProtectedByCanonicalOriginGuard(t *testing.T) {
 func TestSetupAcceptsPrivacyBrowserNullOriginWithSameOriginMetadata(t *testing.T) {
 	_, _, stack, setupToken := setupEntryStack(t)
 	t.Setenv("RAVEN_ADDR", "127.0.0.1:8090")
-	t.Setenv("RAVEN_BASE_URL", "https://gofer.example")
+	t.Setenv("RAVEN_BASE_URL", "https://raven.example")
 	t.Setenv("RAVEN_ALLOW_UNAUTHENTICATED_REMOTE", "")
 	guard, err := httpguard.LoadConfig()
 	if err != nil {
@@ -1431,7 +1431,7 @@ func TestSetupAcceptsPrivacyBrowserNullOriginWithSameOriginMetadata(t *testing.T
 	}
 	form := url.Values{"token": {setupToken}}
 	request := httptest.NewRequest(http.MethodPost, setupPath, strings.NewReader(form.Encode()))
-	request.Host = "gofer.example"
+	request.Host = "raven.example"
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Origin", "null")
 	request.Header.Set("Sec-Fetch-Site", "same-origin")

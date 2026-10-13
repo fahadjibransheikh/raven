@@ -185,7 +185,7 @@ func TestOutgoingClaimsSkipDisabledUsers(t *testing.T) {
 
 func TestOutgoingSendRetrySurvivesDatabaseRestart(t *testing.T) {
 	ctx := context.Background()
-	dbPath := filepath.Join(t.TempDir(), "gofer.db")
+	dbPath := filepath.Join(t.TempDir(), "raven.db")
 	db, err := New(dbPath)
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
@@ -336,7 +336,7 @@ func TestInterruptedOutgoingSendBecomesAmbiguousAndIsNotRetried(t *testing.T) {
 
 func TestPendingOutgoingSendSurvivesDatabaseRestart(t *testing.T) {
 	ctx := context.Background()
-	path := filepath.Join(t.TempDir(), "gofer.db")
+	path := filepath.Join(t.TempDir(), "raven.db")
 	db, err := New(path)
 	if err != nil {
 		t.Fatalf("New() error = %v", err)

@@ -49,7 +49,7 @@ func (h *Handler) handleUserFetchBody(w http.ResponseWriter, r *http.Request, fo
 }
 
 // handleUserDownloadFullBody downloads a message the reader asked to see
-// although it is larger than Gofer downloads on its own.
+// although it is larger than Raven downloads on its own.
 func (h *Handler) handleUserDownloadFullBody(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil || id <= 0 {

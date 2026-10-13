@@ -91,7 +91,7 @@ func TestCalendarRefreshTargetsOnlySelectedAccount(t *testing.T) {
 			r = r.WithContext(auth.ContextWithUser(r.Context(), &auth.User{ID: "one"}))
 			w := httptest.NewRecorder()
 			h.handleCalendarSync(w, r)
-			if w.Code != test.status || w.Header().Get("X-Gofer-Status") == "error" {
+			if w.Code != test.status || w.Header().Get("X-Raven-Status") == "error" {
 				t.Fatalf("refresh status = %d, body = %s", w.Code, w.Body.String())
 			}
 			if len(calls) != len(test.want) {

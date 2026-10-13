@@ -18,7 +18,7 @@ func TestPreAuthChallengeIsHashOnlyPurposeAndOriginBound(t *testing.T) {
 	})
 	challenge, err := manager.CreatePreAuthChallenge(t.Context(), PreAuthChallengeOptions{
 		Purpose:     ChallengePurposeFederatedLogin,
-		Origin:      "HTTPS://Gofer.Example:443/",
+		Origin:      "HTTPS://Raven.Example:443/",
 		Lifetime:    10 * time.Minute,
 		MaxAttempts: 3,
 		IssueNonce:  true,
@@ -26,7 +26,7 @@ func TestPreAuthChallengeIsHashOnlyPurposeAndOriginBound(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreatePreAuthChallenge() error = %v", err)
 	}
-	if challenge.Token != "raw-pre-auth-token" || challenge.Nonce != "raw-oidc-nonce" || challenge.Origin != "https://gofer.example" || challenge.ExpiresAt != now.Add(10*time.Minute) {
+	if challenge.Token != "raw-pre-auth-token" || challenge.Nonce != "raw-oidc-nonce" || challenge.Origin != "https://raven.example" || challenge.ExpiresAt != now.Add(10*time.Minute) {
 		t.Fatalf("created challenge = %#v", challenge)
 	}
 	var storedHash, nonceHash, origin string
@@ -46,7 +46,7 @@ func TestPreAuthChallengeIsHashOnlyPurposeAndOriginBound(t *testing.T) {
 	if consumed, err := manager.ConsumePreAuthChallenge(t.Context(), challenge.Token, "wrong-nonce", challenge.Purpose, challenge.Origin); !errors.Is(err, ErrPreAuthChallengeInvalid) || consumed != nil {
 		t.Fatalf("wrong-nonce consume = %#v, %v", consumed, err)
 	}
-	consumed, err := manager.ConsumePreAuthChallenge(t.Context(), challenge.Token, challenge.Nonce, challenge.Purpose, "https://GOFER.example:443")
+	consumed, err := manager.ConsumePreAuthChallenge(t.Context(), challenge.Token, challenge.Nonce, challenge.Purpose, "https://RAVEN.example:443")
 	if err != nil {
 		t.Fatalf("ConsumePreAuthChallenge() error = %v", err)
 	}
@@ -66,7 +66,7 @@ func TestPreAuthChallengeExpiryAndBoundedFailuresFailClosed(t *testing.T) {
 		tokens: []string{"failure-token", "expiry-token"},
 	})
 	failure, err := manager.CreatePreAuthChallenge(t.Context(), PreAuthChallengeOptions{
-		Purpose: ChallengePurposeMFA, Origin: "https://gofer.example", MaxAttempts: 2,
+		Purpose: ChallengePurposeMFA, Origin: "https://raven.example", MaxAttempts: 2,
 	})
 	if err != nil {
 		t.Fatalf("CreatePreAuthChallenge(failure) error = %v", err)
@@ -82,7 +82,7 @@ func TestPreAuthChallengeExpiryAndBoundedFailuresFailClosed(t *testing.T) {
 	}
 
 	expiring, err := manager.CreatePreAuthChallenge(t.Context(), PreAuthChallengeOptions{
-		Purpose: ChallengePurposeRecovery, Origin: "https://gofer.example", Lifetime: time.Minute,
+		Purpose: ChallengePurposeRecovery, Origin: "https://raven.example", Lifetime: time.Minute,
 	})
 	if err != nil {
 		t.Fatalf("CreatePreAuthChallenge(expiry) error = %v", err)
@@ -100,11 +100,11 @@ func TestPreAuthChallengeExpiryAndBoundedFailuresFailClosed(t *testing.T) {
 func TestPreAuthChallengeRejectsInvalidContractsWithoutPersistence(t *testing.T) {
 	manager := newDeterministicManager(t, &fixedClock{}, &deterministicTokenGenerator{})
 	tests := []PreAuthChallengeOptions{
-		{Purpose: ChallengePurpose("unknown"), Origin: "https://gofer.example"},
-		{Purpose: ChallengePurposeLogin, Origin: "https://gofer.example/path"},
-		{Purpose: ChallengePurposeLogin, Origin: "javascript://gofer.example"},
-		{Purpose: ChallengePurposeLogin, Origin: "https://gofer.example", Lifetime: maximumPreAuthLifetime + time.Second},
-		{Purpose: ChallengePurposeLogin, Origin: "https://gofer.example", MaxAttempts: maximumPreAuthAttempts + 1},
+		{Purpose: ChallengePurpose("unknown"), Origin: "https://raven.example"},
+		{Purpose: ChallengePurposeLogin, Origin: "https://raven.example/path"},
+		{Purpose: ChallengePurposeLogin, Origin: "javascript://raven.example"},
+		{Purpose: ChallengePurposeLogin, Origin: "https://raven.example", Lifetime: maximumPreAuthLifetime + time.Second},
+		{Purpose: ChallengePurposeLogin, Origin: "https://raven.example", MaxAttempts: maximumPreAuthAttempts + 1},
 	}
 	for _, options := range tests {
 		if challenge, err := manager.CreatePreAuthChallenge(t.Context(), options); err == nil || challenge != nil {
@@ -126,13 +126,13 @@ func TestGetActivePreAuthChallengeRequiresMatchingLiveFlow(t *testing.T) {
 	})
 	challenge, err := manager.CreatePreAuthChallenge(t.Context(), PreAuthChallengeOptions{
 		Purpose:  ChallengePurposeMFA,
-		Origin:   "https://gofer.example",
+		Origin:   "https://raven.example",
 		Lifetime: time.Minute,
 	})
 	if err != nil {
 		t.Fatalf("CreatePreAuthChallenge() error = %v", err)
 	}
-	found, err := manager.GetActivePreAuthChallenge(t.Context(), challenge.Token, ChallengePurposeMFA, "https://gofer.example")
+	found, err := manager.GetActivePreAuthChallenge(t.Context(), challenge.Token, ChallengePurposeMFA, "https://raven.example")
 	if err != nil || found == nil || found.ID != challenge.ID {
 		t.Fatalf("GetActivePreAuthChallenge() = %#v, %v", found, err)
 	}
@@ -141,8 +141,8 @@ func TestGetActivePreAuthChallengeRequiresMatchingLiveFlow(t *testing.T) {
 		purpose ChallengePurpose
 		origin  string
 	}{
-		{token: "wrong-token", purpose: ChallengePurposeMFA, origin: "https://gofer.example"},
-		{token: challenge.Token, purpose: ChallengePurposeLogin, origin: "https://gofer.example"},
+		{token: "wrong-token", purpose: ChallengePurposeMFA, origin: "https://raven.example"},
+		{token: challenge.Token, purpose: ChallengePurposeLogin, origin: "https://raven.example"},
 		{token: challenge.Token, purpose: ChallengePurposeMFA, origin: "https://other.example"},
 	} {
 		if found, err := manager.GetActivePreAuthChallenge(t.Context(), lookup.token, lookup.purpose, lookup.origin); err != nil || found != nil {
@@ -150,7 +150,7 @@ func TestGetActivePreAuthChallengeRequiresMatchingLiveFlow(t *testing.T) {
 		}
 	}
 	clock.now = challenge.ExpiresAt
-	if found, err := manager.GetActivePreAuthChallenge(t.Context(), challenge.Token, ChallengePurposeMFA, "https://gofer.example"); err != nil || found != nil {
+	if found, err := manager.GetActivePreAuthChallenge(t.Context(), challenge.Token, ChallengePurposeMFA, "https://raven.example"); err != nil || found != nil {
 		t.Fatalf("expired GetActivePreAuthChallenge() = %#v, %v", found, err)
 	}
 }
@@ -169,7 +169,7 @@ func TestPreAuthChallengeSessionBindingRequiresActiveOwningSession(t *testing.T)
 	}
 
 	challenge, err := manager.CreatePreAuthChallenge(t.Context(), PreAuthChallengeOptions{
-		SessionID: session.ID, Purpose: ChallengePurposeStepUp, Origin: "https://gofer.example",
+		SessionID: session.ID, Purpose: ChallengePurposeStepUp, Origin: "https://raven.example",
 	})
 	if err != nil {
 		t.Fatalf("CreatePreAuthChallenge() error = %v", err)
@@ -178,7 +178,7 @@ func TestPreAuthChallengeSessionBindingRequiresActiveOwningSession(t *testing.T)
 		t.Fatalf("inferred challenge binding = user:%q session:%q", challenge.UserID, challenge.SessionID)
 	}
 	if challenge, err := manager.CreatePreAuthChallenge(t.Context(), PreAuthChallengeOptions{
-		UserID: "user-two", SessionID: session.ID, Purpose: ChallengePurposeStepUp, Origin: "https://gofer.example",
+		UserID: "user-two", SessionID: session.ID, Purpose: ChallengePurposeStepUp, Origin: "https://raven.example",
 	}); !errors.Is(err, ErrSessionNotActive) || challenge != nil {
 		t.Fatalf("cross-user session binding = %#v, %v", challenge, err)
 	}
@@ -190,7 +190,7 @@ func TestPreAuthChallengeSessionBindingRequiresActiveOwningSession(t *testing.T)
 		t.Fatalf("revoke session: %v", err)
 	}
 	if challenge, err := manager.CreatePreAuthChallenge(t.Context(), PreAuthChallengeOptions{
-		SessionID: session.ID, Purpose: ChallengePurposeStepUp, Origin: "https://gofer.example",
+		SessionID: session.ID, Purpose: ChallengePurposeStepUp, Origin: "https://raven.example",
 	}); !errors.Is(err, ErrSessionNotActive) || challenge != nil {
 		t.Fatalf("revoked session binding = %#v, %v", challenge, err)
 	}
@@ -202,7 +202,7 @@ func TestConcurrentPreAuthConsumptionSucceedsOnce(t *testing.T) {
 		ids: []string{"challenge-id"}, tokens: []string{"challenge-token"},
 	})
 	challenge, err := manager.CreatePreAuthChallenge(t.Context(), PreAuthChallengeOptions{
-		Purpose: ChallengePurposeStepUp, Origin: "https://gofer.example",
+		Purpose: ChallengePurposeStepUp, Origin: "https://raven.example",
 	})
 	if err != nil {
 		t.Fatalf("CreatePreAuthChallenge() error = %v", err)
@@ -249,7 +249,7 @@ func TestPreAuthCleanupUsesBoundedBatches(t *testing.T) {
 		if _, err := tx.ExecContext(t.Context(), `
 			INSERT INTO auth_challenges (
 				id, challenge_hash, purpose, origin, attempts, max_attempts, created_at, expires_at
-			) VALUES (?, ?, 'login', 'https://gofer.example', 0, 1, ?, ?)`,
+			) VALUES (?, ?, 'login', 'https://raven.example', 0, 1, ?, ?)`,
 			value, hashToken(value), now.Add(-time.Hour), now.Add(-time.Second)); err != nil {
 			_ = tx.Rollback()
 			t.Fatalf("insert expired challenge %d: %v", i, err)

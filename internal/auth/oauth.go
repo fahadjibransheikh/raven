@@ -25,7 +25,7 @@ import (
 const (
 	googleLoginIssuer              = "https://accounts.google.com"
 	googleLoginDraftVersion        = 1
-	googleLoginDraftKey            = "gofer/auth/google-login-draft/v1"
+	googleLoginDraftKey            = "raven/auth/google-login-draft/v1"
 	googleLoginCallbackPath        = "/auth/google/login/callback"
 	maximumGoogleIDTokenLength     = 64 * 1024
 	maximumGoogleIdentityFieldSize = 8 * 1024

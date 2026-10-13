@@ -1,6 +1,6 @@
 # Embedded Password Blocklist
 
-Gofer's offline password-establishment policy derives its blocklist from:
+Raven's offline password-establishment policy derives its blocklist from:
 
 - SecLists file: `Passwords/Common-Credentials/100k-most-used-passwords-NCSC.txt`
 - SecLists commit: `bfa9146e6d9d3ebb3d5d4a8096c60182da009204`

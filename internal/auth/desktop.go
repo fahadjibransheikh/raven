@@ -15,7 +15,7 @@ import (
 
 // The desktop gate protects no-login (open mode) installs that the Tauri
 // wrapper runs on loopback. Without it any local process can read and send mail
-// with `curl -H 'X-Gofer-Request: 1' 127.0.0.1:8090`. The wrapper generates a
+// with `curl -H 'X-Raven-Request: 1' 127.0.0.1:8090`. The wrapper generates a
 // random token per launch, hands it to the sidecar in RAVEN_DESKTOP_TOKEN and
 // navigates its webview to /desktop-auth?t=<token>, which trades the token for
 // an HttpOnly cookie. It is inert unless the variable is set and the instance
@@ -25,7 +25,7 @@ const (
 	desktopCookieName   = "raven_desktop"
 	desktopMarkerKey    = "X-Raven-Desktop"
 	desktopGrantPrefix  = "d."
-	desktopGrantLabel   = "gofer-desktop-image-grant-v1"
+	desktopGrantLabel   = "raven-desktop-image-grant-v1"
 	messageFileGatePath = "/api/message-file/"
 )
 

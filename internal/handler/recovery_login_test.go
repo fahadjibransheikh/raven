@@ -27,7 +27,7 @@ func completedSetupWithRecoveryCode(t *testing.T) (*auth.Manager, *storage.DB, h
 	if len(matches) != 10 {
 		t.Fatalf("rendered setup recovery codes = %d, want 10", len(matches))
 	}
-	state, err := manager.GetSetupOwnerState(t.Context(), setupCookie.Value, "https://gofer.example")
+	state, err := manager.GetSetupOwnerState(t.Context(), setupCookie.Value, "https://raven.example")
 	if err != nil || state == nil || state.Draft == nil {
 		t.Fatalf("setup recovery state = %#v, %v", state, err)
 	}
@@ -52,7 +52,7 @@ func startOwnerPasswordMFA(t *testing.T, stack http.Handler, cookies ...*http.Co
 	}
 	request := httptest.NewRequest(http.MethodPost, "/admin/login", strings.NewReader(form.Encode()))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Origin", "https://gofer.example")
+	request.Header.Set("Origin", "https://raven.example")
 	request.Header.Set("User-Agent", "Recovery Flow Browser/1.0")
 	request.RemoteAddr = "198.51.100.91:51230"
 	for _, cookie := range cookies {
@@ -66,7 +66,7 @@ func startOwnerPasswordMFA(t *testing.T, stack http.Handler, cookies ...*http.Co
 func postRecoveryRoute(stack http.Handler, path string, cookie *http.Cookie, values url.Values, otherCookies ...*http.Cookie) *httptest.ResponseRecorder {
 	request := httptest.NewRequest(http.MethodPost, path, strings.NewReader(values.Encode()))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Origin", "https://gofer.example")
+	request.Header.Set("Origin", "https://raven.example")
 	request.Header.Set("User-Agent", "Recovery Flow Browser/1.0")
 	request.RemoteAddr = "198.51.100.91:51230"
 	if cookie != nil {
@@ -135,7 +135,7 @@ func TestRecoveryCodeLoginRequiresFactorRepairBeforeIssuingSession(t *testing.T)
 		!strings.Contains(mfaPage.Body.String(), "data:image/png;base64,") || strings.Contains(mfaPage.Body.String(), "https://") {
 		t.Fatalf("repair MFA page = %d %q", mfaPage.Code, mfaPage.Body.String())
 	}
-	repairState, err := manager.GetRecoveryRepairState(t.Context(), repairCookie.Value, "https://gofer.example")
+	repairState, err := manager.GetRecoveryRepairState(t.Context(), repairCookie.Value, "https://raven.example")
 	if err != nil || repairState == nil || repairState.Enrollment == nil {
 		t.Fatalf("repair state = %#v, %v", repairState, err)
 	}
@@ -162,7 +162,7 @@ func TestRecoveryCodeLoginRequiresFactorRepairBeforeIssuingSession(t *testing.T)
 		!strings.Contains(refreshed.Body.String(), "already shown") {
 		t.Fatalf("refreshed recovery-code page = %d %q", refreshed.Code, refreshed.Body.String())
 	}
-	repairState, err = manager.GetRecoveryRepairState(t.Context(), repairCookie.Value, "https://gofer.example")
+	repairState, err = manager.GetRecoveryRepairState(t.Context(), repairCookie.Value, "https://raven.example")
 	if err != nil || !repairState.RecoveryGenerated || repairState.RecoveryBatchID == "" {
 		t.Fatalf("generated repair state = %#v, %v", repairState, err)
 	}
@@ -195,7 +195,7 @@ func TestRecoveryCodeSubmissionIsOriginProtectedAndBounded(t *testing.T) {
 	}
 	handler := &Handler{db: db, auth: manager}
 	t.Setenv("RAVEN_ADDR", "127.0.0.1:8090")
-	t.Setenv("RAVEN_BASE_URL", "https://gofer.example")
+	t.Setenv("RAVEN_BASE_URL", "https://raven.example")
 	t.Setenv("RAVEN_ALLOW_UNAUTHENTICATED_REMOTE", "")
 	guard, err := httpguard.LoadConfig()
 	if err != nil {
@@ -203,7 +203,7 @@ func TestRecoveryCodeSubmissionIsOriginProtectedAndBounded(t *testing.T) {
 	}
 	form := url.Values{"code": {recoveryCode}}
 	request := httptest.NewRequest(http.MethodPost, "/login/mfa/recovery", strings.NewReader(form.Encode()))
-	request.Host = "gofer.example"
+	request.Host = "raven.example"
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Origin", "https://attacker.example")
 	request.AddCookie(mfaCookie)

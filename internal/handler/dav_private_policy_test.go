@@ -44,7 +44,7 @@ func useDAVMode(t *testing.T, mode auth.Mode, admin netguard.PrivatePolicy) {
 			t.Fatal(err)
 		}
 		t.Cleanup(func() { _ = db.Close() })
-		h.auth = auth.NewManager(&auth.Config{Mode: mode, BaseURL: "https://gofer.example"}, db)
+		h.auth = auth.NewManager(&auth.Config{Mode: mode, BaseURL: "https://raven.example"}, db)
 	}
 	previousPolicy, previousMode := davPrivateTargetPolicy.Load(), davOperatorOwnsNetwork.Load()
 	t.Cleanup(func() { davPrivateTargetPolicy.Store(previousPolicy); davOperatorOwnsNetwork.Store(previousMode) })

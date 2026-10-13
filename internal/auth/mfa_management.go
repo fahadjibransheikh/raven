@@ -24,7 +24,7 @@ const (
 	securityManagementMaxAttempts  = 5
 	securityStepUpMaximumAge       = 10 * time.Minute
 	securityManagementDraftVersion = 1
-	securityManagementDraftKey     = "gofer/auth/security-management-draft/v1"
+	securityManagementDraftKey     = "raven/auth/security-management-draft/v1"
 	securityManagementKindTOTP     = "totp_management"
 	securityManagementKindRecovery = "recovery_replacement"
 )

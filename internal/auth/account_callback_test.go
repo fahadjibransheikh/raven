@@ -38,7 +38,7 @@ func TestOnlyProviderPushWebhooksArePublic(t *testing.T) {
 
 func newAccountOAuthFlowTestManager(t *testing.T, enabled bool) (*Manager, *storage.DB) {
 	t.Helper()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}
@@ -47,7 +47,7 @@ func newAccountOAuthFlowTestManager(t *testing.T, enabled bool) (*Manager, *stor
 }
 
 func TestSingleUserMiddlewareStillProvidesDefaultUserToAccountCallback(t *testing.T) {
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}

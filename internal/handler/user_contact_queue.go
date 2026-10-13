@@ -28,7 +28,7 @@ func (h *Handler) handleUserSyncContactNow(w http.ResponseWriter, r *http.Reques
 		http.NotFound(w, r)
 		return
 	}
-	if !contact.GoferSyncEnabled {
+	if !contact.RavenSyncEnabled {
 		http.Error(w, "Raven Sync is disabled for this contact", http.StatusConflict)
 		return
 	}

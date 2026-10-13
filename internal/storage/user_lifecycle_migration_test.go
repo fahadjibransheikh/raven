@@ -8,7 +8,7 @@ import (
 )
 
 func TestMigrateV76AddsUserLifecycleFields(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "gofer.db")
+	path := filepath.Join(t.TempDir(), "raven.db")
 	raw, err := openDB(path)
 	if err != nil {
 		t.Fatalf("openDB() error = %v", err)
@@ -69,7 +69,7 @@ func TestMigrateV76AddsUserLifecycleFields(t *testing.T) {
 }
 
 func TestMigrateV76RollsBackNormalizedEmailCollision(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "gofer.db")
+	path := filepath.Join(t.TempDir(), "raven.db")
 	raw, err := openDB(path)
 	if err != nil {
 		t.Fatalf("openDB() error = %v", err)

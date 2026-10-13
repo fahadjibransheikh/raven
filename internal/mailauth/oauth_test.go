@@ -55,10 +55,10 @@ func TestMicrosoftAccountInfoFromIDTokenRejectsAudienceMismatch(t *testing.T) {
 
 func TestMicrosoftAccountOAuthURLForcesConsentForContacts(t *testing.T) {
 	manager := New(&Config{
-		BaseURL: "https://gofer.example",
+		BaseURL: "https://raven.example",
 		MicrosoftClient: &oauth2.Config{
 			ClientID:    "client-id",
-			RedirectURL: "https://gofer.example/auth/microsoft/mailbox/callback",
+			RedirectURL: "https://raven.example/auth/microsoft/mailbox/callback",
 			Scopes:      microsoftAccountTokenScopes(),
 			Endpoint:    oauth2.Endpoint{AuthURL: "https://login.example/authorize"},
 		},
@@ -109,11 +109,11 @@ func TestExchangeMicrosoftAccountCodeRequestsGraphMailScopes(t *testing.T) {
 	defer server.Close()
 
 	manager := New(&Config{
-		BaseURL: "https://gofer.example",
+		BaseURL: "https://raven.example",
 		MicrosoftClient: &oauth2.Config{
 			ClientID:     "client-id",
 			ClientSecret: "client-secret",
-			RedirectURL:  "https://gofer.example/auth/microsoft/mailbox/callback",
+			RedirectURL:  "https://raven.example/auth/microsoft/mailbox/callback",
 			Endpoint:     oauth2.Endpoint{TokenURL: server.URL},
 		},
 	}, nil, testMailboxCredentialKey)
@@ -169,7 +169,7 @@ func TestMicrosoftPublicClientExchangesAndRefreshesWithoutSecret(t *testing.T) {
 
 	t.Setenv("MICROSOFT_OAUTH_CLIENT_ID", "public-client-id")
 	t.Setenv("MICROSOFT_OAUTH_CLIENT_SECRET", "")
-	cfg := LoadConfig("https://gofer.example", true)
+	cfg := LoadConfig("https://raven.example", true)
 	if cfg.MicrosoftClient == nil {
 		t.Fatal("Microsoft mailbox client not configured without a secret")
 	}

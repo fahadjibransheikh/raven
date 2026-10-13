@@ -25,7 +25,7 @@ function load(url) {
 
 const tick = () => new Promise(function (resolve) { setTimeout(resolve, 10) })
 
-test("ignores non-Gofer origins", () => {
+test("ignores non-Raven origins", () => {
   const { w, calls } = load("file:///placeholder/index.html")
   assert.equal(calls.length, 0)
   assert.equal(w.document.title, "Raven")

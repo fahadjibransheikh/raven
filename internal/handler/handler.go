@@ -1010,7 +1010,7 @@ func (h *Handler) handleSaveContact(w http.ResponseWriter, r *http.Request) {
 	}
 	setupRequired := contactSyncSetupRequired(contact, previous)
 	if setupRequired {
-		contact.GoferSyncEnabled = false
+		contact.RavenSyncEnabled = false
 	}
 	if !setupRequired {
 		if err := h.preflightNewContactSyncTargets(ctx, userID, contact, previous); err != nil {
@@ -1076,7 +1076,7 @@ func contactFromForm(r *http.Request, targets []string) (models.Contact, error) 
 		Organization:          strings.TrimSpace(r.FormValue("organization")),
 		Title:                 strings.TrimSpace(r.FormValue("title")),
 		Notes:                 strings.TrimSpace(r.FormValue("notes")),
-		GoferSyncEnabled:      r.FormValue("sync_enabled") == "on",
+		RavenSyncEnabled:      r.FormValue("sync_enabled") == "on",
 		SaveTargets:           targets,
 		AvatarURL:             avatarURL,
 		RemoveAvatar:          removeAvatar,
@@ -1586,8 +1586,8 @@ func safeEmailCSSColor(value, fallback string) string {
 // Only the reader's own scripts carry the response's nonce, so nothing the
 // sender wrote runs at all. The sandbox grants scripts only: no popups (the
 // reader's page opens links, see emailExternalLinksScript), no same-origin,
-// no forms. Content loads only from Gofer and embedded data: remote content
-// the reader allows comes through Gofer too, so the page never contacts the
+// no forms. Content loads only from Raven and embedded data: remote content
+// the reader allows comes through Raven too, so the page never contacts the
 // sender's servers, and fonts and media never load.
 func emailBodyDocumentPolicy(nonce string) string {
 	return "sandbox allow-scripts; default-src 'none'" +
@@ -4310,7 +4310,7 @@ func composeInlineContentID(id string) string {
 	if id == "" {
 		id = strconv.FormatInt(time.Now().UnixNano(), 36)
 	}
-	return "inline-" + id + "@gofer"
+	return "inline-" + id + "@raven"
 }
 
 func cleanContentID(cid string) string {
@@ -4844,14 +4844,14 @@ func (h *Handler) handleSyncMail(w http.ResponseWriter, r *http.Request) {
 
 	runID, started := h.syncer.SyncAccounts(context.Background(), userID, accountIDs)
 	if !started {
-		w.Header().Set("X-Gofer-Mail-Sync-Running", "true")
+		w.Header().Set("X-Raven-Mail-Sync-Running", "true")
 		htmlStatus(w, http.StatusOK, "Mail sync is already running.")
 		return
 	}
 
-	w.Header().Set("X-Gofer-Mail-Sync-Run-ID", runID)
-	w.Header().Set("X-Gofer-Mail-Sync-Accounts", strconv.Itoa(len(accountIDs)))
-	w.Header().Set("X-Gofer-Mail-Sync-Mode", "sync")
+	w.Header().Set("X-Raven-Mail-Sync-Run-ID", runID)
+	w.Header().Set("X-Raven-Mail-Sync-Accounts", strconv.Itoa(len(accountIDs)))
+	w.Header().Set("X-Raven-Mail-Sync-Mode", "sync")
 	if len(accountIDs) == 1 {
 		htmlStatus(w, http.StatusOK, "Mail sync started for 1 account.")
 		return
@@ -4887,14 +4887,14 @@ func (h *Handler) handleSyncMailAccount(w http.ResponseWriter, r *http.Request) 
 
 	runID, started := h.syncer.SyncAccounts(context.Background(), userID, []string{accountID})
 	if !started {
-		w.Header().Set("X-Gofer-Mail-Sync-Running", "true")
+		w.Header().Set("X-Raven-Mail-Sync-Running", "true")
 		htmlStatus(w, http.StatusOK, "Mail sync is already running.")
 		return
 	}
 
-	w.Header().Set("X-Gofer-Mail-Sync-Run-ID", runID)
-	w.Header().Set("X-Gofer-Mail-Sync-Accounts", "1")
-	w.Header().Set("X-Gofer-Mail-Sync-Mode", "sync")
+	w.Header().Set("X-Raven-Mail-Sync-Run-ID", runID)
+	w.Header().Set("X-Raven-Mail-Sync-Accounts", "1")
+	w.Header().Set("X-Raven-Mail-Sync-Mode", "sync")
 	htmlStatus(w, http.StatusOK, "Mail sync started for 1 account.")
 }
 
@@ -4939,14 +4939,14 @@ func (h *Handler) handleRepairMailAccount(w http.ResponseWriter, r *http.Request
 
 	runID, started := h.syncer.RepairGmailAPIAccount(context.Background(), userID, accountID)
 	if !started {
-		w.Header().Set("X-Gofer-Mail-Sync-Running", "true")
+		w.Header().Set("X-Raven-Mail-Sync-Running", "true")
 		htmlStatus(w, http.StatusOK, "Mail sync is already running.")
 		return
 	}
 
-	w.Header().Set("X-Gofer-Mail-Sync-Run-ID", runID)
-	w.Header().Set("X-Gofer-Mail-Sync-Accounts", "1")
-	w.Header().Set("X-Gofer-Mail-Sync-Mode", "repair")
+	w.Header().Set("X-Raven-Mail-Sync-Run-ID", runID)
+	w.Header().Set("X-Raven-Mail-Sync-Accounts", "1")
+	w.Header().Set("X-Raven-Mail-Sync-Mode", "repair")
 	htmlStatus(w, http.StatusOK, "Gmail repair and full resync started for 1 account.")
 }
 
@@ -6697,7 +6697,7 @@ func (h *Handler) handlePrefetchBody(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleDownloadFullBody downloads a message the reader asked to see although
-// it is larger than Gofer downloads on its own.
+// it is larger than Raven downloads on its own.
 func (h *Handler) handleDownloadFullBody(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	msgID, info, err := h.getMessageInfo(ctx, r.PathValue("id"))

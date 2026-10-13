@@ -13,7 +13,7 @@ import (
 func seedContactEditProfile(t *testing.T, accounts *UserAccountStore, owner string) {
 	t.Helper()
 	if err := accounts.WithUser(t.Context(), owner, func(_ *AccountStore, db *storage.DB) error {
-		_, err := db.SaveContact(t.Context(), owner, models.Contact{ID: "same-edit-id", Name: owner, Email: "person@example.com", Phone: owner, GoferSyncEnabled: true, SaveTargets: []string{"local", "book:" + owner + "-book"}})
+		_, err := db.SaveContact(t.Context(), owner, models.Contact{ID: "same-edit-id", Name: owner, Email: "person@example.com", Phone: owner, RavenSyncEnabled: true, SaveTargets: []string{"local", "book:" + owner + "-book"}})
 		return err
 	}); err != nil {
 		t.Fatal(err)
@@ -26,7 +26,7 @@ func TestUserContactEditOwnerBindingAndCacheEviction(t *testing.T) {
 	for _, owner := range []string{"alice", "bob"} {
 		seedContactEditProfile(t, accounts, owner)
 		var err error
-		snapshots[owner], err = accounts.SnapshotContactEdit(t.Context(), owner, models.Contact{ID: "same-edit-id", Email: "person@example.com", Name: owner, Phone: owner + "-updated", GoferSyncEnabled: true, SaveTargets: []string{"local", "book:" + owner + "-book"}})
+		snapshots[owner], err = accounts.SnapshotContactEdit(t.Context(), owner, models.Contact{ID: "same-edit-id", Email: "person@example.com", Name: owner, Phone: owner + "-updated", RavenSyncEnabled: true, SaveTargets: []string{"local", "book:" + owner + "-book"}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -75,7 +75,7 @@ func TestUserContactEditRechecksLifecycleAndServicesAfterWriterWait(t *testing.T
 		t.Run(change, func(t *testing.T) {
 			system, routing, accounts, owners := newServiceAccountFixture(t)
 			seedContactEditProfile(t, accounts, "alice")
-			snapshot, err := accounts.SnapshotContactEdit(t.Context(), "alice", models.Contact{ID: "same-edit-id", Email: "person@example.com", Phone: "late", GoferSyncEnabled: true, SaveTargets: []string{"book:alice-book"}})
+			snapshot, err := accounts.SnapshotContactEdit(t.Context(), "alice", models.Contact{ID: "same-edit-id", Email: "person@example.com", Phone: "late", RavenSyncEnabled: true, SaveTargets: []string{"book:alice-book"}})
 			if err != nil {
 				t.Fatal(err)
 			}

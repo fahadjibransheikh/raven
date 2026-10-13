@@ -16,7 +16,7 @@ import (
 )
 
 const ownedPreviewID = "b7931511-7c6a-4ce8-8d1a-5239ba410589"
-const ownedPreviewProperty = "String {534725f9-4d8e-4616-a2ea-3b020983e0c8} Name GoferTeamsDraft"
+const ownedPreviewProperty = "String {534725f9-4d8e-4616-a2ea-3b020983e0c8} Name RavenTeamsDraft"
 const ownedPreviewMeet = `{"conferenceId":"abc-defg-hij","signature":"private-signature","entryPoints":[{"entryPointType":"video","uri":"https://meet.google.com/abc-defg-hij"}]}`
 const ownedPreviewTeams = "https://teams.microsoft.com/l/meetup-join/test/0"
 

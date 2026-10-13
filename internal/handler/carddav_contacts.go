@@ -202,7 +202,7 @@ func (h *Handler) handleSaveAccountContactSync(w http.ResponseWriter, r *http.Re
 		htmlStatus(w, http.StatusInternalServerError, "Could not save contact sync settings.")
 		return
 	}
-	w.Header().Set("X-Gofer-Contact-Sync-Enabled", strconv.FormatBool(cfg.Enabled))
+	w.Header().Set("X-Raven-Contact-Sync-Enabled", strconv.FormatBool(cfg.Enabled))
 	if !cfg.Enabled {
 		htmlStatus(w, http.StatusOK, "Contact sync is disabled for this account.")
 		return
@@ -219,8 +219,8 @@ func (h *Handler) handleSaveAccountContactSync(w http.ResponseWriter, r *http.Re
 
 func htmlContactSyncSaved(w http.ResponseWriter, accountID string, cfg models.ContactSyncConfig) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("X-Gofer-Status", "ok")
-	w.Header().Set("X-Gofer-Contact-Sync-Enabled", strconv.FormatBool(cfg.Enabled))
+	w.Header().Set("X-Raven-Status", "ok")
+	w.Header().Set("X-Raven-Contact-Sync-Enabled", strconv.FormatBool(cfg.Enabled))
 	w.WriteHeader(http.StatusOK)
 	books := contactSyncSelectedBooks(cfg.AddressBooks)
 	defaultBook := contactSyncDefaultBook(books)

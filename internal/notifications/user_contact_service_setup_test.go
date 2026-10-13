@@ -96,7 +96,7 @@ func TestUserContactServiceSetupSaveAndToggleOwnedStateAndWake(t *testing.T) {
 	form.Set("username", "ignored-submitted-name")
 	form.Set("use_account_credentials", "1")
 	response := f.request("alice", "POST", "/api/accounts/"+id+"/contacts/sync", form.Encode())
-	if response.Code != 200 || response.Header().Get("X-Gofer-Contact-Sync-Enabled") != "true" || !strings.Contains(response.Body.String(), "saved and verified") {
+	if response.Code != 200 || response.Header().Get("X-Raven-Contact-Sync-Enabled") != "true" || !strings.Contains(response.Body.String(), "saved and verified") {
 		t.Fatalf("save: %d %s", response.Code, response.Body.String())
 	}
 	saved, err := f.accountStore.SnapshotServices(t.Context(), "alice", id)
@@ -152,7 +152,7 @@ func TestUserContactServiceSetupSaveAndToggleOwnedStateAndWake(t *testing.T) {
 		t.Fatal("Alice settings changed Bob", err)
 	}
 	response = f.request("alice", "POST", "/api/accounts/"+id+"/contacts/sync", "")
-	if response.Code != 200 || response.Header().Get("X-Gofer-Contact-Sync-Enabled") != "false" || fake.calls.Load() != calls {
+	if response.Code != 200 || response.Header().Get("X-Raven-Contact-Sync-Enabled") != "false" || fake.calls.Load() != calls {
 		t.Fatal("disabled save contacted provider", response.Code)
 	}
 	var count int
@@ -171,7 +171,7 @@ func TestUserContactServiceSetupSaveFailureAndWakeFailureAreDistinct(t *testing.
 	form, _ := url.ParseQuery(ownedDAVForm(server, "alice"))
 	form.Set("password", "wrong-secret")
 	response := f.request("alice", "POST", "/api/accounts/"+id+"/contacts/sync", form.Encode())
-	if response.Code != http.StatusOK || response.Header().Get("X-Gofer-Status") != "error" || !strings.Contains(response.Body.String(), "could not connect") {
+	if response.Code != http.StatusOK || response.Header().Get("X-Raven-Status") != "error" || !strings.Contains(response.Body.String(), "could not connect") {
 		t.Fatalf("provider failure: %d %s", response.Code, response.Body.String())
 	}
 	if err := f.accountStore.ValidateContactServices(t.Context(), before); err != nil {
@@ -183,7 +183,7 @@ func TestUserContactServiceSetupSaveFailureAndWakeFailureAreDistinct(t *testing.
 	form.Del("password")
 	form.Set("addressbook_name", "committed before wake")
 	response = f.request("alice", "POST", "/api/accounts/"+id+"/contacts/sync", form.Encode())
-	if response.Code != http.StatusOK || response.Header().Get("X-Gofer-Status") != "error" || !strings.Contains(response.Body.String(), "settings saved") {
+	if response.Code != http.StatusOK || response.Header().Get("X-Raven-Status") != "error" || !strings.Contains(response.Body.String(), "settings saved") {
 		t.Fatalf("save wake failure: %d %s", response.Code, response.Body.String())
 	}
 	saved, err := f.accountStore.SnapshotServices(t.Context(), "alice", id)
@@ -513,8 +513,8 @@ func TestUserContactServiceSetupRejectsInvalidFormsWithoutProviderCalls(t *testi
 		if tc.suffix == "test" {
 			// HTMX connection-test errors retain the existing 200/error-header
 			// contract so the inline settings result can be rendered.
-			if response.Code != http.StatusOK || response.Header().Get("X-Gofer-Status") != "error" {
-				t.Fatalf("invalid test: %d status=%s", response.Code, response.Header().Get("X-Gofer-Status"))
+			if response.Code != http.StatusOK || response.Header().Get("X-Raven-Status") != "error" {
+				t.Fatalf("invalid test: %d status=%s", response.Code, response.Header().Get("X-Raven-Status"))
 			}
 		} else if response.Code != http.StatusBadRequest {
 			t.Fatalf("invalid %s: %d", tc.suffix, response.Code)

@@ -40,7 +40,7 @@ func (t ownedMailCalendarTransport) RoundTrip(r *http.Request) (*http.Response, 
 }
 
 func ownedMailCalendarMIME(owner, address string) string {
-	return "Message-ID: <" + owner + "-invitation@example.com>\r\nSubject: Invitation\r\nFrom: Organizer <organizer@example.com>\r\nTo: " + address + "\r\nMIME-Version: 1.0\r\nContent-Type: text/calendar; method=REQUEST; charset=utf-8\r\n\r\nBEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Gofer//Test//EN\r\nMETHOD:REQUEST\r\nBEGIN:VEVENT\r\nUID:private-uid\r\nDTSTART:20261003T100000Z\r\nDTEND:20261003T110000Z\r\nSUMMARY:" + owner + " mail invitation\r\nORGANIZER:mailto:organizer@example.com\r\nATTENDEE;PARTSTAT=NEEDS-ACTION:mailto:" + address + "\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+	return "Message-ID: <" + owner + "-invitation@example.com>\r\nSubject: Invitation\r\nFrom: Organizer <organizer@example.com>\r\nTo: " + address + "\r\nMIME-Version: 1.0\r\nContent-Type: text/calendar; method=REQUEST; charset=utf-8\r\n\r\nBEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Raven//Test//EN\r\nMETHOD:REQUEST\r\nBEGIN:VEVENT\r\nUID:private-uid\r\nDTSTART:20261003T100000Z\r\nDTEND:20261003T110000Z\r\nSUMMARY:" + owner + " mail invitation\r\nORGANIZER:mailto:organizer@example.com\r\nATTENDEE;PARTSTAT=NEEDS-ACTION:mailto:" + address + "\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
 }
 
 func newOwnedMailCalendarFixture(t *testing.T, provider string, cached bool, before func(*http.Request)) (*userStorageFixture, *atomic.Int32) {

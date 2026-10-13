@@ -6,7 +6,7 @@ import (
 )
 
 func TestMigrateV86SeparatesManagementAndWebmailUsers(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "gofer.db")
+	path := filepath.Join(t.TempDir(), "raven.db")
 	raw, err := openDB(path)
 	if err != nil {
 		t.Fatal(err)
@@ -78,7 +78,7 @@ func TestMigrateV86SeparatesManagementAndWebmailUsers(t *testing.T) {
 }
 
 func TestSeparatedUserSchemaRejectsNewMixedAccountsAndManagementMailboxes(t *testing.T) {
-	db, err := New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatal(err)
 	}

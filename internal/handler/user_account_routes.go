@@ -126,12 +126,12 @@ func (h *Handler) handleUserCreateAccount(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		var pending *config.PendingAccountCreationError
 		if errors.As(err, &pending) {
-			w.Header().Set("X-Gofer-Account-ID", pending.AccountID)
+			w.Header().Set("X-Raven-Account-ID", pending.AccountID)
 		}
 		userAccountError(w, r, err)
 		return
 	}
-	w.Header().Set("X-Gofer-Account-ID", account.ID)
+	w.Header().Set("X-Raven-Account-ID", account.ID)
 	if err := h.userStorage.WithAccountActivityForUser(r.Context(), h.userID(r.Context()), account.ID, func() error {
 		return h.userAccountHooks.Created(r.Context(), account.ID)
 	}); err != nil {
@@ -176,7 +176,7 @@ func (h *Handler) handleUserUpdateAccount(w http.ResponseWriter, r *http.Request
 			userAccountError(w, r, err)
 			return
 		}
-		w.Header().Set("X-Gofer-Account-ID", id)
+		w.Header().Set("X-Raven-Account-ID", id)
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		_ = views.AccountChangesSaved().Render(r.Context(), w)
 		return
@@ -193,7 +193,7 @@ func (h *Handler) handleUserUpdateAccount(w http.ResponseWriter, r *http.Request
 		userAccountError(w, r, err)
 		return
 	}
-	w.Header().Set("X-Gofer-Account-ID", id)
+	w.Header().Set("X-Raven-Account-ID", id)
 	if err := h.userStorage.WithAccountActivityForUser(r.Context(), owner, id, func() error {
 		return h.userAccountHooks.Updated(r.Context(), id)
 	}); err != nil {
@@ -335,4 +335,4 @@ func userAccountError(w http.ResponseWriter, r *http.Request, err error) {
 }
 
 // accountReconnectHeader marks responses whose account must be reconnected.
-const accountReconnectHeader = "X-Gofer-Account-Reconnect"
+const accountReconnectHeader = "X-Raven-Account-Reconnect"

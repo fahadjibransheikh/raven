@@ -33,7 +33,7 @@ func oidcLoginHandlerStack(
 	oauthClient *http.Client,
 ) (*auth.Manager, *storage.DB, http.Handler, *handlerOIDCIDTokenVerifier) {
 	t.Helper()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,11 +43,11 @@ func oidcLoginHandlerStack(
 		EmailVerified: true, Name: "Person",
 	}}
 	manager := auth.NewManager(&auth.Config{
-		Enabled: true, BaseURL: "https://gofer.example", SecureCookies: true,
+		Enabled: true, BaseURL: "https://raven.example", SecureCookies: true,
 		OIDCLoginIssuer: handlerOIDCIssuer, OIDCLoginName: "Company SSO",
 		OIDCLoginClient: &oauth2.Config{
 			ClientID: "oidc-login-client", ClientSecret: "oidc-login-secret",
-			RedirectURL: "https://gofer.example/auth/oidc/callback",
+			RedirectURL: "https://raven.example/auth/oidc/callback",
 			Endpoint: oauth2.Endpoint{
 				AuthURL: "https://identity.example/authorize", TokenURL: tokenURL,
 			},
@@ -59,7 +59,7 @@ func oidcLoginHandlerStack(
 	if _, err := db.Write().ExecContext(t.Context(), `
 		INSERT INTO users (
 			id, username, username_normalized, name, status, auth_version, created_at, updated_at
-		) VALUES ('person', 'person', 'person', 'Gofer Person', 'active', 1, ?, ?);`,
+		) VALUES ('person', 'person', 'person', 'Raven Person', 'active', 1, ?, ?);`,
 		now, now,
 	); err != nil {
 		t.Fatal(err)
@@ -112,7 +112,7 @@ func beginOIDCHandlerLogin(t *testing.T, stack http.Handler) (*http.Cookie, stri
 	return nil, "", ""
 }
 
-func TestOIDCApplicationLoginHandlerCreatesOnlyGoferSession(t *testing.T) {
+func TestOIDCApplicationLoginHandlerCreatesOnlyRavenSession(t *testing.T) {
 	exchanges := 0
 	provider := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		exchanges++
@@ -133,7 +133,7 @@ func TestOIDCApplicationLoginHandlerCreatesOnlyGoferSession(t *testing.T) {
 	callback := httptest.NewRequest(
 		http.MethodGet, "/auth/oidc/callback?state="+url.QueryEscape(state)+"&code=authorization-code", nil,
 	)
-	callback.Host = "gofer.example"
+	callback.Host = "raven.example"
 	callback.AddCookie(preAuthCookie)
 	recorder := httptest.NewRecorder()
 	stack.ServeHTTP(recorder, callback)
@@ -190,7 +190,7 @@ func TestOIDCCallbackDoesNotReflectProviderError(t *testing.T) {
 		http.MethodGet,
 		"/auth/oidc/callback?state="+url.QueryEscape(state)+"&error="+url.QueryEscape("private provider detail"), nil,
 	)
-	callback.Host = "gofer.example"
+	callback.Host = "raven.example"
 	callback.AddCookie(preAuthCookie)
 	recorder := httptest.NewRecorder()
 	stack.ServeHTTP(recorder, callback)
@@ -203,19 +203,19 @@ func TestOIDCCallbackDoesNotReflectProviderError(t *testing.T) {
 }
 
 func TestOIDCLoginRoutesAreUnavailableWithoutApplicationLoginClient(t *testing.T) {
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	manager := auth.NewManager(&auth.Config{Enabled: true, BaseURL: "https://gofer.example"}, db)
+	manager := auth.NewManager(&auth.Config{Enabled: true, BaseURL: "https://raven.example"}, db)
 	h := &Handler{db: db, auth: manager}
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 	stack := manager.Middleware(mux)
 	for _, target := range []string{"/auth/oidc", "/auth/oidc/callback?state=unused&code=unused"} {
 		req := httptest.NewRequest(http.MethodGet, target, nil)
-		req.Host = "gofer.example"
+		req.Host = "raven.example"
 		recorder := httptest.NewRecorder()
 		stack.ServeHTTP(recorder, req)
 		if recorder.Code != http.StatusNotFound {

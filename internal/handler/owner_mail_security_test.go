@@ -27,7 +27,7 @@ func TestPersonalOwnerManagesMailSecurityExceptions(t *testing.T) {
 		ON CONFLICT(id) DO UPDATE SET initialized = 1, owner_user_id = 'default', initialized_at = excluded.initialized_at`, now); err != nil {
 		t.Fatal(err)
 	}
-	manager := auth.NewManager(&auth.Config{Enabled: true, Mode: auth.ModePersonal, BaseURL: "https://gofer.example"}, db,
+	manager := auth.NewManager(&auth.Config{Enabled: true, Mode: auth.ModePersonal, BaseURL: "https://raven.example"}, db,
 		auth.Dependencies{BucketHashKey: []byte("personal-mail-security-test-key!")})
 	handler.auth = manager
 	mux := http.NewServeMux()
@@ -123,7 +123,7 @@ func TestPersonalOwnerManagesMailSecurityExceptions(t *testing.T) {
 // In managed mode, exceptions are an administrator's decision.
 func TestOwnerMailSecurityRoutesAreClosedInManagedMode(t *testing.T) {
 	handler, db := newAccountOwnershipTestHandler(t)
-	handler.auth = auth.NewManager(&auth.Config{Enabled: true, Mode: auth.ModeManaged, BaseURL: "https://gofer.example"}, db)
+	handler.auth = auth.NewManager(&auth.Config{Enabled: true, Mode: auth.ModeManaged, BaseURL: "https://raven.example"}, db)
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, ownerMailSecurityBase+"/private-target", strings.NewReader("protocol=imap&host=10.0.0.5&port=993&acknowledge=yes"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")

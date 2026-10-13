@@ -32,7 +32,7 @@ func microsoftLoginHandlerStack(
 	tokenURL string,
 ) (*auth.Manager, *storage.DB, http.Handler, *handlerMicrosoftIDTokenVerifier) {
 	t.Helper()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,11 +43,11 @@ func microsoftLoginHandlerStack(
 		Email: "person@microsoft.example", Name: "Person",
 	}}
 	manager := auth.NewManager(&auth.Config{
-		Enabled: true, BaseURL: "https://gofer.example", SecureCookies: true,
+		Enabled: true, BaseURL: "https://raven.example", SecureCookies: true,
 		MicrosoftLoginTenant: "common",
 		MicrosoftLoginClient: &oauth2.Config{
 			ClientID: "microsoft-login-client", ClientSecret: "microsoft-login-secret",
-			RedirectURL: "https://gofer.example/auth/microsoft/login/callback",
+			RedirectURL: "https://raven.example/auth/microsoft/login/callback",
 			Endpoint: oauth2.Endpoint{
 				AuthURL: "https://login.example/authorize", TokenURL: tokenURL,
 			},
@@ -59,7 +59,7 @@ func microsoftLoginHandlerStack(
 	if _, err := db.Write().ExecContext(t.Context(), `
 		INSERT INTO users (
 			id, username, username_normalized, name, status, auth_version, created_at, updated_at
-		) VALUES ('person', 'person', 'person', 'Gofer Person', 'active', 1, ?, ?);`,
+		) VALUES ('person', 'person', 'person', 'Raven Person', 'active', 1, ?, ?);`,
 		now, now,
 	); err != nil {
 		t.Fatal(err)
@@ -104,7 +104,7 @@ func beginMicrosoftHandlerLogin(t *testing.T, stack http.Handler) (*http.Cookie,
 	return nil, "", ""
 }
 
-func TestMicrosoftApplicationLoginHandlerCreatesOnlyGoferSession(t *testing.T) {
+func TestMicrosoftApplicationLoginHandlerCreatesOnlyRavenSession(t *testing.T) {
 	exchanges := 0
 	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		exchanges++
@@ -125,7 +125,7 @@ func TestMicrosoftApplicationLoginHandlerCreatesOnlyGoferSession(t *testing.T) {
 	callback := httptest.NewRequest(
 		http.MethodGet, "/auth/microsoft/login/callback?state="+url.QueryEscape(state)+"&code=authorization-code", nil,
 	)
-	callback.Host = "gofer.example"
+	callback.Host = "raven.example"
 	callback.AddCookie(preAuthCookie)
 	recorder := httptest.NewRecorder()
 	stack.ServeHTTP(recorder, callback)
@@ -182,7 +182,7 @@ func TestMicrosoftCallbackDoesNotReflectProviderError(t *testing.T) {
 		http.MethodGet,
 		"/auth/microsoft/login/callback?state="+url.QueryEscape(state)+"&error="+url.QueryEscape("private provider detail"), nil,
 	)
-	callback.Host = "gofer.example"
+	callback.Host = "raven.example"
 	callback.AddCookie(preAuthCookie)
 	recorder := httptest.NewRecorder()
 	stack.ServeHTTP(recorder, callback)
@@ -195,19 +195,19 @@ func TestMicrosoftCallbackDoesNotReflectProviderError(t *testing.T) {
 }
 
 func TestMicrosoftLoginRoutesAreUnavailableWithoutApplicationLoginClient(t *testing.T) {
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	manager := auth.NewManager(&auth.Config{Enabled: true, BaseURL: "https://gofer.example"}, db)
+	manager := auth.NewManager(&auth.Config{Enabled: true, BaseURL: "https://raven.example"}, db)
 	h := &Handler{db: db, auth: manager}
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 	stack := manager.Middleware(mux)
 	for _, target := range []string{"/auth/microsoft", "/auth/microsoft/login/callback?state=unused&code=unused"} {
 		req := httptest.NewRequest(http.MethodGet, target, nil)
-		req.Host = "gofer.example"
+		req.Host = "raven.example"
 		recorder := httptest.NewRecorder()
 		stack.ServeHTTP(recorder, req)
 		if recorder.Code != http.StatusNotFound {

@@ -305,7 +305,7 @@ func TestCalendarTeamsOptionsAreScopedAndRetryable(t *testing.T) {
 		if (tc.status == 404 || tc.source == "one-source") && calls != before {
 			t.Error("unauthorized or non-Outlook capability lookup")
 		}
-		if tc.status == 200 && w.Header().Get("X-Gofer-Calendar-Source") != tc.source {
+		if tc.status == 200 && w.Header().Get("X-Raven-Calendar-Source") != tc.source {
 			t.Error("missing source identity for stale response guard")
 		}
 	}

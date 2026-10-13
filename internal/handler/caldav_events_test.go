@@ -156,7 +156,7 @@ func TestCalDAVCalendarRefreshPreservesCacheAndAccountScope(t *testing.T) {
 			previousTransport := davHTTPTransport
 			davHTTPTransport = server.Client().Transport
 			t.Cleanup(func() { davHTTPTransport = previousTransport })
-			db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+			db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -208,8 +208,8 @@ func TestCalDAVCalendarRefreshPreservesCacheAndAccountScope(t *testing.T) {
 				return rec
 			}
 			rec := refresh()
-			if rec.Code != http.StatusOK || rec.Header().Get("X-Gofer-Status") == "error" || strings.Contains(rec.Body.String(), "data-calendar-auto-sync") || !strings.Contains(rec.Body.String(), "Synced 3 event(s)") {
-				t.Fatalf("refresh status=%d header=%s body=%s", rec.Code, rec.Header().Get("X-Gofer-Status"), rec.Body.String())
+			if rec.Code != http.StatusOK || rec.Header().Get("X-Raven-Status") == "error" || strings.Contains(rec.Body.String(), "data-calendar-auto-sync") || !strings.Contains(rec.Body.String(), "Synced 3 event(s)") {
+				t.Fatalf("refresh status=%d header=%s body=%s", rec.Code, rec.Header().Get("X-Raven-Status"), rec.Body.String())
 			}
 			start := time.Date(2026, time.September, 1, 0, 0, 0, 0, time.UTC)
 			cached, err := db.ListCalendarEvents(t.Context(), "calendar-user", start, start.AddDate(0, 1, 0))
@@ -228,7 +228,7 @@ func TestCalDAVCalendarRefreshPreservesCacheAndAccountScope(t *testing.T) {
 			}
 			responseMode.Store(1)
 			rec = refresh()
-			if rec.Header().Get("X-Gofer-Status") != "error" || !strings.Contains(rec.Body.String(), "Weekly planning") || !strings.Contains(rec.Body.String(), "Calendar refresh failed:") {
+			if rec.Header().Get("X-Raven-Status") != "error" || !strings.Contains(rec.Body.String(), "Weekly planning") || !strings.Contains(rec.Body.String(), "Calendar refresh failed:") {
 				t.Fatalf("incomplete refresh did not preserve and display cached events")
 			}
 			var state, lastError string
@@ -239,7 +239,7 @@ func TestCalDAVCalendarRefreshPreservesCacheAndAccountScope(t *testing.T) {
 			responseMode.Store(2)
 			rec = refresh()
 			cached, err = db.ListCalendarEvents(t.Context(), "calendar-user", start, start.AddDate(0, 1, 0))
-			if rec.Header().Get("X-Gofer-Status") == "error" || err != nil || len(cached) != 0 {
+			if rec.Header().Get("X-Raven-Status") == "error" || err != nil || len(cached) != 0 {
 				t.Fatalf("empty successful snapshot did not remove absent events: events=%d error=%v", len(cached), err)
 			}
 			if _, err := resolveCalDAVHref(server.URL, "https://foreign.example/calendar/"); err == nil {

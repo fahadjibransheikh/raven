@@ -1472,7 +1472,7 @@ func (h *Handler) enqueueAvatarWarmupJob(job avatarWarmupJob) bool {
 }
 
 // Avatars come from senders' servers. Opened on their own they must never run
-// as a page of Gofer, so they are sandboxed and may load nothing.
+// as a page of Raven, so they are sandboxed and may load nothing.
 const avatarContentSecurityPolicy = "default-src 'none'; script-src 'none'; object-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; sandbox"
 
 func (h *Handler) handleAvatarAttempts(w http.ResponseWriter, r *http.Request) {

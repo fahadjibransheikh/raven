@@ -157,7 +157,7 @@ func (s *Service) sendWebPush(ctx context.Context, userID string, event mail.Eve
 	payloadData := map[string]any{
 		"title":     title,
 		"body":      message,
-		"tag":       "gofer-new-mail-" + event.AccountID + "-" + event.FolderID,
+		"tag":       "raven-new-mail-" + event.AccountID + "-" + event.FolderID,
 		"folder_id": event.FolderID,
 		"url":       "/folder/" + event.FolderID,
 	}
@@ -330,7 +330,7 @@ func (s *Service) SendTestPush(ctx context.Context, userID, endpoint string) err
 	payload, err := json.Marshal(map[string]any{
 		"title": "Raven",
 		"body":  "Test notification. Desktop notifications are working.",
-		"tag":   "gofer-test-notification",
+		"tag":   "raven-test-notification",
 		"url":   "/settings/advanced",
 	})
 	if err != nil {
@@ -347,7 +347,7 @@ func (s *Service) SendTestPush(ctx context.Context, userID, endpoint string) err
 		VAPIDPublicKey:  s.vapidPublicKey,
 		VAPIDPrivateKey: s.vapidPrivateKey,
 		TTL:             60,
-		Topic:           "gofer-test",
+		Topic:           "raven-test",
 		Urgency:         webpush.UrgencyHigh,
 	})
 	if resp != nil {

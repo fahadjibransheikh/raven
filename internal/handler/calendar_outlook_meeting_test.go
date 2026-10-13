@@ -153,7 +153,7 @@ func TestOutlookOnlineMeetingFullDescriptionUpdate(t *testing.T) {
 				if bodyWritten {
 					var body outlookCalendarItemBody
 					_ = json.Unmarshal(raw, &body)
-					if body.ContentType != "html" || body.Content != rich || strings.Contains(body.Content, "gofer-calendar-notes") {
+					if body.ContentType != "html" || body.Content != rich || strings.Contains(body.Content, "raven-calendar-notes") {
 						t.Error("full description was not submitted directly")
 					}
 				}

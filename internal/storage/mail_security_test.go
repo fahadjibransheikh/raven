@@ -8,7 +8,7 @@ import (
 
 func TestMailSecurityExceptionsAreExactAndTrackAffectedAccounts(t *testing.T) {
 	ctx := context.Background()
-	db, err := New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
@@ -106,7 +106,7 @@ func TestPrivateTargetExceptionsAreExact(t *testing.T) {
 }
 
 func TestMigrateV67ExpandsPrivateTargetExceptions(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "gofer.db")
+	dbPath := filepath.Join(t.TempDir(), "raven.db")
 	raw, err := openDB(dbPath)
 	if err != nil {
 		t.Fatalf("openDB() error = %v", err)

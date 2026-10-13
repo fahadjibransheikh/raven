@@ -544,14 +544,14 @@ var sanitizerAttacks = map[string]string{
 	"meta refresh":              `<meta http-equiv="refresh" content="0;url=https://evil.example">`,
 	"stylesheet link":           `<link rel=stylesheet href="https://track.example/a.css">`,
 	"comment":                   `<!--<img src=x onerror=alert(1)>-->`,
-	"relative link to Gofer":    `<a href="/settings">x</a>`,
+	"relative link to Raven":    `<a href="/settings">x</a>`,
 	"svg remote image":          `<svg><image href="https://track.example/p.gif"/></svg>`,
 	"svg javascript link":       `<svg><a xlink:href="javascript:alert(1)"><text>x</text></a></svg>`,
 	"mathml href":               `<math href="javascript:alert(1)"><mi>x</mi></math>`,
-	"traversal in Gofer path":   `<img src="/api/inline-content/../../settings">`,
+	"traversal in Raven path":   `<img src="/api/inline-content/../../settings">`,
 	"encoded traversal":         `<img src="/api/inline-content/%2e%2e/%2e%2e/settings">`,
 	"spoofed remote marker":     `<img src="" data-remote-src="javascript:alert(1)">`,
-	"spoofed restorable marker": `<div data-gofer-remote-onclick="alert(1)" data-gofer-remote-href="https://evil.example/">x</div>`,
+	"spoofed restorable marker": `<div data-raven-remote-onclick="alert(1)" data-raven-remote-href="https://evil.example/">x</div>`,
 	"named image clobbering":    `<img name="querySelectorAll" src="cid:a">`,
 	"link target":               `<a href="https://example.com/" target="_top">x</a>`,
 }
@@ -610,10 +610,10 @@ func assertMarkedInert(t *testing.T, name, output string) {
 			case key == "style" && strings.Contains(value, "url(\"http"):
 				t.Errorf("%s: style attribute loads from the web: %q", name, output)
 			case key == "href" && n.Data == "a" && strings.HasPrefix(value, "/"):
-				t.Errorf("%s: kept a link to Gofer's own address: %q", name, output)
+				t.Errorf("%s: kept a link to Raven's own address: %q", name, output)
 			case key == "name" && n.Data == "img", key == "target", key == "formaction", key == "action":
 				t.Errorf("%s: kept %s: %q", name, a.Key, output)
-			case strings.HasPrefix(key, "data-gofer-remote"):
+			case strings.HasPrefix(key, "data-raven-remote"):
 				t.Errorf("%s: kept a marker that restores %s: %q", name, a.Key, output)
 			}
 		}
@@ -679,7 +679,7 @@ func TestSanitizeHTMLKeepsOrdinaryMail(t *testing.T) {
 		{"mail and phone links", `<a href="mailto:ana@example.com">m</a><a href="tel:+100">t</a><a href="#top">j</a>`, `<a href="mailto:ana@example.com">m</a><a href="tel:+100">t</a><a href="#top">j</a>`},
 		{"inline part", `<img src="cid:logo@example" alt="Logo" width="120">`, `<img src="cid:logo@example" alt="Logo" width="120"/>`},
 		{"embedded image", `<img src="data:image/png;base64,iVBORw0KGgo=">`, `<img src="data:image/png;base64,iVBORw0KGgo="/>`},
-		{"gofer inline path", `<img src="/api/inline-content/7/logo%20one">`, `<img src="/api/inline-content/7/logo%20one"/>`},
+		{"raven inline path", `<img src="/api/inline-content/7/logo%20one">`, `<img src="/api/inline-content/7/logo%20one"/>`},
 		{"style element", `<style>.a > .b{color:red}</style><p class="a">x</p>`, `<style>.a > .b{color:red}</style><p class="a">x</p>`},
 		{"form content kept", `<form><p>Reply by mail</p></form>`, `<p>Reply by mail</p>`},
 	} {

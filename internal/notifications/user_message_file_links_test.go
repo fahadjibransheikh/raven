@@ -48,10 +48,10 @@ func TestOwnedMessagePageSignsItsImagesForUseWithoutASession(t *testing.T) {
 	}
 }
 
-// Loading remote content once sends it through Gofer like the saved modes, so
+// Loading remote content once sends it through Raven like the saved modes, so
 // the page never contacts the sender's server and the browser has no
 // third-party tracker to block.
-func TestLoadOnceRelaysRemoteContentThroughGofer(t *testing.T) {
+func TestLoadOnceRelaysRemoteContentThroughRaven(t *testing.T) {
 	f := newUserStorageFixtureMode(t, true)
 	server := newRoutedIMAPServer(t)
 	png := "\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR"

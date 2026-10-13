@@ -116,7 +116,7 @@ func (h *Handler) handleCalendarTeamsOptions(w http.ResponseWriter, r *http.Requ
 		http.NotFound(w, r)
 		return
 	}
-	w.Header().Set("X-Gofer-Calendar-Source", source.ID)
+	w.Header().Set("X-Raven-Calendar-Source", source.ID)
 	w.Header().Set("Cache-Control", "private, no-store")
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if source.Provider == "gmail" {

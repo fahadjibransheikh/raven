@@ -35,7 +35,7 @@ func TestEffectiveIDLEFolderStatusKeepsConfiguredModeSeparateFromFallback(t *tes
 
 func TestBuildSyncSettingsUsesRemoteFolderPaths(t *testing.T) {
 	ctx := auth.ContextWithUser(context.Background(), &auth.User{ID: "default"})
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}

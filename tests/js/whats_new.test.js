@@ -63,7 +63,7 @@ test("Esc and click-away close through the same close event, so they store it to
 test("also updates the settings cache so a later full save cannot erase it", async () => {
   const sets = []
   const dom = await setup(show)
-  dom.w.GoferSettings = { set: function (k, v) { sets.push([k, v]) } }
+  dom.w.RavenSettings = { set: function (k, v) { sets.push([k, v]) } }
   dom.w.document.querySelector("[data-tui-dialog-close]").click()
   assert.deepEqual(sets, [["whats_new_seen", "0.1.13"]])
 })

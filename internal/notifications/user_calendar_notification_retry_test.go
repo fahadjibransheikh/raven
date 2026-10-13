@@ -38,7 +38,7 @@ func newOwnedNotificationRetryHTTPFixture(t *testing.T, status string) *userStor
 		if err != nil {
 			t.Fatal(err)
 		}
-		ics := fmt.Sprintf("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Gofer//Fixture//EN\r\nMETHOD:REQUEST\r\nBEGIN:VEVENT\r\nUID:%s-meeting\r\nDTSTAMP:20261003T090000Z\r\nDTSTART:20261003T100000Z\r\nDTEND:20261003T110000Z\r\nSUMMARY:%s private meeting\r\nORGANIZER:mailto:%s@example.com\r\nATTENDEE:mailto:%s-guest@example.com\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n", owner, owner, owner, owner)
+		ics := fmt.Sprintf("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Raven//Fixture//EN\r\nMETHOD:REQUEST\r\nBEGIN:VEVENT\r\nUID:%s-meeting\r\nDTSTAMP:20261003T090000Z\r\nDTSTART:20261003T100000Z\r\nDTEND:20261003T110000Z\r\nSUMMARY:%s private meeting\r\nORGANIZER:mailto:%s@example.com\r\nATTENDEE:mailto:%s-guest@example.com\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n", owner, owner, owner, owner)
 		payload, err := json.Marshal(map[string]any{"message_id": "<" + owner + "-original@example.com>", "date": time.Now().UTC(), "from_email": owner + "@example.com", "calendar_notification": map[string]any{"UserID": owner, "SourceID": "same-source", "ResourceID": event.Event().RemoteID, "Method": "REQUEST", "Calendar": ics, "ExpectedCalendar": strings.Replace(ics, "METHOD:REQUEST\r\n", "", 1)}})
 		if err != nil {
 			t.Fatal(err)

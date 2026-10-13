@@ -58,14 +58,14 @@ func TestLoadConfigSeparatesMicrosoftLoginFromOutlookMailboxOAuth(t *testing.T) 
 	t.Setenv("RAVEN_MICROSOFT_LOGIN_CLIENT_SECRET", "application-login-secret")
 	t.Setenv("RAVEN_MICROSOFT_LOGIN_TENANT", "organizations")
 
-	cfg := LoadConfig("https://gofer.example")
+	cfg := LoadConfig("https://raven.example")
 	if cfg.MicrosoftLoginClient == nil || cfg.MicrosoftLoginTenant != "organizations" {
 		t.Fatalf("Microsoft application-login config = %#v", cfg)
 	}
 	if cfg.MicrosoftLoginClient.ClientID != "application-login-client" || cfg.MicrosoftLoginClient.ClientSecret != "application-login-secret" {
 		t.Fatalf("Microsoft application-login client = %#v", cfg.MicrosoftLoginClient)
 	}
-	if cfg.MicrosoftLoginClient.RedirectURL != "https://gofer.example/auth/microsoft/login/callback" {
+	if cfg.MicrosoftLoginClient.RedirectURL != "https://raven.example/auth/microsoft/login/callback" {
 		t.Fatalf("Microsoft application-login redirect = %q", cfg.MicrosoftLoginClient.RedirectURL)
 	}
 	wantScopes := []string{"openid", "profile", "email"}
@@ -85,7 +85,7 @@ func TestLoadConfigEnablesMicrosoftLoginWithoutSecret(t *testing.T) {
 	t.Setenv("RAVEN_MICROSOFT_LOGIN_CLIENT_SECRET", "")
 	t.Setenv("RAVEN_MICROSOFT_LOGIN_TENANT", "common")
 
-	cfg := LoadConfig("https://gofer.example")
+	cfg := LoadConfig("https://raven.example")
 	if cfg.MicrosoftLoginClient == nil || cfg.MicrosoftLoginClient.ClientSecret != "" {
 		t.Fatalf("Microsoft public-client login = %#v", cfg.MicrosoftLoginClient)
 	}

@@ -94,7 +94,7 @@ func (db *DB) publishInboundContacts(ctx context.Context, owner, account, provid
 				// and enabled targets. This payload is a durable marker, not a
 				// provider snapshot to replay over newer manual edits.
 				contact := input.Contact
-				contact.ID, contact.GoferSyncEnabled, contact.SaveTargets = id, true, nil
+				contact.ID, contact.RavenSyncEnabled, contact.SaveTargets = id, true, nil
 				result.FanoutOperationID, err = enqueueContactSyncOperation(ctx, tx, owner, contact, nil, account)
 				if err != nil {
 					return nil, err

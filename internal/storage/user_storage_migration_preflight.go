@@ -63,7 +63,7 @@ type UserStorageMigrationPreflight struct {
 }
 
 // UserStorageMigrationInventory returns an independent, sorted policy snapshot.
-// Optional SQLite planner tables are included even if not created by Gofer.
+// Optional SQLite planner tables are included even if not created by Raven.
 func UserStorageMigrationInventory() []UserStorageMigrationTable {
 	result := make([]UserStorageMigrationTable, 0, len(userStorageMigrationTables))
 	for name, rule := range userStorageMigrationTables {
@@ -129,7 +129,7 @@ func InspectUserStorageMigration(ctx context.Context, sourcePath string) (UserSt
 	return inspectUserStorageMigration(ctx, source)
 }
 
-// Raven numbers upstream gofer's schema versions differently: upstream's 105,
+// Raven numbers upstream's schema versions differently: upstream's 105,
 // 106 and 107 are Raven's 119, 120 and 121 (see docs/upstream-merge-plan.md).
 // Use these names for every version-dependent decision in the converter.
 const (
@@ -433,7 +433,7 @@ func migrationSourceColumns(ctx context.Context, tx *sql.Tx, table *UserStorageM
 }
 
 func requireSharedMigrationTables(ctx context.Context, present map[string]bool, version int) error {
-	// Use Gofer's actual embedded schema to identify required shared tables. New
+	// Use Raven's actual embedded schema to identify required shared tables. New
 	// source tables cannot silently disappear merely because an old policy omitted
 	// them. This disposable native SQLite connection has no filesystem data.
 	memory, err := sql.Open("sqlite", ":memory:")

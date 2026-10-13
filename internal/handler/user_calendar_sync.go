@@ -338,7 +338,7 @@ func (h *Handler) handleUserCalendarSync(w http.ResponseWriter, r *http.Request)
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if month.SyncError {
-		w.Header().Set("X-Gofer-Status", "error")
+		w.Header().Set("X-Raven-Status", "error")
 	}
 	if err := views.CalendarPage(month, settings).Render(ctx, w); err != nil {
 		log.Printf("owned calendar: render refresh: %v", err)

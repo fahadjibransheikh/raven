@@ -211,7 +211,7 @@ func TestMFAContinuationEncryptsAndBindsPrimaryAuthentication(t *testing.T) {
 	})
 	insertActiveUser(t, manager, "administrator", true, now)
 	first, draft, err := manager.prepareMFAContinuation(
-		"administrator", 1, AuthenticationMethodFederatedGoogle, "https://gofer.example", now,
+		"administrator", 1, AuthenticationMethodFederatedGoogle, "https://raven.example", now,
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -241,7 +241,7 @@ func TestMFAContinuationEncryptsAndBindsPrimaryAuthentication(t *testing.T) {
 	}
 
 	second, _, err := manager.prepareMFAContinuation(
-		"administrator", 1, AuthenticationMethodPassword, "https://gofer.example", now.Add(time.Second),
+		"administrator", 1, AuthenticationMethodPassword, "https://raven.example", now.Add(time.Second),
 	)
 	if err != nil {
 		t.Fatal(err)

@@ -9,7 +9,7 @@ import (
 )
 
 func TestRavenCalendarCarryoverTickKeepsSelectionUntilDiscoverySucceeds(t *testing.T) {
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}

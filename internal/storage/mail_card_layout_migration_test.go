@@ -7,7 +7,7 @@ import (
 )
 
 func TestMigrateV100ToV101ResetsOnlyTheOldDefaultMailCardLayout(t *testing.T) {
-	db, err := New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,7 +68,7 @@ func TestMigrateV100ToV101ResetsOnlyTheOldDefaultMailCardLayout(t *testing.T) {
 }
 
 func TestMigrateV101ToV102ResetsOnlyTheV101DefaultMailCardLayout(t *testing.T) {
-	db, err := New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatal(err)
 	}

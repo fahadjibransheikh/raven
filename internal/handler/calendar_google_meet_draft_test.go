@@ -180,7 +180,7 @@ func TestGoogleMeetDraftCleanupProtectsUnrelatedEventsAndHandlesTombstones(t *te
 					w.WriteHeader(410)
 					return
 				}
-				remote := map[string]any{"id": "remote", "etag": `"v1"`, "extendedProperties": map[string]any{"private": map[string]string{"goferMeetDraft": "true", "goferMeetDraftID": "draft"}}}
+				remote := map[string]any{"id": "remote", "etag": `"v1"`, "extendedProperties": map[string]any{"private": map[string]string{"ravenMeetDraft": "true", "ravenMeetDraftID": "draft"}}}
 				if mode == "changed" {
 					delete(remote, "extendedProperties")
 				}
@@ -290,7 +290,7 @@ func TestGoogleMeetDraftPreparationResumesAfterDisconnect(t *testing.T) {
 		if ready {
 			conference = testGoogleMeet
 		}
-		_ = json.NewEncoder(w).Encode(map[string]any{"id": "remote", "conferenceData": json.RawMessage(conference), "extendedProperties": map[string]any{"private": map[string]string{"goferMeetDraft": "true", "goferMeetDraftID": "draft"}}})
+		_ = json.NewEncoder(w).Encode(map[string]any{"id": "remote", "conferenceData": json.RawMessage(conference), "extendedProperties": map[string]any{"private": map[string]string{"ravenMeetDraft": "true", "ravenMeetDraftID": "draft"}}})
 	}))
 	defer server.Close()
 	prior := googleCalendarAPIBaseURL
@@ -312,7 +312,7 @@ func TestGoogleMeetDraftPreparationResumesAfterDisconnect(t *testing.T) {
 func TestGoogleMeetTemporaryDraftExcludedFromCalendarSync(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]any{"items": []any{
-			map[string]any{"id": "temporary", "extendedProperties": map[string]any{"private": map[string]string{"goferMeetDraft": "true"}}},
+			map[string]any{"id": "temporary", "extendedProperties": map[string]any{"private": map[string]string{"ravenMeetDraft": "true"}}},
 			map[string]any{"id": "real", "start": map[string]string{"date": "2026-10-05"}, "end": map[string]string{"date": "2026-10-06"}},
 		}})
 	}))

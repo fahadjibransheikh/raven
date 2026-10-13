@@ -68,7 +68,7 @@ func BuildMIMEMessageForIMAPDraft(msg *OutgoingMessage, revisionToken string) ([
 	if revisionToken == "" || strings.ContainsAny(revisionToken, "\r\n") {
 		return nil, fmt.Errorf("invalid draft revision token")
 	}
-	return buildMIMEMessage(msg, true, map[string]string{"X-Gofer-Draft-Revision": revisionToken})
+	return buildMIMEMessage(msg, true, map[string]string{"X-Raven-Draft-Revision": revisionToken})
 }
 
 func buildMIMEMessage(msg *OutgoingMessage, includeBcc bool, extraHeaders map[string]string) ([]byte, error) {

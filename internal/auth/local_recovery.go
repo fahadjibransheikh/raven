@@ -19,7 +19,7 @@ type LocalRecoveryResult struct {
 
 // RecoverUserLocally immediately invalidates the target's authentication state
 // and returns one short-lived credential-reset secret. The caller must enforce
-// exact operator confirmation and hold Gofer's exclusive runtime lock. The raw
+// exact operator confirmation and hold Raven's exclusive runtime lock. The raw
 // token is returned only here and is never persisted.
 func (m *Manager) RecoverUserLocally(ctx context.Context, userID string) (*LocalRecoveryResult, error) {
 	return m.recoverUserLocally(ctx, userID, defaultCredentialResetTokenLifetime)

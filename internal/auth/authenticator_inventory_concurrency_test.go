@@ -121,7 +121,7 @@ func insertConcurrentRemovalPasskey(t *testing.T, manager *Manager, userID, pass
 		INSERT INTO webauthn_credentials (
 			id, user_id, credential_id, public_key, name, created_at,
 			credential_ciphertext, key_version, rp_id
-		) VALUES (?, ?, ?, x'02', 'Concurrent passkey', ?, x'03', 1, 'gofer.example')`,
+		) VALUES (?, ?, ?, x'02', 'Concurrent passkey', ?, x'03', 1, 'raven.example')`,
 		passkeyID, userID, []byte("credential-"+passkeyID), now,
 	); err != nil {
 		t.Fatalf("insert concurrent removal passkey %q: %v", passkeyID, err)

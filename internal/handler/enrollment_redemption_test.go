@@ -32,13 +32,13 @@ func (verifier *enrollmentGoogleVerifier) Verify(context.Context, string) (*auth
 
 func enrollmentRedemptionStack(t *testing.T, status auth.UserStatus, purpose auth.EnrollmentTokenPurpose) (*auth.Manager, *storage.DB, http.Handler, *auth.EnrollmentToken) {
 	t.Helper()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	manager := auth.NewManager(&auth.Config{
-		Enabled: true, BaseURL: "https://gofer.example", SecureCookies: true,
+		Enabled: true, BaseURL: "https://raven.example", SecureCookies: true,
 	}, db, auth.Dependencies{BucketHashKey: []byte("redemption-handler-key-32-bytes!")})
 	now := time.Now().UTC().Add(-time.Minute)
 	if _, err := db.Write().ExecContext(t.Context(), `
@@ -79,7 +79,7 @@ func postPasswordToken(stack http.Handler, path, token, password, confirmation s
 	}
 	request := httptest.NewRequest(http.MethodPost, path, strings.NewReader(form.Encode()))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Origin", "https://gofer.example")
+	request.Header.Set("Origin", "https://raven.example")
 	request.Header.Set("User-Agent", "Redemption Handler Test/1.0")
 	recorder := httptest.NewRecorder()
 	stack.ServeHTTP(recorder, request)
@@ -180,17 +180,17 @@ func TestGoogleInvitationEnrollmentCompletesThroughPublicHandlerWithoutCreatingM
 	}))
 	defer provider.Close()
 
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	verifier := &enrollmentGoogleVerifier{}
 	manager := auth.NewManager(&auth.Config{
-		Enabled: true, BaseURL: "https://gofer.example", SecureCookies: true,
+		Enabled: true, BaseURL: "https://raven.example", SecureCookies: true,
 		GoogleLoginClient: &oauth2.Config{
 			ClientID: "application-login-client", ClientSecret: "application-login-secret",
-			RedirectURL: "https://gofer.example/auth/google/login/callback",
+			RedirectURL: "https://raven.example/auth/google/login/callback",
 			Scopes:      []string{"openid", "email", "profile"},
 			Endpoint: oauth2.Endpoint{
 				AuthURL: "https://accounts.example/authorize", TokenURL: provider.URL,
@@ -240,7 +240,7 @@ func TestGoogleInvitationEnrollmentCompletesThroughPublicHandlerWithoutCreatingM
 	form := url.Values{"token": {invitation.Token}}
 	startRequest := httptest.NewRequest(http.MethodPost, invitationGoogleEnrollmentPath, strings.NewReader(form.Encode()))
 	startRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	startRequest.Header.Set("Origin", "https://gofer.example")
+	startRequest.Header.Set("Origin", "https://raven.example")
 	startRecorder := httptest.NewRecorder()
 	stack.ServeHTTP(startRecorder, startRequest)
 	if startRecorder.Code != http.StatusSeeOther {
@@ -267,7 +267,7 @@ func TestGoogleInvitationEnrollmentCompletesThroughPublicHandlerWithoutCreatingM
 	deniedRequest := httptest.NewRequest(
 		http.MethodGet, "/auth/google/login/callback?state="+url.QueryEscape(state)+"&error="+url.QueryEscape("private provider detail"), nil,
 	)
-	deniedRequest.Host = "gofer.example"
+	deniedRequest.Host = "raven.example"
 	deniedRequest.AddCookie(preAuthCookie)
 	deniedRecorder := httptest.NewRecorder()
 	stack.ServeHTTP(deniedRecorder, deniedRequest)
@@ -284,7 +284,7 @@ func TestGoogleInvitationEnrollmentCompletesThroughPublicHandlerWithoutCreatingM
 
 	startRequest = httptest.NewRequest(http.MethodPost, invitationGoogleEnrollmentPath, strings.NewReader(form.Encode()))
 	startRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	startRequest.Header.Set("Origin", "https://gofer.example")
+	startRequest.Header.Set("Origin", "https://raven.example")
 	startRecorder = httptest.NewRecorder()
 	stack.ServeHTTP(startRecorder, startRequest)
 	if startRecorder.Code != http.StatusSeeOther {
@@ -309,7 +309,7 @@ func TestGoogleInvitationEnrollmentCompletesThroughPublicHandlerWithoutCreatingM
 	callbackRequest := httptest.NewRequest(
 		http.MethodGet, "/auth/google/login/callback?state="+url.QueryEscape(state)+"&code=authorization-code", nil,
 	)
-	callbackRequest.Host = "gofer.example"
+	callbackRequest.Host = "raven.example"
 	callbackRequest.Header.Set("User-Agent", "Invitation Browser/1.0")
 	callbackRequest.AddCookie(preAuthCookie)
 	callbackRecorder := httptest.NewRecorder()
@@ -523,7 +523,7 @@ func TestEnrollmentRedemptionValidatesConfirmationPolicyAndFormSizeBeforeMutatio
 func TestEnrollmentRedemptionPostRemainsProtectedByCanonicalOriginGuard(t *testing.T) {
 	_, db, stack, token := enrollmentRedemptionStack(t, auth.UserStatusPending, auth.EnrollmentTokenPurposeEnrollment)
 	t.Setenv("RAVEN_ADDR", "127.0.0.1:8090")
-	t.Setenv("RAVEN_BASE_URL", "https://gofer.example")
+	t.Setenv("RAVEN_BASE_URL", "https://raven.example")
 	t.Setenv("RAVEN_ALLOW_UNAUTHENTICATED_REMOTE", "")
 	guard, err := httpguard.LoadConfig()
 	if err != nil {
@@ -535,7 +535,7 @@ func TestEnrollmentRedemptionPostRemainsProtectedByCanonicalOriginGuard(t *testi
 		"confirm_password": {enrollmentRedemptionTestPassword},
 	}
 	request := httptest.NewRequest(http.MethodPost, invitationEnrollmentPath, strings.NewReader(form.Encode()))
-	request.Host = "gofer.example"
+	request.Host = "raven.example"
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Origin", "https://attacker.example")
 	recorder := httptest.NewRecorder()
@@ -558,7 +558,7 @@ func TestEnrollmentRedemptionPostRemainsProtectedByCanonicalOriginGuard(t *testi
 func TestEnrollmentRedemptionAcceptsPrivacyBrowserNullOriginWithSameOriginMetadata(t *testing.T) {
 	_, db, stack, token := enrollmentRedemptionStack(t, auth.UserStatusPending, auth.EnrollmentTokenPurposeEnrollment)
 	t.Setenv("RAVEN_ADDR", "127.0.0.1:8090")
-	t.Setenv("RAVEN_BASE_URL", "https://gofer.example")
+	t.Setenv("RAVEN_BASE_URL", "https://raven.example")
 	t.Setenv("RAVEN_ALLOW_UNAUTHENTICATED_REMOTE", "")
 	guard, err := httpguard.LoadConfig()
 	if err != nil {
@@ -570,7 +570,7 @@ func TestEnrollmentRedemptionAcceptsPrivacyBrowserNullOriginWithSameOriginMetada
 		"confirm_password": {enrollmentRedemptionTestPassword},
 	}
 	request := httptest.NewRequest(http.MethodPost, invitationEnrollmentPath, strings.NewReader(form.Encode()))
-	request.Host = "gofer.example"
+	request.Host = "raven.example"
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Origin", "null")
 	request.Header.Set("Sec-Fetch-Site", "same-origin")

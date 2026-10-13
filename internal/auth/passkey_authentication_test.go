@@ -100,7 +100,7 @@ func newPasskeyAuthenticationFixture(t *testing.T, signCount uint32) *passkeyAut
 	transports := `["internal"]`
 	if _, err := manager.db.Write().ExecContext(t.Context(), `
 		INSERT INTO webauthn_users (user_id, rp_id, user_handle, created_at)
-		VALUES (?, 'gofer.example', ?, ?)`, userID, userHandle, now); err != nil {
+		VALUES (?, 'raven.example', ?, ?)`, userID, userHandle, now); err != nil {
 		t.Fatalf("insert passkey user handle: %v", err)
 	}
 	if _, err := manager.db.Write().ExecContext(t.Context(), `
@@ -108,7 +108,7 @@ func newPasskeyAuthenticationFixture(t *testing.T, signCount uint32) *passkeyAut
 			id, user_id, credential_id, public_key, credential_ciphertext, key_version,
 			sign_count, aaguid, transports, attachment, backup_eligible, backup_state,
 			name, created_at, rp_id, flags, clone_warning
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'platform', 1, 1, 'Laptop', ?, 'gofer.example', ?, 0)`,
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'platform', 1, 1, 'Laptop', ?, 'raven.example', ?, 0)`,
 		rowID, userID, credential.ID, credential.PublicKey, ciphertext, passkeyCredentialKeyVersion,
 		credential.Authenticator.SignCount, credential.Authenticator.AAGUID, transports, now,
 		byte(credential.Flags.ProtocolValue()),
@@ -129,7 +129,7 @@ func newPasskeyAuthenticationFixture(t *testing.T, signCount uint32) *passkeyAut
 		finishRecord: finishRecord, discoverableRawID: credentialID, discoverableHandle: userHandle,
 	}
 	manager.passkeyAssertionFactory = func(origin string) (passkeyAssertionCeremony, error) {
-		if origin != "https://gofer.example" {
+		if origin != "https://raven.example" {
 			return nil, fmt.Errorf("unexpected assertion origin %q", origin)
 		}
 		return assertion, nil
@@ -177,7 +177,7 @@ func TestSecurityFactorSummaryOnlyOffersCompletePasskeys(t *testing.T) {
 		t.Fatalf("incomplete passkey summary = %#v, %v", summary, err)
 	}
 	if _, err := fixture.manager.StartPasskeyStepUp(
-		t.Context(), session.Token, "https://gofer.example", "198.51.100.20",
+		t.Context(), session.Token, "https://raven.example", "198.51.100.20",
 	); !errors.Is(err, ErrPasskeyAuthenticationUnavailable) {
 		t.Fatalf("StartPasskeyStepUp() with incomplete passkey error = %v", err)
 	}
@@ -212,7 +212,7 @@ func TestPasskeyLoginSupportsIdentifierAndDiscoverableAssertions(t *testing.T) {
 				}
 			}
 			started, err := fixture.manager.StartPasskeyLogin(
-				t.Context(), test.identifier, "https://GOFER.example:443/", "198.51.100.20",
+				t.Context(), test.identifier, "https://RAVEN.example:443/", "198.51.100.20",
 			)
 			if err != nil || started == nil || started.Challenge == nil {
 				t.Fatalf("StartPasskeyLogin() = %#v, %v", started, err)
@@ -232,7 +232,7 @@ func TestPasskeyLoginSupportsIdentifierAndDiscoverableAssertions(t *testing.T) {
 			}
 
 			session, err := fixture.manager.FinishPasskeyLogin(
-				t.Context(), started.Challenge.Token, "https://gofer.example", []byte(`{"assertion":true}`),
+				t.Context(), started.Challenge.Token, "https://raven.example", []byte(`{"assertion":true}`),
 				"198.51.100.20", "Passkey Login Browser/1.0",
 			)
 			if err != nil || session == nil {
@@ -261,7 +261,7 @@ func TestPasskeyLoginSupportsIdentifierAndDiscoverableAssertions(t *testing.T) {
 				t.Fatalf("passkey challenge completion = consumed:%v payload:%q err:%v", consumedAt, challengePayload, err)
 			}
 			if _, err := fixture.manager.FinishPasskeyLogin(
-				t.Context(), started.Challenge.Token, "https://gofer.example", []byte(`{}`), "198.51.100.20", "Browser",
+				t.Context(), started.Challenge.Token, "https://raven.example", []byte(`{}`), "198.51.100.20", "Browser",
 			); !errors.Is(err, ErrPasskeyAuthenticationInvalid) {
 				t.Fatalf("passkey login replay error = %v", err)
 			}
@@ -293,13 +293,13 @@ func TestPasskeyStepUpIsSessionBoundAndRefreshesOnlyCurrentSession(t *testing.T)
 		t.Fatal(err)
 	}
 	started, err := fixture.manager.StartPasskeyStepUp(
-		t.Context(), session.Token, "https://gofer.example", "198.51.100.30",
+		t.Context(), session.Token, "https://raven.example", "198.51.100.30",
 	)
 	if err != nil || started == nil || started.Challenge.SessionID != session.ID || started.Challenge.Purpose != ChallengePurposeStepUp {
 		t.Fatalf("StartPasskeyStepUp() = %#v, %v", started, err)
 	}
 	if err := fixture.manager.FinishPasskeyStepUp(
-		t.Context(), started.Challenge.Token, session.Token, "https://gofer.example",
+		t.Context(), started.Challenge.Token, session.Token, "https://raven.example",
 		[]byte(`{"assertion":true}`), "198.51.100.30", "Step-up Browser/1.0",
 	); err != nil {
 		t.Fatalf("FinishPasskeyStepUp() error = %v", err)
@@ -317,12 +317,12 @@ func TestPasskeyStepUpIsSessionBoundAndRefreshesOnlyCurrentSession(t *testing.T)
 func TestPasskeyCounterPolicyAcceptsSyncedZeroAndRejectsRegression(t *testing.T) {
 	t.Run("synced zero counter", func(t *testing.T) {
 		fixture := newPasskeyAuthenticationFixture(t, 0)
-		started, err := fixture.manager.StartPasskeyLogin(t.Context(), "", "https://gofer.example", "source")
+		started, err := fixture.manager.StartPasskeyLogin(t.Context(), "", "https://raven.example", "source")
 		if err != nil {
 			t.Fatal(err)
 		}
 		session, err := fixture.manager.FinishPasskeyLogin(
-			t.Context(), started.Challenge.Token, "https://gofer.example", []byte(`{}`), "source", "Browser",
+			t.Context(), started.Challenge.Token, "https://raven.example", []byte(`{}`), "source", "Browser",
 		)
 		if err != nil || session == nil {
 			t.Fatalf("zero-counter passkey login = %#v, %v", session, err)
@@ -343,12 +343,12 @@ func TestPasskeyCounterPolicyAcceptsSyncedZeroAndRejectsRegression(t *testing.T)
 			t.Fatal(err)
 		}
 		fixture.assertion.finishRecord = record
-		started, err := fixture.manager.StartPasskeyLogin(t.Context(), "", "https://gofer.example", "source")
+		started, err := fixture.manager.StartPasskeyLogin(t.Context(), "", "https://raven.example", "source")
 		if err != nil {
 			t.Fatal(err)
 		}
 		if session, err := fixture.manager.FinishPasskeyLogin(
-			t.Context(), started.Challenge.Token, "https://gofer.example", []byte(`{}`), "source", "Browser",
+			t.Context(), started.Challenge.Token, "https://raven.example", []byte(`{}`), "source", "Browser",
 		); !errors.Is(err, ErrPasskeyCloneWarning) || session != nil {
 			t.Fatalf("regressed passkey login = %#v, %v", session, err)
 		}
@@ -377,17 +377,17 @@ func TestPasskeyAssertionFailureIsSingleUseAndDiscoverableOwnershipIsExact(t *te
 	insertActiveUser(t, fixture.manager, "other-passkey-user", false, fixture.clock.now)
 	if _, err := fixture.manager.db.Write().ExecContext(t.Context(), `
 		INSERT INTO webauthn_users (user_id, rp_id, user_handle, created_at)
-		VALUES ('other-passkey-user', 'gofer.example', ?, ?)`, otherHandle, fixture.clock.now,
+		VALUES ('other-passkey-user', 'raven.example', ?, ?)`, otherHandle, fixture.clock.now,
 	); err != nil {
 		t.Fatalf("insert other passkey user handle: %v", err)
 	}
 	fixture.assertion.discoverableHandle = otherHandle
-	started, err := fixture.manager.StartPasskeyLogin(t.Context(), "", "https://gofer.example", "source")
+	started, err := fixture.manager.StartPasskeyLogin(t.Context(), "", "https://raven.example", "source")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if session, err := fixture.manager.FinishPasskeyLogin(
-		t.Context(), started.Challenge.Token, "https://gofer.example", []byte(`{}`), "source", "Browser",
+		t.Context(), started.Challenge.Token, "https://raven.example", []byte(`{}`), "source", "Browser",
 	); session != nil {
 		t.Fatalf("cross-handle passkey login returned session %#v", session)
 	} else {
@@ -410,7 +410,7 @@ func TestPasskeyAssertionFailureIsSingleUseAndDiscoverableOwnershipIsExact(t *te
 func TestPasskeyLoginCompletionIsAtomicAndSingleWinner(t *testing.T) {
 	t.Run("audit failure rolls back every security mutation", func(t *testing.T) {
 		fixture := newPasskeyAuthenticationFixture(t, 6)
-		started, err := fixture.manager.StartPasskeyLogin(t.Context(), "", "https://gofer.example", "source")
+		started, err := fixture.manager.StartPasskeyLogin(t.Context(), "", "https://raven.example", "source")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -422,7 +422,7 @@ func TestPasskeyLoginCompletionIsAtomicAndSingleWinner(t *testing.T) {
 			t.Fatal(err)
 		}
 		if session, err := fixture.manager.FinishPasskeyLogin(
-			t.Context(), started.Challenge.Token, "https://gofer.example", []byte(`{}`), "source", "Browser",
+			t.Context(), started.Challenge.Token, "https://raven.example", []byte(`{}`), "source", "Browser",
 		); err == nil || session != nil {
 			t.Fatalf("audit-failed passkey login = %#v, %v", session, err)
 		}
@@ -443,7 +443,7 @@ func TestPasskeyLoginCompletionIsAtomicAndSingleWinner(t *testing.T) {
 
 	t.Run("one assertion challenge creates one session", func(t *testing.T) {
 		fixture := newPasskeyAuthenticationFixture(t, 9)
-		started, err := fixture.manager.StartPasskeyLogin(t.Context(), "", "https://gofer.example", "source")
+		started, err := fixture.manager.StartPasskeyLogin(t.Context(), "", "https://raven.example", "source")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -460,7 +460,7 @@ func TestPasskeyLoginCompletionIsAtomicAndSingleWinner(t *testing.T) {
 				defer wait.Done()
 				<-ready
 				session, err := fixture.manager.FinishPasskeyLogin(
-					t.Context(), started.Challenge.Token, "https://gofer.example", []byte(`{}`), "source", "Browser",
+					t.Context(), started.Challenge.Token, "https://raven.example", []byte(`{}`), "source", "Browser",
 				)
 				results <- result{session: session, err: err}
 			}()
@@ -485,7 +485,7 @@ func TestPasskeyLoginCompletionIsAtomicAndSingleWinner(t *testing.T) {
 }
 
 func TestRealPasskeyAssertionAdapterBindsRequiredUserVerification(t *testing.T) {
-	assertion, err := newPasskeyAssertionCeremony("https://gofer.example")
+	assertion, err := newPasskeyAssertionCeremony("https://raven.example")
 	if err != nil {
 		t.Fatal(err)
 	}

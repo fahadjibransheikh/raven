@@ -13,7 +13,7 @@ import (
 
 func newContactsTestDB(t *testing.T) *DB {
 	t.Helper()
-	db, err := New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
@@ -26,7 +26,7 @@ func newContactsTestDB(t *testing.T) *DB {
 
 func TestMigrateV70SeparatesContactSyncMembershipsFromCards(t *testing.T) {
 	ctx := context.Background()
-	path := filepath.Join(t.TempDir(), "gofer.db")
+	path := filepath.Join(t.TempDir(), "raven.db")
 	db, err := New(path)
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
@@ -68,7 +68,7 @@ func TestMigrateV70SeparatesContactSyncMembershipsFromCards(t *testing.T) {
 }
 
 func TestMigrateV74ConvertsPreferencesToCanonicalFieldsAndDropsPreferenceTable(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "gofer.db")
+	path := filepath.Join(t.TempDir(), "raven.db")
 	db, err := New(path)
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
@@ -388,7 +388,7 @@ func TestSaveContactPersistsSaveTargets(t *testing.T) {
 		ID:               saved.ID,
 		Name:             "Jane",
 		Email:            "jane@example.com",
-		GoferSyncEnabled: true,
+		RavenSyncEnabled: true,
 		SaveTargets:      []string{"account:acc", "local", "account:acc"},
 	})
 	if err != nil {
@@ -398,8 +398,8 @@ func TestSaveContactPersistsSaveTargets(t *testing.T) {
 	if !reflect.DeepEqual(saved.SaveTargets, want) {
 		t.Fatalf("updated SaveTargets = %#v, want %#v", saved.SaveTargets, want)
 	}
-	if !saved.GoferSyncEnabled {
-		t.Fatal("updated GoferSyncEnabled = false, want true")
+	if !saved.RavenSyncEnabled {
+		t.Fatal("updated RavenSyncEnabled = false, want true")
 	}
 	saved, err = db.SaveContact(ctx, "default", models.Contact{
 		ID:          saved.ID,
@@ -410,8 +410,8 @@ func TestSaveContactPersistsSaveTargets(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SaveContact() disable sync error = %v", err)
 	}
-	if saved.GoferSyncEnabled || !reflect.DeepEqual(saved.SaveTargets, want) {
-		t.Fatalf("disabled contact = enabled:%v targets:%#v, want disabled with saved targets %#v", saved.GoferSyncEnabled, saved.SaveTargets, want)
+	if saved.RavenSyncEnabled || !reflect.DeepEqual(saved.SaveTargets, want) {
+		t.Fatalf("disabled contact = enabled:%v targets:%#v, want disabled with saved targets %#v", saved.RavenSyncEnabled, saved.SaveTargets, want)
 	}
 }
 

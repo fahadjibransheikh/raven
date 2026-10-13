@@ -139,7 +139,7 @@ func (m *Manager) EnsureSetupToken(ctx context.Context, configuredToken string) 
 }
 
 // RotateSetupTokenLocally replaces an expired, lost, or otherwise unusable
-// setup token. The caller must hold Gofer's exclusive runtime lock. The raw
+// setup token. The caller must hold Raven's exclusive runtime lock. The raw
 // replacement is returned only after its hash and audit event commit.
 func (m *Manager) RotateSetupTokenLocally(ctx context.Context) (*SetupTokenProvision, error) {
 	current, err := m.SetupState(ctx)

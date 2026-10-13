@@ -1,4 +1,4 @@
-// Gofer's pages may only run scripts from its own files, so elements don't
+// Raven's pages may only run scripts from its own files, so elements don't
 // carry inline event handlers. Instead an element names what to do in a data
 // attribute, as a JSON list: a function name and its arguments.
 //
@@ -52,12 +52,12 @@
     "expandToPane",
     "finalizeComposeRecipientInput",
     "focusComposeRecipientField",
-    "goferClickElement",
-    "goferNavigate",
-    "goferPreventDefault",
-    "goferShowComposeRecipientField",
-    "goferSubmitHTMXForm",
-    "goferSwitchDialog",
+    "ravenClickElement",
+    "ravenNavigate",
+    "ravenPreventDefault",
+    "ravenShowComposeRecipientField",
+    "ravenSubmitHTMXForm",
+    "ravenSwitchDialog",
     "handleAccountTestResult",
     "handleAccountTestStart",
     "handleCalendarDiscoveryResult",
@@ -152,7 +152,7 @@
     if (!Array.isArray(list) || typeof list[0] !== "string") return
     var target = resolve(list[0])
     if (!target) {
-      if (window.console) console.warn("Gofer: unknown action", list[0])
+      if (window.console) console.warn("Raven: unknown action", list[0])
       return
     }
     var args = list.slice(1).map(function (arg) {
@@ -180,7 +180,7 @@
   var selector = attributes.map(function (attribute) { return "[" + attribute + "]" }).join(",")
 
   function bindElement(element) {
-    var bound = element._goferActions || (element._goferActions = {})
+    var bound = element._ravenActions || (element._ravenActions = {})
     eventTypes.forEach(function (type) {
       if (bound[type] || !element.hasAttribute("data-on-" + type)) return
       bound[type] = true
@@ -198,13 +198,13 @@
     root.querySelectorAll(selector).forEach(bindElement)
   }
 
-  // goferOnContent(selector, setup) runs setup(element) once for each element
+  // ravenOnContent(selector, setup) runs setup(element) once for each element
   // matching selector: those on the page when it loads, and those htmx or
   // scripts add later. It replaces the setup code inline scripts ran when
   // their part of the page arrived.
   var contentSetups = []
-  window.goferOnContent = function (selector, setup) {
-    var entry = { selector: selector, setup: setup, key: "_goferSetup" + contentSetups.length }
+  window.ravenOnContent = function (selector, setup) {
+    var entry = { selector: selector, setup: setup, key: "_ravenSetup" + contentSetups.length }
     contentSetups.push(entry)
     if (document.readyState !== "loading") setupContent(entry)
   }
@@ -250,31 +250,31 @@
   })
 
   // Small steps that used to be written inline.
-  window.goferNavigate = function (path) {
+  window.ravenNavigate = function (path) {
     if (typeof path === "string" && path.charAt(0) === "/" && path.charAt(1) !== "/") window.location.href = path
   }
-  window.goferClickElement = function (selector) {
+  window.ravenClickElement = function (selector) {
     var element = document.querySelector(selector)
     if (element) element.click()
   }
   // "to" is a dialog id, or the name of a function that opens one (Raven loads
   // the add-account dialog's markup on demand).
   var dialogOpeners = { openAddAccountDialog: true, openICloudAccountDialog: true }
-  window.goferSwitchDialog = function (from, to) {
+  window.ravenSwitchDialog = function (from, to) {
     if (window.tui && window.tui.dialog) window.tui.dialog.close(from)
     setTimeout(function () {
       if (dialogOpeners[to] && typeof window[to] === "function") window[to]()
       else if (window.tui && window.tui.dialog) window.tui.dialog.open(to)
     }, 150)
   }
-  window.goferPreventDefault = function (event) {
+  window.ravenPreventDefault = function (event) {
     event.preventDefault()
   }
   // Submits a setting as soon as it changes, on forms htmx saves.
-  window.goferSubmitHTMXForm = function (input) {
+  window.ravenSubmitHTMXForm = function (input) {
     if (input && input.form && input.form.hasAttribute("hx-post")) input.form.requestSubmit()
   }
-  window.goferShowComposeRecipientField = function (fieldID, buttonID) {
+  window.ravenShowComposeRecipientField = function (fieldID, buttonID) {
     var field = document.getElementById(fieldID)
     var button = document.getElementById(buttonID)
     if (field) field.classList.remove("hidden")

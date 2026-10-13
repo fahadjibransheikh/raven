@@ -25,7 +25,7 @@ func postPasskeyStart(t *testing.T, stack http.Handler, identifier string) *http
 	form := url.Values{"identifier": {identifier}}
 	request := httptest.NewRequest(http.MethodPost, loginPasskeyStartPath, strings.NewReader(form.Encode()))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Origin", "https://gofer.example")
+	request.Header.Set("Origin", "https://raven.example")
 	request.RemoteAddr = "198.51.100.71:45120"
 	recorder := httptest.NewRecorder()
 	stack.ServeHTTP(recorder, request)
@@ -63,7 +63,7 @@ func TestPasskeyLoginPageAndPublicHandlersSupportDiscoverableFallback(t *testing
 
 	request := httptest.NewRequest(http.MethodPost, loginPasskeyFinishPath, strings.NewReader(`{"invalid":true}`))
 	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("Origin", "https://gofer.example")
+	request.Header.Set("Origin", "https://raven.example")
 	request.Header.Set("User-Agent", "Passkey Handler/1.0")
 	request.RemoteAddr = "198.51.100.71:45120"
 	request.AddCookie(challengeCookie)
@@ -112,7 +112,7 @@ func TestPasskeyLoginUnknownIdentifierUsesGenericBoundedFailure(t *testing.T) {
 func TestPasskeyEndpointsRemainProtectedByCanonicalOriginAndSessionCSRF(t *testing.T) {
 	handler, _, db := newLocalLoginHandler(t, auth.UserStatusActive, false, false, true, false)
 	t.Setenv("RAVEN_ADDR", "127.0.0.1:8090")
-	t.Setenv("RAVEN_BASE_URL", "https://gofer.example")
+	t.Setenv("RAVEN_BASE_URL", "https://raven.example")
 	t.Setenv("RAVEN_ALLOW_UNAUTHENTICATED_REMOTE", "")
 	guard, err := httpguard.LoadConfig()
 	if err != nil {
@@ -120,7 +120,7 @@ func TestPasskeyEndpointsRemainProtectedByCanonicalOriginAndSessionCSRF(t *testi
 	}
 	form := url.Values{"identifier": {"person@example.com"}}
 	request := httptest.NewRequest(http.MethodPost, loginPasskeyStartPath, strings.NewReader(form.Encode()))
-	request.Host = "gofer.example"
+	request.Host = "raven.example"
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Origin", "https://attacker.example")
 	blocked := httptest.NewRecorder()

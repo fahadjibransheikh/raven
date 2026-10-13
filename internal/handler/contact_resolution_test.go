@@ -17,7 +17,7 @@ import (
 
 func TestSyncContactNowQueuesOperationAndPublishesLiveStatus(t *testing.T) {
 	ctx := context.Background()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}
@@ -102,7 +102,7 @@ func TestSyncContactNowQueuesOperationAndPublishesLiveStatus(t *testing.T) {
 
 func TestInboundProviderChangeQueuesMultiMasterFanout(t *testing.T) {
 	ctx := context.Background()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}
@@ -180,9 +180,9 @@ func TestInboundProviderChangeQueuesMultiMasterFanout(t *testing.T) {
 	}
 }
 
-func TestUnifyContactCreatesGoferManagedFields(t *testing.T) {
+func TestUnifyContactCreatesRavenManagedFields(t *testing.T) {
 	ctx := context.Background()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}
@@ -234,7 +234,7 @@ func TestUnifyContactCreatesGoferManagedFields(t *testing.T) {
 
 func TestUnifyContactJSONRequestsDetailRefresh(t *testing.T) {
 	ctx := context.Background()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}

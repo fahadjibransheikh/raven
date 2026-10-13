@@ -319,7 +319,7 @@ func (h *Handler) scheduleInboundContactFanout(ctx context.Context, userID, cont
 	if err != nil {
 		return err
 	}
-	if contact == nil || !contact.GoferSyncEnabled {
+	if contact == nil || !contact.RavenSyncEnabled {
 		return nil
 	}
 	targets, err := h.contactTargetAccountSet(ctx, userID, contact.SaveTargets)
@@ -488,7 +488,7 @@ func googleContactLabel(value, fallback string) string {
 }
 
 func (h *Handler) syncContactToAccountTargets(ctx context.Context, userID string, contact models.Contact, previous *models.Contact, excludedAccountID string) error {
-	if !contact.GoferSyncEnabled || contact.ID == "" || contact.Email == "" {
+	if !contact.RavenSyncEnabled || contact.ID == "" || contact.Email == "" {
 		return nil
 	}
 
@@ -524,7 +524,7 @@ func (h *Handler) syncContactToAccountTargets(ctx context.Context, userID string
 // profile is saved. Exact email matches are safe to attach automatically;
 // ambiguous matches stop the save and are surfaced to the editor.
 func (h *Handler) preflightNewContactSyncTargets(ctx context.Context, userID string, contact models.Contact, previous *models.Contact) error {
-	if !contact.GoferSyncEnabled {
+	if !contact.RavenSyncEnabled {
 		return nil
 	}
 	desired, err := h.contactTargetAccountSet(ctx, userID, contact.SaveTargets)
@@ -532,7 +532,7 @@ func (h *Handler) preflightNewContactSyncTargets(ctx context.Context, userID str
 		return err
 	}
 	existing := map[string]contactSyncAccount{}
-	if previous != nil && previous.GoferSyncEnabled {
+	if previous != nil && previous.RavenSyncEnabled {
 		existing, err = h.contactTargetAccountSet(ctx, userID, previous.SaveTargets)
 		if err != nil {
 			return err
@@ -622,7 +622,7 @@ func (h *Handler) handleSyncContactNow(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	if !contact.GoferSyncEnabled {
+	if !contact.RavenSyncEnabled {
 		http.Error(w, "Raven Sync is disabled for this contact", http.StatusConflict)
 		return
 	}
@@ -709,7 +709,7 @@ func (h *Handler) processContactSyncOperation(parent context.Context, op storage
 		return
 	}
 	contact = *current
-	if !contact.GoferSyncEnabled {
+	if !contact.RavenSyncEnabled {
 		if err := h.db.MarkContactSyncOperationSuccess(context.Background(), op.ID); err != nil {
 			log.Printf("contacts sync operation %s: cancel disabled sync: %v", op.ID, err)
 		}
@@ -743,7 +743,7 @@ func (h *Handler) processContactSyncOperation(parent context.Context, op storage
 }
 
 func (h *Handler) contactNeedsAccountSync(ctx context.Context, userID string, contact models.Contact, previous *models.Contact) bool {
-	if !contact.GoferSyncEnabled || contact.ID == "" || contact.Email == "" {
+	if !contact.RavenSyncEnabled || contact.ID == "" || contact.Email == "" {
 		return false
 	}
 	currentTargets, err := h.contactTargetAccountSet(ctx, userID, contact.SaveTargets)
@@ -1174,9 +1174,9 @@ func isGoogleNotFound(err error, apiErr *googleAPIError) bool {
 func htmlStatus(w http.ResponseWriter, status int, message string) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if status >= 400 {
-		w.Header().Set("X-Gofer-Status", "error")
+		w.Header().Set("X-Raven-Status", "error")
 	} else {
-		w.Header().Set("X-Gofer-Status", "ok")
+		w.Header().Set("X-Raven-Status", "ok")
 	}
 	if status >= 400 {
 		status = http.StatusOK

@@ -28,6 +28,12 @@ func UserProviderDraftRetryable(err error) bool {
 	return !ok || status == http.StatusRequestTimeout || status == http.StatusTooEarly || status == http.StatusTooManyRequests || status >= 500
 }
 
+// Drafts saved at the provider before the rename carry the old header name; a
+// draft's revision must still be readable or it would look edited elsewhere.
+func isDraftRevisionHeader(name string) bool {
+	return strings.EqualFold(name, "X-Raven-Draft-Revision") || strings.EqualFold(name, "X-Gofer-Draft-Revision")
+}
+
 type UserProviderDraft struct {
 	ID, MessageID, InternetMessageID, RevisionToken string
 }
@@ -115,7 +121,7 @@ func (r userGmailDraftResponse) draft() UserProviderDraft {
 		switch {
 		case strings.EqualFold(h.Name, "Message-ID"):
 			d.InternetMessageID = strings.TrimSpace(h.Value)
-		case strings.EqualFold(h.Name, "X-Gofer-Draft-Revision"):
+		case isDraftRevisionHeader(h.Name):
 			d.RevisionToken = strings.TrimSpace(h.Value)
 		}
 	}
@@ -134,7 +140,7 @@ type userGraphDraftResponse struct {
 func (r userGraphDraftResponse) draft() UserProviderDraft {
 	d := UserProviderDraft{ID: r.ID, MessageID: r.ID, InternetMessageID: strings.TrimSpace(r.InternetMessageID)}
 	for _, h := range r.Headers {
-		if strings.EqualFold(h.Name, "X-Gofer-Draft-Revision") {
+		if isDraftRevisionHeader(h.Name) {
 			d.RevisionToken = strings.TrimSpace(h.Value)
 		}
 	}
@@ -259,7 +265,7 @@ func (p *UserProviderMail) SaveDraft(ctx context.Context, id string, mime []byte
 	if err != nil {
 		return UserProviderDraft{}, err
 	}
-	internetID, revision := strings.TrimSpace(msg.Header.Get("Message-ID")), strings.TrimSpace(msg.Header.Get("X-Gofer-Draft-Revision"))
+	internetID, revision := strings.TrimSpace(msg.Header.Get("Message-ID")), strings.TrimSpace(msg.Header.Get("X-Raven-Draft-Revision"))
 	if internetID == "" || revision == "" {
 		return UserProviderDraft{}, errors.New("draft MIME identity and revision are required")
 	}

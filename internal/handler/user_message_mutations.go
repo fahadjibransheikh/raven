@@ -114,7 +114,7 @@ func (h *Handler) userMessageMutationHandler(selectHandler func(*Handler) http.H
 				log.Printf("user mail changes saved; queue wake %s: %v", id, err)
 				// Retain the successful local result: retrying a toggle can undo it,
 				// and repeating a move to Trash can become a permanent deletion.
-				response.header.Set("X-Gofer-Mail-Delivery", "delayed")
+				response.header.Set("X-Raven-Mail-Delivery", "delayed")
 			}
 		}
 		for key, values := range response.header {

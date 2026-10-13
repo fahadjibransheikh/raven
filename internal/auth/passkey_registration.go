@@ -24,7 +24,7 @@ import (
 
 const (
 	passkeyRegistrationDraftVersion = 1
-	passkeyRegistrationDraftKey     = "gofer/auth/passkey-registration-draft/v1"
+	passkeyRegistrationDraftKey     = "raven/auth/passkey-registration-draft/v1"
 	passkeyRegistrationMaxBodyBytes = 1 << 20
 	passkeyNameMaximumRunes         = 64
 	passkeyCredentialIDMaximumBytes = 1023

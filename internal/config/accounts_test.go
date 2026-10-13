@@ -14,7 +14,7 @@ import (
 
 func newAccountStoreTestStore(t *testing.T) (*storage.DB, *AccountStore) {
 	t.Helper()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}

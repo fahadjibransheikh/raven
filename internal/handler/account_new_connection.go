@@ -18,7 +18,7 @@ import (
 
 // accountConnectionTestResultHeader tells the add-account wizard whether every
 // service connected, so it creates the account only after a passing test.
-const accountConnectionTestResultHeader = "X-Gofer-Connection-Test"
+const accountConnectionTestResultHeader = "X-Raven-Connection-Test"
 
 // handleTestNewAccount tests the IMAP and SMTP settings typed into the
 // add-account wizard before the account exists. Nothing is saved: the

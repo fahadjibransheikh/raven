@@ -19,7 +19,7 @@ import (
 
 func TestSpamActionFallsBackToLocalMoveWhenRemoteReportFails(t *testing.T) {
 	ctx := context.Background()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}
@@ -95,7 +95,7 @@ func TestSpamActionFallsBackToLocalMoveWhenRemoteReportFails(t *testing.T) {
 
 func TestOutlookSpamActionDoesNotFallbackToLocalMoveWhenGraphFails(t *testing.T) {
 	ctx := context.Background()
-	db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatalf("storage.New() error = %v", err)
 	}

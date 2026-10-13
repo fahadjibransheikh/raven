@@ -273,7 +273,7 @@ func (db *DB) SaveUserContactEdit(ctx context.Context, s *ContactEditSnapshot, d
 	}
 	request := s.Contact()
 	if deferSetup {
-		request.GoferSyncEnabled = false
+		request.RavenSyncEnabled = false
 	}
 	profile, targets := contactProfileForSave(s.owner, request, s.profile)
 	request.Name = profile.DisplayName
@@ -283,7 +283,7 @@ func (db *DB) SaveUserContactEdit(ctx context.Context, s *ContactEditSnapshot, d
 	if err := replaceContactSyncMembershipsTx(ctx, tx, s.owner, s.id, targets); err != nil {
 		return ContactEditResult{}, err
 	}
-	if request.GoferSyncEnabled {
+	if request.RavenSyncEnabled {
 		if err := replaceCanonicalContactFieldsTx(ctx, tx, s.owner, s.id, request); err != nil {
 			return ContactEditResult{}, err
 		}
@@ -293,7 +293,7 @@ func (db *DB) SaveUserContactEdit(ctx context.Context, s *ContactEditSnapshot, d
 		events = append(events, ContactActivityNotification{UserID: s.owner, EventType: "manual_contact_added", Email: request.Email, Message: "Manual contact added", Count: 1})
 	}
 	result := ContactEditResult{SetupDeferred: deferSetup}
-	if request.GoferSyncEnabled {
+	if request.RavenSyncEnabled {
 		p, err := contactSyncProfileStateTx(ctx, tx, &ContactSyncClaim{owner: s.owner, profile: s.id})
 		if err != nil {
 			return ContactEditResult{}, err

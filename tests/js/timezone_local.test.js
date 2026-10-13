@@ -18,13 +18,13 @@ function init(timezone) {
     return Promise.resolve({ json: () => Promise.resolve({}) })
   }
   w.eval(uiSettings)
-  w.GoferSettings.init()
+  w.RavenSettings.init()
   return { w, fetches }
 }
 
 test("local stays local, nothing is persisted, and the cookie carries the device zone", () => {
   const { w, fetches } = init("local")
-  assert.equal(w.GoferSettings.get("timezone"), "local")
+  assert.equal(w.RavenSettings.get("timezone"), "local")
   assert.deepEqual(fetches.filter((f) => f.opts && f.opts.method === "PATCH"), [])
   const zone = w.Intl.DateTimeFormat().resolvedOptions().timeZone
   assert.ok(w.document.cookie.includes("raven_tz=" + encodeURIComponent(zone)), w.document.cookie)
@@ -32,6 +32,6 @@ test("local stays local, nothing is persisted, and the cookie carries the device
 
 test("an explicit zone is kept as is", () => {
   const { w, fetches } = init("Asia/Karachi")
-  assert.equal(w.GoferSettings.get("timezone"), "Asia/Karachi")
+  assert.equal(w.RavenSettings.get("timezone"), "Asia/Karachi")
   assert.deepEqual(fetches.filter((f) => f.opts && f.opts.method === "PATCH"), [])
 })

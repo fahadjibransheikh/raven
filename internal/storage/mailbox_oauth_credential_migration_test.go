@@ -70,7 +70,7 @@ func seedV85MailboxOAuthSchema(t *testing.T, path, accounts, credentials string)
 }
 
 func TestMigrateV85MapsExactAndSingleUnboundMailboxCredentials(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "gofer.db")
+	path := filepath.Join(t.TempDir(), "raven.db")
 	seedV85MailboxOAuthSchema(t, path, `
 		INSERT INTO accounts (id, user_id, provider, provider_account_id, email_address) VALUES
 			('gmail-one', 'owner', 'gmail', 'google-one', 'one@example.com'),
@@ -162,7 +162,7 @@ func TestFreshAndMigratedMailboxOAuthSchemasMatch(t *testing.T) {
 }
 
 func TestMigrateV85RejectsAmbiguousMailboxCredentialMappingAtomically(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "gofer.db")
+	path := filepath.Join(t.TempDir(), "raven.db")
 	seedV85MailboxOAuthSchema(t, path, `
 		INSERT INTO accounts (id, user_id, provider, provider_account_id, email_address) VALUES
 			('gmail-one', 'owner', 'gmail', '', 'one@example.com'),

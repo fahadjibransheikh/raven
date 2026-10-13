@@ -13,7 +13,7 @@ import (
 
 func newIdentityTestDB(t *testing.T) *DB {
 	t.Helper()
-	db, err := New(filepath.Join(t.TempDir(), "gofer.db"))
+	db, err := New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +56,7 @@ func defaultCount(t *testing.T, db *DB, accountID string) int {
 }
 
 func TestMigrateV95ToV96BackfillsPrimaryIdentityAndIsIdempotent(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "gofer.db")
+	dbPath := filepath.Join(t.TempDir(), "raven.db")
 	raw, err := openDB(dbPath)
 	if err != nil {
 		t.Fatal(err)

@@ -567,7 +567,7 @@ func TestManagedStorageConversionFromAnotherDirectoryLeavesOriginal(t *testing.T
 func TestManagedStorageLeavesOnlyTheRollbackCopy(t *testing.T) {
 	t.Run("fresh", func(t *testing.T) {
 		t.Setenv("RAVEN_SECRET_KEY", "")
-		path := filepath.Join(t.TempDir(), "gofer.db")
+		path := filepath.Join(t.TempDir(), "raven.db")
 		s, err := openManagedStorage(t.Context(), path, 1)
 		if err != nil {
 			t.Fatal(err)
@@ -745,7 +745,7 @@ func TestManagedStoragePreventConversionSetting(t *testing.T) {
 	t.Run("fresh installation and interrupted conversion proceed", func(t *testing.T) {
 		t.Setenv("RAVEN_SECRET_KEY", "")
 		t.Setenv("RAVEN_PREVENT_STORAGE_CONVERSION", "true")
-		s, err := openManagedStorage(t.Context(), filepath.Join(t.TempDir(), "gofer.db"), 1)
+		s, err := openManagedStorage(t.Context(), filepath.Join(t.TempDir(), "raven.db"), 1)
 		if err != nil {
 			t.Fatal("fresh installation blocked", err)
 		}

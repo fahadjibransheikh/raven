@@ -72,7 +72,7 @@ func TestUserContactUnifyHTTPAtomicQueueAndOwnerIsolation(t *testing.T) {
 			if err != nil {
 				return err
 			}
-			if contact == nil || contact.Email != owner+"-contact@example.com" || contact.AvatarURL != "https://avatar.test/"+owner || !contact.GoferSyncEnabled || len(contact.SaveTargets) != 2 || contact.SaveTargets[1] != "book:"+owner+"-owned-book" {
+			if contact == nil || contact.Email != owner+"-contact@example.com" || contact.AvatarURL != "https://avatar.test/"+owner || !contact.RavenSyncEnabled || len(contact.SaveTargets) != 2 || contact.SaveTargets[1] != "book:"+owner+"-owned-book" {
 				t.Fatal("unify browser injection or owner crossing", owner, contact)
 			}
 			var queued, providerFields int
@@ -148,7 +148,7 @@ func TestUserContactImportHTTPOwnedDestinationsAndDisabledSync(t *testing.T) {
 			if err != nil {
 				return err
 			}
-			if contact.ID == "same-contact-id" || contact.ID == "same-imported-id" || contact.GoferSyncEnabled || len(contact.SaveTargets) != 2 || contact.SaveTargets[1] != "book:alice-owned-book" {
+			if contact.ID == "same-contact-id" || contact.ID == "same-imported-id" || contact.RavenSyncEnabled || len(contact.SaveTargets) != 2 || contact.SaveTargets[1] != "book:alice-owned-book" {
 				t.Fatal("import trusted UID/foreign target or enabled sync", contact)
 			}
 		}

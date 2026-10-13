@@ -7,12 +7,12 @@ import (
 	"os"
 )
 
-// AutoDownloadMaxBytes is the largest message Gofer downloads on its own to
+// AutoDownloadMaxBytes is the largest message Raven downloads on its own to
 // show in the reader. A larger one waits until the reader asks for it, so a
 // few huge messages can't fill the server's memory while someone browses.
 const AutoDownloadMaxBytes int64 = 25 << 20
 
-// MaxDownloadBytes is the largest message Gofer downloads at all.
+// MaxDownloadBytes is the largest message Raven downloads at all.
 const MaxDownloadBytes int64 = 64 << 20
 
 type downloadLimitKey struct{}
@@ -46,7 +46,7 @@ func (e *TooLargeError) Error() string {
 }
 
 // CanDownloadFully reports whether the reader can still ask for the whole
-// message: it only passed the automatic limit, not the largest Gofer reads.
+// message: it only passed the automatic limit, not the largest Raven reads.
 func (e *TooLargeError) CanDownloadFully() bool {
 	return e.Limit < MaxDownloadBytes && e.Size <= MaxDownloadBytes
 }

@@ -23,7 +23,7 @@ async function setup(dirty) {
   w.matchMedia = function () { return { matches: true, addEventListener: function () {}, addListener: function () {} } }
   w.fetch = function () { return Promise.resolve({ ok: true, json: function () { return Promise.resolve({}) } }) }
   w.VirtualMailList = function () { return new Proxy({}, { get: function () { return function () {} } }) }
-  w.goferChoice = function (title) { choices.push(title); return Promise.resolve("cancel") }
+  w.ravenChoice = function (title) { choices.push(title); return Promise.resolve("cancel") }
   w.tui = { dialog: { open: function () {}, close: function (id) { closed.push(id) } } }
   w.eval(appJS)
   if (w.document.readyState === "loading") {
