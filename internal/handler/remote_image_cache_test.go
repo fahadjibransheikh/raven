@@ -7,11 +7,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/fahadjibransheikh/raven/internal/store"
 )
 
 var testPNG = append([]byte("\x89PNG\r\n\x1a\n"), bytes.Repeat([]byte{7}, 64)...)
@@ -302,5 +305,115 @@ func TestWarmIsBounded(t *testing.T) {
 	}
 	if fake.maxInflight.Load() > warmConcurrency {
 		t.Fatalf("%d downloads at once, limit %d", fake.maxInflight.Load(), warmConcurrency)
+	}
+}
+
+func cachedFiles(t *testing.T, h *Handler, msgID int64) []string {
+	t.Helper()
+	matches, _ := filepath.Glob(filepath.Join(store.RelayedImageCacheDir(h.blobStore.RemoteAssetsDir("victim-account", msgID)), "*"))
+	return matches
+}
+
+func TestRelayKeepsImagesInTheCacheFolderApartFromSavedOnes(t *testing.T) {
+	h, db := newAccountOwnershipTestHandler(t)
+	fixture := insertVictimReadableMessage(t, h, db)
+	fake := &fakeDownloader{}
+	h.remoteResourceDownloader = fake.download
+	relayGet(t, h, webLink(h, "owner", fixture.messageID, "https://img.example/a.png"))
+	if got := cachedFiles(t, h, fixture.messageID); len(got) != 1 {
+		t.Fatalf("cache folder holds %v, want the relayed image", got)
+	}
+	// Beside the saved images there is the fixture's own asset and the folder,
+	// not a copy of the relayed image.
+	relayed := store.RemoteAssetName("https://img.example/a.png") + ".png"
+	for _, name := range keptFiles(t, h, fixture.messageID) {
+		if name == relayed {
+			t.Fatalf("relayed image was written beside the saved ones: %v", keptFiles(t, h, fixture.messageID))
+		}
+	}
+}
+
+func TestRelayStillServesAnImageCachedBesideSavedOnesBeforeTheCacheFolder(t *testing.T) {
+	h, db := newAccountOwnershipTestHandler(t)
+	fixture := insertVictimReadableMessage(t, h, db)
+	fake := &fakeDownloader{}
+	h.remoteResourceDownloader = fake.download
+	const remote = "https://img.example/old.png"
+	if _, err := store.WriteRemoteAsset(h.blobStore.RemoteAssetsDir("victim-account", fixture.messageID), remote, testPNG); err != nil {
+		t.Fatal(err)
+	}
+	rec := relayGet(t, h, webLink(h, "owner", fixture.messageID, remote))
+	if rec.Code != http.StatusOK || fake.calls.Load() != 0 || !bytes.Equal(rec.Body.Bytes(), testPNG) {
+		t.Fatalf("status %d, downloads %d", rec.Code, fake.calls.Load())
+	}
+}
+
+func TestRelayRefreshesTheUseTimeOfACachedImage(t *testing.T) {
+	h, db := newAccountOwnershipTestHandler(t)
+	fixture := insertVictimReadableMessage(t, h, db)
+	h.remoteResourceDownloader = (&fakeDownloader{}).download
+	link := webLink(h, "owner", fixture.messageID, "https://img.example/a.png")
+	relayGet(t, h, link)
+	cached := cachedFiles(t, h, fixture.messageID)[0]
+	old := time.Now().Add(-10 * 24 * time.Hour)
+	if err := os.Chtimes(cached, old, old); err != nil {
+		t.Fatal(err)
+	}
+	relayGet(t, h, link)
+	info, err := os.Stat(cached)
+	if err != nil || time.Since(info.ModTime()) > time.Hour {
+		t.Fatalf("use time not refreshed: %v %v", info, err)
+	}
+}
+
+func TestRetentionSweepsStaleAndOrphanedRelayedImagesButNeverSavedOnes(t *testing.T) {
+	h, db := newAccountOwnershipTestHandler(t)
+	fixture := insertVictimReadableMessage(t, h, db)
+	insertSecondMessage(t, h)
+	h.remoteResourceDownloader = (&fakeDownloader{}).download
+	relayGet(t, h, webLink(h, "owner", fixture.messageID, "https://img.example/stale.png"))
+	relayGet(t, h, webLink(h, "owner", fixture.messageID, "https://img.example/fresh.png"))
+	relayGet(t, h, webLink(h, "owner", 102, "https://img.example/other.png"))
+	stale := store.RelayedImageCacheDir(h.blobStore.RemoteAssetsDir("victim-account", fixture.messageID))
+	staleFile := filepath.Join(stale, store.RemoteAssetName("https://img.example/stale.png")+".png")
+	longAgo := time.Now().Add(-20 * 24 * time.Hour)
+	if err := os.Chtimes(staleFile, longAgo, longAgo); err != nil {
+		t.Fatal(err)
+	}
+	// The saved image the fixture's body points at is even older.
+	savedBefore := keptFiles(t, h, fixture.messageID)
+	for _, name := range savedBefore {
+		if name != "web" {
+			p := filepath.Join(h.blobStore.RemoteAssetsDir("victim-account", fixture.messageID), name)
+			if err := os.Chtimes(p, longAgo.Add(-100*24*time.Hour), longAgo.Add(-100*24*time.Hour)); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	// Message 102 is purged.
+	if _, err := db.Write().ExecContext(t.Context(), `DELETE FROM message_folder_state WHERE message_id = 102; DELETE FROM messages WHERE id = 102`); err != nil {
+		t.Fatal(err)
+	}
+
+	h.runMailRetentionAt(t.Context(), time.Now().UTC())
+
+	if got := cachedFiles(t, h, fixture.messageID); len(got) != 1 || strings.HasSuffix(got[0], filepath.Base(staleFile)) {
+		t.Fatalf("message 1 cache = %v, want only the fresh image", got)
+	}
+	if got := cachedFiles(t, h, 102); len(got) != 0 {
+		t.Fatalf("purged message still has cached images: %v", got)
+	}
+	savedAfter := keptFiles(t, h, fixture.messageID)
+	for _, name := range savedBefore {
+		if name == "web" {
+			continue
+		}
+		found := false
+		for _, after := range savedAfter {
+			found = found || after == name
+		}
+		if !found {
+			t.Fatalf("saved image %s was swept", name)
+		}
 	}
 }

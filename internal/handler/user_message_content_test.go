@@ -323,14 +323,14 @@ func TestOwnedRemoteImageCacheStaysWithEachOwnersMessage(t *testing.T) {
 	if !bytes.Equal(alice, again) || bytes.Equal(alice, bob) || fake.calls.Load() != 2 {
 		t.Fatalf("downloads = %d: owners shared a copy or a repeat downloaded again", fake.calls.Load())
 	}
-	// The copy sits next to the body the owner's message was published with.
+	// The copy sits (in the cache folder) next to the body the owner's message was published with.
 	for _, owner := range []string{"alice", "bob"} {
 		if err := f.h.withUserDB(t.Context(), owner, func(db *storage.DB) error {
 			s, err := db.GetMessageContentSnapshotForUser(t.Context(), owner, 1)
 			if err != nil {
 				return err
 			}
-			if kept, _ := filepath.Glob(filepath.Join(filepath.Dir(s.BodyHTMLPath), "remote_assets", "*.png")); len(kept) != 1 {
+			if kept, _ := filepath.Glob(filepath.Join(filepath.Dir(s.BodyHTMLPath), "remote_assets", "web", "*.png")); len(kept) != 1 {
 				return fmt.Errorf("%s kept %v", owner, kept)
 			}
 			return nil

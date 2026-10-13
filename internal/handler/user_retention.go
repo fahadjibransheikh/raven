@@ -88,6 +88,7 @@ func (h *Handler) runUserMailRetentionAt(ctx context.Context, now time.Time, tim
 	if _, err := h.db.PruneAvatarAttemptLogs(ctx, now.Add(-avatarAttemptLogRetention)); err != nil && ctx.Err() == nil {
 		log.Printf("mail-retention: prune avatar attempt logs: %v", err)
 	}
+	h.pruneRelayedImageCache(ctx, now)
 	after := ""
 	for {
 		if ctx.Err() != nil {

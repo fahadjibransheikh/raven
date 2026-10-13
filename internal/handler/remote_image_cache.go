@@ -3,6 +3,7 @@ package handler
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"errors"
 	"log"
 	"os"
@@ -17,13 +18,17 @@ import (
 )
 
 // Remote images that a reader allowed are relayed through Raven (see
-// message_file_links.go). Each relayed image is kept in the message's
-// remote-assets directory, next to the images saved by "load remote content",
+// message_file_links.go). Each relayed image is kept in a "web" folder inside
+// the message's remote-assets directory, apart from the images saved by "load
+// remote content" (which the stored body refers to and which are never swept),
 // under the same name: the file a message already has for an address is the
 // one served, so a message opened again, or opened while its images are being
 // fetched ahead of time, never downloads them twice. The directory belongs to
 // one message, so one message's cache is never read through another's id, and
-// it goes wherever the message's other files go.
+// it goes wherever the message's other files go. Entries nobody has used for
+// relayedImageMaxAge are swept by the retention worker (pruneRelayedImageCache),
+// which also holds the cache to relayedImageCacheMaxBytes. Images cached before
+// the "web" folder existed sit next to the saved ones and are kept as if saved.
 
 const (
 	// maxRelayedFileBytes is the most a relayed file may be; the downloader
@@ -33,6 +38,9 @@ const (
 	warmConcurrency     = 4
 	warmTimeout         = 2 * time.Minute
 	downloadTimeout     = 15 * time.Second
+	// relayedImageMaxAge and relayedImageCacheMaxBytes bound the cache on disk.
+	relayedImageMaxAge        = 14 * 24 * time.Hour
+	relayedImageCacheMaxBytes = 1 << 30
 )
 
 // warmSlots bounds the images fetched ahead of time across all messages.
@@ -74,11 +82,18 @@ func (h *Handler) withRemoteImageDir(ctx context.Context, owner string, msgID in
 	return resolved, err
 }
 
+// cachedRemoteAsset finds the file a message already has for an address: a saved
+// image in dir, or a relayed one in its cache folder.
 func cachedRemoteAsset(dir, name string) string {
-	for _, ext := range cachedAssetExtensions {
-		p := filepath.Join(dir, name+ext)
-		if info, err := os.Stat(p); err == nil && info.Mode().IsRegular() && info.Size() > 0 {
-			return p
+	for _, where := range []string{dir, store.RelayedImageCacheDir(dir)} {
+		for _, ext := range cachedAssetExtensions {
+			p := filepath.Join(where, name+ext)
+			if info, err := os.Stat(p); err == nil && info.Mode().IsRegular() && info.Size() > 0 {
+				if where != dir {
+					store.TouchRelayedImage(p, time.Now())
+				}
+				return p
+			}
 		}
 	}
 	return ""
@@ -165,7 +180,7 @@ func (h *Handler) relayedImage(ctx context.Context, owner string, msgID int64, r
 				return nil, err
 			}
 			if cacheableRelayedImage(data) {
-				if _, err := store.WriteRemoteAsset(dir, remoteURL, data); err != nil {
+				if _, err := store.WriteRemoteAsset(store.RelayedImageCacheDir(dir), remoteURL, data); err != nil {
 					log.Printf("keep relayed image of message %d: %v", msgID, err)
 				}
 			}
@@ -267,4 +282,33 @@ func (h *Handler) allowedStoredBody(ctx context.Context, owner string, msgID int
 		})
 	})
 	return body
+}
+
+// pruneRelayedImageCache keeps the relayed-image cache bounded: it drops entries
+// unused for relayedImageMaxAge, those of messages that no longer exist, and the
+// least recently used beyond relayedImageCacheMaxBytes. Message existence is
+// checked in the single shared database; in managed mode a message lives in its
+// owner's database, so only age and size apply there.
+func (h *Handler) pruneRelayedImageCache(ctx context.Context, now time.Time) {
+	if h.blobStore == nil {
+		return
+	}
+	opts := store.RelayedImageSweep{MaxAge: relayedImageMaxAge, MaxBytes: relayedImageCacheMaxBytes}
+	if h.userStorage == nil && h.db != nil {
+		opts.MessageExists = func(ctx context.Context, _ string, messageID int64) (bool, error) {
+			var one int
+			err := h.db.Read().QueryRowContext(ctx, `SELECT 1 FROM messages WHERE id = ?`, messageID).Scan(&one)
+			if errors.Is(err, sql.ErrNoRows) {
+				return false, nil
+			}
+			return err == nil, err
+		}
+	}
+	result, err := h.blobStore.SweepRelayedImages(ctx, now, opts)
+	if err != nil && ctx.Err() == nil {
+		log.Printf("mail-retention: sweep relayed images: %v", err)
+	}
+	if result.Files > 0 {
+		log.Printf("mail-retention: removed %d cached relayed images (%d bytes)", result.Files, result.Bytes)
+	}
 }
