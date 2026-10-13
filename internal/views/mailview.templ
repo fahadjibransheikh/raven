@@ -249,6 +249,11 @@ templ MailViewContent(email *models.Email, thread []models.ThreadItem, newestFir
 						<div class="flex items-center gap-2 mb-6">
 							@icon.MessagesSquare(icon.Props{Class: "size-3.5 text-subtle-foreground"})
 							<span class="text-xs font-medium text-subtle-foreground">{ fmt.Sprintf("%d messages in this thread", len(thread)) }</span>
+							<span class="text-xs text-subtle-foreground">|</span>
+							<button type="button" data-thread-expand-all class="flex items-center gap-1.5 text-xs text-subtle-foreground hover:text-foreground transition-colors cursor-pointer">
+								@icon.ChevronsUpDown(icon.Props{Class: "size-3.5"})
+								<span data-thread-expand-all-label>Expand all</span>
+							</button>
 						</div>
 						for i, item := range thread {
 							@MailViewThreadItemSender(email, &item, !newestFirst && threadItemOpen(thread, i, false))

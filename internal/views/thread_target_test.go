@@ -111,3 +111,10 @@ func ascending(html string, marks ...string) bool {
 	}
 	return true
 }
+
+func TestMailViewThreadOffersExpandAll(t *testing.T) {
+	html := renderThread(t, threadFixture(), true)
+	if strings.Count(html, "data-thread-expand-all-label") != 1 || !strings.Contains(html, ">Expand all<") {
+		t.Errorf("a thread needs one Expand all control next to its message count")
+	}
+}

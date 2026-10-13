@@ -16369,6 +16369,36 @@ function collapseComposeFullWidth() {
     return siblings
   }
 
+  // "Expand all" opens every message of the thread, and reads "Collapse all" once they all are open.
+  function syncExpandAll(root) {
+    var buttons = (root || document).querySelectorAll('[data-thread-expand-all]')
+    for (var i = 0; i < buttons.length; i++) {
+      var scope = buttons[i].closest('.mail-view-content')
+      var all = scope ? scope.querySelectorAll('details[data-thread-details]') : []
+      var open = scope ? scope.querySelectorAll('details[data-thread-details][open]') : []
+      var label = buttons[i].querySelector('[data-thread-expand-all-label]')
+      var text = all.length > 0 && open.length === all.length ? 'Collapse all' : 'Expand all'
+      if (label && label.textContent !== text) label.textContent = text
+    }
+  }
+  document.addEventListener('click', function (e) {
+    var button = e.target.closest && e.target.closest('[data-thread-expand-all]')
+    if (!button) return
+    var scope = button.closest('.mail-view-content')
+    if (!scope) return
+    var all = scope.querySelectorAll('details[data-thread-details]')
+    var closed = scope.querySelectorAll('details[data-thread-details]:not([open])')
+    for (var i = 0; i < all.length; i++) {
+      if (closed.length > 0) { if (!all[i].open) expandDetails(all[i]) }
+      else if (all[i].open) collapseDetails(all[i])
+    }
+    var label = button.querySelector('[data-thread-expand-all-label]')
+    var next = closed.length > 0 ? 'Collapse all' : 'Expand all'
+    if (label && label.textContent !== next) label.textContent = next
+  })
+  // toggle doesn't bubble, so listen on the capture phase.
+  document.addEventListener('toggle', function (e) { if (e.target && e.target.matches && e.target.matches('details[data-thread-details]')) syncExpandAll(document) }, true)
+
   function initThreadDetails(root) {
     var details = root.querySelectorAll('details[data-thread-details]')
     for (var i = 0; i < details.length; i++) {
@@ -16452,7 +16482,8 @@ function collapseComposeFullWidth() {
 
   initThreadDetails(document.body)
   pinThreadTarget(document.body)
-  new MutationObserver(function () { initThreadDetails(document.body); pinThreadTarget(document.body) }).observe(document.body, { childList: true, subtree: true })
+  syncExpandAll(document)
+  new MutationObserver(function () { initThreadDetails(document.body); pinThreadTarget(document.body); syncExpandAll(document) }).observe(document.body, { childList: true, subtree: true })
 })()
 
 ;(function () {
