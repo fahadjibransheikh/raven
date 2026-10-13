@@ -17,7 +17,7 @@ const (
 
 var (
 	ErrSetupAlreadyInitialized    = errors.New("authentication setup is already complete")
-	ErrConfiguredSetupTokenLength = errors.New("GOFER_SETUP_TOKEN must contain between 32 and 1024 bytes")
+	ErrConfiguredSetupTokenLength = errors.New("RAVEN_SETUP_TOKEN must contain between 32 and 1024 bytes")
 )
 
 type SetupState struct {

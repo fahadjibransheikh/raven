@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"time"
 
+	goimap "github.com/emersion/go-imap/v2"
 	"github.com/fahadjibransheikh/raven/internal/config"
 	"github.com/fahadjibransheikh/raven/internal/mail"
 	imapclient "github.com/fahadjibransheikh/raven/internal/mail/imap"
@@ -16,7 +17,6 @@ import (
 	smtpclient "github.com/fahadjibransheikh/raven/internal/mail/smtp"
 	"github.com/fahadjibransheikh/raven/internal/models"
 	"github.com/fahadjibransheikh/raven/internal/storage"
-	goimap "github.com/emersion/go-imap/v2"
 )
 
 // This runner shares UserIMAP's serialized account gate, global session limit

@@ -105,7 +105,7 @@ func (c *Config) clientAddress(r *http.Request) (netip.Addr, bool) {
 type clientSourceKey struct{}
 
 // ClientSourceMiddleware records the throttling identity of each request: the
-// real client behind a configured trusted proxy (GOFER_TRUSTED_PROXY_CIDRS),
+// real client behind a configured trusted proxy (RAVEN_TRUSTED_PROXY_CIDRS),
 // else the socket peer. Without it every client behind cloudflared or another
 // reverse proxy would share the proxy's address and one throttle bucket.
 func (c *Config) ClientSourceMiddleware(next http.Handler) http.Handler {

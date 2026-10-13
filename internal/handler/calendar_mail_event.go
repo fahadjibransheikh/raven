@@ -11,12 +11,12 @@ import (
 	"strings"
 	"time"
 
+	ical "github.com/emersion/go-ical"
+	"github.com/emersion/go-message/mail"
 	"github.com/fahadjibransheikh/raven/internal/calendar"
 	"github.com/fahadjibransheikh/raven/internal/mail/message"
 	"github.com/fahadjibransheikh/raven/internal/storage"
 	"github.com/fahadjibransheikh/raven/internal/views"
-	ical "github.com/emersion/go-ical"
-	"github.com/emersion/go-message/mail"
 )
 
 type mailCalendarEvent struct {

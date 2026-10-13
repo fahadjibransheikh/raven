@@ -29,7 +29,7 @@ func (c *Config) ValidateMode() error {
 	case ModeOpen, ModePersonal, ModeManaged:
 		return nil
 	default:
-		return errors.New("GOFER_AUTH_MODE must be open, personal, or managed")
+		return errors.New("RAVEN_AUTH_MODE must be open, personal, or managed")
 	}
 }
 func (m *Manager) IsPersonal() bool { return m.config.AuthenticationMode() == ModePersonal }

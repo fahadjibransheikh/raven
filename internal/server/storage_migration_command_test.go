@@ -37,7 +37,7 @@ func TestStorageInspectionCommandUsesActualEntryPointAndPreservesMainSource(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("GOFER_DB_PATH", filepath.Join(t.TempDir(), "unused-default.db"))
+	t.Setenv("RAVEN_DB_PATH", filepath.Join(t.TempDir(), "unused-default.db"))
 	var stdout, stderr bytes.Buffer
 	started := false
 	code := runApplication(t.Context(), []string{"storage", "inspect", "--db", path}, &stdout, &stderr, func() { started = true })
@@ -57,7 +57,7 @@ func TestStorageInspectionCommandUsesActualEntryPointAndPreservesMainSource(t *t
 	if err != nil || sha256.Sum256(before) != sha256.Sum256(after) {
 		t.Fatal("source changed", err)
 	}
-	if _, err := os.Lstat(os.Getenv("GOFER_DB_PATH")); !os.IsNotExist(err) {
+	if _, err := os.Lstat(os.Getenv("RAVEN_DB_PATH")); !os.IsNotExist(err) {
 		t.Fatal("default database opened", err)
 	}
 	for _, name := range []string{"secret.key", "vapid_private.key", "vapid_public.key"} {
@@ -96,7 +96,7 @@ func TestStorageInspectionCommandRejectsInvalidArgumentsAndRunningRuntime(t *tes
 
 func migrationCommandFixture(t *testing.T) (storage.UserStorageMigrationOptions, []byte, []byte) {
 	t.Helper()
-	t.Setenv("GOFER_SECRET_KEY", "")
+	t.Setenv("RAVEN_SECRET_KEY", "")
 	root := t.TempDir()
 	path := filepath.Join(root, "shared.db")
 	key := []byte("0123456789abcdef0123456789abcdef")
@@ -142,7 +142,7 @@ func migrationCommandFixture(t *testing.T) (storage.UserStorageMigrationOptions,
 func TestStorageMigrationCommandPublishesThroughActualEntryPointWithoutStartingServer(t *testing.T) {
 	options, before, key := migrationCommandFixture(t)
 	unused := filepath.Join(t.TempDir(), "unused.db")
-	t.Setenv("GOFER_DB_PATH", unused)
+	t.Setenv("RAVEN_DB_PATH", unused)
 	var stdout, stderr bytes.Buffer
 	code := runApplication(t.Context(), []string{"storage", "migrate", "--db", options.SourcePath, "--to", options.DestinationPath}, &stdout, &stderr, func() { t.Error("migration started the server") })
 	if code != 0 || stderr.Len() != 0 {
@@ -239,7 +239,7 @@ func TestStorageMigrationCommandRefusesInvalidArgumentsKeysAndRunningSource(t *t
 					t.Fatal(err)
 				}
 			case "wrong-key":
-				t.Setenv("GOFER_SECRET_KEY", strings.Repeat("78", 32))
+				t.Setenv("RAVEN_SECRET_KEY", strings.Repeat("78", 32))
 			case "running-source", "running-destination":
 				path := options.SourcePath
 				if failure == "running-destination" {

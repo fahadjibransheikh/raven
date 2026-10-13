@@ -2,10 +2,10 @@ package httpguard
 
 import (
 	"fmt"
+	"github.com/fahadjibransheikh/raven/internal/legacyenv"
 	"net"
 	"net/netip"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 )
@@ -40,15 +40,15 @@ type Config struct {
 }
 
 func LoadConfig() (*Config, error) {
-	listenAddr := strings.TrimSpace(os.Getenv("GOFER_ADDR"))
-	baseURL := strings.TrimSpace(os.Getenv("GOFER_BASE_URL"))
+	listenAddr := strings.TrimSpace(legacyenv.Get("RAVEN_ADDR"))
+	baseURL := strings.TrimSpace(legacyenv.Get("RAVEN_BASE_URL"))
 
-	allowRemote, err := parseOptionalBool("GOFER_ALLOW_UNAUTHENTICATED_REMOTE")
+	allowRemote, err := parseOptionalBool("RAVEN_ALLOW_UNAUTHENTICATED_REMOTE")
 	if err != nil {
 		return nil, err
 	}
 
-	allowInsecureLAN, err := parseOptionalBool("GOFER_ALLOW_INSECURE_LAN")
+	allowInsecureLAN, err := parseOptionalBool("RAVEN_ALLOW_INSECURE_LAN")
 	if err != nil {
 		return nil, err
 	}
@@ -58,11 +58,11 @@ func LoadConfig() (*Config, error) {
 		return nil, err
 	}
 	cfg.AllowInsecureLAN = allowInsecureLAN
-	cfg.allowedCIDRs, err = parseCIDRs("GOFER_ALLOWED_CIDRS", os.Getenv("GOFER_ALLOWED_CIDRS"))
+	cfg.allowedCIDRs, err = parseCIDRs("RAVEN_ALLOWED_CIDRS", legacyenv.Get("RAVEN_ALLOWED_CIDRS"))
 	if err != nil {
 		return nil, err
 	}
-	cfg.trustedProxyCIDRs, err = parseCIDRs("GOFER_TRUSTED_PROXY_CIDRS", os.Getenv("GOFER_TRUSTED_PROXY_CIDRS"))
+	cfg.trustedProxyCIDRs, err = parseCIDRs("RAVEN_TRUSTED_PROXY_CIDRS", legacyenv.Get("RAVEN_TRUSTED_PROXY_CIDRS"))
 	if err != nil {
 		return nil, err
 	}
@@ -113,13 +113,13 @@ func newConfig(listenAddr, baseURL string, allowUnauthenticatedRemote bool) (*Co
 func (c *Config) ValidateExposure(authEnabled bool) error {
 	if !authEnabled && c.hasRemoteExposure() && !c.AllowUnauthenticatedRemote && len(c.allowedCIDRs) == 0 {
 		return fmt.Errorf(
-			"refusing unauthenticated remote exposure: GOFER_ADDR=%q and GOFER_BASE_URL=%q are only allowed when authentication is enabled or GOFER_ALLOWED_CIDRS explicitly allows client networks",
+			"refusing unauthenticated remote exposure: RAVEN_ADDR=%q and RAVEN_BASE_URL=%q are only allowed when authentication is enabled or RAVEN_ALLOWED_CIDRS explicitly allows client networks",
 			c.ListenAddr,
 			c.BaseURL,
 		)
 	}
 	if authEnabled && !c.baseLoopback && c.baseOrigin.scheme != "https" && !c.insecureLANBase() {
-		return fmt.Errorf("GOFER_BASE_URL must use https for authenticated non-loopback access, or a private network address with GOFER_ALLOW_INSECURE_LAN=true")
+		return fmt.Errorf("RAVEN_BASE_URL must use https for authenticated non-loopback access, or a private network address with RAVEN_ALLOW_INSECURE_LAN=true")
 	}
 	return nil
 }
@@ -178,7 +178,7 @@ func (c *Config) trustsReferer(rawReferer string) bool {
 }
 
 func parseOptionalBool(name string) (bool, error) {
-	raw := strings.TrimSpace(os.Getenv(name))
+	raw := strings.TrimSpace(legacyenv.Get(name))
 	if raw == "" {
 		return false, nil
 	}
@@ -192,10 +192,10 @@ func parseOptionalBool(name string) (bool, error) {
 func validateListenAddr(raw string) (string, error) {
 	host, port, err := net.SplitHostPort(raw)
 	if err != nil {
-		return "", fmt.Errorf("invalid GOFER_ADDR %q: expected host:port", raw)
+		return "", fmt.Errorf("invalid RAVEN_ADDR %q: expected host:port", raw)
 	}
 	if err := validatePort(port); err != nil {
-		return "", fmt.Errorf("invalid GOFER_ADDR %q: %w", raw, err)
+		return "", fmt.Errorf("invalid RAVEN_ADDR %q: %w", raw, err)
 	}
 	return normalizeHost(host), nil
 }
@@ -203,27 +203,27 @@ func validateListenAddr(raw string) (string, error) {
 func validateBaseURL(raw string) (string, requestOrigin, error) {
 	parsed, err := url.Parse(raw)
 	if err != nil {
-		return "", requestOrigin{}, fmt.Errorf("invalid GOFER_BASE_URL %q: %w", raw, err)
+		return "", requestOrigin{}, fmt.Errorf("invalid RAVEN_BASE_URL %q: %w", raw, err)
 	}
 	parsed.Scheme = strings.ToLower(strings.TrimSpace(parsed.Scheme))
 	if parsed.Scheme != "http" && parsed.Scheme != "https" {
-		return "", requestOrigin{}, fmt.Errorf("invalid GOFER_BASE_URL %q: scheme must be http or https", raw)
+		return "", requestOrigin{}, fmt.Errorf("invalid RAVEN_BASE_URL %q: scheme must be http or https", raw)
 	}
 	if parsed.Host == "" || parsed.Hostname() == "" || parsed.User != nil || parsed.Opaque != "" {
-		return "", requestOrigin{}, fmt.Errorf("invalid GOFER_BASE_URL %q: an absolute URL without credentials is required", raw)
+		return "", requestOrigin{}, fmt.Errorf("invalid RAVEN_BASE_URL %q: an absolute URL without credentials is required", raw)
 	}
 	if parsed.Path != "" && parsed.Path != "/" {
-		return "", requestOrigin{}, fmt.Errorf("invalid GOFER_BASE_URL %q: paths are not allowed", raw)
+		return "", requestOrigin{}, fmt.Errorf("invalid RAVEN_BASE_URL %q: paths are not allowed", raw)
 	}
 	if parsed.RawQuery != "" || parsed.Fragment != "" || parsed.ForceQuery {
-		return "", requestOrigin{}, fmt.Errorf("invalid GOFER_BASE_URL %q: query strings and fragments are not allowed", raw)
+		return "", requestOrigin{}, fmt.Errorf("invalid RAVEN_BASE_URL %q: query strings and fragments are not allowed", raw)
 	}
 
 	host := normalizeHost(parsed.Hostname())
 	port := parsed.Port()
 	if port != "" {
 		if err := validatePort(port); err != nil {
-			return "", requestOrigin{}, fmt.Errorf("invalid GOFER_BASE_URL %q: %w", raw, err)
+			return "", requestOrigin{}, fmt.Errorf("invalid RAVEN_BASE_URL %q: %w", raw, err)
 		}
 	}
 

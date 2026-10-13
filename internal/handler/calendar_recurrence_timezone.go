@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fahadjibransheikh/raven/internal/calendar"
 	ical "github.com/emersion/go-ical"
+	"github.com/fahadjibransheikh/raven/internal/calendar"
 )
 
 // Include a real VTIMEZONE, not a frozen UTC offset or an unadvertised

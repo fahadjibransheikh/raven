@@ -203,7 +203,7 @@ func TestUserGmailActivePollBackgroundAndDisabledConfiguration(t *testing.T) {
 	if _, err := f.worker.BeginActiveUserSession(t.Context(), "unknown"); !errors.Is(err, storage.ErrUserStoreOwner) {
 		t.Fatalf("unknown active owner: %v", err)
 	}
-	t.Setenv("GOFER_GMAIL_API_POLL", "off")
+	t.Setenv("RAVEN_GMAIL_API_POLL", "off")
 	release, err := f.worker.BeginActiveUserSession(t.Context(), "alice")
 	if err != nil {
 		t.Fatal(err)
@@ -215,7 +215,7 @@ func TestUserGmailActivePollBackgroundAndDisabledConfiguration(t *testing.T) {
 	if count != 0 {
 		t.Fatal("disabled polling retained a session")
 	}
-	t.Setenv("GOFER_GMAIL_API_POLL", "on")
+	t.Setenv("RAVEN_GMAIL_API_POLL", "on")
 	job, release := activeGmailJob(t, f, "alice")
 	defer release()
 	f.worker.mu.Lock()

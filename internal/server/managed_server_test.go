@@ -27,14 +27,14 @@ import (
 
 func managedTestEnvironment(t *testing.T) {
 	t.Helper()
-	t.Setenv("GOFER_AUTH_MODE", "managed")
-	t.Setenv("GOFER_ADDR", "127.0.0.1:8090")
-	t.Setenv("GOFER_BASE_URL", "http://127.0.0.1:8090")
-	t.Setenv("GOFER_SETUP_TOKEN", "")
-	t.Setenv("GOFER_ALLOWED_CIDRS", "")
-	t.Setenv("GOFER_TRUSTED_PROXY_CIDRS", "")
-	t.Setenv("GOFER_ALLOW_UNAUTHENTICATED_REMOTE", "")
-	t.Setenv("GOFER_USER_DB_MAX_OPEN", "")
+	t.Setenv("RAVEN_AUTH_MODE", "managed")
+	t.Setenv("RAVEN_ADDR", "127.0.0.1:8090")
+	t.Setenv("RAVEN_BASE_URL", "http://127.0.0.1:8090")
+	t.Setenv("RAVEN_SETUP_TOKEN", "")
+	t.Setenv("RAVEN_ALLOWED_CIDRS", "")
+	t.Setenv("RAVEN_TRUSTED_PROXY_CIDRS", "")
+	t.Setenv("RAVEN_ALLOW_UNAUTHENTICATED_REMOTE", "")
+	t.Setenv("RAVEN_USER_DB_MAX_OPEN", "")
 }
 
 func managedRequest(app *managedApplication, method, path, token, body string) *httptest.ResponseRecorder {
@@ -150,7 +150,7 @@ func (w managedStartupWriter) Write(data []byte) (int, error) {
 
 func TestManagedServerListensAndReleasesLocksAfterCancellation(t *testing.T) {
 	managedTestEnvironment(t)
-	t.Setenv("GOFER_USER_DB_MAX_OPEN", "1")
+	t.Setenv("RAVEN_USER_DB_MAX_OPEN", "1")
 	reservation, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -159,10 +159,10 @@ func TestManagedServerListensAndReleasesLocksAfterCancellation(t *testing.T) {
 	if err := reservation.Close(); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("GOFER_ADDR", addressHint)
-	t.Setenv("GOFER_SECRET_KEY", "")
+	t.Setenv("RAVEN_ADDR", addressHint)
+	t.Setenv("RAVEN_SECRET_KEY", "")
 	path := filepath.Join(t.TempDir(), "central.db")
-	t.Setenv("GOFER_DB_PATH", path)
+	t.Setenv("RAVEN_DB_PATH", path)
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	listening := make(chan string, 1)
@@ -221,10 +221,10 @@ func TestManagedServerRejectsInvalidDatabaseLimitBeforeCreatingStorage(t *testin
 		t.Run(value, func(t *testing.T) {
 			managedTestEnvironment(t)
 			path := filepath.Join(t.TempDir(), "central.db")
-			t.Setenv("GOFER_DB_PATH", path)
-			t.Setenv("GOFER_USER_DB_MAX_OPEN", value)
+			t.Setenv("RAVEN_DB_PATH", path)
+			t.Setenv("RAVEN_USER_DB_MAX_OPEN", value)
 			err := RunManaged(t.Context(), io.Discard, io.Discard)
-			if err == nil || !strings.Contains(err.Error(), "GOFER_USER_DB_MAX_OPEN") {
+			if err == nil || !strings.Contains(err.Error(), "RAVEN_USER_DB_MAX_OPEN") {
 				t.Fatalf("invalid limit was not rejected: %v", err)
 			}
 			entries, err := os.ReadDir(filepath.Dir(path))
@@ -236,7 +236,7 @@ func TestManagedServerRejectsInvalidDatabaseLimitBeforeCreatingStorage(t *testin
 }
 
 func TestManagedMainProcessHelper(t *testing.T) {
-	if os.Getenv("GOFER_MANAGED_MAIN_PROCESS") != "1" {
+	if os.Getenv("RAVEN_MANAGED_MAIN_PROCESS") != "1" {
 		return
 	}
 	// The managed branch of main: run until SIGINT or SIGTERM.
@@ -288,12 +288,12 @@ func TestManagedMainProcessServesPopulatedUsersAndJoinsOnSignal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("GOFER_ADDR", reservation.Addr().String())
+	t.Setenv("RAVEN_ADDR", reservation.Addr().String())
 	if err := reservation.Close(); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("GOFER_DB_PATH", options.DestinationPath)
-	t.Setenv("GOFER_MANAGED_MAIN_PROCESS", "1")
+	t.Setenv("RAVEN_DB_PATH", options.DestinationPath)
+	t.Setenv("RAVEN_MANAGED_MAIN_PROCESS", "1")
 	executable, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
@@ -382,7 +382,7 @@ func TestManagedMainProcessServesPopulatedUsersAndJoinsOnSignal(t *testing.T) {
 
 func TestManagedStartupFailureJoinsServicesAndAllowsRestart(t *testing.T) {
 	managedTestEnvironment(t)
-	t.Setenv("GOFER_SECRET_KEY", "")
+	t.Setenv("RAVEN_SECRET_KEY", "")
 	path := filepath.Join(t.TempDir(), "central.db")
 	s, err := openManagedStorage(t.Context(), path, 1)
 	if err != nil {

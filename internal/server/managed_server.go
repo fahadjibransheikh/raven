@@ -5,11 +5,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/fahadjibransheikh/raven/internal/legacyenv"
 	"io"
 	"log"
 	"net"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strconv"
 	"sync"
@@ -71,7 +71,7 @@ func newManagedApplication(parent context.Context, path string, maxOpen int) (re
 		return nil, err
 	}
 	if app.httpConfig.WarnInsecureLAN(authConfig.Enabled) {
-		log.Printf("WARNING: GOFER_ALLOW_INSECURE_LAN is enabled; sign-in cookies for %s travel unencrypted on the local network", app.httpConfig.BaseURL)
+		log.Printf("WARNING: RAVEN_ALLOW_INSECURE_LAN is enabled; sign-in cookies for %s travel unencrypted on the local network", app.httpConfig.BaseURL)
 	}
 	app.storage, err = openManagedStorage(ctx, path, maxOpen)
 	if err != nil {
@@ -126,9 +126,9 @@ func newManagedApplication(parent context.Context, path string, maxOpen int) (re
 	if err != nil {
 		return nil, err
 	}
-	subject := os.Getenv("GOFER_VAPID_SUBJECT")
+	subject := legacyenv.Get("RAVEN_VAPID_SUBJECT")
 	if subject == "" {
-		subject = "mailto:gofer@gofer.email"
+		subject = "https://github.com/fahadjibransheikh/raven"
 	}
 	app.notifications, err = notifications.NewWithUserStorage(s.routing, syncer.Events(), publicKey, privateKey, subject)
 	if err != nil {
@@ -215,13 +215,13 @@ func (app *managedApplication) Close() error {
 }
 
 func configuredUserDatabaseLimit() (int, error) {
-	value := os.Getenv("GOFER_USER_DB_MAX_OPEN")
+	value := legacyenv.Get("RAVEN_USER_DB_MAX_OPEN")
 	if value == "" {
 		return 0, nil // Use the storage manager's default.
 	}
 	limit, err := strconv.Atoi(value)
 	if err != nil || limit < 1 {
-		return 0, errors.New("GOFER_USER_DB_MAX_OPEN must be a positive integer")
+		return 0, errors.New("RAVEN_USER_DB_MAX_OPEN must be a positive integer")
 	}
 	return limit, nil
 }

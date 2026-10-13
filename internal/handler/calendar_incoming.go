@@ -13,10 +13,10 @@ import (
 	"strings"
 	"time"
 
+	ical "github.com/emersion/go-ical"
 	"github.com/fahadjibransheikh/raven/internal/mail"
 	"github.com/fahadjibransheikh/raven/internal/mail/message"
 	"github.com/fahadjibransheikh/raven/internal/storage"
-	ical "github.com/emersion/go-ical"
 )
 
 var errCalendarIncomingIgnored = errors.New("calendar reply cannot be applied")

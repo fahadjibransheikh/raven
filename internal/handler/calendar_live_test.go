@@ -14,16 +14,16 @@ import (
 )
 
 // TestLiveCalDAVReadOnly is opt-in and never updates the database or provider.
-// Select exactly one source with GOFER_LIVE_CALDAV_SOURCE and supply an existing
-// database through GOFER_LIVE_CALDAV_DB. Its saved credentials remain local.
+// Select exactly one source with RAVEN_LIVE_CALDAV_SOURCE and supply an existing
+// database through RAVEN_LIVE_CALDAV_DB. Its saved credentials remain local.
 func TestLiveCalDAVReadOnly(t *testing.T) {
-	dbPath := os.Getenv("GOFER_LIVE_CALDAV_DB")
+	dbPath := os.Getenv("RAVEN_LIVE_CALDAV_DB")
 	if dbPath == "" {
-		t.Skip("set GOFER_LIVE_CALDAV_DB and GOFER_LIVE_CALDAV_SOURCE for a read-only provider check")
+		t.Skip("set RAVEN_LIVE_CALDAV_DB and RAVEN_LIVE_CALDAV_SOURCE for a read-only provider check")
 	}
-	sourceID := os.Getenv("GOFER_LIVE_CALDAV_SOURCE")
+	sourceID := os.Getenv("RAVEN_LIVE_CALDAV_SOURCE")
 	if sourceID == "" {
-		t.Fatal("GOFER_LIVE_CALDAV_SOURCE must identify the calendar to check")
+		t.Fatal("RAVEN_LIVE_CALDAV_SOURCE must identify the calendar to check")
 	}
 	db, err := storage.OpenReadOnly(dbPath)
 	if err != nil {
@@ -50,7 +50,7 @@ func TestLiveCalDAVReadOnly(t *testing.T) {
 		t.Fatal("CalDAV account is not active")
 	}
 	var key []byte
-	if value := os.Getenv("GOFER_SECRET_KEY"); value != "" {
+	if value := os.Getenv("RAVEN_SECRET_KEY"); value != "" {
 		key, err = hex.DecodeString(value)
 	} else {
 		key, err = os.ReadFile(filepath.Join(filepath.Dir(dbPath), "secret.key"))

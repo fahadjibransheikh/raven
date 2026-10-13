@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fahadjibransheikh/raven/internal/calendar"
 	ical "github.com/emersion/go-ical"
+	"github.com/fahadjibransheikh/raven/internal/calendar"
 )
 
 // Confirmation requires the exact supported repeat settings. Ordinary edits

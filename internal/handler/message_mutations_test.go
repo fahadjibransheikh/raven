@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fahadjibransheikh/raven/internal/auth"
 	goimap "github.com/emersion/go-imap/v2"
+	"github.com/fahadjibransheikh/raven/internal/auth"
 
 	mailpkg "github.com/fahadjibransheikh/raven/internal/mail"
 	"github.com/fahadjibransheikh/raven/internal/models"

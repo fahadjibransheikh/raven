@@ -117,17 +117,17 @@ func TestNetworkDefaultsAndExplicitAllNetworks(t *testing.T) {
 }
 
 func TestNetworkConfigurationRejectsMalformedAndOverridesLegacyRemote(t *testing.T) {
-	t.Setenv("GOFER_ADDR", "0.0.0.0:8090")
-	t.Setenv("GOFER_BASE_URL", "http://192.168.0.2:8090")
-	t.Setenv("GOFER_ALLOW_UNAUTHENTICATED_REMOTE", "true")
-	t.Setenv("GOFER_TRUSTED_PROXY_CIDRS", "")
+	t.Setenv("RAVEN_ADDR", "0.0.0.0:8090")
+	t.Setenv("RAVEN_BASE_URL", "http://192.168.0.2:8090")
+	t.Setenv("RAVEN_ALLOW_UNAUTHENTICATED_REMOTE", "true")
+	t.Setenv("RAVEN_TRUSTED_PROXY_CIDRS", "")
 	for _, value := range []string{"192.168.0.0/24,", "hostname/24", "192.168.0.1", "::/129", strings.Repeat("127.0.0.1/32,", 65)} {
-		t.Setenv("GOFER_ALLOWED_CIDRS", value)
+		t.Setenv("RAVEN_ALLOWED_CIDRS", value)
 		if _, err := LoadConfig(); err == nil {
 			t.Fatalf("accepted invalid CIDRs %q", value)
 		}
 	}
-	t.Setenv("GOFER_ALLOWED_CIDRS", "192.168.0.22/24,::ffff:10.0.0.0/120")
+	t.Setenv("RAVEN_ALLOWED_CIDRS", "192.168.0.22/24,::ffff:10.0.0.0/120")
 	cfg, err := LoadConfig()
 	if err != nil {
 		t.Fatal(err)
@@ -138,7 +138,7 @@ func TestNetworkConfigurationRejectsMalformedAndOverridesLegacyRemote(t *testing
 	if err := cfg.ValidateExposure(false); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("GOFER_TRUSTED_PROXY_CIDRS", "not-a-cidr")
+	t.Setenv("RAVEN_TRUSTED_PROXY_CIDRS", "not-a-cidr")
 	if _, err := LoadConfig(); err == nil {
 		t.Fatal("invalid trusted proxy configuration accepted")
 	}

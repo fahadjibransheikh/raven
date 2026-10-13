@@ -29,21 +29,21 @@ import (
 	"testing"
 	"time"
 
+	imap "github.com/emersion/go-imap/v2"
 	"github.com/fahadjibransheikh/raven/internal/auth"
 	"github.com/fahadjibransheikh/raven/internal/config"
 	"github.com/fahadjibransheikh/raven/internal/storage"
-	imap "github.com/emersion/go-imap/v2"
 	"modernc.org/sqlite"
 )
 
 // This opt-in subprocess uses the real server paths. The legacy shared builder
 // is reachable only here for paired comparisons, never through managed startup.
 func TestManagedOfficeBenchmarkProcess(t *testing.T) {
-	mode := os.Getenv("GOFER_OFFICE_CHILD")
+	mode := os.Getenv("RAVEN_OFFICE_CHILD")
 	if mode == "" {
 		t.Skip("benchmark subprocess only")
 	}
-	if os.Getenv("GOFER_OFFICE_DIAGNOSTICS") == "1" {
+	if os.Getenv("RAVEN_OFFICE_DIAGNOSTICS") == "1" {
 		// Linux-only benchmark diagnostics; no production signal behavior changes.
 		requests := make(chan os.Signal, 1)
 		signal.Notify(requests, syscall.Signal(10))
@@ -568,15 +568,15 @@ func runOfficeWorkload(t *testing.T, layout, path string, dataset *officeDataset
 		t.Fatal(err)
 	}
 	cmd := exec.Command(executable, "-test.run=^TestManagedOfficeBenchmarkProcess$", "-test.timeout=30m")
-	overrides := map[string]string{"GOFER_OFFICE_CHILD": layout, "GOFER_DB_PATH": path, "GOFER_ADDR": address, "GOFER_BASE_URL": base}
+	overrides := map[string]string{"RAVEN_OFFICE_CHILD": layout, "RAVEN_DB_PATH": path, "RAVEN_ADDR": address, "RAVEN_BASE_URL": base}
 	// Freeze the cache limit from the workload specification, including the
 	// default, rather than inheriting an operator setting from the parent.
-	overrides["GOFER_USER_DB_MAX_OPEN"] = ""
+	overrides["RAVEN_USER_DB_MAX_OPEN"] = ""
 	if spec.UserDBMaxOpen > 0 {
-		overrides["GOFER_USER_DB_MAX_OPEN"] = strconv.Itoa(spec.UserDBMaxOpen)
+		overrides["RAVEN_USER_DB_MAX_OPEN"] = strconv.Itoa(spec.UserDBMaxOpen)
 	}
 	if spec.DiagnosticsAfterSeconds > 0 || spec.CaptureFirstTimeout {
-		overrides["GOFER_OFFICE_DIAGNOSTICS"] = "1"
+		overrides["RAVEN_OFFICE_DIAGNOSTICS"] = "1"
 	}
 	if dataset.CAFile != "" {
 		overrides["SSL_CERT_FILE"] = dataset.CAFile
@@ -591,7 +591,7 @@ func runOfficeWorkload(t *testing.T, layout, path string, dataset *officeDataset
 		cmd.Env = append(cmd.Env, key+"="+value)
 	}
 	logPath := path + ".office-process.log"
-	if output := os.Getenv("GOFER_OFFICE_OUTPUT"); output != "" {
+	if output := os.Getenv("RAVEN_OFFICE_OUTPUT"); output != "" {
 		logPath = output + "." + layout + ".process.log"
 	}
 	childLog, err := os.OpenFile(logPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
@@ -1016,29 +1016,29 @@ func runOfficeWorkload(t *testing.T, layout, path string, dataset *officeDataset
 }
 
 func TestManagedOfficePairedCalibration(t *testing.T) {
-	output := os.Getenv("GOFER_OFFICE_OUTPUT")
-	if os.Getenv("GOFER_OFFICE_SPEC") != "" {
+	output := os.Getenv("RAVEN_OFFICE_OUTPUT")
+	if os.Getenv("RAVEN_OFFICE_SPEC") != "" {
 		t.Skip("populated workload selected")
 	}
 	if output == "" {
-		t.Skip("set GOFER_OFFICE_OUTPUT to run the paired calibration")
+		t.Skip("set RAVEN_OFFICE_OUTPUT to run the paired calibration")
 	}
 	if runtime.GOOS != "linux" {
 		t.Skip("whole-process sampling currently requires Linux /proc")
 	}
 	seconds := 5
-	if value := os.Getenv("GOFER_OFFICE_SECONDS"); value != "" {
+	if value := os.Getenv("RAVEN_OFFICE_SECONDS"); value != "" {
 		parsed, err := strconv.Atoi(value)
 		if err != nil || parsed < 1 || parsed > 300 {
-			t.Fatal("GOFER_OFFICE_SECONDS must be 1..300")
+			t.Fatal("RAVEN_OFFICE_SECONDS must be 1..300")
 		}
 		seconds = parsed
 	}
 	rate := 40
-	if value := os.Getenv("GOFER_OFFICE_RATE"); value != "" {
+	if value := os.Getenv("RAVEN_OFFICE_RATE"); value != "" {
 		parsed, err := strconv.Atoi(value)
 		if err != nil || parsed < 1 || parsed > 2000 {
-			t.Fatal("GOFER_OFFICE_RATE must be 1..2000")
+			t.Fatal("RAVEN_OFFICE_RATE must be 1..2000")
 		}
 		rate = parsed
 	}

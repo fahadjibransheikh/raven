@@ -79,7 +79,7 @@ const PREFERRED_PORT: u16 = 8090;
 /// registered as a public client (no secret; PKCE protects the code exchange),
 /// so it is safe to ship. Gofer's .env loader never overrides variables that
 /// are already set, so these win over any stale values in a user's .env.
-/// GOFER_ADDR and GOFER_BASE_URL are added per launch, from the chosen port.
+/// RAVEN_ADDR and RAVEN_BASE_URL are added per launch, from the chosen port.
 const SIDECAR_ENV: [(&str, &str); 3] = [
     ("MICROSOFT_OAUTH_CLIENT_ID", "57979fc5-6850-4d3d-8e8b-ab3122e4dc0c"),
     ("MICROSOFT_OAUTH_CLIENT_SECRET", ""),
@@ -146,7 +146,7 @@ struct SidecarState {
     /// A same-origin path (a mailto: compose link) waiting for the window to be
     /// pointed at Gofer. Guards `ready` too: see open_mailto.
     pending_next: Mutex<Option<String>>,
-    /// Random per-launch secret. Passed to the sidecar as GOFER_DESKTOP_TOKEN
+    /// Random per-launch secret. Passed to the sidecar as RAVEN_DESKTOP_TOKEN
     /// and traded for a cookie at /desktop-auth, so only this app's webview can
     /// use the server. Never written to disk or logged.
     token: String,
@@ -210,7 +210,7 @@ fn login_url(port: u16, token: &str, next: &str) -> tauri::Url {
 }
 
 /// Picks the port for this launch: 8090 if it can be bound, otherwise any free
-/// port. OAuth implication of the fallback: GOFER_BASE_URL (and so the
+/// port. OAuth implication of the fallback: RAVEN_BASE_URL (and so the
 /// redirect URI sent to Microsoft/Google) follows the port, and redirect URIs
 /// registered for localhost:8090 will not match, so adding a mailbox through
 /// OAuth can fail until 8090 is free again. Everything else keeps working.
@@ -324,9 +324,9 @@ fn start_sidecar(app: &AppHandle) {
         let (mut rx, child) = match command
             .current_dir(working_dir)
             .envs(SIDECAR_ENV)
-            .env("GOFER_ADDR", format!("127.0.0.1:{port}"))
-            .env("GOFER_BASE_URL", format!("http://localhost:{port}"))
-            .env("GOFER_DESKTOP_TOKEN", &state.token)
+            .env("RAVEN_ADDR", format!("127.0.0.1:{port}"))
+            .env("RAVEN_BASE_URL", format!("http://localhost:{port}"))
+            .env("RAVEN_DESKTOP_TOKEN", &state.token)
             .spawn() {
             Ok(spawned) => spawned,
             Err(err) => {
@@ -728,7 +728,7 @@ pub fn run() {
                 .on_navigation({
                     let app_handle = app_handle.clone();
                     move |url| {
-                        // GOFER_BASE_URL says localhost (that is what the OAuth
+                        // RAVEN_BASE_URL says localhost (that is what the OAuth
                         // redirect URIs are registered for), so a mailbox
                         // sign-in comes back to localhost:<port>. The desktop
                         // cookie belongs to 127.0.0.1, so replay that

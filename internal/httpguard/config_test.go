@@ -6,9 +6,9 @@ import (
 )
 
 func TestLoadConfigDefaultsToLoopback(t *testing.T) {
-	t.Setenv("GOFER_ADDR", "")
-	t.Setenv("GOFER_BASE_URL", "")
-	t.Setenv("GOFER_ALLOW_UNAUTHENTICATED_REMOTE", "")
+	t.Setenv("RAVEN_ADDR", "")
+	t.Setenv("RAVEN_BASE_URL", "")
+	t.Setenv("RAVEN_ALLOW_UNAUTHENTICATED_REMOTE", "")
 
 	cfg, err := LoadConfig()
 	if err != nil {
@@ -157,9 +157,9 @@ func TestConfigRejectsMalformedValues(t *testing.T) {
 }
 
 func TestLoadConfigRejectsInvalidRemoteOverride(t *testing.T) {
-	t.Setenv("GOFER_ADDR", DefaultListenAddr)
-	t.Setenv("GOFER_BASE_URL", DefaultBaseURL)
-	t.Setenv("GOFER_ALLOW_UNAUTHENTICATED_REMOTE", "sometimes")
+	t.Setenv("RAVEN_ADDR", DefaultListenAddr)
+	t.Setenv("RAVEN_BASE_URL", DefaultBaseURL)
+	t.Setenv("RAVEN_ALLOW_UNAUTHENTICATED_REMOTE", "sometimes")
 
 	if _, err := LoadConfig(); err == nil {
 		t.Fatal("LoadConfig() error = nil, want invalid boolean error")

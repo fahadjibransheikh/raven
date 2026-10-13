@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/fahadjibransheikh/raven/internal/calendar"
 	ical "github.com/emersion/go-ical"
+	"github.com/fahadjibransheikh/raven/internal/calendar"
 )
 
 func TestCalendarRichDescriptionJSONProviders(t *testing.T) {

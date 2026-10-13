@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"os"
+	"github.com/fahadjibransheikh/raven/internal/legacyenv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -221,13 +221,13 @@ type Config struct {
 	OIDCLoginName        string
 	BaseURL              string
 	SecureCookies        bool
-	// DesktopToken (GOFER_DESKTOP_TOKEN) turns on the per-launch desktop gate in
+	// DesktopToken (RAVEN_DESKTOP_TOKEN) turns on the per-launch desktop gate in
 	// open mode. See desktop.go.
 	DesktopToken string
 }
 
 func LoadConfig(baseURL string) *Config {
-	enabled := os.Getenv("GOFER_AUTH_ENABLED") == "true"
+	enabled := legacyenv.Get("RAVEN_AUTH_ENABLED") == "true"
 	baseURL = strings.TrimSpace(baseURL)
 	if baseURL == "" {
 		baseURL = "http://local.localhost:8090"
@@ -235,18 +235,18 @@ func LoadConfig(baseURL string) *Config {
 
 	cfg := &Config{
 		Enabled:      enabled,
-		Mode:         Mode(strings.ToLower(strings.TrimSpace(os.Getenv("GOFER_AUTH_MODE")))),
-		SetupToken:   os.Getenv("GOFER_SETUP_TOKEN"),
+		Mode:         Mode(strings.ToLower(strings.TrimSpace(legacyenv.Get("RAVEN_AUTH_MODE")))),
+		SetupToken:   legacyenv.Get("RAVEN_SETUP_TOKEN"),
 		BaseURL:      baseURL,
-		DesktopToken: strings.TrimSpace(os.Getenv("GOFER_DESKTOP_TOKEN")),
+		DesktopToken: strings.TrimSpace(legacyenv.Get("RAVEN_DESKTOP_TOKEN")),
 	}
 
 	if cfg.Mode != "" {
 		cfg.Enabled = cfg.Mode != ModeOpen
 	}
 
-	clientID := strings.TrimSpace(os.Getenv("GOFER_GOOGLE_LOGIN_CLIENT_ID"))
-	clientSecret := strings.TrimSpace(os.Getenv("GOFER_GOOGLE_LOGIN_CLIENT_SECRET"))
+	clientID := strings.TrimSpace(legacyenv.Get("RAVEN_GOOGLE_LOGIN_CLIENT_ID"))
+	clientSecret := strings.TrimSpace(legacyenv.Get("RAVEN_GOOGLE_LOGIN_CLIENT_SECRET"))
 
 	if clientID != "" && clientSecret != "" {
 		cfg.GoogleLoginClient = &oauth2.Config{
@@ -262,9 +262,9 @@ func LoadConfig(baseURL string) *Config {
 		}
 	}
 
-	microsoftClientID := strings.TrimSpace(os.Getenv("GOFER_MICROSOFT_LOGIN_CLIENT_ID"))
-	microsoftClientSecret := strings.TrimSpace(os.Getenv("GOFER_MICROSOFT_LOGIN_CLIENT_SECRET"))
-	microsoftTenant := normalizeMicrosoftLoginTenant(os.Getenv("GOFER_MICROSOFT_LOGIN_TENANT"))
+	microsoftClientID := strings.TrimSpace(legacyenv.Get("RAVEN_MICROSOFT_LOGIN_CLIENT_ID"))
+	microsoftClientSecret := strings.TrimSpace(legacyenv.Get("RAVEN_MICROSOFT_LOGIN_CLIENT_SECRET"))
+	microsoftTenant := normalizeMicrosoftLoginTenant(legacyenv.Get("RAVEN_MICROSOFT_LOGIN_TENANT"))
 	// The secret is optional: without one Raven acts as a public client and
 	// the code exchange relies on PKCE, which this flow always sends.
 	if microsoftClientID != "" && microsoftTenant != "" {
@@ -286,12 +286,12 @@ func LoadConfig(baseURL string) *Config {
 		}
 	}
 
-	oidcClientID := strings.TrimSpace(os.Getenv("GOFER_OIDC_LOGIN_CLIENT_ID"))
-	oidcClientSecret := strings.TrimSpace(os.Getenv("GOFER_OIDC_LOGIN_CLIENT_SECRET"))
-	oidcIssuer := normalizeOIDCLoginIssuer(os.Getenv("GOFER_OIDC_LOGIN_ISSUER"))
+	oidcClientID := strings.TrimSpace(legacyenv.Get("RAVEN_OIDC_LOGIN_CLIENT_ID"))
+	oidcClientSecret := strings.TrimSpace(legacyenv.Get("RAVEN_OIDC_LOGIN_CLIENT_SECRET"))
+	oidcIssuer := normalizeOIDCLoginIssuer(legacyenv.Get("RAVEN_OIDC_LOGIN_ISSUER"))
 	if oidcClientID != "" && oidcClientSecret != "" && oidcIssuer != "" {
 		cfg.OIDCLoginIssuer = oidcIssuer
-		cfg.OIDCLoginName = normalizeOIDCLoginName(os.Getenv("GOFER_OIDC_LOGIN_NAME"))
+		cfg.OIDCLoginName = normalizeOIDCLoginName(legacyenv.Get("RAVEN_OIDC_LOGIN_NAME"))
 		cfg.OIDCLoginClient = &oauth2.Config{
 			ClientID:     oidcClientID,
 			ClientSecret: oidcClientSecret,

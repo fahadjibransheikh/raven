@@ -10,9 +10,9 @@ import (
 	"strings"
 	"testing"
 
+	ical "github.com/emersion/go-ical"
 	"github.com/fahadjibransheikh/raven/internal/calendar"
 	"github.com/fahadjibransheikh/raven/internal/storage"
-	ical "github.com/emersion/go-ical"
 )
 
 func calendarProviderDraft(t *testing.T, allDay bool) calendar.EventDraft {

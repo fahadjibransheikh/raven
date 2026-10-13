@@ -5,10 +5,10 @@ import (
 	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
+	"github.com/fahadjibransheikh/raven/internal/legacyenv"
 	"log"
 	"net/http"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -35,9 +35,9 @@ type PushConfig struct {
 
 func LoadPushConfig() PushConfig {
 	return PushConfig{
-		Secret:     strings.TrimSpace(os.Getenv("GOFER_PUSH_WEBHOOK_SECRET")),
-		GmailTopic: strings.TrimSpace(os.Getenv("GOFER_GMAIL_PUSH_TOPIC")),
-		BaseURL:    strings.TrimRight(strings.TrimSpace(os.Getenv("GOFER_BASE_URL")), "/"),
+		Secret:     strings.TrimSpace(legacyenv.Get("RAVEN_PUSH_WEBHOOK_SECRET")),
+		GmailTopic: strings.TrimSpace(legacyenv.Get("RAVEN_GMAIL_PUSH_TOPIC")),
+		BaseURL:    strings.TrimRight(strings.TrimSpace(legacyenv.Get("RAVEN_BASE_URL")), "/"),
 	}
 }
 

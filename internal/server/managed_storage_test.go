@@ -18,7 +18,7 @@ import (
 )
 
 func TestManagedStorageFreshInitializationRestartAndExclusiveLocks(t *testing.T) {
-	t.Setenv("GOFER_SECRET_KEY", "")
+	t.Setenv("RAVEN_SECRET_KEY", "")
 	path := filepath.Join(t.TempDir(), "new-data", "central.db")
 	s, err := openManagedStorage(t.Context(), path, 1)
 	if err != nil {
@@ -62,7 +62,7 @@ func TestManagedStorageFreshInitializationRestartAndExclusiveLocks(t *testing.T)
 func TestManagedStorageRejectsSharedAndIncompleteDataWithoutAdoption(t *testing.T) {
 	for _, suffix := range []string{"", ".migration.json", ".staging", ".users", ".shared"} {
 		t.Run("existing"+suffix, func(t *testing.T) {
-			t.Setenv("GOFER_SECRET_KEY", "")
+			t.Setenv("RAVEN_SECRET_KEY", "")
 			path := filepath.Join(t.TempDir(), "central.db")
 			retained := []byte("retained data")
 			if err := os.WriteFile(path+suffix, retained, 0600); err != nil {
@@ -87,7 +87,7 @@ func TestManagedStorageRejectsSharedAndIncompleteDataWithoutAdoption(t *testing.
 }
 
 func TestManagedStorageRejectsWrongKeyEvenForEmptyArchive(t *testing.T) {
-	t.Setenv("GOFER_SECRET_KEY", "")
+	t.Setenv("RAVEN_SECRET_KEY", "")
 	path := filepath.Join(t.TempDir(), "central.db")
 	s, err := openManagedStorage(t.Context(), path, 1)
 	if err != nil {
@@ -100,7 +100,7 @@ func TestManagedStorageRejectsWrongKeyEvenForEmptyArchive(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("GOFER_SECRET_KEY", strings.Repeat("ab", 32))
+	t.Setenv("RAVEN_SECRET_KEY", strings.Repeat("ab", 32))
 	if s, err := openManagedStorage(t.Context(), path, 1); err == nil {
 		s.Close()
 		t.Fatal("wrong key accepted for empty archive")
@@ -112,7 +112,7 @@ func TestManagedStorageRejectsWrongKeyEvenForEmptyArchive(t *testing.T) {
 }
 
 func TestManagedStorageInvalidExistingKeyNeverReplaced(t *testing.T) {
-	t.Setenv("GOFER_SECRET_KEY", "")
+	t.Setenv("RAVEN_SECRET_KEY", "")
 	path := filepath.Join(t.TempDir(), "central.db")
 	keyPath := filepath.Join(filepath.Dir(path), "secret.key")
 	if err := os.WriteFile(keyPath, []byte("invalid retained key"), 0600); err != nil {
@@ -135,7 +135,7 @@ func TestManagedStorageMigratedOwnersRemainIsolatedAcrossCacheEviction(t *testin
 	if _, err := storage.MigrateUserStorage(t.Context(), options); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("GOFER_SECRET_KEY", hex.EncodeToString(key))
+	t.Setenv("RAVEN_SECRET_KEY", hex.EncodeToString(key))
 	s, err := openManagedStorage(t.Context(), options.DestinationPath, 1)
 	if err != nil {
 		t.Fatal(err)
@@ -162,7 +162,7 @@ func TestManagedStorageMigratedOwnersRemainIsolatedAcrossCacheEviction(t *testin
 }
 
 func TestPublishedManagedLayoutCannotOpenAsSharedRuntime(t *testing.T) {
-	t.Setenv("GOFER_SECRET_KEY", "")
+	t.Setenv("RAVEN_SECRET_KEY", "")
 	path := filepath.Join(t.TempDir(), "central.db")
 	s, err := openManagedStorage(t.Context(), path, 1)
 	if err != nil {
@@ -189,7 +189,7 @@ func TestPublishedManagedLayoutCannotOpenAsSharedRuntime(t *testing.T) {
 }
 
 func TestManagedOperatorMutationsRequireCompletedLayoutAndAllRuntimeLocks(t *testing.T) {
-	t.Setenv("GOFER_SECRET_KEY", "")
+	t.Setenv("RAVEN_SECRET_KEY", "")
 	path := filepath.Join(t.TempDir(), "central.db")
 	s, err := openManagedStorage(t.Context(), path, 1)
 	if err != nil {
@@ -199,7 +199,7 @@ func TestManagedOperatorMutationsRequireCompletedLayoutAndAllRuntimeLocks(t *tes
 	if err := s.Close(); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("GOFER_DB_PATH", path)
+	t.Setenv("RAVEN_DB_PATH", path)
 	for _, target := range []string{layout.SourcePath, path, filepath.Join(layout.UserDirectory, "manager")} {
 		lock, err := runtimeguard.Acquire(target)
 		if err != nil {
@@ -305,7 +305,7 @@ func TestManagedStorageUpgradesOlderLayoutSchemas(t *testing.T) {
 	if _, err := storage.MigrateUserStorage(t.Context(), options); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("GOFER_SECRET_KEY", hex.EncodeToString(key))
+	t.Setenv("RAVEN_SECRET_KEY", hex.EncodeToString(key))
 	path := options.DestinationPath
 	userPath := func(owner string) string {
 		hash := sha256.Sum256([]byte(owner))
@@ -465,7 +465,7 @@ func TestManagedStorageStartsFromAnotherWorkingDirectory(t *testing.T) {
 	if _, err := storage.MigrateUserStorage(t.Context(), options); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("GOFER_SECRET_KEY", hex.EncodeToString(key))
+	t.Setenv("RAVEN_SECRET_KEY", hex.EncodeToString(key))
 	t.Chdir(t.TempDir())
 	s, err := openManagedStorage(t.Context(), options.DestinationPath, 1)
 	if err != nil {
@@ -566,7 +566,7 @@ func TestManagedStorageConversionFromAnotherDirectoryLeavesOriginal(t *testing.T
 
 func TestManagedStorageLeavesOnlyTheRollbackCopy(t *testing.T) {
 	t.Run("fresh", func(t *testing.T) {
-		t.Setenv("GOFER_SECRET_KEY", "")
+		t.Setenv("RAVEN_SECRET_KEY", "")
 		path := filepath.Join(t.TempDir(), "gofer.db")
 		s, err := openManagedStorage(t.Context(), path, 1)
 		if err != nil {
@@ -660,7 +660,7 @@ func TestManagedStorageVersionsLayoutOnlyTables(t *testing.T) {
 	if _, err := storage.MigrateUserStorage(t.Context(), options); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("GOFER_SECRET_KEY", hex.EncodeToString(key))
+	t.Setenv("RAVEN_SECRET_KEY", hex.EncodeToString(key))
 	path := options.DestinationPath
 	hash := sha256.Sum256([]byte("alice"))
 	alice := filepath.Join(path+".users", hex.EncodeToString(hash[:])+".db")
@@ -712,11 +712,11 @@ func TestManagedStoragePreventConversionSetting(t *testing.T) {
 	t.Run("blocks an existing database", func(t *testing.T) {
 		options, before, _ := migrationCommandFixture(t)
 		path := options.SourcePath
-		t.Setenv("GOFER_PREVENT_STORAGE_CONVERSION", "1")
+		t.Setenv("RAVEN_PREVENT_STORAGE_CONVERSION", "1")
 		if s, err := openManagedStorage(t.Context(), path, 1); err == nil {
 			s.Close()
-			t.Fatal("converted despite GOFER_PREVENT_STORAGE_CONVERSION")
-		} else if !strings.Contains(err.Error(), "GOFER_PREVENT_STORAGE_CONVERSION") {
+			t.Fatal("converted despite RAVEN_PREVENT_STORAGE_CONVERSION")
+		} else if !strings.Contains(err.Error(), "RAVEN_PREVENT_STORAGE_CONVERSION") {
 			t.Fatal("unexpected failure", err)
 		}
 		after, err := os.ReadFile(path)
@@ -728,7 +728,7 @@ func TestManagedStoragePreventConversionSetting(t *testing.T) {
 				t.Fatal("prevented conversion left files behind", leftover, err)
 			}
 		}
-		t.Setenv("GOFER_PREVENT_STORAGE_CONVERSION", "false")
+		t.Setenv("RAVEN_PREVENT_STORAGE_CONVERSION", "false")
 		s, err := openManagedStorage(t.Context(), path, 1)
 		if err != nil {
 			t.Fatal("conversion after unsetting", err)
@@ -737,14 +737,14 @@ func TestManagedStoragePreventConversionSetting(t *testing.T) {
 	})
 	t.Run("rejects invalid values", func(t *testing.T) {
 		options, _, _ := migrationCommandFixture(t)
-		t.Setenv("GOFER_PREVENT_STORAGE_CONVERSION", "maybe")
+		t.Setenv("RAVEN_PREVENT_STORAGE_CONVERSION", "maybe")
 		if _, err := openManagedStorage(t.Context(), options.SourcePath, 1); err == nil || !strings.Contains(err.Error(), "must be true or false") {
 			t.Fatal("invalid value accepted", err)
 		}
 	})
 	t.Run("fresh installation and interrupted conversion proceed", func(t *testing.T) {
-		t.Setenv("GOFER_SECRET_KEY", "")
-		t.Setenv("GOFER_PREVENT_STORAGE_CONVERSION", "true")
+		t.Setenv("RAVEN_SECRET_KEY", "")
+		t.Setenv("RAVEN_PREVENT_STORAGE_CONVERSION", "true")
 		s, err := openManagedStorage(t.Context(), filepath.Join(t.TempDir(), "gofer.db"), 1)
 		if err != nil {
 			t.Fatal("fresh installation blocked", err)
@@ -755,7 +755,7 @@ func TestManagedStoragePreventConversionSetting(t *testing.T) {
 		if err := storage.RetireSharedDatabase(t.Context(), path, path+".shared"); err != nil {
 			t.Fatal(err)
 		}
-		t.Setenv("GOFER_PREVENT_STORAGE_CONVERSION", "true")
+		t.Setenv("RAVEN_PREVENT_STORAGE_CONVERSION", "true")
 		s, err = openManagedStorage(t.Context(), path, 1)
 		if err != nil {
 			t.Fatal("interrupted conversion blocked", err)

@@ -11,6 +11,7 @@ import (
 	"github.com/fahadjibransheikh/raven/internal/config"
 	"github.com/fahadjibransheikh/raven/internal/handler"
 	"github.com/fahadjibransheikh/raven/internal/httpguard"
+	"github.com/fahadjibransheikh/raven/internal/legacyenv"
 	"github.com/fahadjibransheikh/raven/internal/mail"
 	"github.com/fahadjibransheikh/raven/internal/mailauth"
 	"github.com/fahadjibransheikh/raven/internal/notifications"
@@ -28,9 +29,9 @@ import (
 	webpush "github.com/SherClockHolmes/webpush-go"
 )
 
-// ConfiguredDatabasePath is GOFER_DB_PATH, or the default data/gofer.db.
+// ConfiguredDatabasePath is RAVEN_DB_PATH, or the default data/gofer.db.
 func ConfiguredDatabasePath() string {
-	if dbPath := os.Getenv("GOFER_DB_PATH"); dbPath != "" {
+	if dbPath := legacyenv.Get("RAVEN_DB_PATH"); dbPath != "" {
 		return dbPath
 	}
 	return "data/gofer.db"
@@ -57,7 +58,7 @@ func RunShared() {
 		log.Fatalf("unsafe HTTP configuration: %v", err)
 	}
 	if httpConfig.WarnInsecureLAN(authConfig.Enabled) {
-		log.Printf("WARNING: GOFER_ALLOW_INSECURE_LAN is enabled; sign-in cookies for %s travel unencrypted on the local network", httpConfig.BaseURL)
+		log.Printf("WARNING: RAVEN_ALLOW_INSECURE_LAN is enabled; sign-in cookies for %s travel unencrypted on the local network", httpConfig.BaseURL)
 	}
 	if httpConfig.WarnUnauthenticatedRemote(authConfig.Enabled) {
 		log.Printf("WARNING: unauthenticated remote access is explicitly enabled; anyone who can reach %s can control Raven", httpConfig.BaseURL)
@@ -134,9 +135,9 @@ func RunShared() {
 	syncer := mail.NewSyncOrchestrator(db, accountStore, blobStore, mailCredentials)
 	log.Printf("boot: sync orchestrator initialized")
 	vapidPublicKey, vapidPrivateKey := loadOrGenerateVAPIDKeys(filepath.Join(dataDir, "vapid_private.key"), filepath.Join(dataDir, "vapid_public.key"))
-	vapidSubject := os.Getenv("GOFER_VAPID_SUBJECT")
+	vapidSubject := legacyenv.Get("RAVEN_VAPID_SUBJECT")
 	if vapidSubject == "" {
-		vapidSubject = "mailto:gofer@gofer.email"
+		vapidSubject = "https://github.com/fahadjibransheikh/raven"
 	}
 	log.Printf("boot: web push VAPID keys loaded")
 	notificationService := notifications.New(db, syncer.Events(), vapidPublicKey, vapidPrivateKey, vapidSubject)
@@ -222,7 +223,7 @@ func loadOrGenerateVAPIDKeys(privatePath, publicPath string) (string, string) {
 }
 
 func loadVAPIDKeys(privatePath, publicPath string) (string, string, error) {
-	if envPrivate, envPublic := os.Getenv("GOFER_VAPID_PRIVATE_KEY"), os.Getenv("GOFER_VAPID_PUBLIC_KEY"); envPrivate != "" && envPublic != "" {
+	if envPrivate, envPublic := legacyenv.Get("RAVEN_VAPID_PRIVATE_KEY"), legacyenv.Get("RAVEN_VAPID_PUBLIC_KEY"); envPrivate != "" && envPublic != "" {
 		return envPublic, envPrivate, nil
 	}
 
@@ -250,10 +251,10 @@ func loadVAPIDKeys(privatePath, publicPath string) (string, string, error) {
 }
 
 func loadOrGenerateSecretKey(path string) []byte {
-	if envKey := os.Getenv("GOFER_SECRET_KEY"); envKey != "" {
+	if envKey := legacyenv.Get("RAVEN_SECRET_KEY"); envKey != "" {
 		key, err := hex.DecodeString(envKey)
 		if err != nil || len(key) != 32 {
-			log.Fatalf("invalid GOFER_SECRET_KEY: must be 64 hex characters (32 bytes)")
+			log.Fatalf("invalid RAVEN_SECRET_KEY: must be 64 hex characters (32 bytes)")
 		}
 		return key
 	}

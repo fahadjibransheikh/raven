@@ -15,12 +15,12 @@ import (
 	"strings"
 	"time"
 
+	goimap "github.com/emersion/go-imap/v2"
 	mailimap "github.com/fahadjibransheikh/raven/internal/mail/imap"
 	"github.com/fahadjibransheikh/raven/internal/providerquota"
 	"github.com/fahadjibransheikh/raven/internal/providers"
 	"github.com/fahadjibransheikh/raven/internal/retry"
 	"github.com/fahadjibransheikh/raven/internal/storage"
-	goimap "github.com/emersion/go-imap/v2"
 )
 
 var (

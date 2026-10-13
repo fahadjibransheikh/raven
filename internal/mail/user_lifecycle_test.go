@@ -72,7 +72,7 @@ func TestUserLifecycleStopCancelsWholeOwnerAndAccountWork(t *testing.T) {
 }
 
 func TestUserLifecycleStopRetiresBrowserPollingGeneration(t *testing.T) {
-	t.Setenv("GOFER_GMAIL_API_POLL", "on")
+	t.Setenv("RAVEN_GMAIL_API_POLL", "on")
 	f := newUserGmailFixture(t)
 	t.Cleanup(func() { f.cancel(); f.worker.Wait() })
 	alice, releaseOld := activeGmailJob(t, f, "alice")

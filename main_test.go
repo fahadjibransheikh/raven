@@ -47,11 +47,11 @@ func createMainAuthCommandDatabase(t *testing.T) string {
 
 func TestRunApplicationDispatchesAuthBeforeServerStartup(t *testing.T) {
 	databasePath := createMainAuthCommandDatabase(t)
-	t.Setenv("GOFER_DB_PATH", databasePath)
-	t.Setenv("GOFER_ADDR", "invalid-listen-address")
-	t.Setenv("GOFER_BASE_URL", "://invalid-http-origin")
-	t.Setenv("GOFER_SECRET_KEY", "invalid-secret-key")
-	t.Setenv("GOFER_SETUP_TOKEN", "short")
+	t.Setenv("RAVEN_DB_PATH", databasePath)
+	t.Setenv("RAVEN_ADDR", "invalid-listen-address")
+	t.Setenv("RAVEN_BASE_URL", "://invalid-http-origin")
+	t.Setenv("RAVEN_SECRET_KEY", "invalid-secret-key")
+	t.Setenv("RAVEN_SETUP_TOKEN", "short")
 
 	var stdout, stderr bytes.Buffer
 	serverStarted := false
@@ -131,11 +131,11 @@ func TestAuthCommandSubprocessRemainsIsolatedFromServerRuntime(t *testing.T) {
 	command := exec.Command(os.Args[0], "-test.run=^TestAuthCommandHelperProcess$", "--", "auth", "users", "list")
 	command.Dir = t.TempDir()
 	command.Env = append(os.Environ(),
-		"GOFER_AUTH_COMMAND_HELPER=1",
-		"GOFER_DB_PATH="+databasePath,
-		"GOFER_ADDR=invalid-listen-address",
-		"GOFER_BASE_URL=://invalid-http-origin",
-		"GOFER_SECRET_KEY=invalid-secret-key",
+		"RAVEN_AUTH_COMMAND_HELPER=1",
+		"RAVEN_DB_PATH="+databasePath,
+		"RAVEN_ADDR=invalid-listen-address",
+		"RAVEN_BASE_URL=://invalid-http-origin",
+		"RAVEN_SECRET_KEY=invalid-secret-key",
 	)
 	output, err := command.CombinedOutput()
 	if err != nil {
@@ -153,7 +153,7 @@ func TestAuthCommandSubprocessRemainsIsolatedFromServerRuntime(t *testing.T) {
 }
 
 func TestAuthCommandHelperProcess(t *testing.T) {
-	if os.Getenv("GOFER_AUTH_COMMAND_HELPER") != "1" {
+	if os.Getenv("RAVEN_AUTH_COMMAND_HELPER") != "1" {
 		return
 	}
 	separator := -1

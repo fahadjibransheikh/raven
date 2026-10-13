@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/fahadjibransheikh/raven/internal/auth"
 	"github.com/fahadjibransheikh/raven/internal/authoperator"
+	"github.com/fahadjibransheikh/raven/internal/legacyenv"
 	"github.com/fahadjibransheikh/raven/internal/server"
 	"io"
 	"os"
@@ -17,6 +18,7 @@ import (
 
 func main() {
 	_ = godotenv.Load()
+	legacyenv.LogLegacy()
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	serverExit := 0

@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
+	ical "github.com/emersion/go-ical"
 	"github.com/fahadjibransheikh/raven/internal/calendar"
 	"github.com/fahadjibransheikh/raven/internal/storage"
-	ical "github.com/emersion/go-ical"
 )
 
 func TestCalendarCalDAVOccurrencePreservesResource(t *testing.T) {

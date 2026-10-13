@@ -117,8 +117,8 @@ func TestPersonalSetupAuditFailureRollsBackAndForeignUsersBlockSetup(t *testing.
 func TestAuthenticationModeConfiguration(t *testing.T) {
 	for _, mode := range []Mode{ModeOpen, ModePersonal, ModeManaged, "invalid"} {
 		t.Run(string(mode), func(t *testing.T) {
-			t.Setenv("GOFER_AUTH_MODE", string(mode))
-			t.Setenv("GOFER_AUTH_ENABLED", "false")
+			t.Setenv("RAVEN_AUTH_MODE", string(mode))
+			t.Setenv("RAVEN_AUTH_ENABLED", "false")
 			cfg := LoadConfig("https://gofer.example")
 			if cfg.AuthenticationMode() != mode || cfg.Enabled != (mode != ModeOpen) {
 				t.Fatalf("wrong mode %#v", cfg)

@@ -14,11 +14,11 @@ import (
 	"testing"
 	"time"
 
+	ical "github.com/emersion/go-ical"
+	"github.com/emersion/go-msgauth/dkim"
 	"github.com/fahadjibransheikh/raven/internal/calendar"
 	"github.com/fahadjibransheikh/raven/internal/config"
 	"github.com/fahadjibransheikh/raven/internal/storage"
-	ical "github.com/emersion/go-ical"
-	"github.com/emersion/go-msgauth/dkim"
 )
 
 type ownedIncomingFixture struct {

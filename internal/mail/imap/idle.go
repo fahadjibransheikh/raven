@@ -7,9 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fahadjibransheikh/raven/internal/models"
 	"github.com/emersion/go-imap/v2"
 	"github.com/emersion/go-imap/v2/imapclient"
+	"github.com/fahadjibransheikh/raven/internal/models"
 )
 
 const (

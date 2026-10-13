@@ -85,7 +85,7 @@ func TestShouldUseGmailAPIMailIsAlwaysUsedForGmailAccounts(t *testing.T) {
 		t.Fatal("shouldUseGmailAPIMail() = false for Gmail account")
 	}
 
-	t.Setenv("GOFER_GMAIL_API_SYNC", "0")
+	t.Setenv("RAVEN_GMAIL_API_SYNC", "0")
 	if !orchestrator.shouldUseGmailAPIMail(cfg) {
 		t.Fatal("shouldUseGmailAPIMail() followed deprecated disable env")
 	}

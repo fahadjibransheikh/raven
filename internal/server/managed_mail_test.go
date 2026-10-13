@@ -19,16 +19,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fahadjibransheikh/raven/internal/auth"
-	"github.com/fahadjibransheikh/raven/internal/config"
-	"github.com/fahadjibransheikh/raven/internal/models"
-	"github.com/fahadjibransheikh/raven/internal/storage"
 	imap "github.com/emersion/go-imap/v2"
 	"github.com/emersion/go-imap/v2/imapclient"
 	"github.com/emersion/go-imap/v2/imapserver"
 	"github.com/emersion/go-imap/v2/imapserver/imapmemserver"
 	"github.com/emersion/go-sasl"
 	smtp "github.com/emersion/go-smtp"
+	"github.com/fahadjibransheikh/raven/internal/auth"
+	"github.com/fahadjibransheikh/raven/internal/config"
+	"github.com/fahadjibransheikh/raven/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 type managedLiteral struct {
@@ -163,7 +163,7 @@ func newManagedMailFixtureOptions(t *testing.T, options managedMailOptions, conf
 		t.Fatal("native fixture requires owners and mail")
 	}
 	managedTestEnvironment(t)
-	t.Setenv("GOFER_SECRET_KEY", "")
+	t.Setenv("RAVEN_SECRET_KEY", "")
 	activity := &managedIMAPActivity{idle: make(map[string]int)}
 	remote := make(map[string]*imapmemserver.User)
 	initialMail := make(map[string][]managedSeedMail)

@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
+	goimap "github.com/emersion/go-imap/v2"
 	mailimap "github.com/fahadjibransheikh/raven/internal/mail/imap"
 	"github.com/fahadjibransheikh/raven/internal/storage"
-	goimap "github.com/emersion/go-imap/v2"
 )
 
 // Label replay shares the account gate and session bounds with receiving and

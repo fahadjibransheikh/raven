@@ -177,10 +177,10 @@ func newOfficeDataset(t *testing.T, spec officeWorkloadSpec) (*officeDataset, st
 }
 
 func TestManagedOfficePairedWorkload(t *testing.T) {
-	encoded := os.Getenv("GOFER_OFFICE_SPEC")
-	output := os.Getenv("GOFER_OFFICE_OUTPUT")
+	encoded := os.Getenv("RAVEN_OFFICE_SPEC")
+	output := os.Getenv("RAVEN_OFFICE_OUTPUT")
 	if encoded == "" || output == "" {
-		t.Skip("set GOFER_OFFICE_SPEC and GOFER_OFFICE_OUTPUT for populated paired workloads")
+		t.Skip("set RAVEN_OFFICE_SPEC and RAVEN_OFFICE_OUTPUT for populated paired workloads")
 	}
 	if runtime.GOOS != "linux" {
 		t.Skip("process sampling requires Linux")

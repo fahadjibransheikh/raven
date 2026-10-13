@@ -355,10 +355,10 @@ func TestUserStorageMigrationStageRefusesBusyOrAmbiguousDestinations(t *testing.
 }
 
 func TestUserStorageMigrationStageCrashHelper(t *testing.T) {
-	if os.Getenv("GOFER_MIGRATION_CRASH_HELPER") != "1" {
+	if os.Getenv("RAVEN_MIGRATION_CRASH_HELPER") != "1" {
 		return
 	}
-	options := storage.UserStorageMigrationOptions{SourcePath: os.Getenv("GOFER_MIGRATION_CRASH_SOURCE"), DestinationPath: os.Getenv("GOFER_MIGRATION_CRASH_DESTINATION")}
+	options := storage.UserStorageMigrationOptions{SourcePath: os.Getenv("RAVEN_MIGRATION_CRASH_SOURCE"), DestinationPath: os.Getenv("RAVEN_MIGRATION_CRASH_DESTINATION")}
 	options.VerifyCredentials = func(ctx context.Context, tx *sql.Tx) error {
 		return mailauth.VerifyUserStorageMigrationCredentials(ctx, tx, stageCredentialKey)
 	}
@@ -375,7 +375,7 @@ func TestUserStorageMigrationStageRetriesAfterActualProcessExit(t *testing.T) {
 		t.Fatal(err)
 	}
 	command := exec.CommandContext(t.Context(), executable, "-test.run=^TestUserStorageMigrationStageCrashHelper$")
-	command.Env = append(os.Environ(), "GOFER_MIGRATION_CRASH_HELPER=1", "GOFER_MIGRATION_CRASH_SOURCE="+options.SourcePath, "GOFER_MIGRATION_CRASH_DESTINATION="+options.DestinationPath)
+	command.Env = append(os.Environ(), "RAVEN_MIGRATION_CRASH_HELPER=1", "RAVEN_MIGRATION_CRASH_SOURCE="+options.SourcePath, "RAVEN_MIGRATION_CRASH_DESTINATION="+options.DestinationPath)
 	output, err := command.CombinedOutput()
 	var exit *exec.ExitError
 	if !errors.As(err, &exit) || exit.ExitCode() != 23 {
@@ -447,10 +447,10 @@ func TestUserStorageMigrationStageDetectsDatabaseChangesBeforeVerification(t *te
 }
 
 func TestUserStorageMigrationStageSourceWALHelper(t *testing.T) {
-	if os.Getenv("GOFER_MIGRATION_WAL_HELPER") != "1" {
+	if os.Getenv("RAVEN_MIGRATION_WAL_HELPER") != "1" {
 		return
 	}
-	source, err := storage.OpenExisting(os.Getenv("GOFER_MIGRATION_WAL_SOURCE"))
+	source, err := storage.OpenExisting(os.Getenv("RAVEN_MIGRATION_WAL_SOURCE"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -468,7 +468,7 @@ func TestUserStorageMigrationStagePreservesUncheckpointedSourceWAL(t *testing.T)
 		t.Fatal(err)
 	}
 	command := exec.CommandContext(t.Context(), executable, "-test.run=^TestUserStorageMigrationStageSourceWALHelper$")
-	command.Env = append(os.Environ(), "GOFER_MIGRATION_WAL_HELPER=1", "GOFER_MIGRATION_WAL_SOURCE="+options.SourcePath)
+	command.Env = append(os.Environ(), "RAVEN_MIGRATION_WAL_HELPER=1", "RAVEN_MIGRATION_WAL_SOURCE="+options.SourcePath)
 	output, err := command.CombinedOutput()
 	var exit *exec.ExitError
 	if !errors.As(err, &exit) || exit.ExitCode() != 24 {

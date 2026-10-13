@@ -23,11 +23,11 @@ func publicationRecoveryOptions(source, destination string) UserStorageMigration
 }
 
 func TestUserStorageMigrationPublicationCrashHelper(t *testing.T) {
-	if os.Getenv("GOFER_PUBLICATION_CRASH_HELPER") != "1" {
+	if os.Getenv("RAVEN_PUBLICATION_CRASH_HELPER") != "1" {
 		return
 	}
-	options := publicationRecoveryOptions(os.Getenv("GOFER_PUBLICATION_CRASH_SOURCE"), os.Getenv("GOFER_PUBLICATION_CRASH_DESTINATION"))
-	step := os.Getenv("GOFER_PUBLICATION_CRASH_STEP")
+	options := publicationRecoveryOptions(os.Getenv("RAVEN_PUBLICATION_CRASH_SOURCE"), os.Getenv("RAVEN_PUBLICATION_CRASH_DESTINATION"))
+	step := os.Getenv("RAVEN_PUBLICATION_CRASH_STEP")
 	_, err := publishUserStorageMigration(t.Context(), options, func(current string) error {
 		if current == step {
 			os.Exit(25)
@@ -74,7 +74,7 @@ func TestUserStorageMigrationPublicationResumesAfterActualProcessExit(t *testing
 				t.Fatal(err)
 			}
 			command := exec.CommandContext(t.Context(), executable, "-test.run=^TestUserStorageMigrationPublicationCrashHelper$")
-			command.Env = append(os.Environ(), "GOFER_PUBLICATION_CRASH_HELPER=1", "GOFER_PUBLICATION_CRASH_SOURCE="+sourcePath, "GOFER_PUBLICATION_CRASH_DESTINATION="+destination, "GOFER_PUBLICATION_CRASH_STEP="+step)
+			command.Env = append(os.Environ(), "RAVEN_PUBLICATION_CRASH_HELPER=1", "RAVEN_PUBLICATION_CRASH_SOURCE="+sourcePath, "RAVEN_PUBLICATION_CRASH_DESTINATION="+destination, "RAVEN_PUBLICATION_CRASH_STEP="+step)
 			output, err := command.CombinedOutput()
 			var exit *exec.ExitError
 			if !errors.As(err, &exit) || exit.ExitCode() != 25 {

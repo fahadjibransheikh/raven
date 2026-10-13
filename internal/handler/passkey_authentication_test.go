@@ -111,9 +111,9 @@ func TestPasskeyLoginUnknownIdentifierUsesGenericBoundedFailure(t *testing.T) {
 
 func TestPasskeyEndpointsRemainProtectedByCanonicalOriginAndSessionCSRF(t *testing.T) {
 	handler, _, db := newLocalLoginHandler(t, auth.UserStatusActive, false, false, true, false)
-	t.Setenv("GOFER_ADDR", "127.0.0.1:8090")
-	t.Setenv("GOFER_BASE_URL", "https://gofer.example")
-	t.Setenv("GOFER_ALLOW_UNAUTHENTICATED_REMOTE", "")
+	t.Setenv("RAVEN_ADDR", "127.0.0.1:8090")
+	t.Setenv("RAVEN_BASE_URL", "https://gofer.example")
+	t.Setenv("RAVEN_ALLOW_UNAUTHENTICATED_REMOTE", "")
 	guard, err := httpguard.LoadConfig()
 	if err != nil {
 		t.Fatal(err)

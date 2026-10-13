@@ -467,9 +467,9 @@ func TestSetupPasswordPostIsProtectedByCanonicalOriginGuard(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Setenv("GOFER_ADDR", "127.0.0.1:8090")
-	t.Setenv("GOFER_BASE_URL", "https://gofer.example")
-	t.Setenv("GOFER_ALLOW_UNAUTHENTICATED_REMOTE", "")
+	t.Setenv("RAVEN_ADDR", "127.0.0.1:8090")
+	t.Setenv("RAVEN_BASE_URL", "https://gofer.example")
+	t.Setenv("RAVEN_ALLOW_UNAUTHENTICATED_REMOTE", "")
 	guard, err := httpguard.LoadConfig()
 	if err != nil {
 		t.Fatal(err)
@@ -847,9 +847,9 @@ func TestSetupRecoveryStripsQueriesBoundsFormsAndRejectsCrossOrigin(t *testing.T
 	if err := db.Read().QueryRow(`SELECT payload_ciphertext FROM auth_challenges WHERE consumed_at IS NULL`).Scan(&originalPayload); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("GOFER_ADDR", "127.0.0.1:8090")
-	t.Setenv("GOFER_BASE_URL", "https://gofer.example")
-	t.Setenv("GOFER_ALLOW_UNAUTHENTICATED_REMOTE", "")
+	t.Setenv("RAVEN_ADDR", "127.0.0.1:8090")
+	t.Setenv("RAVEN_BASE_URL", "https://gofer.example")
+	t.Setenv("RAVEN_ALLOW_UNAUTHENTICATED_REMOTE", "")
 	guard, err := httpguard.LoadConfig()
 	if err != nil {
 		t.Fatal(err)
@@ -1066,9 +1066,9 @@ func TestSetupCompletionPostIsBoundedQueryFreeAndProtectedByCanonicalOrigin(t *t
 			queryResponse.Code, queryResponse.Header().Get("Location"), queryResponse.Body.String())
 	}
 
-	t.Setenv("GOFER_ADDR", "127.0.0.1:8090")
-	t.Setenv("GOFER_BASE_URL", "https://gofer.example")
-	t.Setenv("GOFER_ALLOW_UNAUTHENTICATED_REMOTE", "")
+	t.Setenv("RAVEN_ADDR", "127.0.0.1:8090")
+	t.Setenv("RAVEN_BASE_URL", "https://gofer.example")
+	t.Setenv("RAVEN_ALLOW_UNAUTHENTICATED_REMOTE", "")
 	guard, err := httpguard.LoadConfig()
 	if err != nil {
 		t.Fatal(err)
@@ -1142,9 +1142,9 @@ func TestSetupMFAPostIsProtectedByCanonicalOriginGuard(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Setenv("GOFER_ADDR", "127.0.0.1:8090")
-	t.Setenv("GOFER_BASE_URL", "https://gofer.example")
-	t.Setenv("GOFER_ALLOW_UNAUTHENTICATED_REMOTE", "")
+	t.Setenv("RAVEN_ADDR", "127.0.0.1:8090")
+	t.Setenv("RAVEN_BASE_URL", "https://gofer.example")
+	t.Setenv("RAVEN_ALLOW_UNAUTHENTICATED_REMOTE", "")
 	guard, err := httpguard.LoadConfig()
 	if err != nil {
 		t.Fatal(err)
@@ -1260,9 +1260,9 @@ func TestSetupOwnerPostIsProtectedByCanonicalOriginGuard(t *testing.T) {
 	_, db, stack, setupToken := setupEntryStack(t)
 	entry := postSetup(stack, setupToken)
 	setupCookie := responseCookie(entry, "gofer_pre_auth", true)
-	t.Setenv("GOFER_ADDR", "127.0.0.1:8090")
-	t.Setenv("GOFER_BASE_URL", "https://gofer.example")
-	t.Setenv("GOFER_ALLOW_UNAUTHENTICATED_REMOTE", "")
+	t.Setenv("RAVEN_ADDR", "127.0.0.1:8090")
+	t.Setenv("RAVEN_BASE_URL", "https://gofer.example")
+	t.Setenv("RAVEN_ALLOW_UNAUTHENTICATED_REMOTE", "")
 	guard, err := httpguard.LoadConfig()
 	if err != nil {
 		t.Fatal(err)
@@ -1391,9 +1391,9 @@ func TestSetupRoutesDisappearAfterInitialization(t *testing.T) {
 
 func TestSetupPostIsProtectedByCanonicalOriginGuard(t *testing.T) {
 	_, db, stack, setupToken := setupEntryStack(t)
-	t.Setenv("GOFER_ADDR", "127.0.0.1:8090")
-	t.Setenv("GOFER_BASE_URL", "https://gofer.example")
-	t.Setenv("GOFER_ALLOW_UNAUTHENTICATED_REMOTE", "")
+	t.Setenv("RAVEN_ADDR", "127.0.0.1:8090")
+	t.Setenv("RAVEN_BASE_URL", "https://gofer.example")
+	t.Setenv("RAVEN_ALLOW_UNAUTHENTICATED_REMOTE", "")
 	guard, err := httpguard.LoadConfig()
 	if err != nil {
 		t.Fatal(err)
@@ -1422,9 +1422,9 @@ func TestSetupPostIsProtectedByCanonicalOriginGuard(t *testing.T) {
 
 func TestSetupAcceptsPrivacyBrowserNullOriginWithSameOriginMetadata(t *testing.T) {
 	_, _, stack, setupToken := setupEntryStack(t)
-	t.Setenv("GOFER_ADDR", "127.0.0.1:8090")
-	t.Setenv("GOFER_BASE_URL", "https://gofer.example")
-	t.Setenv("GOFER_ALLOW_UNAUTHENTICATED_REMOTE", "")
+	t.Setenv("RAVEN_ADDR", "127.0.0.1:8090")
+	t.Setenv("RAVEN_BASE_URL", "https://gofer.example")
+	t.Setenv("RAVEN_ALLOW_UNAUTHENTICATED_REMOTE", "")
 	guard, err := httpguard.LoadConfig()
 	if err != nil {
 		t.Fatal(err)

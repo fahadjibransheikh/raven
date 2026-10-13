@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
+	ical "github.com/emersion/go-ical"
 	"github.com/fahadjibransheikh/raven/internal/calendar"
 	"github.com/fahadjibransheikh/raven/internal/storage"
-	ical "github.com/emersion/go-ical"
 )
 
 var (

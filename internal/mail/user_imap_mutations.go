@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"time"
 
+	goimap "github.com/emersion/go-imap/v2"
 	"github.com/fahadjibransheikh/raven/internal/mail/imap"
 	"github.com/fahadjibransheikh/raven/internal/storage"
-	goimap "github.com/emersion/go-imap/v2"
 )
 
 func minTime(a, b time.Time) time.Time {

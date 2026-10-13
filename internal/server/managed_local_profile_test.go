@@ -20,7 +20,7 @@ const localProfilePassword = "correct horse battery staple 42"
 // installation leaves behind: the local profile owns every mailbox.
 func localProfileFixture(t *testing.T, personal bool) string {
 	t.Helper()
-	t.Setenv("GOFER_SECRET_KEY", "")
+	t.Setenv("RAVEN_SECRET_KEY", "")
 	root := t.TempDir()
 	path := filepath.Join(root, "gofer.db")
 	key := []byte("0123456789abcdef0123456789abcdef")
@@ -70,7 +70,7 @@ func startConvertedManaged(t *testing.T, path string) (*managedStorage, *auth.Ma
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { s.Close() })
-	t.Setenv("GOFER_AUTH_MODE", "managed")
+	t.Setenv("RAVEN_AUTH_MODE", "managed")
 	manager := auth.NewManager(auth.LoadConfig("https://gofer.example"), s.central, auth.Dependencies{BucketHashKey: s.key})
 	if _, err := manager.AdoptLocalProfileForManagedSetup(t.Context()); err != nil {
 		t.Fatal(err)

@@ -11,9 +11,9 @@ import (
 	"strings"
 	"testing"
 
+	ical "github.com/emersion/go-ical"
 	"github.com/fahadjibransheikh/raven/internal/calendar"
 	"github.com/fahadjibransheikh/raven/internal/storage"
-	ical "github.com/emersion/go-ical"
 )
 
 func TestCalendarJSONProviderUpdateConditionalAndPreserving(t *testing.T) {

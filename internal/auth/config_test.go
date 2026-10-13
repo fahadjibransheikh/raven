@@ -6,11 +6,11 @@ import (
 )
 
 func TestLoadConfigSeparatesGoogleLoginFromMailboxOAuth(t *testing.T) {
-	t.Setenv("GOFER_AUTH_ENABLED", "true")
+	t.Setenv("RAVEN_AUTH_ENABLED", "true")
 	t.Setenv("GOOGLE_OAUTH_CLIENT_ID", "mailbox-client")
 	t.Setenv("GOOGLE_OAUTH_CLIENT_SECRET", "mailbox-secret")
-	t.Setenv("GOFER_GOOGLE_LOGIN_CLIENT_ID", "login-client")
-	t.Setenv("GOFER_GOOGLE_LOGIN_CLIENT_SECRET", "login-secret")
+	t.Setenv("RAVEN_GOOGLE_LOGIN_CLIENT_ID", "login-client")
+	t.Setenv("RAVEN_GOOGLE_LOGIN_CLIENT_SECRET", "login-secret")
 
 	cfg := LoadConfig("https://gofer.example")
 	if !cfg.Enabled || cfg.GoogleLoginClient == nil {
@@ -34,9 +34,9 @@ func TestLoadConfigSeparatesGoogleLoginFromMailboxOAuth(t *testing.T) {
 }
 
 func TestLoadConfigKeepsLocalAuthenticationEnabledWithoutGoogleLogin(t *testing.T) {
-	t.Setenv("GOFER_AUTH_ENABLED", "true")
-	t.Setenv("GOFER_GOOGLE_LOGIN_CLIENT_ID", "")
-	t.Setenv("GOFER_GOOGLE_LOGIN_CLIENT_SECRET", "")
+	t.Setenv("RAVEN_AUTH_ENABLED", "true")
+	t.Setenv("RAVEN_GOOGLE_LOGIN_CLIENT_ID", "")
+	t.Setenv("RAVEN_GOOGLE_LOGIN_CLIENT_SECRET", "")
 
 	cfg := LoadConfig("https://gofer.example")
 	if !cfg.Enabled {

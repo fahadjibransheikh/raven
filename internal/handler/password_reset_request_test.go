@@ -132,9 +132,9 @@ func TestPasswordResetRequestResponseDoesNotRevealAccountEligibility(t *testing.
 
 func TestPasswordResetRequestPostRemainsProtectedByCanonicalOriginGuard(t *testing.T) {
 	db, stack := passwordResetRequestStack(t)
-	t.Setenv("GOFER_ADDR", "127.0.0.1:8090")
-	t.Setenv("GOFER_BASE_URL", "https://gofer.example")
-	t.Setenv("GOFER_ALLOW_UNAUTHENTICATED_REMOTE", "")
+	t.Setenv("RAVEN_ADDR", "127.0.0.1:8090")
+	t.Setenv("RAVEN_BASE_URL", "https://gofer.example")
+	t.Setenv("RAVEN_ALLOW_UNAUTHENTICATED_REMOTE", "")
 	guard, err := httpguard.LoadConfig()
 	if err != nil {
 		t.Fatal(err)

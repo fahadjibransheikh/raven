@@ -522,9 +522,9 @@ func TestEnrollmentRedemptionValidatesConfirmationPolicyAndFormSizeBeforeMutatio
 
 func TestEnrollmentRedemptionPostRemainsProtectedByCanonicalOriginGuard(t *testing.T) {
 	_, db, stack, token := enrollmentRedemptionStack(t, auth.UserStatusPending, auth.EnrollmentTokenPurposeEnrollment)
-	t.Setenv("GOFER_ADDR", "127.0.0.1:8090")
-	t.Setenv("GOFER_BASE_URL", "https://gofer.example")
-	t.Setenv("GOFER_ALLOW_UNAUTHENTICATED_REMOTE", "")
+	t.Setenv("RAVEN_ADDR", "127.0.0.1:8090")
+	t.Setenv("RAVEN_BASE_URL", "https://gofer.example")
+	t.Setenv("RAVEN_ALLOW_UNAUTHENTICATED_REMOTE", "")
 	guard, err := httpguard.LoadConfig()
 	if err != nil {
 		t.Fatalf("httpguard.LoadConfig() error = %v", err)
@@ -557,9 +557,9 @@ func TestEnrollmentRedemptionPostRemainsProtectedByCanonicalOriginGuard(t *testi
 
 func TestEnrollmentRedemptionAcceptsPrivacyBrowserNullOriginWithSameOriginMetadata(t *testing.T) {
 	_, db, stack, token := enrollmentRedemptionStack(t, auth.UserStatusPending, auth.EnrollmentTokenPurposeEnrollment)
-	t.Setenv("GOFER_ADDR", "127.0.0.1:8090")
-	t.Setenv("GOFER_BASE_URL", "https://gofer.example")
-	t.Setenv("GOFER_ALLOW_UNAUTHENTICATED_REMOTE", "")
+	t.Setenv("RAVEN_ADDR", "127.0.0.1:8090")
+	t.Setenv("RAVEN_BASE_URL", "https://gofer.example")
+	t.Setenv("RAVEN_ALLOW_UNAUTHENTICATED_REMOTE", "")
 	guard, err := httpguard.LoadConfig()
 	if err != nil {
 		t.Fatalf("httpguard.LoadConfig() error = %v", err)

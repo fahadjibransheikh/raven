@@ -81,7 +81,7 @@ func TestProvisionInitialSetupTokenDoesNotEchoOperatorSuppliedSecret(t *testing.
 	if err := provisionInitialSetupToken(t.Context(), manager, configuredToken, &console); err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(console.String(), configuredToken) || !strings.Contains(console.String(), "GOFER_SETUP_TOKEN") {
+	if strings.Contains(console.String(), configuredToken) || !strings.Contains(console.String(), "RAVEN_SETUP_TOKEN") {
 		t.Fatalf("operator-supplied setup token was echoed: %q", console.String())
 	}
 }

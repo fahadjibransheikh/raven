@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/fahadjibransheikh/raven/internal/legacyenv"
 	"log"
 	"os"
 	"path/filepath"
@@ -292,27 +293,27 @@ func requireManagedSharedDatabase(ctx context.Context, path string) error {
 	return nil
 }
 
-// GOFER_PREVENT_STORAGE_CONVERSION keeps an unattended start, such as an
+// RAVEN_PREVENT_STORAGE_CONVERSION keeps an unattended start, such as an
 // automatic update, from converting an existing shared database. It is checked
 // before anything is moved. An interrupted conversion still resumes, a fresh
 // installation has nothing to convert, and the explicit command is unaffected.
 func requireStorageConversionAllowed(path string) error {
-	raw := strings.TrimSpace(os.Getenv("GOFER_PREVENT_STORAGE_CONVERSION"))
+	raw := strings.TrimSpace(legacyenv.Get("RAVEN_PREVENT_STORAGE_CONVERSION"))
 	if raw == "" {
 		return nil
 	}
 	prevent, err := strconv.ParseBool(raw)
 	if err != nil {
-		return errors.New("GOFER_PREVENT_STORAGE_CONVERSION must be true or false")
+		return errors.New("RAVEN_PREVENT_STORAGE_CONVERSION must be true or false")
 	}
 	if prevent {
-		return fmt.Errorf("%s uses the shared storage format, and GOFER_PREVENT_STORAGE_CONVERSION stops managed mode from converting it to per-user storage; unset it to convert (nothing was changed), or start Raven in personal or open mode", path)
+		return fmt.Errorf("%s uses the shared storage format, and RAVEN_PREVENT_STORAGE_CONVERSION stops managed mode from converting it to per-user storage; unset it to convert (nothing was changed), or start Raven in personal or open mode", path)
 	}
 	return nil
 }
 
 func initializeManagedKey(source string) ([]byte, error) {
-	if os.Getenv("GOFER_SECRET_KEY") != "" {
+	if legacyenv.Get("RAVEN_SECRET_KEY") != "" {
 		return loadExistingMigrationKey(source)
 	}
 	path := filepath.Join(filepath.Dir(source), "secret.key")

@@ -51,12 +51,12 @@ func microsoftOAuthTestContext(t *testing.T) context.Context {
 }
 
 func TestLoadConfigSeparatesMicrosoftLoginFromOutlookMailboxOAuth(t *testing.T) {
-	t.Setenv("GOFER_AUTH_ENABLED", "true")
+	t.Setenv("RAVEN_AUTH_ENABLED", "true")
 	t.Setenv("MICROSOFT_OAUTH_CLIENT_ID", "outlook-mailbox-client")
 	t.Setenv("MICROSOFT_OAUTH_CLIENT_SECRET", "outlook-mailbox-secret")
-	t.Setenv("GOFER_MICROSOFT_LOGIN_CLIENT_ID", "application-login-client")
-	t.Setenv("GOFER_MICROSOFT_LOGIN_CLIENT_SECRET", "application-login-secret")
-	t.Setenv("GOFER_MICROSOFT_LOGIN_TENANT", "organizations")
+	t.Setenv("RAVEN_MICROSOFT_LOGIN_CLIENT_ID", "application-login-client")
+	t.Setenv("RAVEN_MICROSOFT_LOGIN_CLIENT_SECRET", "application-login-secret")
+	t.Setenv("RAVEN_MICROSOFT_LOGIN_TENANT", "organizations")
 
 	cfg := LoadConfig("https://gofer.example")
 	if cfg.MicrosoftLoginClient == nil || cfg.MicrosoftLoginTenant != "organizations" {
@@ -80,10 +80,10 @@ func TestLoadConfigSeparatesMicrosoftLoginFromOutlookMailboxOAuth(t *testing.T) 
 }
 
 func TestLoadConfigEnablesMicrosoftLoginWithoutSecret(t *testing.T) {
-	t.Setenv("GOFER_AUTH_ENABLED", "true")
-	t.Setenv("GOFER_MICROSOFT_LOGIN_CLIENT_ID", "public-login-client")
-	t.Setenv("GOFER_MICROSOFT_LOGIN_CLIENT_SECRET", "")
-	t.Setenv("GOFER_MICROSOFT_LOGIN_TENANT", "common")
+	t.Setenv("RAVEN_AUTH_ENABLED", "true")
+	t.Setenv("RAVEN_MICROSOFT_LOGIN_CLIENT_ID", "public-login-client")
+	t.Setenv("RAVEN_MICROSOFT_LOGIN_CLIENT_SECRET", "")
+	t.Setenv("RAVEN_MICROSOFT_LOGIN_TENANT", "common")
 
 	cfg := LoadConfig("https://gofer.example")
 	if cfg.MicrosoftLoginClient == nil || cfg.MicrosoftLoginClient.ClientSecret != "" {

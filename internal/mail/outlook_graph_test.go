@@ -126,7 +126,7 @@ func TestShouldUseOutlookGraphMailAlwaysUsesGraphForOutlook(t *testing.T) {
 		t.Fatal("shouldUseOutlookGraphMail() = false for Outlook")
 	}
 
-	t.Setenv("GOFER_OUTLOOK_GRAPH_SYNC", "0")
+	t.Setenv("RAVEN_OUTLOOK_GRAPH_SYNC", "0")
 	if !orchestrator.shouldUseOutlookGraphMail(cfg) {
 		t.Fatal("shouldUseOutlookGraphMail() = false when legacy opt-out env is set")
 	}

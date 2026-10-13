@@ -13,9 +13,9 @@ browser tab. **It reimplements none of Gofer's UI.** On launch it:
    Closing the window only hides it; the Dock icon (macOS) or the tray's
    Show Raven (Windows, Linux) brings it back.
 
-Gofer's port is read from this repo's `gofer/.env` (`GOFER_ADDR=127.0.0.1:8090`)
-at the time this was scaffolded. If you ever change `GOFER_ADDR`, update the
-`GOFER_HOST` / `GOFER_PORT` constants near the top of
+Gofer's port is read from this repo's `gofer/.env` (`RAVEN_ADDR=127.0.0.1:8090`)
+at the time this was scaffolded. If you ever change `RAVEN_ADDR`, update the
+`RAVEN_HOST` / `RAVEN_PORT` constants near the top of
 `src-tauri/src/lib.rs` to match.
 
 > **Honesty note:** this was scaffolded in an environment with no Rust/Xcode

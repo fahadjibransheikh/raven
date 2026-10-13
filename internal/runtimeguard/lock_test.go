@@ -53,8 +53,8 @@ func TestAcquireExcludesAnotherProcess(t *testing.T) {
 	databasePath := filepath.Join(t.TempDir(), "gofer.db")
 	command := exec.Command(os.Args[0], "-test.run=^TestLockHelperProcess$")
 	command.Env = append(os.Environ(),
-		"GOFER_RUNTIME_LOCK_HELPER=1",
-		"GOFER_RUNTIME_LOCK_DATABASE="+databasePath,
+		"RAVEN_RUNTIME_LOCK_HELPER=1",
+		"RAVEN_RUNTIME_LOCK_DATABASE="+databasePath,
 	)
 	stdin, err := command.StdinPipe()
 	if err != nil {
@@ -95,10 +95,10 @@ func TestAcquireExcludesAnotherProcess(t *testing.T) {
 }
 
 func TestLockHelperProcess(t *testing.T) {
-	if os.Getenv("GOFER_RUNTIME_LOCK_HELPER") != "1" {
+	if os.Getenv("RAVEN_RUNTIME_LOCK_HELPER") != "1" {
 		return
 	}
-	lock, err := Acquire(os.Getenv("GOFER_RUNTIME_LOCK_DATABASE"))
+	lock, err := Acquire(os.Getenv("RAVEN_RUNTIME_LOCK_DATABASE"))
 	if err != nil {
 		t.Fatal(err)
 	}

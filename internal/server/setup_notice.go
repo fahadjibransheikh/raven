@@ -28,14 +28,14 @@ func provisionInitialSetupToken(ctx context.Context, manager *auth.Manager, conf
 		}
 		fmt.Fprintf(&notice, "\n Token (shown once):\n setup_token: %s\n", provision.Token)
 	} else if provision.Configured {
-		notice.WriteString("\n Use the token you supplied in GOFER_SETUP_TOKEN.\n")
+		notice.WriteString("\n Use the token you supplied in RAVEN_SETUP_TOKEN.\n")
 	} else {
 		notice.WriteString("\n The setup token was issued earlier and cannot be displayed again.\n")
 	}
 	if provision.State.TokenExpiresAt != nil {
 		fmt.Fprintf(&notice, " Expires: %s (server local time)\n", provision.State.TokenExpiresAt.Local().Format("2006-01-02 15:04:05 MST (UTC-07:00)"))
 	}
-	notice.WriteString("\n Lost or expired token? Stop Raven, then run:\n ./gofer auth setup-token rotate\n Use the same GOFER_DB_PATH, then restart Raven.\n")
+	notice.WriteString("\n Lost or expired token? Stop Raven, then run:\n ./gofer auth setup-token rotate\n Use the same RAVEN_DB_PATH, then restart Raven.\n")
 	if err := writeLocalProfileNotice(ctx, manager, &notice); err != nil {
 		return err
 	}

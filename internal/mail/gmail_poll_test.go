@@ -15,7 +15,7 @@ import (
 
 func TestCheckGmailAPIProfileDetectsChangedHistory(t *testing.T) {
 	ctx := context.Background()
-	t.Setenv("GOFER_GMAIL_API_SYNC", "1")
+	t.Setenv("RAVEN_GMAIL_API_SYNC", "1")
 	db := newLabelSyncTestDB(t)
 	if _, err := db.Write().ExecContext(ctx, `INSERT INTO accounts (id, user_id, provider, email_address) VALUES ('acc', 'default', ?, 'user@example.com')`, providers.ProviderGmail); err != nil {
 		t.Fatalf("insert account: %v", err)
@@ -65,7 +65,7 @@ func TestCheckGmailAPIProfileDetectsChangedHistory(t *testing.T) {
 
 func TestCheckGmailAPIProfileSkipsUnchangedHistory(t *testing.T) {
 	ctx := context.Background()
-	t.Setenv("GOFER_GMAIL_API_SYNC", "1")
+	t.Setenv("RAVEN_GMAIL_API_SYNC", "1")
 	db := newLabelSyncTestDB(t)
 	if _, err := db.Write().ExecContext(ctx, `INSERT INTO accounts (id, user_id, provider, email_address) VALUES ('acc', 'default', ?, 'user@example.com')`, providers.ProviderGmail); err != nil {
 		t.Fatalf("insert account: %v", err)
@@ -129,7 +129,7 @@ func TestBeginActiveUserSessionTracksActiveUsers(t *testing.T) {
 
 func TestPollGmailAPIAccountSkipsProfileCheckWhileSyncRunning(t *testing.T) {
 	ctx := context.Background()
-	t.Setenv("GOFER_GMAIL_API_SYNC", "1")
+	t.Setenv("RAVEN_GMAIL_API_SYNC", "1")
 	db := newLabelSyncTestDB(t)
 	if _, err := db.Write().ExecContext(ctx, `INSERT INTO accounts (id, user_id, provider, email_address) VALUES ('acc', 'default', ?, 'user@example.com')`, providers.ProviderGmail); err != nil {
 		t.Fatalf("insert account: %v", err)

@@ -20,7 +20,7 @@ func TestMigrationKeyLoaderPreservesExistingSecretAndEnvironmentPrecedence(t *te
 	key := []byte("0123456789abcdef0123456789abcdef")
 	for _, mode := range []string{"valid-file", "missing-file", "invalid-file", "environment", "invalid-environment", "directory"} {
 		t.Run(mode, func(t *testing.T) {
-			t.Setenv("GOFER_SECRET_KEY", "")
+			t.Setenv("RAVEN_SECRET_KEY", "")
 			root := t.TempDir()
 			path := filepath.Join(root, "secret.key")
 			content := key
@@ -37,10 +37,10 @@ func TestMigrationKeyLoaderPreservesExistingSecretAndEnvironmentPrecedence(t *te
 				}
 			}
 			if mode == "environment" {
-				t.Setenv("GOFER_SECRET_KEY", hex.EncodeToString(key))
+				t.Setenv("RAVEN_SECRET_KEY", hex.EncodeToString(key))
 			}
 			if mode == "invalid-environment" {
-				t.Setenv("GOFER_SECRET_KEY", "private-invalid-value")
+				t.Setenv("RAVEN_SECRET_KEY", "private-invalid-value")
 			}
 			loaded, err := loadExistingMigrationKey(filepath.Join(root, "shared.db"))
 			valid := mode == "valid-file" || mode == "environment"

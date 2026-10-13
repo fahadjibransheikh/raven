@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fahadjibransheikh/raven/internal/models"
 	goimap "github.com/emersion/go-imap/v2"
 	"github.com/emersion/go-imap/v2/imapclient"
+	"github.com/fahadjibransheikh/raven/internal/models"
 )
 
 func newIdleTestClient(t *testing.T, capabilities string) *imapclient.Client {

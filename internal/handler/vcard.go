@@ -7,8 +7,8 @@ import (
 	"io"
 	"strings"
 
-	"github.com/fahadjibransheikh/raven/internal/models"
 	emersionvcard "github.com/emersion/go-vcard"
+	"github.com/fahadjibransheikh/raven/internal/models"
 )
 
 func renderVCard4(contacts []models.Contact) ([]byte, error) {

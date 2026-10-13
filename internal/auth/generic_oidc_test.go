@@ -53,11 +53,11 @@ func oidcOAuthTestContext(t *testing.T) context.Context {
 }
 
 func TestLoadConfigCreatesIdentityOnlyGenericOIDCLogin(t *testing.T) {
-	t.Setenv("GOFER_AUTH_ENABLED", "true")
-	t.Setenv("GOFER_OIDC_LOGIN_ISSUER", oidcTestIssuer)
-	t.Setenv("GOFER_OIDC_LOGIN_CLIENT_ID", "application-login-client")
-	t.Setenv("GOFER_OIDC_LOGIN_CLIENT_SECRET", "application-login-secret")
-	t.Setenv("GOFER_OIDC_LOGIN_NAME", "Company SSO")
+	t.Setenv("RAVEN_AUTH_ENABLED", "true")
+	t.Setenv("RAVEN_OIDC_LOGIN_ISSUER", oidcTestIssuer)
+	t.Setenv("RAVEN_OIDC_LOGIN_CLIENT_ID", "application-login-client")
+	t.Setenv("RAVEN_OIDC_LOGIN_CLIENT_SECRET", "application-login-secret")
+	t.Setenv("RAVEN_OIDC_LOGIN_NAME", "Company SSO")
 
 	cfg := LoadConfig("https://gofer.example")
 	if cfg.OIDCLoginClient == nil || cfg.OIDCLoginIssuer != oidcTestIssuer || cfg.OIDCLoginName != "Company SSO" {
@@ -77,9 +77,9 @@ func TestLoadConfigRejectsUnsafeGenericOIDCIssuer(t *testing.T) {
 		"http://identity.example", "https://user@identity.example", "https://identity.example?tenant=one",
 	} {
 		t.Run(issuer, func(t *testing.T) {
-			t.Setenv("GOFER_OIDC_LOGIN_ISSUER", issuer)
-			t.Setenv("GOFER_OIDC_LOGIN_CLIENT_ID", "client")
-			t.Setenv("GOFER_OIDC_LOGIN_CLIENT_SECRET", "secret")
+			t.Setenv("RAVEN_OIDC_LOGIN_ISSUER", issuer)
+			t.Setenv("RAVEN_OIDC_LOGIN_CLIENT_ID", "client")
+			t.Setenv("RAVEN_OIDC_LOGIN_CLIENT_SECRET", "secret")
 			if cfg := LoadConfig("https://gofer.example"); cfg.OIDCLoginClient != nil {
 				t.Fatalf("unsafe issuer enabled OIDC login: %#v", cfg)
 			}

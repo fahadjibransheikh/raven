@@ -16,7 +16,7 @@ import (
 // The desktop gate protects no-login (open mode) installs that the Tauri
 // wrapper runs on loopback. Without it any local process can read and send mail
 // with `curl -H 'X-Gofer-Request: 1' 127.0.0.1:8090`. The wrapper generates a
-// random token per launch, hands it to the sidecar in GOFER_DESKTOP_TOKEN and
+// random token per launch, hands it to the sidecar in RAVEN_DESKTOP_TOKEN and
 // navigates its webview to /desktop-auth?t=<token>, which trades the token for
 // an HttpOnly cookie. It is inert unless the variable is set and the instance
 // is in open mode, so web/server deployments are unaffected.
@@ -39,10 +39,10 @@ func (c *Config) ValidateDesktopToken() error {
 		return nil
 	}
 	if c.Enabled {
-		return errors.New("GOFER_DESKTOP_TOKEN only applies to open (no-login) mode")
+		return errors.New("RAVEN_DESKTOP_TOKEN only applies to open (no-login) mode")
 	}
 	if len(c.DesktopToken) < minimumDesktopTokenBytes {
-		return fmt.Errorf("GOFER_DESKTOP_TOKEN must be at least %d characters", minimumDesktopTokenBytes)
+		return fmt.Errorf("RAVEN_DESKTOP_TOKEN must be at least %d characters", minimumDesktopTokenBytes)
 	}
 	return nil
 }

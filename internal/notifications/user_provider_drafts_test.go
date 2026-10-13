@@ -14,9 +14,9 @@ import (
 	"testing"
 	"time"
 
+	gomail "github.com/emersion/go-message/mail"
 	"github.com/fahadjibransheikh/raven/internal/mail"
 	"github.com/fahadjibransheikh/raven/internal/storage"
-	gomail "github.com/emersion/go-message/mail"
 )
 
 type providerDraftFixtureEntry struct {

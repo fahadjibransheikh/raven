@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"github.com/fahadjibransheikh/raven/internal/legacyenv"
 	"io"
 	"os"
 	"path/filepath"
@@ -17,21 +18,21 @@ import (
 // Migration must never fall back to generating/replacing an application secret.
 // Retain the ordinary runtime's environment-over-file precedence.
 func loadExistingMigrationKey(sourcePath string) ([]byte, error) {
-	if configured := os.Getenv("GOFER_SECRET_KEY"); configured != "" {
+	if configured := legacyenv.Get("RAVEN_SECRET_KEY"); configured != "" {
 		key, err := hex.DecodeString(configured)
 		if err != nil || len(key) != 32 {
-			return nil, errors.New("invalid GOFER_SECRET_KEY: expected 64 hex characters")
+			return nil, errors.New("invalid RAVEN_SECRET_KEY: expected 64 hex characters")
 		}
 		return key, nil
 	}
 	path := filepath.Join(filepath.Dir(sourcePath), "secret.key")
 	info, err := os.Stat(path)
 	if err != nil || !info.Mode().IsRegular() || info.Size() != 32 {
-		return nil, errors.New("migration requires an existing regular 32-byte secret.key or GOFER_SECRET_KEY")
+		return nil, errors.New("migration requires an existing regular 32-byte secret.key or RAVEN_SECRET_KEY")
 	}
 	file, err := os.Open(path)
 	if err != nil {
-		return nil, errors.New("migration requires the existing application secret.key or GOFER_SECRET_KEY")
+		return nil, errors.New("migration requires the existing application secret.key or RAVEN_SECRET_KEY")
 	}
 	defer file.Close()
 	info, err = file.Stat()

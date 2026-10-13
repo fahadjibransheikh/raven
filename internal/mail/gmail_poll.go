@@ -3,8 +3,8 @@ package mail
 import (
 	"context"
 	"database/sql"
+	"github.com/fahadjibransheikh/raven/internal/legacyenv"
 	"log"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -29,7 +29,7 @@ type gmailPollRuntimeState struct {
 }
 
 func gmailAPIPollEnabled() bool {
-	switch strings.ToLower(strings.TrimSpace(os.Getenv("GOFER_GMAIL_API_POLL"))) {
+	switch strings.ToLower(strings.TrimSpace(legacyenv.Get("RAVEN_GMAIL_API_POLL"))) {
 	case "0", "false", "off", "no":
 		return false
 	default:
@@ -38,7 +38,7 @@ func gmailAPIPollEnabled() bool {
 }
 
 func gmailAPIActivePollInterval() time.Duration {
-	raw := strings.TrimSpace(os.Getenv("GOFER_GMAIL_ACTIVE_POLL_INTERVAL_SECONDS"))
+	raw := strings.TrimSpace(legacyenv.Get("RAVEN_GMAIL_ACTIVE_POLL_INTERVAL_SECONDS"))
 	if raw == "" {
 		return gmailAPIPollDefaultActiveInterval
 	}

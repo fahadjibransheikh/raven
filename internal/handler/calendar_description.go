@@ -1,8 +1,8 @@
 package handler
 
 import (
-	"github.com/fahadjibransheikh/raven/internal/calendar"
 	ical "github.com/emersion/go-ical"
+	"github.com/fahadjibransheikh/raven/internal/calendar"
 )
 
 func calendarDescriptionChanged(existing string, draft calendar.EventDraft) bool {
