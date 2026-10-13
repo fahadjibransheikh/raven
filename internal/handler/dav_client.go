@@ -13,12 +13,13 @@ import (
 	"github.com/cristianadrielbraun/gofer/internal/netguard"
 )
 
-// davPrivateAllowed decides whether a CardDAV connection may reach a private
-// address at host:port. Nil means never. By default only the administrator's
-// private-target exceptions (the policy set by setDAVPrivateTargetPolicy)
-// approve one, in every mode; tests replace it.
+// davPrivateAllowed decides whether a CardDAV connection to the anchor may
+// reach a private address at host:port (the transport has already checked it is
+// the anchor). Nil means never. By default davPrivatePolicy decides: an
+// administrator's private-target exception in every mode, or the typed
+// endpoint itself where one operator owns the network. Tests replace it.
 var davPrivateAllowed = func(ctx context.Context, host string, port int) bool {
-	return davPrivateTargetAllowed(ctx, "https", host, port) || davPrivateTargetAllowed(ctx, "http", host, port)
+	return davPrivatePolicy(ctx, "https", host, port, true) || davPrivatePolicy(ctx, "http", host, port, true)
 }
 
 type davAnchorKey struct{}

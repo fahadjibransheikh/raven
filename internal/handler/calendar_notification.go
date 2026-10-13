@@ -225,6 +225,7 @@ func (h *Handler) beforeCalendarNotificationSend(ctx context.Context, send stora
 	if credentials.err != nil {
 		return unlock, credentials.err
 	}
+	ctx = credentials.anchor(ctx)
 	if _, err := resolveCalDAVHref(credentials.baseURL, source.RemoteID); err != nil {
 		return unlock, err
 	}

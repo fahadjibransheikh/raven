@@ -2,21 +2,28 @@ package handler
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync/atomic"
 
 	"github.com/cristianadrielbraun/gofer/internal/netguard"
 )
 
-// davHTTPTransport carries every CalDAV and CardDAV request. People enter
-// those servers themselves, so connections go through netguard and reach a
-// private address only when the mail security exceptions approve it. Tests
-// replace the transport to reach their local servers.
-var davHTTPTransport http.RoundTripper = netguard.NewHTTPTransport(davPrivateTargetAllowed)
+// davHTTPTransport carries every CalDAV request. People enter those servers
+// themselves, so connections go through netguard (checked as they connect, so
+// DNS rebinding and redirects cannot bypass it). It reuses no connection, so a
+// private address approved for one request is never reached over a connection
+// kept for another. Tests replace the transport to reach their local servers.
+var davHTTPTransport http.RoundTripper = netguard.NewHTTPTransportNoReuse(davPrivateTargetAllowed)
 
 var davPrivateTargetPolicy atomic.Pointer[netguard.PrivatePolicy]
+
+// davOperatorOwnsNetwork reports whether this instance has a single operator
+// who owns the server and its LAN. Nil (no handler built) means no.
+var davOperatorOwnsNetwork atomic.Pointer[func() bool]
 
 // setDAVPrivateTargetPolicy points DAV connections at the instance's mail
 // security exceptions. The transport is shared by every request, so the
@@ -25,9 +32,43 @@ func setDAVPrivateTargetPolicy(policy netguard.PrivatePolicy) {
 	davPrivateTargetPolicy.Store(&policy)
 }
 
+// setDAVOperatorOwnsNetwork sets how DAV connections learn the authentication
+// mode, once, when the handler is built.
+func setDAVOperatorOwnsNetwork(owns func() bool) {
+	davOperatorOwnsNetwork.Store(&owns)
+}
+
+// davPrivatePolicy is the one rule for CalDAV and CardDAV connections to a
+// private address. An administrator's private-target exception approves it in
+// every mode. Otherwise only the anchor (the exact host:port the user typed or
+// saved) may be private, and only where a single operator owns the server and
+// its LAN: open and personal mode. In managed mode any user could aim the
+// server at internal services, so the anchor alone is not enough. Hosts learned
+// from server responses are never the anchor.
+func davPrivatePolicy(ctx context.Context, protocol, host string, port int, isAnchor bool) bool {
+	if policy := davPrivateTargetPolicy.Load(); policy != nil && *policy != nil && (*policy)(ctx, protocol, host, port) {
+		return true
+	}
+	owns := davOperatorOwnsNetwork.Load()
+	return isAnchor && owns != nil && *owns != nil && (*owns)()
+}
+
+// davPrivateTargetAllowed is the CalDAV transport's policy: the anchor is the
+// one carried by the request context (withDAVAnchor).
 func davPrivateTargetAllowed(ctx context.Context, protocol, host string, port int) bool {
-	policy := davPrivateTargetPolicy.Load()
-	return policy != nil && *policy != nil && (*policy)(ctx, protocol, host, port)
+	anchor, _ := ctx.Value(davAnchorKey{}).(string)
+	host = strings.ToLower(strings.TrimSuffix(host, "."))
+	return davPrivatePolicy(ctx, protocol, host, port, anchor != "" && net.JoinHostPort(host, strconv.Itoa(port)) == anchor)
+}
+
+// withCalDAVAnchor anchors ctx at a CalDAV server URL the user typed or saved,
+// in any form people enter it. An empty or unusable URL leaves ctx unchanged.
+func withCalDAVAnchor(ctx context.Context, rawBaseURL string) context.Context {
+	base, err := normalizeCalDAVBaseURL(rawBaseURL)
+	if err != nil {
+		return ctx
+	}
+	return withDAVAnchor(ctx, base)
 }
 
 // validPushEndpoint accepts the HTTPS address of a browser's push service.

@@ -10,12 +10,15 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/cristianadrielbraun/gofer/internal/auth"
 	"github.com/cristianadrielbraun/gofer/internal/models"
 )
 
-// People enter CalDAV and CardDAV servers themselves, so a server on the
-// Gofer host's network is refused unless a mail security exception approves it.
+// In managed mode people enter CalDAV and CardDAV servers themselves, so a
+// server on the Gofer host's network is refused unless a mail security
+// exception approves it. (Open and personal mode: TestDAVPrivateAnchorByMode.)
 func TestDAVRequestsRefuseUnapprovedPrivateServers(t *testing.T) {
+	useDAVMode(t, auth.ModeManaged, nil)
 	var hits atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hits.Add(1)

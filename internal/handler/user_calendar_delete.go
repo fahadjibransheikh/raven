@@ -102,7 +102,7 @@ func (h *Handler) handleUserDeleteCalendarEvent(w http.ResponseWriter, r *http.R
 				if err != nil {
 					return err
 				}
-				event, err = readCalendarProviderSeriesWithCredentials(operation, source, snapshot.Event(), credentials, true)
+				event, err = readCalendarProviderSeriesWithCredentials(credentials.anchor(operation), source, snapshot.Event(), credentials, true)
 				if err != nil || event.ETag != version {
 					return userCalendarMutationFailure{status: 409, message: "The series could not be verified or has changed. Reopen it before deleting; nothing was deleted.", conflict: true}
 				}

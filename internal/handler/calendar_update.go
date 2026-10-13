@@ -261,6 +261,7 @@ func (h *Handler) updateCalendarProviderEvent(ctx context.Context, source storag
 	if credentials.err != nil {
 		return calendar.RemoteEvent{}, calendarCreateAuthError{credentials.err}
 	}
+	ctx = credentials.anchor(ctx)
 	switch source.Provider {
 	case providers.ProviderGmail:
 		return updateGoogleCalendarEventScope(ctx, credentials.token, source.RemoteID, event, draft, series, occurrence)

@@ -86,7 +86,10 @@ func (h *Handler) readCalendarResponse(ctx context.Context, source storage.Calen
 		if err != nil {
 			return calendarResponseTarget{}, err
 		}
-		target, err := readCalDAVResponseTarget(ctx, source, event, scope, credentials.username, credentials.password, account.Email)
+		target, err := readCalDAVResponseTarget(credentials.anchor(ctx), source, event, scope, credentials.username, credentials.password, account.Email)
+		if err == nil && target.CalDAV != nil {
+			target.CalDAV.BaseURL = credentials.baseURL // so the reply PUT is anchored too
+		}
 		if err == nil && !target.CalDAV.ServerScheduling {
 			cfg, cfgErr := h.accountStore.GetConfig(ctx, source.AccountID)
 			if cfgErr != nil || cfg.SMTPHost == "" || cfg.SMTPPort <= 0 {

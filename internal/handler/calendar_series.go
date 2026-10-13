@@ -238,7 +238,7 @@ func (h *Handler) readCalendarProviderSeries(ctx context.Context, source storage
 		if credentials.err != nil {
 			return storage.CalendarEvent{}, calendarCreateAuthError{credentials.err}
 		}
-		return readCalendarProviderSeriesWithCredentials(ctx, source, occurrence, credentials, deletingScope...)
+		return readCalendarProviderSeriesWithCredentials(credentials.anchor(ctx), source, occurrence, credentials, deletingScope...)
 	}
 	return calendarProviderSeriesResult(source, occurrence, event, err)
 }

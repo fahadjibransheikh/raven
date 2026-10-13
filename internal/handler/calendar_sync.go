@@ -20,6 +20,15 @@ type calendarCredentials struct {
 	err      error
 }
 
+// anchor marks the saved CalDAV server as the one endpoint that may be a private
+// address (davPrivatePolicy). Every CalDAV request made with credentials from
+// calendarCredentialsForSource or calendarUpdateCredentials carries it. Servers
+// that only a response named stay public-only. Other providers have no baseURL,
+// so their ctx is unchanged.
+func (c calendarCredentials) anchor(ctx context.Context) context.Context {
+	return withDAVAnchor(ctx, c.baseURL)
+}
+
 var errCalendarAccountNotConfigured = errors.New("no calendars are configured for this account")
 
 func (h *Handler) syncCalendarWindow(ctx context.Context, userID string, start, end time.Time) (int, error) {
@@ -87,7 +96,7 @@ func (h *Handler) fetchCalendarSource(ctx context.Context, source storage.Calend
 		if _, err := resolveCalDAVHref(credential.baseURL, source.RemoteID); err != nil {
 			return calendar.EventPage{}, err
 		}
-		return listCalDAVCalendarEvents(ctx, source, credential.username, credential.password, query)
+		return listCalDAVCalendarEvents(credential.anchor(ctx), source, credential.username, credential.password, query)
 	default:
 		return calendar.EventPage{}, fmt.Errorf("this calendar provider is not supported")
 	}

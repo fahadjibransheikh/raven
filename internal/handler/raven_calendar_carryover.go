@@ -95,6 +95,7 @@ func (h *Handler) discoverRavenCarryoverCalDAV(ctx context.Context, account stor
 	}
 	discoveryCtx, cancel := context.WithTimeout(ctx, cardDAVDiscoveryOverallTimeout)
 	defer cancel()
+	discoveryCtx = withCalDAVAnchor(discoveryCtx, data.CalendarSync.CalDAVBaseURL) // the saved server only
 	candidates := calDAVAutodiscoveryCandidates(discoveryCtx, data.CalendarSync.CalDAVBaseURL, data.EmailAddress, data.IMAPHost, data.SMTPHost)
 	calendars, baseURL, err := discoverCalDAVCalendarsCandidates(discoveryCtx, candidates, username, password, account.UserID, account.AccountID)
 	if err != nil {

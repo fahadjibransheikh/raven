@@ -99,8 +99,10 @@ Each stage ends with: `templ generate`, `tailwindcss` build, `go build ./...`, `
   - Page-wide CSP is now `script-src 'self'`: ~120 inline handlers became
     `data-on-*` hooks (actions.js), inline scripts moved to settings-page.js,
     saved-panel-size.js; htmx `allowEval=false`.
-  - Behaviour change: a private (LAN) CardDAV/CalDAV server now needs a
-    "Mail security" exception even in personal/open mode.
+  - Private (LAN) CardDAV/CalDAV: restored for open/personal mode. The
+    typed or saved server (exact host:port, the "anchor") works without an
+    exception; hosts learned from responses stay public-only. Managed mode
+    still needs an admin "Mail security" exception.
   - Deferred upstream UI (needs design): select-all banner, wizard
     "test before saving", settings card structure, collapsed-message reply
     buttons, thread sheets, quote-collapse toggle UI. Express theme assets
@@ -151,8 +153,8 @@ Needs Fahad (real accounts / devices):
      new `script-src 'self'` page policy.
 2. Decisions: which deferred upstream UI to port in Raven's style (stage 3
    notes); whether to restyle the calendar page beyond the shell; the
-   pre-existing edit-account wizard layout; private-LAN DAV now needing a
-   "Mail security" exception even in personal mode.
+   pre-existing edit-account wizard layout. (Private-LAN DAV in personal
+   mode: decided, anchor works without an exception.)
 3. Release path: merge to `master` -> `release` skill -> on alexis back up
    `~/raven-server/data` (gofer.db, accounts/, secret.key, VAPID key) before
    `update.sh`. First start migrates 106 -> 121 and runs calendar carry-over.

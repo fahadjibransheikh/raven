@@ -156,7 +156,7 @@ func (h *Handler) applyCalendarIncomingReply(ctx context.Context, candidate stor
 	if credentials.err != nil {
 		return credentials.err
 	}
-	return applyCalendarIncomingCalDAV(ctx, source, existing, reply, credentials,
+	return applyCalendarIncomingCalDAV(credentials.anchor(ctx), source, existing, reply, credentials,
 		func(ctx context.Context) (bool, error) {
 			return h.db.ReserveCalendarIncomingResponse(ctx, existing, reply.Attendee, reply.Sequence, reply.Stamp, reply.Status)
 		}, func(ctx context.Context, updated storage.CalendarEvent) error {

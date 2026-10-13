@@ -117,7 +117,7 @@ func (p *userCalendarRequest) readSeries(ctx context.Context, deleting bool) (ma
 		if err != nil {
 			return err
 		}
-		master, err = readCalendarProviderSeriesWithCredentials(operation, source, p.event.Event(), credentials, deleting)
+		master, err = readCalendarProviderSeriesWithCredentials(credentials.anchor(operation), source, p.event.Event(), credentials, deleting)
 		if err != nil {
 			return err
 		}

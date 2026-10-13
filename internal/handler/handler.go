@@ -207,6 +207,7 @@ func New(db *storage.DB, accountStore *config.AccountStore, syncer *mail.SyncOrc
 		providerAvatarHTTPClient: &http.Client{Timeout: 15 * time.Second, Transport: netguard.NewHTTPTransport(nil), CheckRedirect: netguard.CheckRedirect},
 	}
 	setDAVPrivateTargetPolicy(privateTargetAllowed(db))
+	setDAVOperatorOwnsNetwork(h.singleOperator)
 	db.SetContactActivityHook(func(event storage.ContactActivityNotification) {
 		if h.syncer == nil {
 			return
@@ -4541,6 +4542,12 @@ func newRemoteResourceDownloader(allowPrivate netguard.PrivatePolicy) func(conte
 		}
 		return data, err
 	}
+}
+
+// singleOperator reports open or personal mode, where one operator owns the
+// server and its LAN. Managed (multi-user) mode is the only other one.
+func (h *Handler) singleOperator() bool {
+	return h.auth == nil || h.auth.Config().AuthenticationMode() != auth.ModeManaged
 }
 
 // privateTargetAllowed reads the administrator's private-target exceptions.

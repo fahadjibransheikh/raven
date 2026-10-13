@@ -84,7 +84,7 @@ func (h *Handler) handleUserUpdateCalendarEvent(w http.ResponseWriter, r *http.R
 				if err != nil {
 					return err
 				}
-				event, err = readCalendarProviderSeriesWithCredentials(operation, source, original, credentials)
+				event, err = readCalendarProviderSeriesWithCredentials(credentials.anchor(operation), source, original, credentials)
 				if err != nil || event.ETag != version {
 					message := "The series could not be loaded or has changed. Reopen it before saving."
 					if errors.Is(err, errCalendarUpdateUnsupported) {

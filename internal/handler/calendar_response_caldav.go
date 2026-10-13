@@ -22,6 +22,7 @@ type calDAVResponseTarget struct {
 	Calendar                        *ical.Calendar
 	Selected                        *ical.Component
 	Username, Password, ScheduleTag string
+	BaseURL                         string // the saved server; the reply PUT anchors on it (davPrivatePolicy)
 	ServerScheduling                bool
 }
 
@@ -444,6 +445,9 @@ func putCalDAVResponse(ctx context.Context, target calendarResponseTarget, desir
 	body, err := encodeCalendarReply(desired)
 	if err != nil {
 		return calendarResponseResult{}, calendarDeletePreflightError{err}
+	}
+	if target.CalDAV.BaseURL != "" {
+		ctx = withDAVAnchor(ctx, target.CalDAV.BaseURL)
 	}
 	req, err := newCardDAVRequest(ctx, http.MethodPut, target.Endpoint, target.CalDAV.Username, target.CalDAV.Password, strings.NewReader(body))
 	if err != nil {

@@ -336,6 +336,7 @@ func (p *userCalendarRequest) discoverDAV(ctx context.Context, r *http.Request) 
 		return nil, nil, errors.New("Enter the CalDAV username and password or use the incoming-mail credentials.")
 	}
 	ctx = context.WithValue(ctx, calendarDiscoveryDAVGuardKey{}, calendarDiscoveryDAVCallbacks{ready: p.ready, failure: p.recordRetry})
+	ctx = withCalDAVAnchor(ctx, baseURL)
 	var sources []storage.CalendarSource
 	if autodiscover {
 		candidates := calDAVAutodiscoveryCandidates(ctx, baseURL, identity.EmailAddress, identity.IMAPHost, identity.SMTPHost)

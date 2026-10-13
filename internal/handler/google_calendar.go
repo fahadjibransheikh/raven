@@ -509,6 +509,9 @@ func (h *Handler) handleDiscoverAccountCalendars(w http.ResponseWriter, r *http.
 			}
 		}
 		discoveryCtx, cancel := context.WithTimeout(ctx, cardDAVDiscoveryOverallTimeout)
+		// Only the URL typed or saved here may be a private address; hosts that
+		// autodiscovery derives or servers name are held to the public-only rule.
+		discoveryCtx = withCalDAVAnchor(discoveryCtx, baseURL)
 		var calendars []storage.CalendarSource
 		var discoverErr error
 		if autodiscover {

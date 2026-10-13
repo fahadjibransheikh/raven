@@ -191,6 +191,7 @@ func (h *Handler) finishCalendarReply(parent context.Context, job storage.Calend
 			if credentials.err != nil {
 				return
 			}
+			ctx = credentials.anchor(ctx)
 			endpoint, endpointErr := calDAVResponseEndpoint(source, job.ResourceID)
 			if _, err := resolveCalDAVHref(credentials.baseURL, source.RemoteID); err != nil {
 				endpointErr = err
@@ -211,7 +212,7 @@ func (h *Handler) finishCalendarReply(parent context.Context, job storage.Calend
 				} else if headers.Get("ETag") != job.Version {
 					state = "conflict"
 				} else {
-					target := calendarResponseTarget{Event: payload.Target, Scope: payload.Scope, Endpoint: endpoint, HTTPETag: job.Version, SelfEmail: payload.SelfEmail, CalDAV: &calDAVResponseTarget{Username: credentials.username, Password: credentials.password, ScheduleTag: headers.Get("Schedule-Tag")}}
+					target := calendarResponseTarget{Event: payload.Target, Scope: payload.Scope, Endpoint: endpoint, HTTPETag: job.Version, SelfEmail: payload.SelfEmail, CalDAV: &calDAVResponseTarget{Username: credentials.username, Password: credentials.password, BaseURL: credentials.baseURL, ScheduleTag: headers.Get("Schedule-Tag")}}
 					_, err := putCalDAVResponse(ctx, target, desired, job.Response)
 					if err == nil {
 						state = "complete"

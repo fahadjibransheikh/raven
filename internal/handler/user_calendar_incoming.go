@@ -95,7 +95,7 @@ func (h *Handler) processUserCalendarIncoming(ctx context.Context, candidate sto
 			if err != nil {
 				return err
 			}
-			return applyCalendarIncomingCalDAV(action, event.Source(), event.Event(), *reply, credentials,
+			return applyCalendarIncomingCalDAV(credentials.anchor(action), event.Source(), event.Event(), *reply, credentials,
 				func(ctx context.Context) (bool, error) {
 					var err error
 					p.incomingResponse, err = h.userAccounts.ReserveCalendarIncomingResponse(ctx, claim, event, reply.Sequence, reply.Stamp, reply.Status)

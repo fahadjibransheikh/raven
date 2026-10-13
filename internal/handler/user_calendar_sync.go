@@ -98,7 +98,7 @@ func (p *userCalendarRequest) fetchEvents(ctx context.Context, query calendar.Ev
 			return calendar.EventPage{}, errors.New("complete Calendar authentication in account setup")
 		}
 		ctx = context.WithValue(ctx, calendarDiscoveryDAVGuardKey{}, calendarDiscoveryDAVCallbacks{ready: p.ready, failure: p.recordRetry})
-		return listCalDAVCalendarEvents(ctx, source, username, password, query)
+		return listCalDAVCalendarEvents(withDAVAnchor(ctx, base), source, username, password, query)
 	default:
 		return calendar.EventPage{}, errors.New("calendar provider is not supported")
 	}

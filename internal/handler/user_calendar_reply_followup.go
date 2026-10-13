@@ -69,6 +69,7 @@ func (h *Handler) finishUserCalendarReply(parent context.Context, owner, account
 			if err != nil {
 				return err
 			}
+			operation = credentials.anchor(operation)
 			var payload calendarReplyPayload
 			state := ""
 			if json.Unmarshal([]byte(job.Payload), &payload) != nil {
@@ -92,7 +93,7 @@ func (h *Handler) finishUserCalendarReply(parent context.Context, owner, account
 					case headers.Get("ETag") != job.Version:
 						state = "conflict"
 					default:
-						target := calendarResponseTarget{Event: payload.Target, Scope: payload.Scope, Endpoint: endpoint, HTTPETag: job.Version, SelfEmail: payload.SelfEmail, CalDAV: &calDAVResponseTarget{Username: credentials.username, Password: credentials.password, ScheduleTag: headers.Get("Schedule-Tag")}}
+						target := calendarResponseTarget{Event: payload.Target, Scope: payload.Scope, Endpoint: endpoint, HTTPETag: job.Version, SelfEmail: payload.SelfEmail, CalDAV: &calDAVResponseTarget{Username: credentials.username, Password: credentials.password, BaseURL: credentials.baseURL, ScheduleTag: headers.Get("Schedule-Tag")}}
 						_, saveErr := putCalDAVResponse(operation, target, desired, job.Response)
 						if saveErr == nil {
 							state = "complete"
