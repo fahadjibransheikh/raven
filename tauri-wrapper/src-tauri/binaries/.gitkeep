@@ -1,4 +1,4 @@
-Place the built Gofer sidecar binary(ies) here, named with the Rust target
+Place the built Raven sidecar binary(ies) here, named with the Rust target
 triple suffix Tauri expects, e.g.:
 
     binaries/raven-server-aarch64-apple-darwin      (Apple Silicon Mac)

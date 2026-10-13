@@ -28,7 +28,7 @@ tasks:
       - generate
     cmds:
       - mkdir -p ./dist
-      - go build -o ./dist/gofer .
+      - go build -o ./dist/raven .
 
   release:
     desc: Build a self-contained release binary with embedded assets

@@ -1,5 +1,5 @@
 [package]
-name = "gofer-desktop"
+name = "raven-desktop"
 version = "0.3.3"
 description = "Native desktop wrapper for the Raven email client"
 edition = "2021"
@@ -12,7 +12,7 @@ rust-version = "1.90"
 # The library name (crate-type) is required by Tauri's mobile entry-point
 # macro even though this app is desktop-only; `staticlib`/`cdylib` are what
 # `cargo tauri` expects to find when it links the final binary.
-name = "gofer_desktop_lib"
+name = "raven_desktop_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

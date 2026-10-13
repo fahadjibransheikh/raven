@@ -1,21 +1,21 @@
-//! Gofer desktop wrapper.
+//! Raven desktop wrapper.
 //!
 //! This crate is deliberately NOT a UI. It exists only to:
-//!   1. Launch the compiled Gofer Go binary (bundled as a Tauri "sidecar",
+//!   1. Launch the compiled Raven Go binary (bundled as a Tauri "sidecar",
 //!      see https://v2.tauri.app/develop/sidecar/) as a background process.
 //!   2. Wait for it to start listening on 127.0.0.1:<port> (8090 unless something
 //!      else holds it), for as long as the process is alive (migrations can take minutes); if it exits first,
 //!      show its last output and a "Try again" button instead.
 //!   3. Point the one native window at http://127.0.0.1:<port>, so the user
-//!      gets Gofer's existing server-rendered UI inside a real macOS app
+//!      gets Raven's existing server-rendered UI inside a real macOS app
 //!      window (Dock icon, Cmd+Q, its own process) instead of a browser tab.
-//!   4. Kill the Gofer process when the app quits (Quit menu item or Cmd+Q),
+//!   4. Kill the Raven process when the app quits (Quit menu item or Cmd+Q),
 //!      so nothing is left running in the background. Closing the window only
 //!      hides it (to the Dock on macOS, the tray elsewhere).
 //!
-//! Gofer's own HTML/HTMX frontend is loaded as plain remote content -- it
+//! Raven's own HTML/HTMX frontend is loaded as plain remote content -- it
 //! never calls any Tauri API -- so there is intentionally no IPC/frontend
-//! logic here beyond the tiny "Starting Gofer..." placeholder page in
+//! logic here beyond the tiny "Starting Raven..." placeholder page in
 //! ../frontend/index.html that this window shows for the second or two
 //! before the navigate() call below replaces it.
 
@@ -34,7 +34,7 @@ use tauri_plugin_shell::process::{CommandChild, CommandEvent};
 use tauri_plugin_shell::ShellExt;
 use tauri_plugin_updater::UpdaterExt;
 
-/// Injected into the main window; polls Gofer's unread count and reflects it
+/// Injected into the main window; polls Raven's unread count and reflects it
 /// in `document.title` as a "(N) " prefix, which `on_document_title_changed`
 /// below parses back out into the Dock/taskbar badge.
 const UNREAD_BADGE_SCRIPT: &str = include_str!("unread_badge.js");
@@ -69,15 +69,15 @@ fn desktop_glass<'a, R: tauri::Runtime, M: Manager<R>>(
     builder
 }
 
-/// The port Gofer is started on when it is free. The Microsoft app's redirect
+/// The port Raven is started on when it is free. The Microsoft app's redirect
 /// URIs are registered for http://localhost:8090, so every other port breaks
 /// the "Add Outlook account" sign-in (see pick_port).
 const PREFERRED_PORT: u16 = 8090;
 
-/// Settings the desktop app always runs Gofer with, so Outlook works on every
+/// Settings the desktop app always runs Raven with, so Outlook works on every
 /// install without editing a .env. The client ID is Raven's Azure app,
 /// registered as a public client (no secret; PKCE protects the code exchange),
-/// so it is safe to ship. Gofer's .env loader never overrides variables that
+/// so it is safe to ship. Raven's .env loader never overrides variables that
 /// are already set, so these win over any stale values in a user's .env.
 /// RAVEN_ADDR and RAVEN_BASE_URL are added per launch, from the chosen port.
 const SIDECAR_ENV: [(&str, &str); 3] = [
@@ -86,13 +86,13 @@ const SIDECAR_ENV: [(&str, &str); 3] = [
     ("MICROSOFT_OAUTH_TENANT", "common"),
 ];
 
-/// Working directory the sidecar is spawned with. Gofer reads its .env
+/// Working directory the sidecar is spawned with. Raven reads its .env
 /// (OAuth credentials) and its data/ SQLite store relative to its process
 /// working directory, so this is the per-user app data folder
 /// (~/Library/Application Support/<identifier> on macOS,
 /// ~/.local/share/<identifier> on Linux) on every machine, including the
 /// one that builds the app. Never the repo: that is for development only.
-fn gofer_working_dir(app: &AppHandle) -> Result<std::path::PathBuf, String> {
+fn raven_working_dir(app: &AppHandle) -> Result<std::path::PathBuf, String> {
     let dir = app
         .path()
         .app_data_dir()
@@ -134,7 +134,7 @@ struct SidecarState {
     port: AtomicU16,
     /// Bumped on every (re)start so a superseded startup thread stops itself.
     attempt: AtomicU64,
-    /// Set once the window has been pointed at Gofer; "Try again" is a no-op after.
+    /// Set once the window has been pointed at Raven; "Try again" is a no-op after.
     ready: AtomicBool,
     /// Why the sidecar process ended, if it did.
     exit: Mutex<Option<String>>,
@@ -144,7 +144,7 @@ struct SidecarState {
     progress: Mutex<String>,
     view: Mutex<StartupView>,
     /// A same-origin path (a mailto: compose link) waiting for the window to be
-    /// pointed at Gofer. Guards `ready` too: see open_mailto.
+    /// pointed at Raven. Guards `ready` too: see open_mailto.
     pending_next: Mutex<Option<String>>,
     /// Random per-launch secret. Passed to the sidecar as RAVEN_DESKTOP_TOKEN
     /// and traded for a cookie at /desktop-auth, so only this app's webview can
@@ -175,11 +175,11 @@ fn new_token() -> String {
     bytes.iter().map(|b| format!("{b:02x}")).collect()
 }
 
-/// True once the server on `port` answers as Gofer's desktop gate: an
+/// True once the server on `port` answers as Raven's desktop gate: an
 /// unauthenticated GET /desktop-auth gets 403 with an X-Raven-Desktop header.
 /// Checked before the token is ever sent, so a listener that merely accepts
 /// TCP connections is not enough to receive it.
-fn gofer_answers(port: u16) -> bool {
+fn raven_answers(port: u16) -> bool {
     let addr = std::net::SocketAddr::from(([127, 0, 0, 1], port));
     let Ok(mut stream) = TcpStream::connect_timeout(&addr, Duration::from_millis(500)) else {
         return false;
@@ -255,7 +255,7 @@ fn startup_state(state: tauri::State<'_, SidecarState>) -> StartupView {
     state.view.lock().unwrap().clone()
 }
 
-/// The error page's "Try again" button. Ignored once Gofer is up, so the
+/// The error page's "Try again" button. Ignored once Raven is up, so the
 /// remote Raven page (which can also reach app commands) cannot restart it.
 #[tauri::command]
 fn retry_startup(app: AppHandle) {
@@ -281,7 +281,7 @@ fn push_output(state: &SidecarState, bytes: &[u8]) {
     tail.push_back(line);
 }
 
-/// (Re)starts Gofer and the background thread that waits for it. Safe to call
+/// (Re)starts Raven and the background thread that waits for it. Safe to call
 /// again after a failure: it supersedes any earlier attempt.
 fn start_sidecar(app: &AppHandle) {
     let state = app.state::<SidecarState>();
@@ -314,7 +314,7 @@ fn start_sidecar(app: &AppHandle) {
                 return;
             }
         };
-        let working_dir = match gofer_working_dir(app) {
+        let working_dir = match raven_working_dir(app) {
             Ok(dir) => dir,
             Err(err) => {
                 fail(err);
@@ -379,7 +379,7 @@ fn start_sidecar(app: &AppHandle) {
                 return;
             }
             // Process death is checked before the port so nothing else that
-            // happens to be listening can be mistaken for Gofer.
+            // happens to be listening can be mistaken for Raven.
             if let Some(reason) = state.exit.lock().unwrap().clone() {
                 // Give the output reader a moment to deliver the last lines.
                 std::thread::sleep(Duration::from_millis(300));
@@ -387,7 +387,7 @@ fn start_sidecar(app: &AppHandle) {
                 set_view(&app, StartupView { state: "error", detail: reason, tail });
                 return;
             }
-            if gofer_answers(port) {
+            if raven_answers(port) {
                 break;
             }
             if started.elapsed() >= SLOW_START_AFTER {
@@ -576,7 +576,7 @@ async fn check_for_update_inner(app: AppHandle, user_initiated: bool) {
         }
     };
 
-    // Stop Gofer before files are replaced: on Windows a running gofer.exe is
+    // Stop Raven before files are replaced: on Windows a running raven.exe is
     // locked and would make the installer fail.
     kill_sidecar(&app);
     if let Err(err) = update.install(bytes) {
@@ -626,7 +626,7 @@ fn open_mailto(app: &AppHandle, urls: Vec<tauri::Url>) {
 }
 
 /// Shared by the "Show"/"Compose" menu items and the global shortcut: bring
-/// the main window to the front, and optionally trigger Gofer's own compose
+/// the main window to the front, and optionally trigger Raven's own compose
 /// UI via its existing top-level `openNewCompose()` JS function (the page
 /// never calls Tauri IPC, so this is the only way in from the native side).
 fn show_main_window(app_handle: &AppHandle, open_compose: bool) {

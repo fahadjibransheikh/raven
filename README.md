@@ -103,6 +103,10 @@ Raven is built on these libraries and tools:
 - [webpush-go](https://github.com/SherClockHolmes/webpush-go) for Web Push notifications
 - [Lucide](https://lucide.dev/) icons through templUI's icon component
 
+## acknowledgments
+
+Raven's mail engine, sync and much of its interface began as [Gofer](https://github.com/cristianadrielbraun/gofer), an MIT-licensed email client by Cristián Braun. Thank you, Cristián, for that work. Raven is developed independently and isn't affiliated with or endorsed by the Gofer project.
+
 ## license
 
-Raven is released under the [MIT License](./LICENSE). The license file carries the copyright notices of the code Raven builds on.
+Raven is released under the [MIT License](./LICENSE), which also carries the copyright notice for the code Raven began from.

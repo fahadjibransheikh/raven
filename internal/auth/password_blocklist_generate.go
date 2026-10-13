@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	blocklistMagic      = "GOFERPW1"
+	blocklistMagic      = "RAVENPW1"
 	blocklistDigestSize = 16
 )
 

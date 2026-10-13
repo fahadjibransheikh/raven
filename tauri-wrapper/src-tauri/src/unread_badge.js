@@ -1,6 +1,6 @@
-// Reflects Gofer's unified unread count in document.title as a "(N) " prefix,
+// Reflects Raven's unified unread count in document.title as a "(N) " prefix,
 // so the Rust side (on_document_title_changed in lib.rs) can parse it back out
-// and set the Dock/taskbar badge. Only ever runs against the real Gofer
+// and set the Dock/taskbar badge. Only ever runs against the real Raven
 // origin -- this init script also runs on the placeholder frontend/index.html
 // page and on OAuth provider pages, so the origin check is not optional. The
 // port varies per launch (lib.rs pick_port), so it is not part of the check;
@@ -75,7 +75,7 @@
   // Init scripts run before <head> is parsed, so attach once the DOM exists.
   // Watching <head> also catches the <title> element itself being replaced.
   function observeTitle() {
-    // Gofer's own page changes document.title (e.g. "Contacts — Raven").
+    // Raven's own page changes document.title (e.g. "Contacts — Raven").
     // Re-apply the last known count on top of that. Our own writes also land
     // here, but applyCount is a no-op when the title already matches.
     new MutationObserver(function () {

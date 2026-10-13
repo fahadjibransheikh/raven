@@ -211,3 +211,13 @@ After the release:
 - Possible later cleanup: remove unused managed-mode / per-user storage code.
 - `GOFER_*` environment variable names stay for now (existing `.env` files
   depend on them); renaming them needs a compatibility shim.
+
+### Done 2026-10-13: the rename
+
+The module is `github.com/fahadjibransheikh/raven`; code, UI, headers, cookies
+and database objects no longer say gofer. Compatibility kept on purpose:
+`RAVEN_*` env vars fall back to `GOFER_*` (`internal/legacyenv`), `gofer.db` is
+renamed to `raven.db` on first start, `gofer_*` cookies and browser storage
+move to the new names, `gofer_*` tables are renamed by layout step 2 and
+schema v122. Key-derivation labels and synthetic Message-ID domains that
+existing data depends on were left as they were.

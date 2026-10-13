@@ -1,19 +1,19 @@
-# Gofer desktop wrapper (Tauri v2)
+# Raven desktop wrapper (Tauri v2)
 
-This folder wraps the existing Gofer Go server in a real macOS `.app`: a Dock
+This folder wraps the existing Raven Go server in a real macOS `.app`: a Dock
 icon and its own window pointed at `http://127.0.0.1:8090`, instead of a
-browser tab. **It reimplements none of Gofer's UI.** On launch it:
+browser tab. **It reimplements none of Raven's UI.** On launch it:
 
-1. Spawns the compiled Gofer binary as a background "sidecar" process.
+1. Spawns the compiled Raven binary as a background "sidecar" process.
 2. Waits for `127.0.0.1:8090` to accept connections for as long as the sidecar
    process is alive (a schema migration can take minutes). If the sidecar exits
    first, the window shows its last output and a "Try again" button.
 3. Points the one native window at that URL.
-4. Kills the Gofer process when you quit the app (Quit or Cmd+Q).
+4. Kills the Raven process when you quit the app (Quit or Cmd+Q).
    Closing the window only hides it; the Dock icon (macOS) or the tray's
    Show Raven (Windows, Linux) brings it back.
 
-Gofer's port is read from this repo's `gofer/.env` (`RAVEN_ADDR=127.0.0.1:8090`)
+Raven's port is read from this repo's `raven/.env` (`RAVEN_ADDR=127.0.0.1:8090`)
 at the time this was scaffolded. If you ever change `RAVEN_ADDR`, update the
 `RAVEN_HOST` / `RAVEN_PORT` constants near the top of
 `src-tauri/src/lib.rs` to match.
@@ -50,14 +50,14 @@ cargo install tauri-cli --version "^2.0.0" --locked
 If you installed via npm, run `tauri <command>` below. If you installed via
 cargo, run `cargo tauri <command>` instead -- they take the same arguments.
 
-## Build the Gofer binary and stage it as the sidecar
+## Build the Raven binary and stage it as the sidecar
 
-Tauri bundles a prebuilt binary rather than compiling Gofer itself, so build
-it with Gofer's own Taskfile first, from the **repo root** (`gofer/`, one
+Tauri bundles a prebuilt binary rather than compiling Raven itself, so build
+it with Raven's own Taskfile first, from the **repo root** (`raven/`, one
 level above this folder):
 
 ```sh
-cd gofer               # the actual repo root (contains Taskfile.yml, main.go)
+cd raven               # the actual repo root (contains Taskfile.yml, main.go)
 task release           # produces ./dist/raven-server
 ```
 
@@ -78,7 +78,7 @@ chmod +x tauri-wrapper/src-tauri/binaries/raven-server-aarch64-apple-darwin
 ```
 
 Re-run these two commands (`task release` + `cp`) any time you ship a new
-Gofer version -- the wrapper always launches whatever binary is sitting in
+Raven version -- the wrapper always launches whatever binary is sitting in
 `src-tauri/binaries/`.
 
 ## Generate the full icon set
@@ -119,7 +119,7 @@ Beyond the plain window wrapper described above, this app adds a few things
 a browser tab can't give you:
 
 - **Dock/taskbar unread badge.** An init script (`src-tauri/src/unread_badge.js`)
-  polls Gofer's `/api/folders/unread` every 30s (plus on load and when the
+  polls Raven's `/api/folders/unread` every 30s (plus on load and when the
   window becomes visible again) and writes the inbox count into
   `document.title` as a `(N) ` prefix. `on_document_title_changed` in
   `lib.rs` reads that prefix back out and calls `set_badge_count` on the
@@ -129,9 +129,9 @@ a browser tab can't give you:
   the Raven app menu and "Compose" in the File menu. On Windows and Linux,
   which have no Dock to bring a hidden window back, a system tray icon offers
   "Show Raven", "Compose", "Check for Updates...", and "Quit". "Show" brings
-  the window to the front; "Compose" does the same and then calls Gofer's own
+  the window to the front; "Compose" does the same and then calls Raven's own
   `openNewCompose()` JS function; "Quit" exits the app (which also kills the
-  Gofer sidecar).
+  Raven sidecar).
 - **Global shortcut.** `Cmd/Ctrl+Shift+M` opens the composer from anywhere,
   even when Raven isn't focused -- same behavior as the "Compose" menu item.
 
@@ -160,7 +160,7 @@ into every build.
 Raven checks GitHub Releases (`releases/latest/download/latest.json`) on launch
 and offers to install a newer version; the "Check for Updates..." menu item
 does the same on demand and also reports "up to date" or errors. Installing
-stops the bundled Gofer, replaces the app, and relaunches. On Linux only the
+stops the bundled Raven, replaces the app, and relaunches. On Linux only the
 AppImage can update itself; for .deb/.rpm the launch check is skipped and the
 menu item opens the releases page instead.
 
@@ -175,27 +175,27 @@ The cask (`Casks/raven.rb` at the repo root) is updated by CI on each release.
 
 ## Where the app keeps its settings and mail
 
-Gofer reads `.env` and stores `data/` in its working directory. The app
+Raven reads `.env` and stores `data/` in its working directory. The app
 always uses the per-user app data folder for that, on every machine:
 `~/Library/Application Support/com.fahadsheikh.raven` on macOS,
 `~/.local/share/com.fahadsheikh.raven` on Linux. The repo is never used, even
-on the machine that built the app. Without a `.env` there, Gofer runs with its
+on the machine that built the app. Without a `.env` there, Raven runs with its
 defaults (local, no login). To configure it, copy `.env.example` into that
 folder as `.env`.
 
 ## Troubleshooting
 
-- **Window opens but stays blank / stuck on "Starting Gofer...":** almost
+- **Window opens but stays blank / stuck on "Starting Raven...":** almost
   always means the sidecar never started or never reached port 8090.
   - Check `src-tauri/binaries/` actually contains a file named
     `raven-server-<your-exact-target-triple>` and that it's executable
     (`chmod +x`). This is the #1 likely mistake for a Tauri beginner --
     the filename must match `rustc --print host-tuple` exactly, including
-    on an M-series Mac running an Intel-built Gofer binary under Rosetta
+    on an M-series Mac running an Intel-built Raven binary under Rosetta
     (in which case use `x86_64-apple-darwin`, matching however you built
     the Go binary, not the CLI's own host triple).
   - Try running that binary directly from a terminal
-    (`./src-tauri/binaries/raven-server-aarch64-apple-darwin`) to see Gofer's own
+    (`./src-tauri/binaries/raven-server-aarch64-apple-darwin`) to see Raven's own
     startup errors (e.g. a port already in use by something unrelated, or a
     missing `.env`).
   - Run `tauri dev` (not `build`) and watch the terminal -- `lib.rs` prints
@@ -207,20 +207,20 @@ folder as `.env`.
   `window.navigate()` call are made directly from Rust in `lib.rs`, not via
   `invoke()` from frontend JS, so Tauri's permission system (which only
   gates the JS<->Rust IPC bridge) doesn't need to grant anything for them.
-  Gofer's page also never calls a Tauri API, so there's no CSP concern
+  Raven's page also never calls a Tauri API, so there's no CSP concern
   either -- once navigated, the webview is just showing a normal
   `http://127.0.0.1:8090` page, the same as opening it in Safari. If this
   turns out to be wrong in practice, the fix is almost certainly either
   loosening/adding an entry to `permissions` in `default.json`, or setting
   `app.security.csp` explicitly (it's currently left unset/null, i.e. no
   CSP is injected at all).
-- **App quits but Gofer keeps running (orphaned process):** shouldn't
+- **App quits but Raven keeps running (orphaned process):** shouldn't
   happen -- `lib.rs` kills the sidecar on both `WindowEvent::CloseRequested`
   and `RunEvent::Exit` -- but if you ever see it, check
   `ps aux | grep raven-server` and `kill` it manually, then tell Claude so the
   lifecycle handling can be tightened.
-- **`task release` isn't found / fails:** that's Gofer's own build, unrelated
-  to this wrapper -- see the main `gofer/Taskfile.yml` and `gofer/README.md`.
+- **`task release` isn't found / fails:** that's Raven's own build, unrelated
+  to this wrapper -- see the main `raven/Taskfile.yml` and `raven/README.md`.
 
 ## What's deliberately NOT here
 
@@ -239,7 +239,7 @@ folder as `.env`.
 tauri-wrapper/
   README.md                        <- this file
   frontend/
-    index.html                     <- tiny "Starting Gofer..." placeholder;
+    index.html                     <- tiny "Starting Raven..." placeholder;
                                         replaced by navigate() at runtime
   src-tauri/
     Cargo.toml                     <- tauri + plugin deps; the app version

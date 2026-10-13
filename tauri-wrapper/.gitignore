@@ -4,7 +4,7 @@
 # Built Tauri config/gen artifacts
 /src-tauri/gen/
 
-# The staged Gofer sidecar binary(ies) -- build output, not source.
+# The staged Raven sidecar binary(ies) -- build output, not source.
 # Keep the placeholder note so the directory itself still exists in git.
 /src-tauri/binaries/*
 !/src-tauri/binaries/.gitkeep

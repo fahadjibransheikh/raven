@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	passwordBlocklistMagic      = "GOFERPW1"
+	passwordBlocklistMagic      = "RAVENPW1"
 	passwordBlocklistHeaderSize = len(passwordBlocklistMagic) + 4
 	passwordBlocklistDigestSize = 16
 )

@@ -11,7 +11,7 @@ CI does the building and publishing. Your jobs are the version bump, the tag,
 watching the run, checking the result, and writing the release notes.
 
 **Always pass `-R fahadjibransheikh/raven` to `gh`.** This repo is a fork, and
-`gh` without `-R` targets the upstream repo (cristianadrielbraun/gofer).
+`gh` without `-R` targets the `upstream` remote's repository.
 
 ## 1. Cut the release
 
