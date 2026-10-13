@@ -29,3 +29,6 @@ assets/css/output.css
 
 # JS test dependencies
 node_modules/
+
+# Local build output (air, scratch binaries)
+/tmp/
