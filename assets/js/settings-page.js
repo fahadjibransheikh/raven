@@ -160,6 +160,10 @@
     if (density && typeof RavenSettings !== 'undefined') {
       RavenSettings.set('mail_list_density', density.value);
     }
+    var appIcon = e.target.closest('input[name="app_icon"]');
+    if (appIcon && typeof RavenSettings !== 'undefined') {
+      RavenSettings.set('app_icon', appIcon.value);
+    }
     var themeStyle = e.target.closest('input[name="theme_style"]');
     if (themeStyle && typeof RavenSettings !== 'undefined') {
       RavenSettings.set('theme_style', themeStyle.value);

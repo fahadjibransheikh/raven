@@ -8511,6 +8511,7 @@ func defaultUISettings() map[string]string {
 	return map[string]string{
 		"theme":                             "dark",
 		"theme_style":                       "raven",
+		"app_icon":                          "raven",
 		"prefetch_on_hover":                 "true",
 		"default_compose_view":              "dialog",
 		"default_new_compose_view":          "dialog",

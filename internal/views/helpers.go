@@ -641,6 +641,46 @@ func themeStyle(settings map[string]string) string {
 	return "raven"
 }
 
+// appIconStyles maps each app icon style to its [dark, light] file under
+// assets/brand/. The same table lives in ui-settings.js and the desktop
+// wrapper (tauri-wrapper/src-tauri/src/app_icon.rs).
+var appIconStyles = map[string][2]string{
+	"raven":   {"logo-raven", "logo-raven-light"},
+	"classic": {"logo-classic", "logo-classic-light"},
+	"minimal": {"logo-minimal-dark", "logo-minimal-light"},
+}
+
+// IsAppIconStyle reports whether value is one of the three app icon styles.
+func IsAppIconStyle(value string) bool {
+	_, ok := appIconStyles[value]
+	return ok
+}
+
+// appIconStyle is the chosen app icon style; anything unknown is "raven".
+func appIconStyle(settings map[string]string) string {
+	if style := uiSettingGet(settings, "app_icon", "raven"); IsAppIconStyle(style) {
+		return style
+	}
+	return "raven"
+}
+
+// appIconSrc is the SVG for a style in the dark or light appearance.
+func appIconSrc(style string, dark bool) string {
+	files, ok := appIconStyles[style]
+	if !ok {
+		files = appIconStyles["raven"]
+	}
+	if dark {
+		return "/assets/brand/" + files[0] + ".svg"
+	}
+	return "/assets/brand/" + files[1] + ".svg"
+}
+
+// appIconHref is the browser tab icon for the page's rendered theme.
+func appIconHref(settings map[string]string) string {
+	return appIconSrc(appIconStyle(settings), themeClass(settings) == "dark")
+}
+
 // mailListDensity is the row density of the message list: "calm" (default,
 // two lines) or "airy" (roomier rows). Anything else is calm.
 func mailListDensity(settings map[string]string) string {

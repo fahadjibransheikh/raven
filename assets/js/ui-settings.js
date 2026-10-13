@@ -35,6 +35,40 @@ var RavenSettings;
     html.setAttribute("data-theme", style || "raven");
   }
 
+  // [dark, light] file per app icon style under /assets/brand/. Mirrors
+  // appIconStyles in internal/views/helpers.go and app_icon.rs in the desktop wrapper.
+  var APP_ICONS = {
+    raven: ["logo-raven", "logo-raven-light"],
+    classic: ["logo-classic", "logo-classic-light"],
+    minimal: ["logo-minimal-dark", "logo-minimal-light"],
+  };
+  var _lastAppIcon = "";
+
+  // The tab icon and the desktop Dock icon follow Raven's own theme (html.dark),
+  // not the OS setting: Raven has no "system" mode, so they can differ.
+  function applyAppIcon() {
+    var style = APP_ICONS[_cache.app_icon] ? _cache.app_icon : "raven";
+    var dark = document.documentElement.classList.contains("dark");
+    var key = style + (dark ? ":dark" : ":light");
+    if (key === _lastAppIcon) return;
+    _lastAppIcon = key;
+    var href = "/assets/brand/" + APP_ICONS[style][dark ? 0 : 1] + ".svg";
+    var link = document.querySelector('link[rel="icon"]');
+    if (link && link.getAttribute("href") !== href) {
+      // Replacing the node (not just its href) makes Safari reload the icon too.
+      var next = link.cloneNode();
+      next.setAttribute("href", href);
+      link.replaceWith(next);
+    }
+    var tauri = window.__TAURI__;
+    if (tauri && tauri.core && typeof tauri.core.invoke === "function") {
+      tauri.core.invoke("set_app_icon", { style: style, dark: dark }).catch(function (err) {
+        _lastAppIcon = "";
+        console.warn("app icon:", err);
+      });
+    }
+  }
+
   function browserTimezone() {
     try {
       return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
@@ -560,7 +594,11 @@ var RavenSettings;
   function applySetting(key, value) {
     if (key === "theme") {
       applyTheme(value);
+      applyAppIcon();
       if (typeof applyEmailBodyTheme === "function") applyEmailBodyTheme();
+    }
+    if (key === "app_icon") {
+      applyAppIcon();
     }
     if (key === "theme_style") {
       applyThemeStyle(value);

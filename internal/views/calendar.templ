@@ -22,7 +22,7 @@ templ CalendarLayout(accounts []models.Account, month CalendarMonthData, uiSetti
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 			<title>Calendar — Raven</title>
-			@AppIcon()
+			@AppIconFor(uiSettings)
 			@SavedPanelSizeStyle()
 			<link rel="stylesheet" href={ AssetURL("/assets/css/output.css") }/>
 			@dialog.Script()

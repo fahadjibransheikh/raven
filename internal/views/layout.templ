@@ -18,8 +18,17 @@ import (
 	"github.com/fahadjibransheikh/raven/components/toast"
 )
 
+// AppIcon is the shared head for pages with no user settings (login, setup):
+// the default icon. Pages that have them use AppIconFor.
 templ AppIcon() {
-	<link rel="icon" type="image/svg+xml" href="/assets/logo.svg"/>
+	@AppIconFor(nil)
+}
+
+// AppIconFor renders the browser tab icon the user chose, in the theme the page
+// renders with. ui-settings.js swaps it live when either setting changes. The
+// manifest and apple-touch-icon stay the default on purpose.
+templ AppIconFor(uiSettings map[string]string) {
+	<link rel="icon" type="image/svg+xml" href={ appIconHref(uiSettings) }/>
 	<link rel="manifest" href="/assets/manifest.webmanifest"/>
 	<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png"/>
 	<meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -33,7 +42,7 @@ templ Layout(accounts []models.Account, activeFolder string, emails []models.Ema
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 			<title>Raven</title>
-			@AppIcon()
+			@AppIconFor(uiSettings)
 			@SavedPanelSizeStyle()
 			<link rel="stylesheet" href={ AssetURL("/assets/css/output.css") }/>
 			@dialog.Script()
@@ -126,7 +135,7 @@ templ SettingsLayout(accounts []models.Account, syncSettings models.SyncSettings
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 			<title>Settings — Raven</title>
-			@AppIcon()
+			@AppIconFor(uiSettings)
 			@SavedPanelSizeStyle()
 			<link rel="stylesheet" href={ AssetURL("/assets/css/output.css") }/>
 			@SettingsComponentScripts()
@@ -235,7 +244,7 @@ templ ContactsLayout(accounts []models.Account, contacts []models.Contact, selec
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 			<title>Contacts — Raven</title>
-			@AppIcon()
+			@AppIconFor(uiSettings)
 			@SavedPanelSizeStyle()
 			<link rel="stylesheet" href={ AssetURL("/assets/css/output.css") }/>
 			@dialog.Script()
@@ -306,7 +315,7 @@ templ AdminLayout(uiSettings map[string]string, userData AdminUsersData, avatarS
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<title>Admin — Raven</title>
-			@AppIcon()
+			@AppIconFor(uiSettings)
 			@SavedPanelSizeStyle()
 			<link rel="stylesheet" href={ AssetURL("/assets/css/output.css") }/>
 			@dialog.Script()

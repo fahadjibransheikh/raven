@@ -3883,6 +3883,10 @@ func (h *Handler) handleSaveUISettings(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}
+	if style, ok := updates["app_icon"]; ok && !views.IsAppIconStyle(style) {
+		http.Error(w, "unknown app icon", http.StatusBadRequest)
+		return
+	}
 
 	userID := h.userID(r.Context())
 	if err := h.withUserDB(r.Context(), userID, func(db *storage.DB) error {
