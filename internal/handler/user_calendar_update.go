@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/mail"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/mail"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 func (h *Handler) handleUserUpdateCalendarEvent(w http.ResponseWriter, r *http.Request) {

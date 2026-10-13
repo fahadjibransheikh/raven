@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/auth"
+	"github.com/fahadjibransheikh/raven/internal/auth"
 )
 
 const (

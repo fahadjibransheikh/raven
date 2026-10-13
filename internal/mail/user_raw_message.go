@@ -7,10 +7,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/config"
-	"github.com/cristianadrielbraun/gofer/internal/mail/imap"
-	"github.com/cristianadrielbraun/gofer/internal/mailauth"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/config"
+	"github.com/fahadjibransheikh/raven/internal/mail/imap"
+	"github.com/fahadjibransheikh/raven/internal/mailauth"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 const userRawMessageMaxBytes = 64 << 20

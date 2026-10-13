@@ -11,8 +11,8 @@ import templruntime "github.com/a-h/templ/runtime"
 import (
 	"strconv"
 
-	"github.com/cristianadrielbraun/gofer/components/badge"
-	"github.com/cristianadrielbraun/gofer/components/icon"
+	"github.com/fahadjibransheikh/raven/components/badge"
+	"github.com/fahadjibransheikh/raven/components/icon"
 )
 
 func CalendarEventResponseIndicator(event CalendarEvent, compact bool) templ.Component {

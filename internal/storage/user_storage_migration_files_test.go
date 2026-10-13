@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cristianadrielbraun/gofer/internal/store"
+	"github.com/fahadjibransheikh/raven/internal/store"
 )
 
 func migrationFilesSQL(t *testing.T, db *DB, query string, args ...any) {

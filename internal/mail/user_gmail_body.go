@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
-	mailmessage "github.com/cristianadrielbraun/gofer/internal/mail/message"
-	"github.com/cristianadrielbraun/gofer/internal/providerquota"
-	"github.com/cristianadrielbraun/gofer/internal/retry"
+	mailmessage "github.com/fahadjibransheikh/raven/internal/mail/message"
+	"github.com/fahadjibransheikh/raven/internal/providerquota"
+	"github.com/fahadjibransheikh/raven/internal/retry"
 )
 
 const userGmailRawMessageMaxBytes = mailmessage.MaxDownloadBytes

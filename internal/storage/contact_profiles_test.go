@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/cristianadrielbraun/gofer/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/models"
 )
 
 func TestSaveContactProfileWithCardsAndFields(t *testing.T) {

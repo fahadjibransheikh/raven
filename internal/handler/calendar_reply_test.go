@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/auth"
-	"github.com/cristianadrielbraun/gofer/internal/calendar"
-	"github.com/cristianadrielbraun/gofer/internal/config"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/auth"
+	"github.com/fahadjibransheikh/raven/internal/calendar"
+	"github.com/fahadjibransheikh/raven/internal/config"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 func calendarReplyHandlerFixture(t *testing.T) (*Handler, *replyDAVFixture) {

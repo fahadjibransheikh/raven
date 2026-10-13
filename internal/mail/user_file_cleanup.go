@@ -7,8 +7,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/storage"
-	"github.com/cristianadrielbraun/gofer/internal/store"
+	"github.com/fahadjibransheikh/raven/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/store"
 )
 
 const userFileRetention = 24 * time.Hour

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 type userCalendarProviderKey struct{}

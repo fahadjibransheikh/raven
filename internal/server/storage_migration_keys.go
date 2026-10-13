@@ -8,10 +8,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/cristianadrielbraun/gofer/internal/auth"
-	"github.com/cristianadrielbraun/gofer/internal/config"
-	"github.com/cristianadrielbraun/gofer/internal/mailauth"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/auth"
+	"github.com/fahadjibransheikh/raven/internal/config"
+	"github.com/fahadjibransheikh/raven/internal/mailauth"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 // Migration must never fall back to generating/replacing an application secret.

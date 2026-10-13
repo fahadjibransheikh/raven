@@ -5,7 +5,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/cristianadrielbraun/gofer/internal/views"
+	"github.com/fahadjibransheikh/raven/internal/views"
 )
 
 func (h *Handler) handleUserSuppressedContactsSettings(w http.ResponseWriter, r *http.Request) {

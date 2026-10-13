@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/cristianadrielbraun/gofer/internal/calendar"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/calendar"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 func calendarOutlookOnline(remote outlookCalendarUpdateEvent) bool {

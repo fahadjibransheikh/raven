@@ -3,7 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"github.com/cristianadrielbraun/gofer/internal/auth"
+	"github.com/fahadjibransheikh/raven/internal/auth"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -11,8 +11,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cristianadrielbraun/gofer/internal/models"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 func TestContactSyncSetupRequired(t *testing.T) {

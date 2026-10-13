@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/cristianadrielbraun/gofer/internal/netguard"
+	"github.com/fahadjibransheikh/raven/internal/netguard"
 )
 
 func countingServer(t *testing.T, handler http.HandlerFunc) (*httptest.Server, *atomic.Int32) {

@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/providers"
+	"github.com/fahadjibransheikh/raven/internal/providers"
 	"golang.org/x/oauth2"
 )
 

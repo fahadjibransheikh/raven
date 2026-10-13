@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/calendar"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/calendar"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 var errCalendarOccurrenceBoundary = errors.New("Outlook cannot move this occurrence to or past a neighboring occurrence's day. Choose a date between the previous and next occurrences.")

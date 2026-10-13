@@ -9,12 +9,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/config"
-	"github.com/cristianadrielbraun/gofer/internal/mail"
-	"github.com/cristianadrielbraun/gofer/internal/mail/message"
-	smtpclient "github.com/cristianadrielbraun/gofer/internal/mail/smtp"
-	"github.com/cristianadrielbraun/gofer/internal/models"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/config"
+	"github.com/fahadjibransheikh/raven/internal/mail"
+	"github.com/fahadjibransheikh/raven/internal/mail/message"
+	smtpclient "github.com/fahadjibransheikh/raven/internal/mail/smtp"
+	"github.com/fahadjibransheikh/raven/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 // The mail worker already holds its account mail gate. The distinct Calendar

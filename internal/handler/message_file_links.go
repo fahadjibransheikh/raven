@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/auth"
-	"github.com/cristianadrielbraun/gofer/internal/store"
+	"github.com/fahadjibransheikh/raven/internal/auth"
+	"github.com/fahadjibransheikh/raven/internal/store"
 )
 
 // A message is shown in a sandboxed frame that the browser treats as another

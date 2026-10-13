@@ -5,9 +5,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cristianadrielbraun/gofer/internal/auth"
-	"github.com/cristianadrielbraun/gofer/internal/models"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/auth"
+	"github.com/fahadjibransheikh/raven/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 func (h *Handler) mailSecurityExceptions(ctx context.Context) ([]models.MailSecurityException, error) {

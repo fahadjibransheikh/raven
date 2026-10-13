@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 func TestUserIDLEDiagnosticsKeepsAdministratorAndOwnerScopes(t *testing.T) {

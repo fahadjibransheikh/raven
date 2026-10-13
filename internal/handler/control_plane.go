@@ -3,7 +3,7 @@ package handler
 import (
 	"net/http"
 
-	"github.com/cristianadrielbraun/gofer/internal/auth"
+	"github.com/fahadjibransheikh/raven/internal/auth"
 )
 
 // RegisterAuthenticationRoutes mounts installation-wide assets and application

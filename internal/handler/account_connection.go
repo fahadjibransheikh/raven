@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/mail"
+	"github.com/fahadjibransheikh/raven/internal/mail"
 )
 
 const accountConnectionTestAttempts = mail.ConnectionTestAttempts

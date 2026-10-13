@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/providerquota"
-	"github.com/cristianadrielbraun/gofer/internal/providers"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/providerquota"
+	"github.com/fahadjibransheikh/raven/internal/providers"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 type userActivePollSession struct {

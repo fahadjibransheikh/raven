@@ -13,8 +13,8 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
-	"github.com/cristianadrielbraun/gofer/components/input"
-	"github.com/cristianadrielbraun/gofer/utils"
+	"github.com/fahadjibransheikh/raven/components/input"
+	"github.com/fahadjibransheikh/raven/utils"
 	"strconv"
 )
 

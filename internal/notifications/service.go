@@ -12,9 +12,9 @@ import (
 	"time"
 
 	webpush "github.com/SherClockHolmes/webpush-go"
-	"github.com/cristianadrielbraun/gofer/internal/mail"
-	"github.com/cristianadrielbraun/gofer/internal/netguard"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/mail"
+	"github.com/fahadjibransheikh/raven/internal/netguard"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 type Service struct {

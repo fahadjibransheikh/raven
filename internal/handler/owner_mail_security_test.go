@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/auth"
+	"github.com/fahadjibransheikh/raven/internal/auth"
 )
 
 // In personal mode the owner has no admin area, so the mail security

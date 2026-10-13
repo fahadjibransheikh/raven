@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/models"
 )
 
 func outgoingTestInput(accountID string, messageID int64, sendAfter time.Time, scheduled bool) QueueOutgoingSendInput {

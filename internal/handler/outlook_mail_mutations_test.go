@@ -3,7 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"github.com/cristianadrielbraun/gofer/internal/auth"
+	"github.com/fahadjibransheikh/raven/internal/auth"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -13,10 +13,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/mailauth"
-	"github.com/cristianadrielbraun/gofer/internal/providers"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
-	"github.com/cristianadrielbraun/gofer/internal/store"
+	"github.com/fahadjibransheikh/raven/internal/mailauth"
+	"github.com/fahadjibransheikh/raven/internal/providers"
+	"github.com/fahadjibransheikh/raven/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/store"
 	"golang.org/x/oauth2"
 )
 

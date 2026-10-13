@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 func newAccountOAuthFlowTestManager(t *testing.T, enabled bool) (*Manager, *storage.DB) {

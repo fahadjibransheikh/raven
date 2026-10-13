@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/cristianadrielbraun/gofer/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/models"
 )
 
 // FillThreadListUnsubscribe sets the stored List-Unsubscribe headers on thread items.

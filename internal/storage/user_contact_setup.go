@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/models"
 )
 
 var ErrContactSetupInvalid = errors.New("invalid contact setup choices")

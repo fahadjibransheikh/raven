@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/calendar"
-	"github.com/cristianadrielbraun/gofer/internal/providers"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/calendar"
+	"github.com/fahadjibransheikh/raven/internal/providers"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 var errCalendarNotInvitation = errors.New("this event is not an invitation for this calendar")

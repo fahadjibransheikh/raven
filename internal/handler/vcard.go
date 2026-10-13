@@ -7,7 +7,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/cristianadrielbraun/gofer/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/models"
 	emersionvcard "github.com/emersion/go-vcard"
 )
 

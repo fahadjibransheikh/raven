@@ -8,9 +8,9 @@ import (
 	"errors"
 	"strings"
 
-	mailtransport "github.com/cristianadrielbraun/gofer/internal/mail/transport"
-	"github.com/cristianadrielbraun/gofer/internal/models"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	mailtransport "github.com/fahadjibransheikh/raven/internal/mail/transport"
+	"github.com/fahadjibransheikh/raven/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 var ErrAccountServicesChanged = errors.New("account service configuration changed during provider work")

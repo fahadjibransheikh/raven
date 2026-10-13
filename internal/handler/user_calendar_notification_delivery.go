@@ -6,10 +6,10 @@ import (
 	"errors"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/mail"
-	smtpclient "github.com/cristianadrielbraun/gofer/internal/mail/smtp"
-	"github.com/cristianadrielbraun/gofer/internal/models"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/mail"
+	smtpclient "github.com/fahadjibransheikh/raven/internal/mail/smtp"
+	"github.com/fahadjibransheikh/raven/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 // Organizer messages retain the native DAV preflight and SMTP MIME. The account

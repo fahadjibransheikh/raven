@@ -9,9 +9,9 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/cristianadrielbraun/gofer/internal/mail/message"
-	"github.com/cristianadrielbraun/gofer/internal/providers"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/mail/message"
+	"github.com/fahadjibransheikh/raven/internal/providers"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 // emailBodyFailure is what the reading pane needs to replace its loader with an

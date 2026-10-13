@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	mailmessage "github.com/cristianadrielbraun/gofer/internal/mail/message"
+	mailmessage "github.com/fahadjibransheikh/raven/internal/mail/message"
 )
 
 // MessageBodyCache references already-written, immutable candidate blob files.

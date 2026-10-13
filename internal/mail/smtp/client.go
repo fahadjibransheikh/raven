@@ -14,11 +14,11 @@ import (
 	"github.com/emersion/go-sasl"
 	smtp "github.com/emersion/go-smtp"
 
-	"github.com/cristianadrielbraun/gofer/internal/mail/message"
-	"github.com/cristianadrielbraun/gofer/internal/mail/oauth2sasl"
-	mailtransport "github.com/cristianadrielbraun/gofer/internal/mail/transport"
-	"github.com/cristianadrielbraun/gofer/internal/models"
-	"github.com/cristianadrielbraun/gofer/internal/netguard"
+	"github.com/fahadjibransheikh/raven/internal/mail/message"
+	"github.com/fahadjibransheikh/raven/internal/mail/oauth2sasl"
+	mailtransport "github.com/fahadjibransheikh/raven/internal/mail/transport"
+	"github.com/fahadjibransheikh/raven/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/netguard"
 )
 
 // testRootCAs lets package tests trust a self-signed fake server. It is nil in

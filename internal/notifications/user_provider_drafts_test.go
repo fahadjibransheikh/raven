@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/mail"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/mail"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 	gomail "github.com/emersion/go-message/mail"
 )
 

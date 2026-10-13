@@ -3,7 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/cristianadrielbraun/gofer/internal/mail"
+	"github.com/fahadjibransheikh/raven/internal/mail"
 	"net/http"
 )
 

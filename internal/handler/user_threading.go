@@ -7,8 +7,8 @@ import (
 	"log"
 	"sync"
 
-	"github.com/cristianadrielbraun/gofer/internal/mail"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/mail"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 // UserThreadingStatus preserves the processing API's original fields. Failures

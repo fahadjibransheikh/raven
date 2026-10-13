@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/config"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/config"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 type UserContactSyncOptions struct {

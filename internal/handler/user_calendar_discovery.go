@@ -10,12 +10,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/calendar"
-	"github.com/cristianadrielbraun/gofer/internal/config"
-	"github.com/cristianadrielbraun/gofer/internal/mail"
-	"github.com/cristianadrielbraun/gofer/internal/mailauth"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
-	"github.com/cristianadrielbraun/gofer/internal/views"
+	"github.com/fahadjibransheikh/raven/internal/calendar"
+	"github.com/fahadjibransheikh/raven/internal/config"
+	"github.com/fahadjibransheikh/raven/internal/mail"
+	"github.com/fahadjibransheikh/raven/internal/mailauth"
+	"github.com/fahadjibransheikh/raven/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/views"
 )
 
 const calendarDiscoveryMaxPages = 100

@@ -4,7 +4,7 @@ import (
 	"context"
 	"io"
 
-	"github.com/cristianadrielbraun/gofer/internal/authoperator"
+	"github.com/fahadjibransheikh/raven/internal/authoperator"
 )
 
 // runApplication mirrors main's command dispatch for tests in this package.

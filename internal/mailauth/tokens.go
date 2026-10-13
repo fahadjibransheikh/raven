@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/providerquota"
-	"github.com/cristianadrielbraun/gofer/internal/providers"
-	"github.com/cristianadrielbraun/gofer/internal/retry"
+	"github.com/fahadjibransheikh/raven/internal/providerquota"
+	"github.com/fahadjibransheikh/raven/internal/providers"
+	"github.com/fahadjibransheikh/raven/internal/retry"
 	"golang.org/x/oauth2"
 )
 

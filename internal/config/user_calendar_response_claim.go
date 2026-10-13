@@ -3,7 +3,7 @@ package config
 import (
 	"context"
 
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 func (c *UserCalendarResponseClaim) Event() *UserCalendarEventSnapshot { return c.event }

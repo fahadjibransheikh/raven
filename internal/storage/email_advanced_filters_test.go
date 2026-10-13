@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cristianadrielbraun/gofer/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/models"
 )
 
 func TestEmailFilterSQLSupportsRecipientTagsAndSizeRange(t *testing.T) {

@@ -3,7 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"github.com/cristianadrielbraun/gofer/internal/auth"
+	"github.com/fahadjibransheikh/raven/internal/auth"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/mail"
-	"github.com/cristianadrielbraun/gofer/internal/providers"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/mail"
+	"github.com/fahadjibransheikh/raven/internal/providers"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 func TestLabelActionFallsBackToLocalLabelWhenRemoteApplyFails(t *testing.T) {

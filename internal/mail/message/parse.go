@@ -15,8 +15,8 @@ import (
 	"github.com/emersion/go-message/mail"
 	xhtml "golang.org/x/net/html"
 
-	"github.com/cristianadrielbraun/gofer/internal/models"
-	"github.com/cristianadrielbraun/gofer/internal/store"
+	"github.com/fahadjibransheikh/raven/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/store"
 )
 
 var (

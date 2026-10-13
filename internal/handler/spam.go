@@ -12,9 +12,9 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/cristianadrielbraun/gofer/internal/providerquota"
-	"github.com/cristianadrielbraun/gofer/internal/providers"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/providerquota"
+	"github.com/fahadjibransheikh/raven/internal/providers"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 
 	goimap "github.com/emersion/go-imap/v2"
 )

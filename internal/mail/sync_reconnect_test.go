@@ -16,9 +16,9 @@ import (
 	"github.com/emersion/go-imap/v2/imapserver"
 	"github.com/emersion/go-imap/v2/imapserver/imapmemserver"
 
-	"github.com/cristianadrielbraun/gofer/internal/config"
-	"github.com/cristianadrielbraun/gofer/internal/mail/imap"
-	"github.com/cristianadrielbraun/gofer/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/config"
+	"github.com/fahadjibransheikh/raven/internal/mail/imap"
+	"github.com/fahadjibransheikh/raven/internal/models"
 )
 
 // startDroppingIMAPServer serves the folders through a proxy that closes the

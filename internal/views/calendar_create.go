@@ -2,7 +2,7 @@ package views
 
 import (
 	"encoding/json"
-	"github.com/cristianadrielbraun/gofer/internal/calendar"
+	"github.com/fahadjibransheikh/raven/internal/calendar"
 	"time"
 )
 

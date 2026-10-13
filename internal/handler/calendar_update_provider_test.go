@@ -11,8 +11,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cristianadrielbraun/gofer/internal/calendar"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/calendar"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 	ical "github.com/emersion/go-ical"
 )
 

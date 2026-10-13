@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 const injectedColor = `rgb(</style><script>alert(document.domain)</script><x)`

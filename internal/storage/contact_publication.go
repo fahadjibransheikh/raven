@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/models"
 )
 
 var ErrContactPublication = errors.New("contact provider result no longer has a valid owned destination")

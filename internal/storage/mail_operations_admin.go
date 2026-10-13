@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cristianadrielbraun/gofer/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/models"
 )
 
 type ConfiguredIdleFolder struct {

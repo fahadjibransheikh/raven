@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	avatarresolver "github.com/cristianadrielbraun/gofer/internal/avatar"
+	avatarresolver "github.com/fahadjibransheikh/raven/internal/avatar"
 	"path/filepath"
 )
 

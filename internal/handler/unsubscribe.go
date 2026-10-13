@@ -19,8 +19,8 @@ import (
 
 	"github.com/google/uuid"
 
-	mailmessage "github.com/cristianadrielbraun/gofer/internal/mail/message"
-	"github.com/cristianadrielbraun/gofer/internal/views"
+	mailmessage "github.com/fahadjibransheikh/raven/internal/mail/message"
+	"github.com/fahadjibransheikh/raven/internal/views"
 )
 
 const (

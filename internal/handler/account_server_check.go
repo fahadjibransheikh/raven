@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/netguard"
+	"github.com/fahadjibransheikh/raven/internal/netguard"
 )
 
 type accountServerNote struct {

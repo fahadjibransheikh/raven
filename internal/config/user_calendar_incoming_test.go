@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 func ownedIncomingMessageFixture(t *testing.T) (*storage.DB, *UserAccountStore, map[string]storage.CalendarIncomingMessage) {

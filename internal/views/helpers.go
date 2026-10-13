@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/utils"
+	"github.com/fahadjibransheikh/raven/utils"
 
-	"github.com/cristianadrielbraun/gofer/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/models"
 
 	"github.com/a-h/templ"
 )

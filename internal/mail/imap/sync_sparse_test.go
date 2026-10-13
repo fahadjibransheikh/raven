@@ -11,7 +11,7 @@ import (
 
 	"github.com/emersion/go-imap/v2/imapclient"
 
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 type sparseSyncServerScript struct {

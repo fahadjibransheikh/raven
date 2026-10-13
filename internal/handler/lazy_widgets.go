@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/views"
+	"github.com/fahadjibransheikh/raven/internal/views"
 )
 
 // Fragments for widgets that are hidden until opened (filter date pickers,

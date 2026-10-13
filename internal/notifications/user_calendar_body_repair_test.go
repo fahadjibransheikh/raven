@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 const repairCalendarMIME = "From: alice@example.com\r\nTo: guest@example.com\r\nSubject: Invitation\r\nMIME-Version: 1.0\r\n" +

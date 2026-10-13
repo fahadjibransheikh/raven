@@ -7,11 +7,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/config"
-	"github.com/cristianadrielbraun/gofer/internal/mail/imap"
-	smtpclient "github.com/cristianadrielbraun/gofer/internal/mail/smtp"
-	"github.com/cristianadrielbraun/gofer/internal/models"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/config"
+	"github.com/fahadjibransheikh/raven/internal/mail/imap"
+	smtpclient "github.com/fahadjibransheikh/raven/internal/mail/smtp"
+	"github.com/fahadjibransheikh/raven/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 var ErrUserMailConnectionChanged = errors.New("mailbox configuration changed during connection testing")

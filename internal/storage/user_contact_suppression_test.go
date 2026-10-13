@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/models"
 )
 
 func seedObservedContactDeletion(t *testing.T, db *DB, owner string) {

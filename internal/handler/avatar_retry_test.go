@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	avatarresolver "github.com/cristianadrielbraun/gofer/internal/avatar"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	avatarresolver "github.com/fahadjibransheikh/raven/internal/avatar"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 func TestAvatarRetryWaitDoublesAfterEachFailedLookup(t *testing.T) {

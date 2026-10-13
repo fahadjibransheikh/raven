@@ -10,8 +10,8 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/cristianadrielbraun/gofer/internal/auth"
-	"github.com/cristianadrielbraun/gofer/internal/views"
+	"github.com/fahadjibransheikh/raven/internal/auth"
+	"github.com/fahadjibransheikh/raven/internal/views"
 )
 
 const securitySessionRevokeOthersPath = "/settings/security/sessions/revoke-others"

@@ -8,7 +8,7 @@ package views
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "github.com/cristianadrielbraun/gofer/internal/models"
+import "github.com/fahadjibransheikh/raven/internal/models"
 
 // Inert templates reuse the real layout, including saved widths and timezone.
 // They stay outside the HTMX/history targets so switching apps needs no fetch.

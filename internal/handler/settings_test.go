@@ -2,14 +2,14 @@ package handler
 
 import (
 	"context"
-	"github.com/cristianadrielbraun/gofer/internal/auth"
+	"github.com/fahadjibransheikh/raven/internal/auth"
 	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/mail"
-	"github.com/cristianadrielbraun/gofer/internal/models"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/mail"
+	"github.com/fahadjibransheikh/raven/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 func TestEffectiveIDLEFolderStatusKeepsConfiguredModeSeparateFromFallback(t *testing.T) {

@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/cristianadrielbraun/gofer/internal/providers"
+	"github.com/fahadjibransheikh/raven/internal/providers"
 )
 
 // A service token is bound to the exact central grant revision that produced it.

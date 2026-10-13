@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/mail/message"
+	"github.com/fahadjibransheikh/raven/internal/mail/message"
 )
 
 const outlookGraphMIMEFetchMaxBytes = message.MaxDownloadBytes

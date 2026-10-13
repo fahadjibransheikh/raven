@@ -8,7 +8,7 @@ package views
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "github.com/cristianadrielbraun/gofer/components/button"
+import "github.com/fahadjibransheikh/raven/components/button"
 
 // PasswordResetRequestData deliberately carries no submitted identifier into
 // the generic confirmation state.

@@ -11,7 +11,7 @@ import templruntime "github.com/a-h/templ/runtime"
 import (
 	"fmt"
 
-	"github.com/cristianadrielbraun/gofer/components/button"
+	"github.com/fahadjibransheikh/raven/components/button"
 )
 
 type RecoveryRepairMFAData struct {

@@ -17,10 +17,10 @@ import (
 	"testing"
 	"time"
 
-	avatarresolver "github.com/cristianadrielbraun/gofer/internal/avatar"
-	"github.com/cristianadrielbraun/gofer/internal/mail"
-	"github.com/cristianadrielbraun/gofer/internal/models"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	avatarresolver "github.com/fahadjibransheikh/raven/internal/avatar"
+	"github.com/fahadjibransheikh/raven/internal/mail"
+	"github.com/fahadjibransheikh/raven/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 func TestOwnedAvatarWarmupSharesWorkerAndScopesEvents(t *testing.T) {

@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/cristianadrielbraun/gofer/internal/auth"
+	"github.com/fahadjibransheikh/raven/internal/auth"
 )
 
 func (h *Handler) handleMicrosoftRedirect(w http.ResponseWriter, r *http.Request) {

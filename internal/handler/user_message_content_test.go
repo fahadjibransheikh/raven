@@ -16,9 +16,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/auth"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
-	"github.com/cristianadrielbraun/gofer/internal/translation"
+	"github.com/fahadjibransheikh/raven/internal/auth"
+	"github.com/fahadjibransheikh/raven/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/translation"
 )
 
 func newOwnedMessageContentFixture(t *testing.T) *userContactPushFixture {

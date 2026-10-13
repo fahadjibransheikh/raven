@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	mailmessage "github.com/cristianadrielbraun/gofer/internal/mail/message"
+	mailmessage "github.com/fahadjibransheikh/raven/internal/mail/message"
 )
 
 func TestGmailQueueDeadlineCombinesOwnedQueuesAndTimeFormats(t *testing.T) {

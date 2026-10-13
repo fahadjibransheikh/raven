@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cristianadrielbraun/gofer/internal/calendar"
+	"github.com/fahadjibransheikh/raven/internal/calendar"
 	ical "github.com/emersion/go-ical"
 )
 

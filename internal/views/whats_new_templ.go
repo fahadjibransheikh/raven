@@ -9,8 +9,8 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
-	"github.com/cristianadrielbraun/gofer/components/dialog"
-	"github.com/cristianadrielbraun/gofer/internal/whatsnew"
+	"github.com/fahadjibransheikh/raven/components/dialog"
+	"github.com/fahadjibransheikh/raven/internal/whatsnew"
 )
 
 const whatsNewReleaseNotesURL = "https://github.com/fahadjibransheikh/raven/releases/latest"

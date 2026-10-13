@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cristianadrielbraun/gofer/internal/models"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 func seedOwnerContactSignatureAndPush(t *testing.T, db *storage.DB) (models.ContactProfile, models.Signature, storage.WebPushSubscription) {

@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/config"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/config"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 func newOwnedCalendarResponseFormFixture(t *testing.T, provider string, before func(*http.Request), wrappers ...func(http.Handler) http.Handler) (*userStorageFixture, *atomic.Int32) {

@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 func insertEnrollmentTokenUser(t *testing.T, manager *Manager, id string, status UserStatus, isAdmin bool, now time.Time) {

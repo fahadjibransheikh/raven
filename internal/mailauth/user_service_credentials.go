@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/providers"
-	"github.com/cristianadrielbraun/gofer/internal/retry"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/providers"
+	"github.com/fahadjibransheikh/raven/internal/retry"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 	"golang.org/x/oauth2"
 )
 

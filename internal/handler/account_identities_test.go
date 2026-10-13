@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 func seedPrimaryIdentities(t *testing.T, db *storage.DB) {

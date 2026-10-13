@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/calendar"
+	"github.com/fahadjibransheikh/raven/internal/calendar"
 )
 
 func TestDiscoverOutlookCalendarsPaginatesAndNormalizes(t *testing.T) {

@@ -3,8 +3,8 @@ package mail
 import (
 	"testing"
 
-	"github.com/cristianadrielbraun/gofer/internal/mail/message"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/mail/message"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 func TestUserAttachmentMIMEPartKeepsIdenticalSiblingOrder(t *testing.T) {

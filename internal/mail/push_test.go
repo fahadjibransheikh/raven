@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/providers"
+	"github.com/fahadjibransheikh/raven/internal/providers"
 )
 
 func newPushTestOrchestrator(t *testing.T, accounts map[string][2]string) *SyncOrchestrator {

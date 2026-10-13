@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/models"
 )
 
 var ErrContactSyncSuperseded = errors.New("contact sync work no longer matches its claim or current profile")

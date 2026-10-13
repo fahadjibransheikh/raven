@@ -13,9 +13,9 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
-	"github.com/cristianadrielbraun/gofer/components/icon"
-	"github.com/cristianadrielbraun/gofer/components/selectbox"
-	"github.com/cristianadrielbraun/gofer/utils"
+	"github.com/fahadjibransheikh/raven/components/icon"
+	"github.com/fahadjibransheikh/raven/components/selectbox"
+	"github.com/fahadjibransheikh/raven/utils"
 	"strconv"
 	"time"
 )

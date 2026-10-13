@@ -17,9 +17,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/auth"
-	"github.com/cristianadrielbraun/gofer/internal/mail"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/auth"
+	"github.com/fahadjibransheikh/raven/internal/mail"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 func ownedStatusPost(t *testing.T, f *ownedAdminDiagnosticFixture, owner, status string, csrf bool) *httptest.ResponseRecorder {

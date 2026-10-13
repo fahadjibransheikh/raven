@@ -10,9 +10,9 @@ import (
 	"strconv"
 	"strings"
 
-	mailmessage "github.com/cristianadrielbraun/gofer/internal/mail/message"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
-	"github.com/cristianadrielbraun/gofer/internal/translation"
+	mailmessage "github.com/fahadjibransheikh/raven/internal/mail/message"
+	"github.com/fahadjibransheikh/raven/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/translation"
 )
 
 func (h *Handler) handleUserTranslateMessage(w http.ResponseWriter, r *http.Request) {

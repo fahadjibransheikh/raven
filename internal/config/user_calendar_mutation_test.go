@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 func calendarMutationResult(snapshot *UserCalendarEventSnapshot) storage.CalendarEvent {

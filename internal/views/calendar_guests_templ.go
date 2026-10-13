@@ -9,8 +9,8 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
-	"github.com/cristianadrielbraun/gofer/components/button"
-	"github.com/cristianadrielbraun/gofer/internal/models"
+	"github.com/fahadjibransheikh/raven/components/button"
+	"github.com/fahadjibransheikh/raven/internal/models"
 	"net/mail"
 )
 

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/retry"
+	"github.com/fahadjibransheikh/raven/internal/retry"
 	"golang.org/x/oauth2"
 )
 

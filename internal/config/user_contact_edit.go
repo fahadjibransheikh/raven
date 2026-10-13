@@ -4,8 +4,8 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/cristianadrielbraun/gofer/internal/models"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 // UserContactEditSnapshot binds copied editor and destination service state to

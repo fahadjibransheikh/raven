@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/mail"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/mail"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 // A cleanup grant never authorizes creation, PATCH, RSVP or unrelated reads.

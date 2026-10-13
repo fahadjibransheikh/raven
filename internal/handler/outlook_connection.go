@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/cristianadrielbraun/gofer/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/models"
 )
 
 func (h *Handler) testOutlookGraphMail(ctx context.Context, accountID string) []models.ConnectionTestResult {

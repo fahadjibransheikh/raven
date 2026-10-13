@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 func TestUserStorageMigrationPasswordsAuthenticatesAllRetainedConfigurations(t *testing.T) {

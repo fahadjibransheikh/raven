@@ -15,8 +15,8 @@ import (
 
 	gosmtp "github.com/emersion/go-smtp"
 
-	"github.com/cristianadrielbraun/gofer/internal/mail/message"
-	"github.com/cristianadrielbraun/gofer/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/mail/message"
+	"github.com/fahadjibransheikh/raven/internal/models"
 )
 
 func waitForSMTPServer(t *testing.T, serverErr <-chan error) {

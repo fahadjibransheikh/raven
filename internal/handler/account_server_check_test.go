@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cristianadrielbraun/gofer/internal/auth"
+	"github.com/fahadjibransheikh/raven/internal/auth"
 )
 
 func serverCheck(t *testing.T, h *Handler, values url.Values) []accountServerNote {

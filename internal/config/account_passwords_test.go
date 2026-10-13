@@ -5,7 +5,7 @@ import (
 	"io"
 	"testing"
 
-	"github.com/cristianadrielbraun/gofer/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/models"
 )
 
 // legacyEncryptPassword writes the format used before passwords were bound to

@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/cristianadrielbraun/gofer/internal/mail"
+	"github.com/fahadjibransheikh/raven/internal/mail"
 )
 
 func (h *Handler) handleUserTestAccount(w http.ResponseWriter, r *http.Request) {

@@ -10,18 +10,18 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import (
 	"fmt"
-	mailmessage "github.com/cristianadrielbraun/gofer/internal/mail/message"
-	"github.com/cristianadrielbraun/gofer/internal/models"
+	mailmessage "github.com/fahadjibransheikh/raven/internal/mail/message"
+	"github.com/fahadjibransheikh/raven/internal/models"
 	"strings"
 
-	"github.com/cristianadrielbraun/gofer/components/button"
-	"github.com/cristianadrielbraun/gofer/components/copybutton"
-	"github.com/cristianadrielbraun/gofer/components/dialog"
-	"github.com/cristianadrielbraun/gofer/components/dropdown"
-	"github.com/cristianadrielbraun/gofer/components/icon"
-	"github.com/cristianadrielbraun/gofer/components/popover"
-	"github.com/cristianadrielbraun/gofer/components/tabs"
-	"github.com/cristianadrielbraun/gofer/components/tooltip"
+	"github.com/fahadjibransheikh/raven/components/button"
+	"github.com/fahadjibransheikh/raven/components/copybutton"
+	"github.com/fahadjibransheikh/raven/components/dialog"
+	"github.com/fahadjibransheikh/raven/components/dropdown"
+	"github.com/fahadjibransheikh/raven/components/icon"
+	"github.com/fahadjibransheikh/raven/components/popover"
+	"github.com/fahadjibransheikh/raven/components/tabs"
+	"github.com/fahadjibransheikh/raven/components/tooltip"
 
 	"github.com/dustin/go-humanize"
 )

@@ -19,8 +19,8 @@ import (
 	"sync"
 	"time"
 
-	mailtransport "github.com/cristianadrielbraun/gofer/internal/mail/transport"
-	"github.com/cristianadrielbraun/gofer/internal/netguard"
+	mailtransport "github.com/fahadjibransheikh/raven/internal/mail/transport"
+	"github.com/fahadjibransheikh/raven/internal/netguard"
 	"golang.org/x/net/publicsuffix"
 )
 

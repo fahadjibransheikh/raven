@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 // Invitations often reach the mailbox before Raven's periodic calendar window

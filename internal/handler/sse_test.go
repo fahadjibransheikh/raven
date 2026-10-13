@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/auth"
-	"github.com/cristianadrielbraun/gofer/internal/mail"
+	"github.com/fahadjibransheikh/raven/internal/auth"
+	"github.com/fahadjibransheikh/raven/internal/mail"
 )
 
 func TestSSEEventVisibleRequiresAnOwnedAudience(t *testing.T) {

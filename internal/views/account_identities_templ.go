@@ -10,8 +10,8 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import (
 	"fmt"
-	"github.com/cristianadrielbraun/gofer/components/icon"
-	"github.com/cristianadrielbraun/gofer/internal/models"
+	"github.com/fahadjibransheikh/raven/components/icon"
+	"github.com/fahadjibransheikh/raven/internal/models"
 )
 
 // AccountIdentitiesData is the "Sending addresses" section of a settings account card.

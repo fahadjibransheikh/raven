@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/handler"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/handler"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 const ownedPreviewID = "b7931511-7c6a-4ce8-8d1a-5239ba410589"

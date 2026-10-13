@@ -11,8 +11,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	mailmessage "github.com/cristianadrielbraun/gofer/internal/mail/message"
-	"github.com/cristianadrielbraun/gofer/internal/translation"
+	mailmessage "github.com/fahadjibransheikh/raven/internal/mail/message"
+	"github.com/fahadjibransheikh/raven/internal/translation"
 	xhtml "golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
 )

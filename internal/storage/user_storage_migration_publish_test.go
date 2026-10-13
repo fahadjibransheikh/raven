@@ -11,8 +11,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/cristianadrielbraun/gofer/internal/runtimeguard"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/runtimeguard"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 func TestUserStorageMigrationPublishesHistoricalSearchLayoutWithoutChangingSource(t *testing.T) {

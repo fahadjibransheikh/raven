@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	mailmessage "github.com/cristianadrielbraun/gofer/internal/mail/message"
+	mailmessage "github.com/fahadjibransheikh/raven/internal/mail/message"
 )
 
 func seedUserProviderDraft(t *testing.T) *DB {

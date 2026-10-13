@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 const pngMagic = "\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR"

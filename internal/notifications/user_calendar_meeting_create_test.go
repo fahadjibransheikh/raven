@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/handler"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/handler"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 func newOwnedMeetingCreateFixture(t *testing.T, provider, mode string) (*userStorageFixture, *ownedMeetingPreviewAPI, *ownedCalendarCreateAPI, map[string]int) {

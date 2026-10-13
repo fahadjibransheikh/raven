@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"strings"
 
-	appassets "github.com/cristianadrielbraun/gofer/assets"
+	appassets "github.com/fahadjibransheikh/raven/assets"
 )
 
 func assetFileSystem() http.FileSystem {

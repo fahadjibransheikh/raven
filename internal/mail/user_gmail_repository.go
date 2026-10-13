@@ -5,8 +5,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/models"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 // Both layouts use the same Gmail algorithm. Each routed repository call copies

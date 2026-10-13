@@ -15,15 +15,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/auth"
-	"github.com/cristianadrielbraun/gofer/internal/config"
-	"github.com/cristianadrielbraun/gofer/internal/handler"
-	"github.com/cristianadrielbraun/gofer/internal/httpguard"
-	"github.com/cristianadrielbraun/gofer/internal/mail"
-	"github.com/cristianadrielbraun/gofer/internal/mailauth"
-	"github.com/cristianadrielbraun/gofer/internal/notifications"
-	"github.com/cristianadrielbraun/gofer/internal/store"
-	"github.com/cristianadrielbraun/gofer/internal/views"
+	"github.com/fahadjibransheikh/raven/internal/auth"
+	"github.com/fahadjibransheikh/raven/internal/config"
+	"github.com/fahadjibransheikh/raven/internal/handler"
+	"github.com/fahadjibransheikh/raven/internal/httpguard"
+	"github.com/fahadjibransheikh/raven/internal/mail"
+	"github.com/fahadjibransheikh/raven/internal/mailauth"
+	"github.com/fahadjibransheikh/raven/internal/notifications"
+	"github.com/fahadjibransheikh/raven/internal/store"
+	"github.com/fahadjibransheikh/raven/internal/views"
 )
 
 type managedApplication struct {

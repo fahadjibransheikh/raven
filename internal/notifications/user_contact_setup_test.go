@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 func stagedContactSetup(t *testing.T, f *userStorageFixture, owner string) string {

@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/calendar"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/calendar"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 func identifyCalDAVInitialOccurrences(ctx context.Context, source storage.CalendarSource, username, password string, events []calendar.RemoteEvent) error {

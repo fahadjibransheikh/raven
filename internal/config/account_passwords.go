@@ -11,7 +11,7 @@ import (
 	"sync"
 	"weak"
 
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 // Stored passwords are bound to the user, mailbox and service they belong to,

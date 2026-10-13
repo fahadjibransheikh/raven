@@ -3,7 +3,7 @@ package auth
 import (
 	"errors"
 
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 // SetUserStorage configures owned lifecycle checks explicitly at managed

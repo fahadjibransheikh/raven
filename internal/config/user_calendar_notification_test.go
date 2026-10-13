@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 func newOwnedNotificationFixture(t *testing.T) (*storage.DB, *UserAccountStore, map[string]*UserCalendarSourceSnapshot) {

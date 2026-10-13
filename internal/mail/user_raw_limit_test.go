@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cristianadrielbraun/gofer/internal/mail/message"
+	"github.com/fahadjibransheikh/raven/internal/mail/message"
 )
 
 // Messages the reader didn't ask for stop at the automatic download limit,

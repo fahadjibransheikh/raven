@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/mail"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/mail"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 const ownedCalendarCreateID = "cc77e9f1-81da-4fe3-9566-cd3b7e01700c"

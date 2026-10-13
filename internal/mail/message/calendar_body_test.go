@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cristianadrielbraun/gofer/internal/store"
+	"github.com/fahadjibransheikh/raven/internal/store"
 )
 
 func TestCalendarMIMEPartsAreDownloadableWithoutReplacingBody(t *testing.T) {

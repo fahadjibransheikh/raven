@@ -11,10 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/models"
-	"github.com/cristianadrielbraun/gofer/internal/providerquota"
-	"github.com/cristianadrielbraun/gofer/internal/retry"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/providerquota"
+	"github.com/fahadjibransheikh/raven/internal/retry"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 // UserProviderMail is handed only to the queue running under the account gate,

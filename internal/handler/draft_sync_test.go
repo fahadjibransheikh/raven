@@ -14,13 +14,13 @@ import (
 
 	goimap "github.com/emersion/go-imap/v2"
 
-	"github.com/cristianadrielbraun/gofer/internal/auth"
-	mailpkg "github.com/cristianadrielbraun/gofer/internal/mail"
-	imapclient "github.com/cristianadrielbraun/gofer/internal/mail/imap"
-	"github.com/cristianadrielbraun/gofer/internal/mail/message"
-	"github.com/cristianadrielbraun/gofer/internal/models"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
-	"github.com/cristianadrielbraun/gofer/internal/store"
+	"github.com/fahadjibransheikh/raven/internal/auth"
+	mailpkg "github.com/fahadjibransheikh/raven/internal/mail"
+	imapclient "github.com/fahadjibransheikh/raven/internal/mail/imap"
+	"github.com/fahadjibransheikh/raven/internal/mail/message"
+	"github.com/fahadjibransheikh/raven/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/store"
 )
 
 func TestHandleComposeDraftQueuesGenericIMAPRevision(t *testing.T) {

@@ -10,8 +10,8 @@ import (
 
 	"github.com/a-h/templ"
 
-	"github.com/cristianadrielbraun/gofer/internal/storage"
-	"github.com/cristianadrielbraun/gofer/internal/views"
+	"github.com/fahadjibransheikh/raven/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/views"
 )
 
 func (h *Handler) handleCalendar(w http.ResponseWriter, r *http.Request) {

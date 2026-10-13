@@ -3,8 +3,8 @@ package handler
 import (
 	"context"
 
-	"github.com/cristianadrielbraun/gofer/internal/mail/message"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/mail/message"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 // emailQuoteScript collapses the quoted history at the end of a message body

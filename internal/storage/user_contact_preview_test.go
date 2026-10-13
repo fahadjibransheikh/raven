@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/cristianadrielbraun/gofer/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/models"
 )
 
 func seedContactPreview(t *testing.T, db *DB) (string, []ContactSetupSelection, []ContactSetupCandidateValue) {

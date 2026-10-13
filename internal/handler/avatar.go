@@ -16,13 +16,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/auth"
-	avatarresolver "github.com/cristianadrielbraun/gofer/internal/avatar"
-	mail "github.com/cristianadrielbraun/gofer/internal/mail"
-	"github.com/cristianadrielbraun/gofer/internal/models"
-	"github.com/cristianadrielbraun/gofer/internal/netguard"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
-	"github.com/cristianadrielbraun/gofer/internal/views"
+	"github.com/fahadjibransheikh/raven/internal/auth"
+	avatarresolver "github.com/fahadjibransheikh/raven/internal/avatar"
+	mail "github.com/fahadjibransheikh/raven/internal/mail"
+	"github.com/fahadjibransheikh/raven/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/netguard"
+	"github.com/fahadjibransheikh/raven/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/views"
 )
 
 const (

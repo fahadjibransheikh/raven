@@ -8,12 +8,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/mail/message"
-	smtpclient "github.com/cristianadrielbraun/gofer/internal/mail/smtp"
-	mailtransport "github.com/cristianadrielbraun/gofer/internal/mail/transport"
-	"github.com/cristianadrielbraun/gofer/internal/mailauth"
-	"github.com/cristianadrielbraun/gofer/internal/models"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/mail/message"
+	smtpclient "github.com/fahadjibransheikh/raven/internal/mail/smtp"
+	mailtransport "github.com/fahadjibransheikh/raven/internal/mail/transport"
+	"github.com/fahadjibransheikh/raven/internal/mailauth"
+	"github.com/fahadjibransheikh/raven/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 // Graph /me/sendMail ignores a send-as alias in From and delivers from the

@@ -3,8 +3,8 @@ package config
 import (
 	"context"
 
-	"github.com/cristianadrielbraun/gofer/internal/models"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 func (s *UserAccountStore) ReadContactSuppression(ctx context.Context, owner string) (contacts []models.Contact, count int, err error) {

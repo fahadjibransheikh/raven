@@ -3,7 +3,7 @@ package storage
 import (
 	"context"
 	"errors"
-	mailmessage "github.com/cristianadrielbraun/gofer/internal/mail/message"
+	mailmessage "github.com/fahadjibransheikh/raven/internal/mail/message"
 )
 
 // PublishSentBody makes a local Sent cache retryable independently of SMTP

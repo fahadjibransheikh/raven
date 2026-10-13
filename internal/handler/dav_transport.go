@@ -9,7 +9,7 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"github.com/cristianadrielbraun/gofer/internal/netguard"
+	"github.com/fahadjibransheikh/raven/internal/netguard"
 )
 
 // davHTTPTransport carries every CalDAV request. People enter those servers

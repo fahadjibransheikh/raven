@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 func (h *Handler) handleUserConfirmContactSyncSetup(w http.ResponseWriter, r *http.Request) {

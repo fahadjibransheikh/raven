@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cristianadrielbraun/gofer/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/models"
 )
 
 var chipRE = regexp.MustCompile(`<kbd class="kbd" data-shortcut="([^"]+)">([^<]*)</kbd>`)

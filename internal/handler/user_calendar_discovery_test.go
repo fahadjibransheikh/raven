@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cristianadrielbraun/gofer/internal/calendar"
+	"github.com/fahadjibransheikh/raven/internal/calendar"
 )
 
 func TestUserCalendarDiscoveryTraversalLimitsAndPrimaryFallback(t *testing.T) {

@@ -14,10 +14,10 @@ import (
 	"github.com/emersion/go-imap/v2/imapclient"
 	"github.com/emersion/go-sasl"
 
-	"github.com/cristianadrielbraun/gofer/internal/mail/oauth2sasl"
-	mailtransport "github.com/cristianadrielbraun/gofer/internal/mail/transport"
-	"github.com/cristianadrielbraun/gofer/internal/models"
-	"github.com/cristianadrielbraun/gofer/internal/netguard"
+	"github.com/fahadjibransheikh/raven/internal/mail/oauth2sasl"
+	mailtransport "github.com/fahadjibransheikh/raven/internal/mail/transport"
+	"github.com/fahadjibransheikh/raven/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/netguard"
 )
 
 type FolderInfo struct {

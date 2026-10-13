@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cristianadrielbraun/gofer/internal/auth"
-	"github.com/cristianadrielbraun/gofer/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/auth"
+	"github.com/fahadjibransheikh/raven/internal/models"
 )
 
 func TestManagementLoginUsesDedicatedLocalOnlySurface(t *testing.T) {

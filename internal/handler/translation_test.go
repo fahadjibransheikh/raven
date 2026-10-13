@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cristianadrielbraun/gofer/internal/translation"
+	"github.com/fahadjibransheikh/raven/internal/translation"
 )
 
 type fakeTextBatchProvider struct{}

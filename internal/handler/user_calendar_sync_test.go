@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/calendar"
+	"github.com/fahadjibransheikh/raven/internal/calendar"
 )
 
 func TestUserCalendarEventTraversalRejectsIncompleteAndUnboundedResults(t *testing.T) {

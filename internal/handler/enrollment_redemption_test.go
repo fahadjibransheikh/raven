@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/auth"
-	"github.com/cristianadrielbraun/gofer/internal/httpguard"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/auth"
+	"github.com/fahadjibransheikh/raven/internal/httpguard"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 	"golang.org/x/oauth2"
 )
 

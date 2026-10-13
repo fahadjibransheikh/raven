@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	avatarresolver "github.com/cristianadrielbraun/gofer/internal/avatar"
+	avatarresolver "github.com/fahadjibransheikh/raven/internal/avatar"
 )
 
 func TestSenderAvatarSnapshotFiltersCacheLogsAndStats(t *testing.T) {

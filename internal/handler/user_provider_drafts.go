@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/mail"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/mail"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 func (s *userMailDeliveryScope) providerDraft(ctx context.Context) (bool, error) {

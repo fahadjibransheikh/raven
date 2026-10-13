@@ -10,11 +10,11 @@ import (
 	goimap "github.com/emersion/go-imap/v2"
 	"github.com/google/uuid"
 
-	imapclient "github.com/cristianadrielbraun/gofer/internal/mail/imap"
-	"github.com/cristianadrielbraun/gofer/internal/mail/message"
-	"github.com/cristianadrielbraun/gofer/internal/models"
-	"github.com/cristianadrielbraun/gofer/internal/providers"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	imapclient "github.com/fahadjibransheikh/raven/internal/mail/imap"
+	"github.com/fahadjibransheikh/raven/internal/mail/message"
+	"github.com/fahadjibransheikh/raven/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/providers"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 const imapDraftRevisionHeader = "X-Gofer-Draft-Revision"

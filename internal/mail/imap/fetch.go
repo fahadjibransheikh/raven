@@ -8,7 +8,7 @@ import (
 	"github.com/emersion/go-imap/v2"
 	"github.com/emersion/go-imap/v2/imapclient"
 
-	"github.com/cristianadrielbraun/gofer/internal/mail/message"
+	"github.com/fahadjibransheikh/raven/internal/mail/message"
 )
 
 func (c *Client) FetchBody(ctx context.Context, folderRemoteName string, uid uint32) ([]byte, error) {

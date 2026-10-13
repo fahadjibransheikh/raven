@@ -3,7 +3,7 @@ package handler
 import (
 	"context"
 
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 func (h *Handler) queueUserLabels(ctx context.Context, targets []ownedMessageTarget, name, operation string) labelMutationResult {

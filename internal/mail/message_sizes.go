@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/mail/imap"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/mail/imap"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 // Messages synced before sizes were stored have none, so each sync looks up a

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/models"
 )
 
 func TestCalendarLoadingUsesEmptyMonthAndWeekLayout(t *testing.T) {

@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/netguard"
+	"github.com/fahadjibransheikh/raven/internal/netguard"
 )
 
 // davPrivateAllowed decides whether a CardDAV connection to the anchor may

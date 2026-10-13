@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	avatarresolver "github.com/cristianadrielbraun/gofer/internal/avatar"
-	"github.com/cristianadrielbraun/gofer/internal/models"
+	avatarresolver "github.com/fahadjibransheikh/raven/internal/avatar"
+	"github.com/fahadjibransheikh/raven/internal/models"
 )
 
 type SenderAvatarRecord struct {

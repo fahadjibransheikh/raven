@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cristianadrielbraun/gofer/internal/views"
-	"github.com/cristianadrielbraun/gofer/utils"
+	"github.com/fahadjibransheikh/raven/internal/views"
+	"github.com/fahadjibransheikh/raven/utils"
 )
 
 func TestAssetCachingVersionedImmutableUnversionedRevalidates(t *testing.T) {

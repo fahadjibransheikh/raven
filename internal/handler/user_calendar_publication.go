@@ -3,8 +3,8 @@ package handler
 import (
 	"context"
 
-	"github.com/cristianadrielbraun/gofer/internal/mailauth"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/mailauth"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 // Provider adapters read back the confirmed result before this local boundary.

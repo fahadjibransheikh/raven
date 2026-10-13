@@ -15,7 +15,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/cristianadrielbraun/gofer/internal/mail/message"
+	"github.com/fahadjibransheikh/raven/internal/mail/message"
 )
 
 type userDraftAPI struct {

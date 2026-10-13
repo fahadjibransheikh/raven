@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	avatarresolver "github.com/cristianadrielbraun/gofer/internal/avatar"
+	avatarresolver "github.com/fahadjibransheikh/raven/internal/avatar"
 )
 
 // ListUserSenderAvatarEmails preserves the legacy automatic sender-only scan.

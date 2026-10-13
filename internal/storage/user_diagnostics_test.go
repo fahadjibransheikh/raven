@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/models"
 )
 
 func TestUserDiagnosticsReadsDisabledOwnerAndRejectsStaleAdministrator(t *testing.T) {

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 // Graph and Gmail share the provider message/tag SQL adapter; Graph adds folder

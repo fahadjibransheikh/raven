@@ -3,7 +3,7 @@ package notifications
 import (
 	"context"
 	"fmt"
-	"github.com/cristianadrielbraun/gofer/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/models"
 	"net"
 	"net/http"
 	"strconv"
@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/mail"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/mail"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 func (s *routedIMAPServer) idlePeers(owner string) map[net.Conn]*routedIdleClient {

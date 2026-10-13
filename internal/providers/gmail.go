@@ -1,6 +1,6 @@
 package providers
 
-import "github.com/cristianadrielbraun/gofer/internal/models"
+import "github.com/fahadjibransheikh/raven/internal/models"
 
 const (
 	ProviderIMAP    = "imap"

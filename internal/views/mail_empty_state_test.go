@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cristianadrielbraun/gofer/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/models"
 )
 
 func renderEmptyList(t *testing.T, accounts []models.Account, folderID string) string {

@@ -17,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/models"
 )
 
 // fakeSTARTTLSServer speaks just enough SMTP to accept XOAUTH2 over STARTTLS.

@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 // A received message/receipt claim is distinct from an authenticated RSVP.

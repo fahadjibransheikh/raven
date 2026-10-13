@@ -9,9 +9,9 @@ import (
 
 	"github.com/a-h/templ"
 
-	"github.com/cristianadrielbraun/gofer/internal/calendar"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
-	"github.com/cristianadrielbraun/gofer/internal/views"
+	"github.com/fahadjibransheikh/raven/internal/calendar"
+	"github.com/fahadjibransheikh/raven/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/views"
 )
 
 func (h *Handler) handleCalendarGuestSuggestions(w http.ResponseWriter, r *http.Request) {

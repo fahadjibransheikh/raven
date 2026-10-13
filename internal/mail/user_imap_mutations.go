@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/mail/imap"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/mail/imap"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 	goimap "github.com/emersion/go-imap/v2"
 )
 

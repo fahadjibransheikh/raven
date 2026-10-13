@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/auth"
-	"github.com/cristianadrielbraun/gofer/internal/calendar"
+	"github.com/fahadjibransheikh/raven/internal/auth"
+	"github.com/fahadjibransheikh/raven/internal/calendar"
 )
 
 func calendarDeliveryRequest(h *Handler, method, path, user string) *httptest.ResponseRecorder {

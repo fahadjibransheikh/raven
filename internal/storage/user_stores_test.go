@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/models"
-	"github.com/cristianadrielbraun/gofer/internal/runtimeguard"
+	"github.com/fahadjibransheikh/raven/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/runtimeguard"
 )
 
 func newUserStoreTestSystem(t *testing.T) *DB {

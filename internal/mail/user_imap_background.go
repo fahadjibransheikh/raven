@@ -7,8 +7,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/mail/imap"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/mail/imap"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 var errUserIMAPQueueFull = errors.New("IMAP sync queue is full")

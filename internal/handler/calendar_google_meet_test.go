@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cristianadrielbraun/gofer/internal/auth"
-	"github.com/cristianadrielbraun/gofer/internal/calendar"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/auth"
+	"github.com/fahadjibransheikh/raven/internal/calendar"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 const testGoogleMeet = `{"conferenceId":"abc-defg-hij","conferenceSolution":{"key":{"type":"hangoutsMeet"}},"entryPoints":[{"entryPointType":"phone","uri":"tel:+420123456789"},{"entryPointType":"video","uri":"https://meet.google.com/abc-defg-hij"}],"signature":"keep-me"}`

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 type AccountCreationRecoveryResult struct{ Activated, Canceled int }

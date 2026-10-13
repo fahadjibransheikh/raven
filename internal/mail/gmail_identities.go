@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 // Gmail send-as aliases change rarely; the regular sync re-reads them at most

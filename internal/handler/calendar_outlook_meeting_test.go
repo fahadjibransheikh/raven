@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cristianadrielbraun/gofer/internal/calendar"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/calendar"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 const originalOnlineBody = `<!DOCTYPE html><html><head><style>.meeting{color:black}</style></head><body><p>Original organizer notes: reunión</p><!-- opaque meeting metadata --><div class="meeting" data-meeting="123"><a href="https://teams.live.com/meet/123?p=token&amp;lang=es">Unirse a la reunión</a><span>Meeting ID: 123</span></div></body></html>`

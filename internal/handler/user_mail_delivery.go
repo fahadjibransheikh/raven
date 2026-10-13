@@ -9,13 +9,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/config"
-	"github.com/cristianadrielbraun/gofer/internal/mail"
-	imapclient "github.com/cristianadrielbraun/gofer/internal/mail/imap"
-	"github.com/cristianadrielbraun/gofer/internal/mail/message"
-	smtpclient "github.com/cristianadrielbraun/gofer/internal/mail/smtp"
-	"github.com/cristianadrielbraun/gofer/internal/models"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/config"
+	"github.com/fahadjibransheikh/raven/internal/mail"
+	imapclient "github.com/fahadjibransheikh/raven/internal/mail/imap"
+	"github.com/fahadjibransheikh/raven/internal/mail/message"
+	smtpclient "github.com/fahadjibransheikh/raven/internal/mail/smtp"
+	"github.com/fahadjibransheikh/raven/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 	goimap "github.com/emersion/go-imap/v2"
 )
 

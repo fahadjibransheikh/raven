@@ -7,7 +7,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/cristianadrielbraun/gofer/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/models"
 )
 
 func newInboundContactFixture(t *testing.T) *DB {

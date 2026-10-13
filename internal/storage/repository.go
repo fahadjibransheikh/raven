@@ -20,9 +20,9 @@ import (
 	"time"
 	"unicode"
 
-	avatarresolver "github.com/cristianadrielbraun/gofer/internal/avatar"
-	mailmessage "github.com/cristianadrielbraun/gofer/internal/mail/message"
-	"github.com/cristianadrielbraun/gofer/internal/models"
+	avatarresolver "github.com/fahadjibransheikh/raven/internal/avatar"
+	mailmessage "github.com/fahadjibransheikh/raven/internal/mail/message"
+	"github.com/fahadjibransheikh/raven/internal/models"
 	"github.com/google/uuid"
 )
 

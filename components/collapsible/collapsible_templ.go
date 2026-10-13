@@ -12,7 +12,7 @@ package collapsible
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "github.com/cristianadrielbraun/gofer/utils"
+import "github.com/fahadjibransheikh/raven/utils"
 
 type Props struct {
 	ID         string

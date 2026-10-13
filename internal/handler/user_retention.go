@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 type UserMailRetentionOptions struct{ Interval, UserTimeout time.Duration }

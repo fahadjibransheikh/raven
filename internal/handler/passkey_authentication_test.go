@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cristianadrielbraun/gofer/internal/auth"
-	"github.com/cristianadrielbraun/gofer/internal/httpguard"
+	"github.com/fahadjibransheikh/raven/internal/auth"
+	"github.com/fahadjibransheikh/raven/internal/httpguard"
 )
 
 func passkeyLoginStack(t *testing.T) (*Handler, *auth.Manager, http.Handler) {

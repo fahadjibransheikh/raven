@@ -3,7 +3,7 @@ package views
 import (
 	"testing"
 
-	"github.com/cristianadrielbraun/gofer/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/models"
 )
 
 func TestThemeStyleMapsLegacyAndUnknownValues(t *testing.T) {

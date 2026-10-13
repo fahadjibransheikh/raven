@@ -8,7 +8,7 @@ import (
 
 	goimap "github.com/emersion/go-imap/v2"
 
-	"github.com/cristianadrielbraun/gofer/internal/mail/message"
+	"github.com/fahadjibransheikh/raven/internal/mail/message"
 )
 
 func TestFetchBodyRefusesMessagesOverTheLimitWithoutReadingThem(t *testing.T) {

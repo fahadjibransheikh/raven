@@ -12,7 +12,7 @@ package separator
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "github.com/cristianadrielbraun/gofer/utils"
+import "github.com/fahadjibransheikh/raven/utils"
 
 type Orientation string
 type Decoration string

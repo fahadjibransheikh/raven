@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 func seedOwnedReplyStatus(t *testing.T, f *userStorageFixture) map[string]string {

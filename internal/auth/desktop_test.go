@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 const testDesktopToken = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"

@@ -16,11 +16,11 @@ import (
 	goimap "github.com/emersion/go-imap/v2"
 	"golang.org/x/oauth2"
 
-	mailpkg "github.com/cristianadrielbraun/gofer/internal/mail"
-	mailauth "github.com/cristianadrielbraun/gofer/internal/mailauth"
-	"github.com/cristianadrielbraun/gofer/internal/models"
-	"github.com/cristianadrielbraun/gofer/internal/providers"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	mailpkg "github.com/fahadjibransheikh/raven/internal/mail"
+	mailauth "github.com/fahadjibransheikh/raven/internal/mailauth"
+	"github.com/fahadjibransheikh/raven/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/providers"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 type fakeFolderReadIMAPClient struct {

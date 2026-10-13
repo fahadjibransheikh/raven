@@ -5,8 +5,8 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/cristianadrielbraun/gofer/internal/models"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/models"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 // FindOAuthAccount uses the exact provider identity. An email match alone must

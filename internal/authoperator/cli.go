@@ -9,8 +9,8 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/runtimeguard"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/fahadjibransheikh/raven/internal/runtimeguard"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 )
 
 const usage = `Usage:

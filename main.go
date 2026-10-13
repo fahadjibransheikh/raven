@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/cristianadrielbraun/gofer/internal/auth"
-	"github.com/cristianadrielbraun/gofer/internal/authoperator"
-	"github.com/cristianadrielbraun/gofer/internal/server"
+	"github.com/fahadjibransheikh/raven/internal/auth"
+	"github.com/fahadjibransheikh/raven/internal/authoperator"
+	"github.com/fahadjibransheikh/raven/internal/server"
 	"io"
 	"os"
 	"os/signal"

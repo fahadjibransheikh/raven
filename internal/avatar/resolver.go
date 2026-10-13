@@ -19,7 +19,7 @@ import (
 	"golang.org/x/net/html"
 	"golang.org/x/net/publicsuffix"
 
-	"github.com/cristianadrielbraun/gofer/internal/netguard"
+	"github.com/fahadjibransheikh/raven/internal/netguard"
 )
 
 const (

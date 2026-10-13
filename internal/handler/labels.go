@@ -10,9 +10,9 @@ import (
 	"sort"
 	"strings"
 
-	mailimap "github.com/cristianadrielbraun/gofer/internal/mail/imap"
-	"github.com/cristianadrielbraun/gofer/internal/providers"
-	"github.com/cristianadrielbraun/gofer/internal/storage"
+	mailimap "github.com/fahadjibransheikh/raven/internal/mail/imap"
+	"github.com/fahadjibransheikh/raven/internal/providers"
+	"github.com/fahadjibransheikh/raven/internal/storage"
 
 	goimap "github.com/emersion/go-imap/v2"
 )

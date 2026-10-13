@@ -20,7 +20,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/retry"
+	"github.com/fahadjibransheikh/raven/internal/retry"
 )
 
 const (
