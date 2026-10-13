@@ -77,6 +77,12 @@ document.addEventListener("DOMContentLoaded", function () {
   // It still feeds the toolbar actions but does not show as a bulk selection.
   var implicitMailSelectionId = null
   var mailSelectionBusy = false
+  // Set when the selection holds every message the list's folder and filters
+  // match, not just the loaded ones: { key, total, truncated }.
+  var mailSelectAllMatching = null
+  var mailSelectAllLoading = false
+  // Whether each selected row stands for a thread, for rows that are not loaded in the list.
+  var selectedMailThreads = new Map()
   var accountDeletionPolls = Object.create(null)
 
   function cssEscape(value) {
@@ -1473,9 +1479,27 @@ document.addEventListener("DOMContentLoaded", function () {
 
       var selectAll = e.target.closest && e.target.closest("[data-mail-select-all]")
       if (selectAll) {
-        var rows = renderedMailRows()
-        for (var r = 0; r < rows.length; r++) setMailSelected(rows[r].dataset.emailId, selectAll.checked)
-        syncMailSelectionControls()
+        // Not prevented: a cancelled click would put the box back after the sync below.
+        if (mailSelectionCounts()) clearMailSelection()
+        else applyMailSelectChoice("all")
+        return
+      }
+
+      var selectChoice = e.target.closest && e.target.closest("[data-mail-select]")
+      if (selectChoice) {
+        applyMailSelectChoice(selectChoice.getAttribute("data-mail-select"))
+        return
+      }
+
+      if (e.target.closest && e.target.closest("[data-mail-select-all-banner-action]")) {
+        e.preventDefault()
+        selectAllMatchingMail()
+        return
+      }
+
+      if (e.target.closest && e.target.closest("[data-mail-select-all-banner-clear]")) {
+        e.preventDefault()
+        clearMailSelection()
         return
       }
 
@@ -1577,6 +1601,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function setMailSelected(emailId, selected) {
       if (!emailId) return
+      mailSelectAllMatching = null
       implicitMailSelectionId = null
       if (selected) selectedMailIds.add(emailId)
       else selectedMailIds.delete(emailId)
@@ -1611,12 +1636,208 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function clearMailSelection() {
       selectedMailIds.clear()
+      selectedMailThreads.clear()
+      mailSelectAllMatching = null
       implicitMailSelectionId = null
       lastSelectedMailId = null
       syncMailSelectionControls()
     }
 
+    // Reads a list row's state from the attributes on its outer element.
+    function mailRowInfoFromHTML(id, html) {
+      var tag = String(html || "").match(/^\s*<div\b[^>]*>/)
+      tag = tag ? tag[0] : ""
+      function attr(name) {
+        var match = tag.match(new RegExp("\\s" + name + "=\"([^\"]*)\""))
+        return match ? match[1] : ""
+      }
+      return {
+        id: id,
+        thread: attr("data-has-thread") === "true",
+        read: attr("data-is-read") !== "false",
+        starred: attr("data-starred") === "true",
+      }
+    }
+
+    function mailRowInfoFromElement(row) {
+      return {
+        id: row.dataset.emailId,
+        thread: row.dataset.hasThread === "true",
+        read: row.dataset.isRead !== "false",
+        starred: row.dataset.starred === "true",
+      }
+    }
+
+    // loadedMailRows lists the rows the list holds, in list order: the ones on
+    // screen and the ones loaded around them.
+    function loadedMailRows() {
+      var rendered = new Map()
+      var renderedRows = renderedMailRows()
+      for (var i = 0; i < renderedRows.length; i++) {
+        if (renderedRows[i].dataset.emailId) rendered.set(renderedRows[i].dataset.emailId, renderedRows[i])
+      }
+      var list = currentMailListController()
+      if (!(list && list.cache && list.cache.size > 0)) {
+        return renderedRows.filter(function (row) { return row.dataset.emailId }).map(mailRowInfoFromElement)
+      }
+      var positions = Array.from(list.cache.keys()).sort(function (a, b) { return a - b })
+      var rows = []
+      for (var p = 0; p < positions.length; p++) {
+        var item = list.cache.get(positions[p])
+        if (!item || !item.id) continue
+        var row = rendered.get(item.id)
+        if (row) {
+          rows.push(mailRowInfoFromElement(row))
+          continue
+        }
+        if (item._selectInfoHTML !== item.html) {
+          item._selectInfo = mailRowInfoFromHTML(item.id, item.html)
+          item._selectInfoHTML = item.html
+        }
+        rows.push(item._selectInfo)
+      }
+      return rows
+    }
+
+    function mailRowIsThread(emailId) {
+      if (selectedMailThreads.has(emailId)) return selectedMailThreads.get(emailId)
+      var row = document.querySelector('#mail-list-scroll .mail-list-item[data-email-id="' + cssEscape(emailId) + '"]')
+      if (row) return row.dataset.hasThread === "true"
+      var list = currentMailListController()
+      var pos = list && list.indexById ? list.indexById.get(emailId) : undefined
+      var item = pos !== undefined && list.cache ? list.cache.get(pos) : null
+      return item ? mailRowInfoFromHTML(item.id, item.html).thread : false
+    }
+
+    // applyMailSelectChoice selects loaded rows by the select-all menu's choice.
+    function applyMailSelectChoice(choice) {
+      if (choice === "none") {
+        clearMailSelection()
+        return
+      }
+      var rows = loadedMailRows()
+      var picked = rows.filter(function (row) {
+        if (choice === "invert") return !selectedMailIds.has(row.id)
+        if (choice === "read") return row.read
+        if (choice === "unread") return !row.read
+        if (choice === "starred") return row.starred
+        if (choice === "unstarred") return !row.starred
+        return true
+      })
+      selectedMailIds.clear()
+      selectedMailThreads.clear()
+      mailSelectAllMatching = null
+      implicitMailSelectionId = null
+      for (var i = 0; i < picked.length; i++) {
+        selectedMailIds.add(picked[i].id)
+        selectedMailThreads.set(picked[i].id, picked[i].thread)
+      }
+      lastSelectedMailId = picked.length ? picked[picked.length - 1].id : null
+      syncMailSelectionControls()
+    }
+
+    function mailSelectAllKey(list) {
+      return list ? list.withFilterParams("/mail/folder/" + encodeURIComponent(list.folderID) + "/ids") : ""
+    }
+
+    // selectAllMatchingMail extends the selection to every message the list's
+    // folder and filters match, loaded or not.
+    function selectAllMatchingMail() {
+      var list = currentMailListController()
+      if (!list || mailSelectAllLoading) return
+      var key = mailSelectAllKey(list)
+      mailSelectAllLoading = true
+      syncMailSelectionControls()
+      fetch(key, { headers: { Accept: "application/json" } })
+        .then(function (response) {
+          if (!response.ok) throw new Error("select all: " + response.status)
+          return response.json()
+        })
+        .then(function (data) {
+          if (mailSelectAllKey(currentMailListController()) !== key) return
+          var ids = (data && data.ids) || []
+          selectedMailIds.clear()
+          selectedMailThreads.clear()
+          implicitMailSelectionId = null
+          for (var i = 0; i < ids.length; i++) {
+            selectedMailIds.add(ids[i].id)
+            selectedMailThreads.set(ids[i].id, !!ids[i].thread)
+          }
+          mailSelectAllMatching = { key: key, total: ids.length, truncated: !!data.truncated }
+        })
+        .catch(function (err) {
+          console.warn(err)
+          showGoferToast({ id: "mail-select-all-error", title: "Couldn't select every message", description: "Try again in a moment.", variant: "error", icon: "error", position: "bottom-right", duration: 6000, dismissible: true })
+        })
+        .finally(function () {
+          mailSelectAllLoading = false
+          syncMailSelectionControls()
+        })
+    }
+
+    function formatMailCount(n) {
+      return Number(n || 0).toLocaleString()
+    }
+
+    // Opening a message selects it so keyboard actions reach it; that single
+    // message is not a selection the select-all controls report.
+    function mailSelectionCounts() {
+      return selectedMailIds.size > 0 && !implicitSelectedOnly()
+    }
+
+    function syncMailSelectAllControls() {
+      var list = currentMailListController()
+      if (mailSelectAllMatching && mailSelectAllMatching.key !== mailSelectAllKey(list)) {
+        // The folder or filters changed under a whole-list selection; it no
+        // longer matches what the list shows.
+        selectedMailIds.clear()
+        selectedMailThreads.clear()
+        mailSelectAllMatching = null
+      }
+      var count = mailSelectionCounts() ? selectedMailIds.size : 0
+      var loaded = count > 0 && !mailSelectAllMatching ? loadedMailRows() : []
+      var allLoaded = loaded.length > 0 && loaded.every(function (row) { return selectedMailIds.has(row.id) })
+      var state = count === 0 ? "none" : (mailSelectAllMatching || allLoaded ? "all" : "some")
+
+      var toggles = document.querySelectorAll("[data-mail-select-all]")
+      for (var i = 0; i < toggles.length; i++) {
+        toggles[i].checked = state === "all"
+        toggles[i].indeterminate = state === "some"
+        toggles[i].disabled = !mailSelectAllMatching && count === 0 && renderedMailRows().length === 0
+      }
+
+      var banner = document.querySelector("[data-mail-select-all-banner]")
+      if (!banner) return
+      var total = list ? Number(list.displayTotalCount || list.totalCount) || 0 : 0
+      var text = ""
+      if (mailSelectAllMatching) {
+        text = mailSelectAllMatching.truncated
+          ? "The first " + formatMailCount(mailSelectAllMatching.total) + " messages in this list are selected."
+          : "All " + formatMailCount(mailSelectAllMatching.total) + " messages in this list are selected."
+      } else if (allLoaded && total > loaded.length) {
+        text = "All " + formatMailCount(loaded.length) + " loaded messages are selected."
+      } else if (allLoaded) {
+        text = "All " + formatMailCount(count) + " messages are selected."
+      }
+      // Two or more selected rows is a bulk selection worth a banner; one is not.
+      if (count < 2 && !mailSelectAllMatching) text = ""
+      var canSelectAll = count > 0 && !mailSelectAllMatching && total > count
+      var show = !!text || (count > 1 && canSelectAll)
+      if (show && !text) text = formatMailCount(count) + " selected."
+      banner.classList.toggle("hidden", !show)
+      banner.classList.toggle("flex", show)
+      var label = banner.querySelector("[data-mail-select-all-banner-text]")
+      if (label) label.textContent = text
+      var button = banner.querySelector("[data-mail-select-all-banner-action]")
+      if (button) {
+        button.classList.toggle("hidden", !canSelectAll)
+        button.textContent = mailSelectAllLoading ? "Selecting\u2026" : "Select all " + formatMailCount(total) + " in this list"
+        button.disabled = mailSelectAllLoading
+      }
+    }
+
     function syncMailSelectionControls() {
+      syncMailSelectAllControls()
       var rows = renderedMailRows()
       var implicitOnly = implicitSelectedOnly()
       var visibleSelected = 0
@@ -1628,17 +1849,10 @@ document.addEventListener("DOMContentLoaded", function () {
         if (anchor) anchor.toggleAttribute("data-mail-selected", selected)
       }
 
-      var selectAllBox = document.querySelector("[data-mail-select-all]")
-      if (selectAllBox) {
-        selectAllBox.checked = rows.length > 0 && visibleSelected === rows.length
-        selectAllBox.indeterminate = visibleSelected > 0 && !selectAllBox.checked
-        selectAllBox.disabled = rows.length === 0
-      }
-
       var count = selectedMailIds.size
       var shownCount = implicitOnly ? 0 : count
       var summary = document.querySelector("[data-mail-selection-summary]")
-      if (summary) summary.textContent = shownCount === 1 ? "1 selected" : shownCount + " selected"
+      if (summary) summary.textContent = shownCount === 1 ? "1 selected" : formatMailCount(shownCount) + " selected"
 
       var clear = document.querySelector("[data-mail-selection-clear]")
       if (clear) {
@@ -1662,6 +1876,7 @@ document.addEventListener("DOMContentLoaded", function () {
       var row = document.querySelector('#mail-list-scroll .mail-list-item[data-email-id="' + cssEscape(emailId) + '"]')
       if (!row) return
       row.setAttribute("data-mail-read-optimistic", "")
+      row.setAttribute("data-is-read", "true")
       row.removeAttribute("data-mail-selected")
       var anchor = row.querySelector(":scope > a")
       if (anchor) {
@@ -1687,6 +1902,7 @@ document.addEventListener("DOMContentLoaded", function () {
       var row = document.querySelector('#mail-list-scroll .mail-list-item[data-email-id="' + cssEscape(emailId) + '"]')
       if (!row) return
       row.removeAttribute("data-mail-read-optimistic")
+      row.setAttribute("data-is-read", "false")
       var anchor = row.querySelector(":scope > a")
       if (anchor) {
         anchor.removeAttribute("data-mail-read-optimistic")
@@ -1712,11 +1928,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function selectedMailTargets(ids) {
       return ids.map(function (emailId) {
-        var row = document.querySelector('#mail-list-scroll .mail-list-item[data-email-id="' + cssEscape(emailId) + '"]')
-        return {
-          id: emailId,
-          thread: !!(row && row.dataset.hasThread === "true"),
-        }
+        return { id: emailId, thread: mailRowIsThread(emailId) }
       })
     }
 
@@ -1821,7 +2033,31 @@ document.addEventListener("DOMContentLoaded", function () {
       })
     }
 
+    // The server takes a limited request body, so a large selection goes out in
+    // chunks, one after another.
+    var MAIL_BULK_CHUNK_SIZE = 200
+
     function sendBulkMessageAction(path, targets, extra) {
+      if (targets.length <= MAIL_BULK_CHUNK_SIZE) return postBulkMessageChunk(path, targets, extra)
+      var moved = []
+      var run = Promise.resolve()
+      for (var start = 0; start < targets.length; start += MAIL_BULK_CHUNK_SIZE) {
+        run = run.then(postBulkMessageChunk.bind(null, path, targets.slice(start, start + MAIL_BULK_CHUNK_SIZE), extra)).then(function (response) {
+          if (response && response.ok === false) throw response
+          return response.json().then(function (data) { moved = moved.concat((data && data.moved) || []) }, function () {})
+        })
+      }
+      // Stops at the first failed chunk and hands that response back; otherwise
+      // answers like one request, with every chunk's moved messages for undo.
+      return run.then(function () {
+        return { ok: true, status: 200, json: function () { return Promise.resolve({ moved: moved }) } }
+      }, function (response) {
+        if (response && response.ok === false) return response
+        throw response
+      })
+    }
+
+    function postBulkMessageChunk(path, targets, extra) {
       var body = { targets: targets }
       if (extra) {
         for (var key in extra) body[key] = extra[key]
@@ -2026,6 +2262,17 @@ document.addEventListener("DOMContentLoaded", function () {
       if (document.body && document.body._goferMailKeyboardShortcutsBound) return
       if (document.body) document.body._goferMailKeyboardShortcutsBound = true
 
+      // Ctrl/Cmd+A selects every loaded message, outside text fields.
+      document.addEventListener("keydown", function (e) {
+        if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey || String(e.key || "").toLowerCase() !== "a") return
+        if (e.defaultPrevented || !document.getElementById("mail-list-scroll") || document.getElementById("calendar-main")) return
+        var target = e.target
+        if (target && target.closest && target.closest("input, textarea, select, [contenteditable='true'], [data-compose-editor], [data-compose-pane]")) return
+        if (document.querySelector("dialog[open]")) return
+        e.preventDefault()
+        applyMailSelectChoice("all")
+      })
+
       document.addEventListener("keydown", function (e) {
         if (document.getElementById("calendar-main") || isShortcutIgnored(e)) return
         // Shift+/ is "?" on layouts that report the base key.
@@ -2069,6 +2316,9 @@ document.addEventListener("DOMContentLoaded", function () {
       { id: "unsubscribe", label: "Unsubscribe", group: "Message", palette: true, match: [], keys: [],
         when: function () { return !!document.querySelector("[data-unsubscribe-id]:not(.hidden)") },
         run: function () { if (typeof unsubscribeFromMessage === "function") unsubscribeFromMessage() } },
+      { id: "select-all", label: "Select all loaded", group: "Navigation", palette: true, match: [], keys: ["Ctrl A"],
+        when: function () { return !!document.getElementById("mail-list-scroll") },
+        run: function () { applyMailSelectChoice("all") } },
       { id: "clear", label: "Clear selection", group: "Navigation", match: ["escape"], keys: ["Esc"],
         when: function () { return !!document.getElementById("mail-shortcut-help") || selectedMailIds.size > 0 || !!selectedMailIdForKeyboard() },
         run: function () { if (!closeShortcutHelp()) clearKeyboardMailSelection() } },

@@ -21,6 +21,7 @@ templ MailList(accounts []models.Account, emails []models.Email, activeFolder st
 	<div id="mail-list" class="w-full lg:flex flex-col border-r border-border bg-card h-full overflow-hidden" style={ "width:" + mailListWidthCSS(width) } data-mail-list-default-width?={ mailListWidthIsDefault(width) } data-mail-list-view={ mailListViewMode(viewMode) } data-mail-navigation-mode={ mailListNavigationMode(navigationMode) }>
 		@MailListHeader(accounts, activeFolder, totalCount, filters)
 		@MailListToolbar(accounts, activeFolder, mailListViewMode(viewMode), filters)
+		@MailSelectAllBanner()
 		@MailCardLayoutDialog()
 		<hr class="divider-etched"/>
 		<div class="relative min-h-0 flex-1 overflow-hidden" data-mail-list-body>
@@ -101,7 +102,7 @@ func mailSortLabel(filters models.EmailFilters) string {
 
 templ MailListToolbar(accounts []models.Account, activeFolder string, viewMode string, filters models.EmailFilters) {
 	<div class="mail-list-toolbar flex items-center gap-1 px-3">
-		<input type="checkbox" data-mail-select-all aria-label="Select all messages" class="size-4 shrink-0 cursor-pointer accent-primary"/>
+		@MailSelectAllControl()
 		<div class="relative inline-flex h-7 shrink-0 rounded-md bg-muted p-0.5 gap-0.5" data-mail-list-view-toggle>
 			<div
 				data-mail-list-view-indicator
@@ -323,6 +324,54 @@ templ MailListToolbar(accounts []models.Account, activeFolder string, viewMode s
 				}
 			}
 		}
+	</div>
+}
+
+// MailSelectAllControl is the list's select-all checkbox with a menu that picks
+// the loaded messages by state. app.js keeps the box checked, mixed or empty.
+templ MailSelectAllControl() {
+	<div class="mail-select-all inline-flex h-7 shrink-0 items-center">
+		<input type="checkbox" data-mail-select-all aria-label="Select all messages" class="size-4 shrink-0 cursor-pointer accent-primary"/>
+		@dropdown.Dropdown() {
+			@dropdown.Trigger() {
+				@button.Button(button.Props{
+					Variant:    button.VariantGhost,
+					Size:       button.SizeIcon,
+					Class:      "h-7 w-5 text-muted-foreground hover:bg-transparent dark:hover:bg-transparent",
+					Attributes: templ.Attributes{"aria-label": "Select messages by state"},
+				}) {
+					@icon.ChevronDown(icon.Props{Class: "size-3"})
+				}
+			}
+			@dropdown.Content(dropdown.ContentProps{Placement: dropdown.PlacementBottomStart, Class: "w-40"}) {
+				@mailSelectMenuItem("all", "All")
+				@mailSelectMenuItem("none", "None")
+				@dropdown.Separator()
+				@mailSelectMenuItem("read", "Read")
+				@mailSelectMenuItem("unread", "Unread")
+				@mailSelectMenuItem("starred", "Starred")
+				@mailSelectMenuItem("unstarred", "Unstarred")
+				@dropdown.Separator()
+				@mailSelectMenuItem("invert", "Invert selection")
+			}
+		}
+	</div>
+}
+
+templ mailSelectMenuItem(value string, label string) {
+	@dropdown.Item(dropdown.ItemProps{Class: "text-xs", Attributes: templ.Attributes{"data-mail-select": value}}) {
+		{ label }
+	}
+}
+
+// MailSelectAllBanner says how much of the list is selected and offers to
+// extend the selection to every message the folder and filters match. app.js
+// fills and shows it.
+templ MailSelectAllBanner() {
+	<div data-mail-select-all-banner class="mail-select-all-banner hidden flex-wrap items-center justify-center gap-x-3 gap-y-0.5 border-t border-border/60 bg-accent/40 px-3 py-1.5 text-center text-xs text-muted-foreground">
+		<span data-mail-select-all-banner-text></span>
+		<button type="button" data-mail-select-all-banner-action class="hidden font-medium text-primary hover:underline disabled:opacity-60"></button>
+		<button type="button" data-mail-select-all-banner-clear class="font-medium text-muted-foreground hover:text-foreground hover:underline">Clear</button>
 	</div>
 }
 
@@ -895,7 +944,7 @@ templ MailListRowActions(email models.Email) {
 }
 
 templ MailListCardItem(accounts []models.Account, email models.Email, position int, selectedEmail *models.Email, senderDisplayMode string) {
-	<div class="mail-list-item" data-email-id={ email.ID } data-account-id={ email.AccountID } data-starred={ fmt.Sprintf("%t", email.IsStarred) } data-position={ fmt.Sprintf("%d", position) } data-thread-id={ email.ThreadID } data-has-thread={ fmt.Sprintf("%t", email.ThreadCount > 1) }>
+	<div class="mail-list-item" data-email-id={ email.ID } data-account-id={ email.AccountID } data-starred={ fmt.Sprintf("%t", email.IsStarred) } data-position={ fmt.Sprintf("%d", position) } data-thread-id={ email.ThreadID } data-has-thread={ fmt.Sprintf("%t", email.ThreadCount > 1) } data-is-read={ fmt.Sprintf("%t", email.IsRead) }>
 		<a
 			href={ templ.URL(fmt.Sprintf("/?email=%s", email.ID)) }
 			hx-get={ mailViewPartialURL(email.ID, email.FolderID, false) }
@@ -1013,7 +1062,7 @@ templ MailListCardItem(accounts []models.Account, email models.Email, position i
 }
 
 templ MailListTableItem(email models.Email, position int, selectedEmail *models.Email, senderDisplayMode string) {
-	<div class="mail-list-item mail-list-table-row" data-email-id={ email.ID } data-account-id={ email.AccountID } data-starred={ fmt.Sprintf("%t", email.IsStarred) } data-position={ fmt.Sprintf("%d", position) } data-thread-id={ email.ThreadID } data-has-thread={ fmt.Sprintf("%t", email.ThreadCount > 1) }>
+	<div class="mail-list-item mail-list-table-row" data-email-id={ email.ID } data-account-id={ email.AccountID } data-starred={ fmt.Sprintf("%t", email.IsStarred) } data-position={ fmt.Sprintf("%d", position) } data-thread-id={ email.ThreadID } data-has-thread={ fmt.Sprintf("%t", email.ThreadCount > 1) } data-is-read={ fmt.Sprintf("%t", email.IsRead) }>
 		<a
 			href={ templ.URL(fmt.Sprintf("/?email=%s", email.ID)) }
 			hx-get={ mailViewPartialURL(email.ID, email.FolderID, false) }
