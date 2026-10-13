@@ -265,6 +265,7 @@ templ SettingsSidebar(activeTab string, width string) {
 			@SettingsSidebarItem(activeTab, "advanced", "Advanced")
 		</nav>
 		<div class="shrink-0 px-4 pb-3">
+			<a href="/licenses" target="_blank" rel="noopener" hx-boost="false" class="mb-2 block px-1 text-xs text-subtle-foreground underline-offset-2 hover:text-sidebar-accent-foreground hover:underline">Licenses</a>
 			@WebmailSidebarLogout()
 		</div>
 	</aside>

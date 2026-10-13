@@ -22,6 +22,7 @@ import (
 // is in open mode, so web/server deployments are unaffected.
 const (
 	DesktopAuthPath     = "/desktop-auth"
+	LicensesPath        = "/licenses"
 	desktopCookieName   = "raven_desktop"
 	desktopMarkerKey    = "X-Raven-Desktop"
 	desktopGrantPrefix  = "d."
@@ -104,6 +105,11 @@ func (m *Manager) desktopGate(w http.ResponseWriter, r *http.Request) bool {
 	// owner, message and file, checked by their handler), so the cookieless
 	// message frame can load its images through them.
 	if (r.Method == http.MethodGet || r.Method == http.MethodHead) && strings.HasPrefix(r.URL.Path, messageFileGatePath) {
+		return false
+	}
+	// The license text is public and opens in the system browser, which has no
+	// desktop cookie.
+	if (r.Method == http.MethodGet || r.Method == http.MethodHead) && r.URL.Path == LicensesPath {
 		return false
 	}
 	w.Header().Set("Cache-Control", "no-store")

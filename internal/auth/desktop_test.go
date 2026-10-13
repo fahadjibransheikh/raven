@@ -231,3 +231,16 @@ func TestDesktopGateIgnoredWhenAuthEnabled(t *testing.T) {
 		t.Fatal("desktop gate active in an authenticated mode")
 	}
 }
+
+func TestDesktopGateLetsTheLicenseTextThroughWithoutACookie(t *testing.T) {
+	_, h, calls := newDesktopTestHandler(t, &Config{DesktopToken: testDesktopToken})
+	if rec := serve(h, httptest.NewRequest(http.MethodGet, LicensesPath, nil)); rec.Code != http.StatusNoContent {
+		t.Fatalf("GET %s without a cookie: status %d, want the request to reach the handler", LicensesPath, rec.Code)
+	}
+	if rec := serve(h, httptest.NewRequest(http.MethodPost, LicensesPath, nil)); rec.Code != http.StatusForbidden {
+		t.Fatalf("POST %s without a cookie: status %d, want 403", LicensesPath, rec.Code)
+	}
+	if *calls != 1 {
+		t.Fatalf("handler calls = %d, want 1", *calls)
+	}
+}

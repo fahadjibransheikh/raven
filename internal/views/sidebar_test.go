@@ -599,3 +599,17 @@ func TestSidebarAccountSectionsStartCollapsedUnlessExpanded(t *testing.T) {
 		t.Fatalf("account with the active folder must stay expanded: %s", html)
 	}
 }
+
+func TestSettingsSidebarLinksToTheLicenses(t *testing.T) {
+	var out bytes.Buffer
+	if err := SettingsSidebar("accounts", "240px").Render(context.Background(), &out); err != nil {
+		t.Fatal(err)
+	}
+	html := out.String()
+	if !strings.Contains(html, `href="/licenses"`) || !strings.Contains(html, ">Licenses</a>") {
+		t.Fatalf("settings sidebar has no Licenses link: %s", html)
+	}
+	if strings.Contains(html, "onclick") {
+		t.Fatal("the Licenses link must not use inline handlers (CSP is script-src 'self')")
+	}
+}

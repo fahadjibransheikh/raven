@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 	"github.com/fahadjibransheikh/raven/internal/auth"
 	"github.com/fahadjibransheikh/raven/internal/authoperator"
+	"github.com/fahadjibransheikh/raven/internal/handler"
 	"github.com/fahadjibransheikh/raven/internal/legacyenv"
 	"github.com/fahadjibransheikh/raven/internal/server"
 	"io"
@@ -16,8 +18,15 @@ import (
 	"github.com/joho/godotenv"
 )
 
+// licenseText is shipped inside every build, since the MIT License requires its
+// notice to accompany copies of the software. The handler serves it at /licenses.
+//
+//go:embed LICENSE
+var licenseText string
+
 func main() {
 	_ = godotenv.Load()
+	handler.SetLicenseText(licenseText)
 	legacyenv.LogLegacy()
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

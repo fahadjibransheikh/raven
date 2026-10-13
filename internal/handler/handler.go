@@ -627,6 +627,7 @@ func setupAssetsRoutes(mux *http.ServeMux) {
 	})
 
 	mux.Handle("GET /assets/", http.StripPrefix("/assets/", assetHandler))
+	mux.HandleFunc("GET /licenses", serveLicenses)
 	mux.HandleFunc("GET /sw.js", func(w http.ResponseWriter, r *http.Request) {
 		if isDevelopment {
 			w.Header().Set("Cache-Control", "no-store")

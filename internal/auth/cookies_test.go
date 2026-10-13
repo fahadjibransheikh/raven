@@ -79,3 +79,9 @@ func currentCookies(response *http.Response) []*http.Cookie {
 	}
 	return current
 }
+
+func TestLicenseTextIsReachableWithoutSigningIn(t *testing.T) {
+	if !isPublicPath(LicensesPath) || isPublicPath(LicensesPath+"/other") {
+		t.Fatal("only the license text itself should be public")
+	}
+}

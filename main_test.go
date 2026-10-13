@@ -172,3 +172,12 @@ func TestAuthCommandHelperProcess(t *testing.T) {
 	})
 	os.Exit(exitCode)
 }
+
+func TestEmbeddedLicenseKeepsBothCopyrightNotices(t *testing.T) {
+	// The MIT License requires the original notice to travel with every copy.
+	for _, want := range []string{"MIT License", "Cristián Braun", "Fahad Sheikh"} {
+		if !strings.Contains(licenseText, want) {
+			t.Fatalf("embedded LICENSE is missing %q", want)
+		}
+	}
+}
