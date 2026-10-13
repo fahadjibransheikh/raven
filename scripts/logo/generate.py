@@ -1,193 +1,281 @@
 #!/usr/bin/env python3
 """Generate the Raven logo SVGs.
 
-A clean, geometric redraw of the original line-drawn raven:
+A solid, hunched raven built from two circles (head, body), their common
+tangent, a wedge bill and a wedge tail. The @ is carved out of the mass as a
+single cut: a ring round the eye plus one sweeping arc down the breast. That
+cut is also the colour boundary, so the two-colour split costs no extra line:
+the head, bill and breast are the bird colour, the back, wing and tail are the
+accent colour.
 
-- one long tapered line sweeps from the tail tip up the back into the head
-  (colour 2);
-- the head is an @: a ring with the eye inside, the ring curling in to meet
-  it, and a tapered beak off the crown; the same stroke drops down the chest
-  and spirals into the torso, with one leg and a foot (colour 1).
-
-Every curve is a true circle, ellipse, spiral or cubic, joined with matching
-tangents, so the mark stays crisp. Each colourway is a few hex values; adding
-one is one line below.
-
-Needs numpy and shapely (pip install numpy shapely), which merge the strokes
-into clean outlines. Run from anywhere:
+Each colourway is three hex values (tile, bird, wing); adding one is one line
+below. Needs numpy and shapely (pip install numpy shapely). Run from anywhere:
 
     python3 scripts/logo/generate.py
 
-Writes assets/logo.svg (the default colourway) and every colourway to
-assets/brand/. Render PNGs from these SVGs (see assets/brand/README.md).
+Writes assets/logo.svg (the default colourway), every colourway and a
+construction drawing to assets/brand/. Render PNGs from these SVGs (see
+assets/brand/README.md).
 """
-import math
-import os
-
+import math, os
 import numpy as np
-from shapely import affinity
-from shapely.geometry import LineString, Point, Polygon
+from shapely.geometry import Point, Polygon, LineString, MultiPolygon
 from shapely.ops import unary_union
+from shapely import affinity
 
-# Tile colourways: name: (tile bottom, tile top, bird, back line).
+Q = 128  # circle resolution
+
+# ---------------- construction ----------------
+# Numbers are in construction space; the bird is then scaled (s) and moved (T)
+# so it fits a FIT_R circle round the tile centre. CUT_W and RING_* are final px.
+HEAD_C, HEAD_R = np.array([680., 345.]), 205.
+BODY_C, BODY_R = np.array([470., 580.]), 290.
+CUT_W = 54.                    # final px
+RING_OUT = 104.                # final px, outer radius of ring
+RING_IN = RING_OUT - CUT_W     # inner counter radius (final px)
+EXIT = np.array([480., 866.])  # where the sweep leaves the hull (spec)
+BILL_TIP = np.array([1120., 445.])
+TAIL = [(18., 968.), (78., 1004.)]
+TAIL_ANG = (165., 112.)        # attach angles on body circle (screen deg, 90 = down)
+HOOK = 18.
+FIT_R = 452.
+OFFSET = (6., -10.)
+
+
+def pt(c, r, deg):
+    a = math.radians(deg)
+    return np.array([c[0] + r * math.cos(a), c[1] + r * math.sin(a)])
+
+
+def circle(c, r):
+    return Point(*c).buffer(r, quad_segs=Q)
+
+
+def tangents(c1, r1, c2, r2):
+    d = c2 - c1
+    L = np.linalg.norm(d)
+    phi = math.atan2(d[1], d[0])
+    al = math.acos((r1 - r2) / L)
+    out = []
+    for sgn in (1, -1):
+        n = np.array([math.cos(phi + sgn * al), math.sin(phi + sgn * al)])
+        out.append((c1 + r1 * n, c2 + r2 * n))
+    return out
+
+
+# ---------------- sweep solve (needs scale s) ----------------
+def solve_sweep(s):
+    W = CUT_W / s
+    r_c = (RING_OUT - CUT_W / 2) / s
+    px = 900.
+    lo, hi = 300., 900.
+    f = lambda py: math.hypot(px - EXIT[0], py - EXIT[1]) - math.hypot(px - HEAD_C[0], py - HEAD_C[1]) - r_c
+    for _ in range(80):
+        m = (lo + hi) / 2
+        if f(m) > 0: lo = m
+        else: hi = m
+    SW_C = np.array([px, (lo + hi) / 2])
+    SW_R = math.hypot(*(SW_C - EXIT))
+    u = (HEAD_C - SW_C) / np.linalg.norm(HEAD_C - SW_C)
+    return W, r_c, SW_C, SW_R, HEAD_C + r_c * u
+
+
+def head_cross(SW_C, SW_R):
+    # upper-right intersection of sweep circle with head circle -> bill top base
+    best = None
+    for a in np.linspace(-120, 0, 2401):
+        p = pt(HEAD_C, HEAD_R, a)
+        e = abs(math.hypot(*(p - SW_C)) - SW_R)
+        if best is None or e < best[0]: best = (e, a)
+    return best[1]
+
+
+def make_sil(s):
+    W, r_c, SW_C, SW_R, TANG = solve_sweep(s)
+    a_top = head_cross(SW_C, SW_R)
+    return a_top, W, r_c, SW_C, SW_R, TANG
+
+
+s = 0.75
+for _ in range(8):
+    A_ANG, W, r_c, SW_C, SW_R, TANG = make_sil(s)
+    tl = tangents(BODY_C, BODY_R, HEAD_C, HEAD_R)
+    fr = max(tl, key=lambda q: q[0][0] + q[1][0])
+    hull = unary_union([circle(HEAD_C, HEAD_R), circle(BODY_C, BODY_R), Polygon([fr[0], fr[1], HEAD_C, BODY_C])])
+    # culmen tangent to the head: forehead flows straight into the bill
+    dvec = BILL_TIP - HEAD_C; Ld = np.linalg.norm(dvec)
+    tang_a = math.degrees(math.atan2(dvec[1], dvec[0]) - math.acos(HEAD_R / Ld))
+    A = pt(HEAD_C, HEAD_R, tang_a)
+    B = pt(HEAD_C, HEAD_R, 34)
+    ang = math.atan2(BILL_TIP[1] - A[1], BILL_TIP[0] - A[0])
+    Lb = np.linalg.norm(BILL_TIP - A)
+    Qp = A + 0.86 * Lb * np.array([math.cos(ang), math.sin(ang)])
+    ang2 = ang + math.radians(HOOK)
+    tip = Qp + 0.14 * Lb * np.array([math.cos(ang2), math.sin(ang2)])
+    mid = (B + tip) / 2 + np.array([-4, 22.])
+    bill_pts = [HEAD_C, A, Qp, tip]
+    for tt in np.linspace(0, 1, 20)[1:]:
+        bill_pts.append((1 - tt) ** 2 * tip + 2 * tt * (1 - tt) * mid + tt ** 2 * B)
+    bill_pts.append(HEAD_C)
+    bill = Polygon(bill_pts)
+    TA, TB = pt(BODY_C, BODY_R, TAIL_ANG[0]), pt(BODY_C, BODY_R, TAIL_ANG[1])
+    tail = Polygon([TA, TAIL[0], TAIL[1], TB, BODY_C])
+    sil = unary_union([hull, bill, tail])
+    F = 60
+    sil = sil.buffer(F, quad_segs=48).buffer(-F, quad_segs=48)
+    bx0, by0, bx1, by1 = sil.bounds
+    cen = 0.4 * np.array([(bx0 + bx1) / 2, (by0 + by1) / 2]) + 0.6 * np.array(sil.centroid.coords[0])
+    verts = np.array(sil.exterior.coords)
+    s = FIT_R / np.max(np.linalg.norm(verts - cen, axis=1))
+T = np.array([512., 512.]) + np.array(OFFSET) - s * cen
+A_ANG, W, r_c, SW_C, SW_R, TANG = make_sil(s)
+
+
+def fx(g):
+    return affinity.affine_transform(g, [s, 0, 0, s, T[0], T[1]])
+
+
+def P(p):
+    return s * np.asarray(p) + T
+
+
+a_t = math.degrees(math.atan2(*(TANG - SW_C)[::-1]))
+a_e = math.degrees(math.atan2(*(EXIT - SW_C)[::-1]))
+a_hd = math.degrees(math.atan2(*(pt(HEAD_C, HEAD_R, A_ANG) - SW_C)[::-1]))
+a_e, a_hd, a_t = a_e % 360, a_hd % 360, a_t % 360
+arcpts = [pt(SW_C, SW_R, a) for a in np.linspace(a_e - 12, a_t, 400)]
+band = LineString(arcpts).buffer(W / 2, cap_style='flat')
+ring = circle(HEAD_C, r_c + W / 2).difference(circle(HEAD_C, r_c - W / 2))
+cut = unary_union([band, ring])
+G = 50
+cut = cut.buffer(G, quad_segs=32).buffer(-G, quad_segs=32)
+
+disc = circle(SW_C, SW_R)   # colour split follows the sweep circle
+front = unary_union([disc, circle(HEAD_C, HEAD_R + 2)])
+white = sil.intersection(front).difference(cut)
+grey = sil.difference(front).difference(cut)
+whole = sil.difference(cut)
+
+
+def clean(g, amin=60):
+    parts = list(g.geoms) if hasattr(g, 'geoms') else [g]
+    parts = [p for p in parts if p.geom_type == 'Polygon' and p.area * s * s > amin]
+    return unary_union(parts) if parts else Polygon()
+
+
+white, grey, whole = clean(white), clean(grey), clean(whole)
+
+
+def path(g):
+    g = fx(g)
+    polys = list(g.geoms) if hasattr(g, 'geoms') else [g]
+    d = []
+    for p in polys:
+        for ring_ in [p.exterior] + list(p.interiors):
+            c = list(ring_.coords)[:-1]
+            d.append('M' + 'L'.join(f'{x:.1f} {y:.1f}' for x, y in c) + 'Z')
+    return ''.join(d)
+
+
+
+# ---------------- construction overlay ----------------
+def cross(p, k=7):
+    x, y = P(p)
+    return f'<path d="M{x-k:.1f} {y:.1f}H{x+k:.1f}M{x:.1f} {y-k:.1f}V{y+k:.1f}"/>'
+
+
+def circ(c, r):
+    x, y = P(c)
+    return f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{r*s:.1f}"/>'
+
+
+def line(a, b):
+    (x0, y0), (x1, y1) = P(a), P(b)
+    return f'<path d="M{x0:.1f} {y0:.1f}L{x1:.1f} {y1:.1f}"/>'
+
+
+ov = []
+ov.append(circ(HEAD_C, HEAD_R)); ov.append(circ(BODY_C, BODY_R))
+ov.append(cross(HEAD_C)); ov.append(cross(BODY_C))
+for a_, b_ in tangents(BODY_C, BODY_R, HEAD_C, HEAD_R):
+    ov.append(line(a_, b_))
+# bill
+ov.append(line(A, BILL_TIP)); ov.append(line(B, BILL_TIP)); ov.append(line(A, B))
+# tail wedge
+ov.append(line(TA, TAIL[0])); ov.append(line(TB, TAIL[1])); ov.append(line(TAIL[0], TAIL[1]))
+ov.append(line(TA, TB))
+# ring: centreline, outer, inner
+ov.append(circ(HEAD_C, r_c)); ov.append(circ(HEAD_C, r_c + W / 2)); ov.append(circ(HEAD_C, r_c - W / 2))
+# sweep circle (full) + centre + tangent point + exit
+ov.append(circ(SW_C, SW_R)); ov.append(cross(SW_C, 9)); ov.append(cross(TANG, 5)); ov.append(cross(EXIT, 5))
+ov.append(line(SW_C, HEAD_C))
+overlay = ('<g fill="none" stroke="#000000" stroke-opacity="0.25" stroke-width="2">' + ''.join(ov) + '</g>'
+           '<g fill="none" stroke="#4FA3FF" stroke-opacity="0.5" stroke-width="2">'
+           '<rect x="64" y="64" width="896" height="896" rx="170"/>'
+           '<circle cx="512" cy="512" r="410"/></g>')
+
+
+# ---------------- colourways ----------------
+# Tile colourways: name: (tile, tile top for a subtle gradient, bird, wing).
 COLORWAYS = {
-    "raven": ("#D6246E", "#E8457F", "#FFFFFF", "#FFB3D1"),
-    "classic": ("#A8641F", "#C27A30", "#FFF8EE", "#F2C890"),
-    "minimal-dark": ("#111113", "#2A2A2E", "#F5F5F5", "#9A9AA2"),
-    "minimal-light": ("#F5F5F2", "#FFFFFF", "#111113", "#8A8A92"),
+    "raven": ("#D6246E", "#E3407F", "#151517", "#FFB3D1"),
+    "raven-light": ("#FBE3EC", "#FDEFF4", "#151517", "#D6246E"),
+    "classic": ("#A8641F", "#BA7530", "#151517", "#F2C890"),
+    "classic-light": ("#F6E8D6", "#FAF1E6", "#151517", "#A8641F"),
+    "minimal-light": ("#EDEBE6", "#F5F4F0", "#151517", "#6A6A72"),
+    "minimal-dark": ("#151517", "#26262A", "#F5F5F5", "#7A7A82"),
 }
 DEFAULT = "raven"
 
-# Mark-only (transparent) colourways: name: (bird, back line).
+# Mark-only (transparent) colourways: name: (bird, wing).
 MARKS = {
-    "raven": ("#D6246E", "#F59BBF"),
-    "classic": ("#A8641F", "#E3B07A"),
-    "ink": ("#111113", "#8A8A92"),
-    "white": ("#FFFFFF", "#9A9AA2"),
+    "raven": ("#151517", "#D6246E"),
+    "classic": ("#151517", "#A8641F"),
+    "ink": ("#151517", "#8A8A92"),
+    "white": ("#F5F5F5", "#9A9AA2"),
 }
 
-# Geometry on a 1024 canvas.
-STROKE = 38
-HEAD = (712, 205)        # centre of the @ ring
-HEAD_R = 80              # ring centreline radius
-EYE_R = 24               # solid eye
-EYE_OFFSET = (4, 0)
-RING_EXIT = 140          # angle where the ring leaves the head for the neck
-CURL = 95                # degrees the ring curls inward towards the eye
-CURL_GAP = 8
-TORSO = dict(c=(530, 420), r0=122, r1=56, a0=-66, a1=250, sx=0.62, rot=35)
-NECK = (60, 50)          # tangent lengths of the head-to-torso join
-TAIL = [(118, 880), (250, 580), (410, 300)]  # tail tip and two controls
-BACK_AT = 165            # angle on the ring where the back line arrives
-BEAK_AT = 280            # angle on the ring where the beak leaves
-BEAK_TIP = (925, 232)
-BEAK_CONTROLS = (90, (-20, -70))
-LEG = [(505, 508), (540, 560), (595, 575), (600, 642)]
-FOOT = [(548, 652), (664, 642)]
-SHIFT = (-10, 19)        # centres the mark on the tile
+SVG_OPEN = '<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">\n'
 
 
-def _ellipse(c, r0, r1, a0, a1, sx=1.0, rot=0.0, n=300):
-    t = np.linspace(0, 1, n)
-    a = np.radians(a0 + (a1 - a0) * t)
-    r = r0 + (r1 - r0) * t
-    x, y = r * np.cos(a) * sx, r * np.sin(a)
-    ro = math.radians(rot)
-    return np.stack([c[0] + x * math.cos(ro) - y * math.sin(ro),
-                     c[1] + x * math.sin(ro) + y * math.cos(ro)], 1)
+def _shapes(bird, wing):
+    return (f'  <path fill="{wing}" fill-rule="evenodd" d="{path(grey)}"/>\n'
+            f'  <path fill="{bird}" fill-rule="evenodd" d="{path(white)}"/>\n')
 
 
-def _cubic(p0, p1, p2, p3, n=120):
-    t = np.linspace(0, 1, n)[:, None]
-    p0, p1, p2, p3 = map(np.asarray, (p0, p1, p2, p3))
-    return (1 - t) ** 3 * p0 + 3 * (1 - t) ** 2 * t * p1 + 3 * (1 - t) * t * t * p2 + t ** 3 * p3
-
-
-def _direction(pts, at_end):
-    d = pts[-1] - pts[-4] if at_end else pts[3] - pts[0]
-    return d / np.linalg.norm(d)
-
-
-def _on_head(deg):
-    a = math.radians(deg)
-    return np.array([HEAD[0] + HEAD_R * math.cos(a), HEAD[1] + HEAD_R * math.sin(a)])
-
-
-def _stroke(pts, width):
-    return LineString(pts).buffer(width / 2, cap_style="round", join_style="round")
-
-
-def _tapered(pts, width_at):
-    """A stroke whose width follows width_at(s) for s from 0 to 1 along it."""
-    d = np.gradient(pts, axis=0)
-    d /= np.linalg.norm(d, axis=1)[:, None]
-    normal = np.stack([-d[:, 1], d[:, 0]], 1)
-    s = np.r_[0, np.cumsum(np.linalg.norm(np.diff(pts, axis=0), axis=1))]
-    half = np.array([width_at(x) for x in s / s[-1]])[:, None] / 2
-    return Polygon(np.vstack([pts + normal * half, (pts - normal * half)[::-1]])).buffer(0)
-
-
-def geometry():
-    """Return (bird, back line) as shapely geometries."""
-    n = 400
-    angles = np.radians(np.linspace(RING_EXIT, RING_EXIT - 360 - CURL, n))
-    radii = np.full(n, float(HEAD_R))
-    k = int(n * CURL / (360 + CURL))
-    radii[-k:] = np.linspace(HEAD_R, EYE_R + STROKE / 2 + CURL_GAP, k)
-    # Runs from the inner end of the curl out round the ring to the neck.
-    ring = np.stack([HEAD[0] + radii * np.cos(angles), HEAD[1] + radii * np.sin(angles)], 1)[::-1]
-    torso = _ellipse(TORSO["c"], TORSO["r0"], TORSO["r1"], TORSO["a0"], TORSO["a1"],
-                     TORSO["sx"], TORSO["rot"])
-    neck = _cubic(ring[-1], ring[-1] + _direction(ring, True) * NECK[0],
-                  torso[0] - _direction(torso, False) * NECK[1], torso[0])
-    eye = Point(HEAD[0] + EYE_OFFSET[0], HEAD[1] + EYE_OFFSET[1]).buffer(EYE_R)
-    back = _tapered(_cubic(*TAIL, _on_head(BACK_AT)), lambda s: 6 + (STROKE - 6) * s ** 0.45)
-    start = _on_head(BEAK_AT)
-    tip = np.array(BEAK_TIP)
-    beak_pts = _cubic(start, start + np.array([BEAK_CONTROLS[0], 0]),
-                      tip + np.array(BEAK_CONTROLS[1]), tip)
-    beak = _tapered(beak_pts, lambda s: STROKE + (5 - STROKE) * s ** 1.3)
-    bird = unary_union([
-        _stroke(np.vstack([ring, neck, torso]), STROKE),
-        eye,
-        beak,
-        _stroke(_cubic(*LEG), STROKE * 0.85),
-        _stroke(np.array(FOOT), STROKE * 0.85),
-    ])
-    line = back.difference(bird)
-    return affinity.translate(bird, *SHIFT), affinity.translate(line, *SHIFT)
-
-
-def _path(geom):
-    d = []
-    for poly in getattr(geom, "geoms", [geom]):
-        poly = poly.simplify(0.25)
-        for ring in [poly.exterior, *poly.interiors]:
-            pts = list(ring.coords)[:-1]
-            d.append("M" + "L".join(f"{x:.1f} {y:.1f}" for x, y in pts) + "Z")
-    return "".join(d)
-
-
-def _svg(inner):
-    return ('<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" '
-            f'viewBox="0 0 1024 1024">\n{inner}</svg>\n')
-
-
-def icon(name, bird_d, line_d):
-    bottom, top, bird, line = COLORWAYS[name]
+def icon(name):
+    tile, top, bird, wing = COLORWAYS[name]
     gid = f"raven-bg-{name}"
-    return _svg(
-        f'  <defs><linearGradient id="{gid}" x1="0" y1="0" x2="0" y2="1">'
-        f'<stop offset="0" stop-color="{top}"/><stop offset="1" stop-color="{bottom}"/>'
-        "</linearGradient></defs>\n"
-        f'  <rect width="1024" height="1024" rx="229" fill="url(#{gid})"/>\n'
-        f'  <path fill="{line}" d="{line_d}"/>\n'
-        f'  <path fill="{bird}" fill-rule="evenodd" d="{bird_d}"/>\n'
-    )
+    return (SVG_OPEN
+            + f'  <defs><linearGradient id="{gid}" x1="0" y1="0" x2="0" y2="1">'
+            + f'<stop offset="0" stop-color="{top}"/><stop offset="1" stop-color="{tile}"/>'
+            + '</linearGradient></defs>\n'
+            + f'  <rect width="1024" height="1024" rx="229" fill="url(#{gid})"/>\n'
+            + _shapes(bird, wing) + '</svg>\n')
 
 
-def mark(name, bird_d, line_d):
-    bird, line = MARKS[name]
-    return _svg(
-        f'  <path fill="{line}" d="{line_d}"/>\n'
-        f'  <path fill="{bird}" fill-rule="evenodd" d="{bird_d}"/>\n'
-    )
+def glyph(name):
+    bird, wing = MARKS[name]
+    return SVG_OPEN + _shapes(bird, wing) + '</svg>\n'
+
+
+def construction():
+    return (SVG_OPEN + '  <rect width="1024" height="1024" rx="229" fill="#EDEBE6"/>\n'
+            + _shapes("#151517", "#6A6A72") + overlay + '\n</svg>\n')
 
 
 def main():
     root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     brand = os.path.join(root, "assets", "brand")
     os.makedirs(brand, exist_ok=True)
-    bird, line = geometry()
-    bird_d, line_d = _path(bird), _path(line)
-    for name in COLORWAYS:
-        with open(os.path.join(brand, f"logo-{name}.svg"), "w") as f:
-            f.write(icon(name, bird_d, line_d))
-    for name in MARKS:
-        with open(os.path.join(brand, f"mark-{name}.svg"), "w") as f:
-            f.write(mark(name, bird_d, line_d))
+    files = {f"logo-{n}.svg": icon(n) for n in COLORWAYS}
+    files.update({f"mark-{n}.svg": glyph(n) for n in MARKS})
+    files["construction.svg"] = construction()
+    for name, text in files.items():
+        with open(os.path.join(brand, name), "w") as f:
+            f.write(text)
     with open(os.path.join(root, "assets", "logo.svg"), "w") as f:
-        f.write(icon(DEFAULT, bird_d, line_d))
+        f.write(icon(DEFAULT))
 
 
 if __name__ == "__main__":
