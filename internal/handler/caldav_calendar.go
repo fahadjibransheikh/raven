@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/cristianadrielbraun/gofer/internal/storage"
+
+	"golang.org/x/net/publicsuffix"
 )
 
 func normalizeCalDAVBaseURL(raw string) (string, error) {
@@ -346,10 +348,31 @@ func resolveCalDAVHref(baseURL, href string) (string, error) {
 	if baseErr != nil || remoteErr != nil || remote.Host == "" || remote.Scheme == "" {
 		return "", fmt.Errorf("CalDAV server returned an invalid resource URL")
 	}
-	if !strings.EqualFold(base.Scheme, remote.Scheme) || !strings.EqualFold(base.Host, remote.Host) {
+	if !strings.EqualFold(base.Scheme, remote.Scheme) || (!strings.EqualFold(base.Host, remote.Host) && !calDAVSiblingHost(base, remote)) {
 		return "", fmt.Errorf("CalDAV server returned a resource on a different origin")
 	}
 	return remote.String(), nil
+}
+
+// calDAVSiblingHost allows a resource on another HTTPS host of the same
+// registered domain, as iCloud does: discovery starts at caldav.icloud.com and
+// the calendars live on a per-account pNN-caldav.icloud.com host. Hosts under a
+// different registered domain, IP addresses and non-default ports stay refused;
+// every connection still goes through the private-network guard.
+func calDAVSiblingHost(base, remote *url.URL) bool {
+	if !strings.EqualFold(base.Scheme, "https") || !strings.EqualFold(remote.Scheme, "https") {
+		return false
+	}
+	if base.Port() != "" && base.Port() != "443" || remote.Port() != "" && remote.Port() != "443" {
+		return false
+	}
+	baseHost, remoteHost := strings.ToLower(base.Hostname()), strings.ToLower(remote.Hostname())
+	if net.ParseIP(baseHost) != nil || net.ParseIP(remoteHost) != nil {
+		return false
+	}
+	baseDomain, baseErr := publicsuffix.EffectiveTLDPlusOne(baseHost)
+	remoteDomain, remoteErr := publicsuffix.EffectiveTLDPlusOne(remoteHost)
+	return baseErr == nil && remoteErr == nil && baseDomain == remoteDomain
 }
 
 func calDAVPropfind(ctx context.Context, endpoint, username, password, depth, body string) (davMultiStatus, error) {

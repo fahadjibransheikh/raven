@@ -156,8 +156,10 @@ func replaceCalendarSourcesTx(ctx context.Context, tx *sql.Tx, userID, accountID
 			selected = existingSelected == 1
 		} else if err != sql.ErrNoRows {
 			return fmt.Errorf("load calendar source %q: %w", remoteID, err)
-		} else if carried, ok := carriedSelection[ravenCalendarCarryoverKey(remoteID)]; ok {
-			selected = carried
+		} else if len(carriedSelection) > 0 {
+			// The user already chose calendars in Raven; ones it never had
+			// start unselected instead of taking the provider default.
+			selected = carriedSelection[ravenCalendarCarryoverKey(remoteID)]
 		}
 		if sourceID == "" {
 			sourceID = uuid.NewString()

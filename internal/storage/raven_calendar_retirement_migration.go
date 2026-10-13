@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+
+	"golang.org/x/net/publicsuffix"
 )
 
 // Raven shipped its own calendar cache at v97 (calendars, calendar_events,
@@ -83,9 +85,11 @@ func ravenCalendarCarryoverTx(ctx context.Context, tx *sql.Tx, accountID string)
 }
 
 // ravenCalendarCarryoverKey matches calendar IDs across Raven's old CalDAV
-// client and upstream's: CalDAV IDs are collection URLs, which may differ in
-// host case, an explicit default port or the trailing slash. Other providers'
-// IDs are opaque and compared as-is.
+// client and upstream's. CalDAV IDs are collection URLs whose host can differ
+// between discoveries (iCloud moves accounts between pNN-caldav.icloud.com
+// hosts), so they match on scheme, registered domain and path, ignoring case,
+// default ports and the trailing slash. Other providers' IDs are opaque and
+// compared as-is.
 func ravenCalendarCarryoverKey(remoteID string) string {
 	remoteID = strings.TrimSpace(remoteID)
 	parsed, err := url.Parse(remoteID)
@@ -93,6 +97,9 @@ func ravenCalendarCarryoverKey(remoteID string) string {
 		return remoteID
 	}
 	host := strings.ToLower(parsed.Hostname())
+	if domain, err := publicsuffix.EffectiveTLDPlusOne(host); err == nil {
+		host = domain
+	}
 	if port := parsed.Port(); port != "" && !(parsed.Scheme == "https" && port == "443") && !(parsed.Scheme == "http" && port == "80") {
 		host += ":" + port
 	}

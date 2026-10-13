@@ -36,7 +36,8 @@ func TestReplaceCalendarSourcesAppliesRavenCalendarCarryoverOnce(t *testing.T) {
 	for _, source := range sources {
 		selected[source.RemoteID] = source.IsSelected
 	}
-	want := map[string]bool{"kept-on": true, "kept-off": false, "new": true}
+	// "new" was never in Raven's calendar: unselected despite the provider default.
+	want := map[string]bool{"kept-on": true, "kept-off": false, "new": false}
 	for remoteID, wantSelected := range want {
 		if got, ok := selected[remoteID]; !ok || got != wantSelected {
 			t.Fatalf("source %q selected = %v (present %v), want %v; all %v", remoteID, got, ok, wantSelected, selected)
@@ -86,6 +87,8 @@ func TestRavenCalendarCarryoverKeyMatchesCalDAVURLVariants(t *testing.T) {
 	for _, discovered := range []string{
 		"https://p112-caldav.icloud.com/1836625426/calendars/home/",
 		"https://P112-CalDAV.icloud.com:443/1836625426/calendars/home",
+		// iCloud moved the account to another partition host.
+		"https://p70-caldav.icloud.com:443/1836625426/calendars/home/",
 	} {
 		if got := ravenCalendarCarryoverKey(discovered); got != saved {
 			t.Fatalf("key(%q) = %q, want %q", discovered, got, saved)
@@ -93,6 +96,9 @@ func TestRavenCalendarCarryoverKeyMatchesCalDAVURLVariants(t *testing.T) {
 	}
 	if ravenCalendarCarryoverKey("https://p112-caldav.icloud.com/1836625426/calendars/work/") == saved {
 		t.Fatal("different calendars share a key")
+	}
+	if ravenCalendarCarryoverKey("https://caldav.evil-icloud.com/1836625426/calendars/home/") == saved {
+		t.Fatal("a different registered domain matched")
 	}
 	// Opaque provider IDs are case-sensitive and untouched.
 	if ravenCalendarCarryoverKey("AQMkADAw/A=") != "AQMkADAw/A=" || ravenCalendarCarryoverKey("Family@group.calendar.google.com") == ravenCalendarCarryoverKey("family@group.calendar.google.com") {
