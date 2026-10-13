@@ -285,10 +285,8 @@ func calendarEventColorStyle(event CalendarEvent) string {
 }
 
 func calendarEventTimeLabel(event CalendarEvent, location *time.Location) string {
-	if event.AllDay {
-		return "All day"
-	}
-	if event.StartAt == nil {
+	// All-day chips carry no label; the tinted fill says it.
+	if event.AllDay || event.StartAt == nil {
 		return ""
 	}
 	return event.StartAt.In(location).Format("15:04")
@@ -452,6 +450,23 @@ func calendarConfiguredAccounts(accounts []models.Account) []models.Account {
 		configured = append(configured, account)
 	}
 	return configured
+}
+
+// calendarUnselectedAccounts lists Google and Microsoft accounts with no calendar
+// selected. They have nothing to tick in the sidebar (only selected calendars are
+// listed), so the page points at account setup instead of hiding them.
+func calendarUnselectedAccounts(accounts []models.Account) []models.Account {
+	var unselected []models.Account
+	for _, account := range accounts {
+		if account.IsDeleting || account.CalendarSyncEnabled {
+			continue
+		}
+		switch strings.ToLower(strings.TrimSpace(account.Provider)) {
+		case "gmail", "outlook":
+			unselected = append(unselected, account)
+		}
+	}
+	return unselected
 }
 
 func calendarAccountProviderLabel(account models.Account) string {

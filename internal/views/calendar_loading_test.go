@@ -51,7 +51,7 @@ func TestCalendarLoadingUsesEmptyMonthAndWeekLayout(t *testing.T) {
 	}
 }
 
-func TestCalendarSkeletonSidebarShowsOnlyConfiguredAccounts(t *testing.T) {
+func TestCalendarSkeletonSidebarMatchesRealAccountList(t *testing.T) {
 	accounts := []models.Account{
 		{ID: "configured", Provider: "gmail", Name: "Configured calendar", CalendarSyncEnabled: true},
 		{ID: "unconfigured", Provider: "gmail", Name: "Unconfigured calendar"},
@@ -66,8 +66,9 @@ func TestCalendarSkeletonSidebarShowsOnlyConfiguredAccounts(t *testing.T) {
 			t.Errorf("Skeleton sidebar missing %q", expected)
 		}
 	}
-	if strings.Contains(html, "Unconfigured calendar") {
-		t.Error("Skeleton leaks unconfigured accounts")
+	// The real sidebar lists an account with no calendars selected, so the skeleton does too.
+	if !strings.Contains(html, "Unconfigured calendar") {
+		t.Error("Skeleton should list accounts with no calendars selected like the real sidebar")
 	}
 }
 

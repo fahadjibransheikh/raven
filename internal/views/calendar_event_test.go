@@ -179,8 +179,12 @@ func TestCalendarEventsHaveSharedAccessibleDetailsTriggers(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, attribute := range []string{`hx-get="/api/calendar/events/event-id"`, `hx-target="#app-pane-dialogs"`, `aria-haspopup="dialog"`, `data-calendar-event-trigger`} {
-		if got := strings.Count(output.String(), attribute); got != 2 {
-			t.Errorf("attribute %q count = %d, want grid and agenda triggers", attribute, got)
+		want := 2
+		if attribute == `hx-target="#app-pane-dialogs"` || attribute == `aria-haspopup="dialog"` {
+			want = 3 // plus the phone header's New event button
+		}
+		if got := strings.Count(output.String(), attribute); got != want {
+			t.Errorf("attribute %q count = %d, want %d (grid and agenda triggers)", attribute, got, want)
 		}
 	}
 }

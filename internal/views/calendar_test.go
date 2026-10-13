@@ -192,3 +192,32 @@ func TestCalendarSidebarActivatesCalendarAppAndShowsProviders(t *testing.T) {
 		}
 	}
 }
+
+func TestCalendarMonthChipsDropAllDayLabelAndMarkPhoneShell(t *testing.T) {
+	location := time.FixedZone("CEST", 2*60*60)
+	start := time.Date(2026, time.September, 17, 9, 0, 0, 0, location)
+	end := start.Add(time.Hour)
+	month := NewCalendarMonthData(start)
+	month.HasSources = true
+	month.Events = []CalendarEvent{
+		{ID: "timed", Summary: "Planning", StartAt: &start, EndAt: &end},
+		{ID: "holiday", Summary: "Holiday", AllDay: true, StartDate: "2026-09-18", EndDate: "2026-09-19"},
+	}
+	var output bytes.Buffer
+	if err := CalendarShell(nil, month, nil).Render(t.Context(), &output); err != nil {
+		t.Fatal(err)
+	}
+	html := output.String()
+	// phone-layout.js keys on this to leave the mail pane logic alone.
+	for _, expected := range []string{"data-calendar-app", "data-phone-nav-toggle", "data-calendar-agenda-toggle", "data-calendar-agenda-back", "data-calendar-chip-time"} {
+		if !strings.Contains(html, expected) {
+			t.Errorf("calendar shell missing %q", expected)
+		}
+	}
+	if strings.Count(html, "data-calendar-chip-time") != 1 {
+		t.Errorf("only the timed chip carries a time, got %d", strings.Count(html, "data-calendar-chip-time"))
+	}
+	if label := calendarEventTimeLabel(month.Events[1], location); label != "" {
+		t.Errorf("all-day chip label = %q, want none", label)
+	}
+}

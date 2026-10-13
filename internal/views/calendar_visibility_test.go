@@ -87,8 +87,10 @@ func TestCalendarSidebarGroupsConfiguredSourcesAndMatchesLoadingRows(t *testing.
 		if count := strings.Count(body, "data-calendar-visibility="); count != 2 {
 			t.Fatalf("toggle count = %d, want 2", count)
 		}
-		if strings.Contains(body, "Unconfigured account") || strings.Contains(body, "Not configured") {
-			t.Error("sidebar exposed an unconfigured account")
+		// An account with nothing selected is listed with a pointer to setup, but its
+		// unselected calendars get no toggle.
+		if !strings.Contains(body, "Unconfigured account") || !strings.Contains(body, "Choose calendars") || strings.Contains(body, "Not configured") {
+			t.Error("sidebar should list the account with no calendars selected, without its calendars")
 		}
 	}
 }

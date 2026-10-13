@@ -6,7 +6,7 @@ import (
 )
 
 templ CalendarWeekGrid(data CalendarMonthData) {
-	<div class="flex h-full min-w-[728px] flex-col border border-border bg-background" data-calendar-week-grid>
+	<div class="flex h-full min-w-[560px] flex-col border border-border bg-background" data-calendar-week-grid>
 		<div class="sticky top-0 z-20 shrink-0 border-b border-border bg-card shadow-sm" data-calendar-week-header>
 			<div class="grid grid-cols-[56px_repeat(7,minmax(0,1fr))] border-b border-border bg-muted/35">
 				<div class="flex items-end justify-center overflow-hidden px-1 pb-3 text-[10px] font-semibold text-muted-foreground" title={ data.Month.Location().String() } data-calendar-week-timezone>{ data.Weeks[0].Days[0].Date.Format("MST") }</div>

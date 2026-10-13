@@ -4281,3 +4281,111 @@ html[data-desktop="macos"] body > div.h-screen {
     flex: 1 1 0;
   }
 }
+
+/* === Calendar ===
+   Raven's restyle of the calendar page (upstream gofer markup). Keyed on data attributes
+   so the templ class strings stay close to upstream. Phone rules use html[data-phone]. */
+
+/* Month chips give the title the room. All-day events are a tinted fill with no label;
+   timed events are quiet text. The time and the response badge only show when the chip
+   is wide enough to leave the title space; an accepted check is never shown. */
+[data-calendar-chip-body] {
+  container-type: inline-size;
+}
+
+@container (max-width: 5.5rem) {
+  [data-calendar-chip-time],
+  [data-calendar-chip-body] .calendar-event-response-indicator {
+    display: none;
+  }
+}
+
+[data-calendar-month-event][data-calendar-response-state="accepted"] .calendar-event-response-indicator {
+  display: none;
+}
+
+:root [data-calendar-month-event]:not([data-calendar-event-all-day="true"]):is([data-calendar-response-state=""], [data-calendar-response-state="accepted"]):not(:hover, [data-calendar-event-hover]) {
+  background-color: transparent;
+  border-color: transparent;
+}
+
+:root :is([data-calendar-month-event], [data-calendar-week-all-day])[data-calendar-event-all-day="true"]:is([data-calendar-response-state=""], [data-calendar-response-state="accepted"]) {
+  background-color: color-mix(in srgb, var(--color-primary) 22%, var(--color-background));
+  border-color: color-mix(in srgb, var(--color-primary) 40%, var(--color-background));
+}
+
+:root :is([data-calendar-month-event], [data-calendar-week-all-day])[data-calendar-event-all-day="true"]:is([data-calendar-response-state=""], [data-calendar-response-state="accepted"]):is(:hover, [data-calendar-event-hover]) {
+  background-color: color-mix(in srgb, var(--color-primary) 32%, var(--color-background));
+}
+
+/* Week view: the agenda narrows so all seven days fit beside the sidebar. The list-width
+   drag handle has nothing to do here, so it hides. */
+@media (min-width: 1024px) {
+  #main-content:has(#calendar-main[data-calendar-view="week"]) > #mail-list[data-list-width-key="calendar_list_width"] {
+    width: auto !important;
+    flex: 1 1 0%;
+  }
+
+  #main-content:has(#calendar-main[data-calendar-view="week"]) > #mail-view[data-calendar-agenda] {
+    flex: 0 0 clamp(260px, 26%, 340px);
+  }
+
+  #main-content:has(#calendar-main[data-calendar-view="week"]) > .resize-handle {
+    display: none;
+  }
+}
+
+/* Phone: the month grid is the first screen and the agenda (day or all events) the second.
+   app.js hides #mail-list when a day is selected; calendar-phone.js sets
+   html[data-calendar-phone-agenda] for the Agenda button. Both beat the
+   display:flex !important that the mail shell puts on #mail-list. */
+@media (max-width: 1023.98px) {
+  html[data-phone] #mail-list[data-list-width-key="calendar_list_width"].hidden,
+  html[data-phone][data-calendar-phone-agenda] #mail-list[data-list-width-key="calendar_list_width"] {
+    display: none !important;
+  }
+
+  html[data-phone][data-calendar-phone-agenda] #mail-view[data-calendar-agenda] {
+    display: flex !important;
+    width: 100%;
+    flex: 1 1 auto;
+  }
+
+  /* The back button replaces "All events". */
+  html[data-phone] [data-calendar-agenda-clear] {
+    display: none;
+  }
+
+  html[data-phone] [aria-label="Calendar legend"] {
+    display: none;
+  }
+
+  /* Cells are ~55px wide: events become colour bars and a tap on the cell opens its day. */
+  html[data-phone] [data-calendar-month-event-list] {
+    grid-auto-rows: 6px !important;
+  }
+
+  html[data-phone] [data-calendar-month-event] {
+    pointer-events: none !important;
+    height: 6px;
+    min-height: 0;
+    padding: 0;
+    background-color: transparent !important;
+    border-color: transparent !important;
+  }
+
+  html[data-phone] [data-calendar-month-event] > [data-calendar-chip-body] {
+    visibility: visible !important;
+  }
+
+  html[data-phone] [data-calendar-month-event] > [data-calendar-chip-body] > :not(:first-child) {
+    display: none;
+  }
+
+  html[data-phone] [data-calendar-month-event] > [data-calendar-chip-body] > :first-child {
+    flex: 1 1 auto;
+    width: 100%;
+    height: 6px;
+    border-radius: 9999px;
+  }
+}

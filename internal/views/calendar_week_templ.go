@@ -34,7 +34,7 @@ func CalendarWeekGrid(data CalendarMonthData) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"flex h-full min-w-[728px] flex-col border border-border bg-background\" data-calendar-week-grid><div class=\"sticky top-0 z-20 shrink-0 border-b border-border bg-card shadow-sm\" data-calendar-week-header><div class=\"grid grid-cols-[56px_repeat(7,minmax(0,1fr))] border-b border-border bg-muted/35\"><div class=\"flex items-end justify-center overflow-hidden px-1 pb-3 text-[10px] font-semibold text-muted-foreground\" title=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"flex h-full min-w-[560px] flex-col border border-border bg-background\" data-calendar-week-grid><div class=\"sticky top-0 z-20 shrink-0 border-b border-border bg-card shadow-sm\" data-calendar-week-header><div class=\"grid grid-cols-[56px_repeat(7,minmax(0,1fr))] border-b border-border bg-muted/35\"><div class=\"flex items-end justify-center overflow-hidden px-1 pb-3 text-[10px] font-semibold text-muted-foreground\" title=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
