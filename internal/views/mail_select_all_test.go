@@ -31,7 +31,7 @@ func TestMailListHasSelectAllBanner(t *testing.T) {
 		t.Fatal(err)
 	}
 	html := out.String()
-	for _, want := range []string{"data-mail-select-all-banner", "data-mail-select-all-banner-action", "data-mail-select-all-banner-clear"} {
+	for _, want := range []string{"data-mail-select-all-banner", "data-mail-select-all-banner-action"} {
 		if !strings.Contains(html, want) {
 			t.Errorf("banner is missing %s", want)
 		}

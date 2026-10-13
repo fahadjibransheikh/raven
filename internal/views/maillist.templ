@@ -196,7 +196,7 @@ templ MailListToolbar(accounts []models.Account, activeFolder string, viewMode s
 				</form>
 			}
 		}
-		<button type="button" data-mail-selection-clear class="hidden h-7 items-center rounded-md px-2 text-xs font-semibold text-muted-foreground hover:bg-accent hover:text-foreground">
+		<button type="button" data-mail-selection-clear class="hidden h-7 shrink-0 items-center whitespace-nowrap rounded-md px-2 text-xs font-semibold text-muted-foreground hover:bg-accent hover:text-foreground">
 			<span data-mail-selection-summary>0 selected</span>
 			<span class="ml-1 text-xs">Clear</span>
 		</button>
@@ -371,7 +371,6 @@ templ MailSelectAllBanner() {
 	<div data-mail-select-all-banner class="mail-select-all-banner hidden flex-wrap items-center justify-center gap-x-3 gap-y-0.5 border-t border-border/60 bg-accent/40 px-3 py-1.5 text-center text-xs text-muted-foreground">
 		<span data-mail-select-all-banner-text></span>
 		<button type="button" data-mail-select-all-banner-action class="hidden font-medium text-primary hover:underline disabled:opacity-60"></button>
-		<button type="button" data-mail-select-all-banner-clear class="font-medium text-muted-foreground hover:text-foreground hover:underline">Clear</button>
 	</div>
 }
 

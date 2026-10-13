@@ -1497,12 +1497,6 @@ document.addEventListener("DOMContentLoaded", function () {
         return
       }
 
-      if (e.target.closest && e.target.closest("[data-mail-select-all-banner-clear]")) {
-        e.preventDefault()
-        clearMailSelection()
-        return
-      }
-
       var clearSelection = e.target.closest && e.target.closest("[data-mail-selection-clear]")
       if (clearSelection) {
         e.preventDefault()

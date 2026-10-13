@@ -24,7 +24,7 @@ async function setup(opts) {
     '<input type="checkbox" data-mail-select-all>' +
     '<button data-mail-select="read"></button><button data-mail-select="unread"></button><button data-mail-select="starred"></button><button data-mail-select="invert"></button><button data-mail-select="none"></button>' +
     '<button data-mail-selection-clear class="hidden"><span data-mail-selection-summary>0 selected</span></button><button data-mail-selection-action="star">Star</button>' +
-    '<div data-mail-select-all-banner class="hidden"><span data-mail-select-all-banner-text></span><button data-mail-select-all-banner-action class="hidden"></button><button data-mail-select-all-banner-clear>Clear</button></div>' +
+    '<div data-mail-select-all-banner class="hidden"><span data-mail-select-all-banner-text></span><button data-mail-select-all-banner-action class="hidden"></button></div>' +
     '<div id="mail-list-scroll">' + rows + "</div></body>", { runScripts: "outside-only", pretendToBeVisual: true })
   const w = dom.window
   const calls = []
@@ -102,7 +102,7 @@ test("the banner appears for two or more selected rows and offers every message 
   assert.equal(action.classList.contains("hidden"), true)
   assert.equal(t.d.querySelector("[data-mail-select-all]").checked, true)
 
-  t.d.querySelector("[data-mail-select-all-banner-clear]").click()
+  t.d.querySelector("[data-mail-selection-clear]").click()
   assert.deepEqual(selected(t.d), [])
   assert.equal(banner.classList.contains("hidden"), true)
 })
