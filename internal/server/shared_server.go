@@ -29,12 +29,17 @@ import (
 	webpush "github.com/SherClockHolmes/webpush-go"
 )
 
-// ConfiguredDatabasePath is RAVEN_DB_PATH, or the default data/gofer.db.
+// ConfiguredDatabasePath is RAVEN_DB_PATH, or the default data/raven.db. An
+// explicit path is used exactly as given. For the default, a database left by
+// an install from before the rename (data/gofer.db) is renamed into place first.
 func ConfiguredDatabasePath() string {
 	if dbPath := legacyenv.Get("RAVEN_DB_PATH"); dbPath != "" {
 		return dbPath
 	}
-	return "data/gofer.db"
+	if err := adoptLegacyDatabase(defaultDatabasePath); err != nil {
+		log.Fatalf("storage: could not move the existing database to its new name: %v", err)
+	}
+	return defaultDatabasePath
 }
 
 // RunShared runs the open and personal modes on the single shared database.
