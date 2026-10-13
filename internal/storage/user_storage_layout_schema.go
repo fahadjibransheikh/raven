@@ -58,7 +58,7 @@ func applyLayoutSchemaTx(ctx context.Context, tx *sql.Tx, steps []layoutSchemaSt
 		return err
 	}
 	if version > len(steps) {
-		return fmt.Errorf("layout schema version %d was written by a newer Gofer release; this release supports %d", version, len(steps))
+		return fmt.Errorf("layout schema version %d was written by a newer Raven release; this release supports %d", version, len(steps))
 	}
 	if version == len(steps) {
 		return nil

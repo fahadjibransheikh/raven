@@ -328,7 +328,7 @@ func (s *Service) SendTestPush(ctx context.Context, userID, endpoint string) err
 	}
 
 	payload, err := json.Marshal(map[string]any{
-		"title": "Gofer",
+		"title": "Raven",
 		"body":  "Test notification. Desktop notifications are working.",
 		"tag":   "gofer-test-notification",
 		"url":   "/settings/advanced",

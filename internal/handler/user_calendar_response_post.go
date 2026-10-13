@@ -86,7 +86,7 @@ func (h *Handler) handleUserCalendarResponse(w http.ResponseWriter, r *http.Requ
 			if target.Event.ResponseStatus != response {
 				claim, err := p.reserveResponse(operation, target, response)
 				if err != nil {
-					return userCalendarResponseFailure{http.StatusConflict, "A response may already have been sent for this version. Check it in your calendar provider, then refresh Gofer; it will not resend automatically.", true, true}
+					return userCalendarResponseFailure{http.StatusConflict, "A response may already have been sent for this version. Check it in your calendar provider, then refresh Raven; it will not resend automatically.", true, true}
 				}
 				p.response = claim
 				if target.CalDAV != nil {

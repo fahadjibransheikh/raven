@@ -37,7 +37,7 @@ func cloneCalendarComponent(source *ical.Component) *ical.Component {
 
 func calendarRecurrenceKey(prop *ical.Prop, location *time.Location) (string, error) {
 	if prop == nil || prop.Params.Get("RANGE") != "" {
-		return "", calendarUpdateUnsupported("Range exceptions cannot be changed in Gofer yet.")
+		return "", calendarUpdateUnsupported("Range exceptions cannot be changed in Raven yet.")
 	}
 	at, err := prop.DateTime(location)
 	if err != nil {
@@ -55,7 +55,7 @@ func calendarRecurrenceKey(prop *ical.Prop, location *time.Location) (string, er
 func calendarCalDAVOccurrenceResource(cal *ical.Calendar, headers http.Header, existing storage.CalendarEvent) (*ical.Component, *ical.Component, *ical.Prop, error) {
 	var master, selected *ical.Component
 	if cal.Props.Get("METHOD") != nil || headers.Get("Schedule-Tag") != "" || existing.ICalUID == "" {
-		return nil, nil, nil, calendarUpdateUnsupported("Invitations cannot be changed in Gofer yet.")
+		return nil, nil, nil, calendarUpdateUnsupported("Invitations cannot be changed in Raven yet.")
 	}
 	for _, component := range cal.Children {
 		if component.Name == ical.CompTimezone {

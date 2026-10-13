@@ -47,7 +47,7 @@ func TestAccountServerCheckReportsRefusedServersWhileTyping(t *testing.T) {
 
 	notes := check("192.168.1.10", "993", "tls")
 	if len(notes) != 1 || notes[0].Level != "blocked" || notes[0].Link != "" ||
-		!strings.Contains(notes[0].Text, "private network") || !strings.Contains(notes[0].Text, "Ask your Gofer administrator") || !strings.Contains(notes[0].Text, "192.168.1.10:993") {
+		!strings.Contains(notes[0].Text, "private network") || !strings.Contains(notes[0].Text, "Ask your Raven administrator") || !strings.Contains(notes[0].Text, "192.168.1.10:993") {
 		t.Fatalf("unapproved private server in managed mode = %#v", notes)
 	}
 

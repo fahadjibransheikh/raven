@@ -22,7 +22,7 @@ func calendarDeleteReason(reason string) string {
 
 func (h *Handler) calendarEventDeleteAccess(ctx context.Context, event storage.CalendarEvent) (storage.CalendarSource, string, error) {
 	if calendarStoredEditableOnline(event) {
-		return storage.CalendarSource{}, "Online meetings cannot be deleted in Gofer yet.", nil
+		return storage.CalendarSource{}, "Online meetings cannot be deleted in Raven yet.", nil
 	}
 	source, reason, err := h.calendarEventMutationAccess(ctx, event, h.calendarDeleteEvent != nil, calendarEventIsSeries(event))
 	return source, calendarDeleteReason(reason), err

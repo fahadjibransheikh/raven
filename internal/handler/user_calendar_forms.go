@@ -46,7 +46,7 @@ func (p *userCalendarRequest) mutationAccess(ctx context.Context, deleting bool)
 	if deleting {
 		reason = ""
 		if calendarStoredEditableOnline(event) {
-			reason = "Online meetings cannot be deleted in Gofer yet."
+			reason = "Online meetings cannot be deleted in Raven yet."
 		}
 	}
 	if reason == "" {

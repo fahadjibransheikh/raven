@@ -229,7 +229,7 @@ func (p *userContactPull) pushGoogleAttempt(ctx context.Context, contact models.
 			}
 		}
 		if len(matches) > 1 {
-			return "", "", fmt.Errorf("Gmail has multiple contacts with %s; choose the copy to use before enabling Gofer Sync", contact.Email)
+			return "", "", fmt.Errorf("Gmail has multiple contacts with %s; choose the copy to use before enabling Raven Sync", contact.Email)
 		}
 		if len(matches) == 1 {
 			remoteID, etag = matches[0].ResourceName, matches[0].Etag
@@ -342,7 +342,7 @@ func (p *userContactPull) pushOutlookAttempt(ctx context.Context, contact models
 				}
 			}
 			if len(matches) > 1 {
-				return "", "", fmt.Errorf("Outlook has multiple contacts with %s; choose the copy to use before enabling Gofer Sync", contact.Email)
+				return "", "", fmt.Errorf("Outlook has multiple contacts with %s; choose the copy to use before enabling Raven Sync", contact.Email)
 			}
 			endpoint = page.NextLink
 		}

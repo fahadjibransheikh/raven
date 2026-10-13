@@ -413,7 +413,7 @@ func (h *Handler) handleDiscoverAccountCalendars(w http.ResponseWriter, r *http.
 	switch data.Provider {
 	case providers.ProviderGmail:
 		if h.mailCredentials() == nil || !h.mailCredentials().HasGoogleOAuth() {
-			statusMessage = "Google OAuth is not configured for this Gofer instance."
+			statusMessage = "Google OAuth is not configured for this Raven instance."
 			statusError = true
 			break
 		}
@@ -433,7 +433,7 @@ func (h *Handler) handleDiscoverAccountCalendars(w http.ResponseWriter, r *http.
 		discoverySucceeded = true
 	case providers.ProviderOutlook:
 		if h.mailCredentials() == nil || !h.mailCredentials().HasMicrosoftOAuth() {
-			statusMessage = "Microsoft OAuth is not configured for this Gofer instance."
+			statusMessage = "Microsoft OAuth is not configured for this Raven instance."
 			statusError = true
 			break
 		}

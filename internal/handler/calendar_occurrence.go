@@ -45,7 +45,7 @@ func calendarOccurrenceExistingRestriction(existing storage.CalendarEvent) error
 
 func (remote googleCalendarUpdateEvent) occurrenceRestriction(seriesID string) string {
 	if remote.Organizer.Self != nil && !*remote.Organizer.Self {
-		return "Invitations cannot be edited in Gofer yet."
+		return "Invitations cannot be edited in Raven yet."
 	}
 	if seriesID == "" || remote.RecurringEventID != seriesID || remote.ID == seriesID || len(remote.Recurrence) != 0 || remote.OriginalStartTime == nil {
 		return "Google did not return the selected occurrence and its series."
@@ -64,7 +64,7 @@ func (remote googleCalendarUpdateEvent) occurrenceRestriction(seriesID string) s
 
 func (remote outlookCalendarUpdateEvent) occurrenceRestriction(seriesID string) string {
 	if remote.IsOrganizer != nil && !*remote.IsOrganizer {
-		return "Invitations cannot be edited in Gofer yet."
+		return "Invitations cannot be edited in Raven yet."
 	}
 	if seriesID == "" || remote.SeriesMasterID != seriesID || remote.ID == seriesID || (remote.Type != "occurrence" && remote.Type != "exception") || calendarUpdateHasDetails(remote.Recurrence) {
 		return "Microsoft did not return the selected occurrence and its series."

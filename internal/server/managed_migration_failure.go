@@ -71,7 +71,7 @@ func checkRecordedMigrationFailure(path string) error {
 		return err
 	}
 	if decodeErr == nil && failure.Database.equal(database) && failure.Executable.equal(executable) {
-		return fmt.Errorf("per-user storage migration failed on %s and was not retried because neither the database nor Gofer has changed since: %s; fix the cause, or delete %s to retry anyway",
+		return fmt.Errorf("per-user storage migration failed on %s and was not retried because neither the database nor Raven has changed since: %s; fix the cause, or delete %s to retry anyway",
 			failure.FailedAt.Local().Format("2006-01-02 15:04:05"), failure.Error, migrationFailurePath(path))
 	}
 	return forgetMigrationFailure(path)

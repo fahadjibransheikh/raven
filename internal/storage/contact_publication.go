@@ -99,7 +99,7 @@ func (db *DB) publishInboundContacts(ctx context.Context, owner, account, provid
 				if err != nil {
 					return nil, err
 				}
-				event := ContactActivityNotification{UserID: owner, ContactID: id, EventType: "contact_sync_queued", Email: strings.TrimSpace(contact.Email), Status: "pending", Message: "Gofer Sync queued", Count: 1}
+				event := ContactActivityNotification{UserID: owner, ContactID: id, EventType: "contact_sync_queued", Email: strings.TrimSpace(contact.Email), Status: "pending", Message: "Raven Sync queued", Count: 1}
 				if _, err := tx.ExecContext(ctx, `INSERT INTO contact_activity_events(user_id,event_type,email,message,event_count) VALUES(?,?,?,?,?)`, owner, event.EventType, event.Email, event.Message, event.Count); err != nil {
 					return nil, err
 				}

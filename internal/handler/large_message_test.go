@@ -67,8 +67,8 @@ func TestMessageTooLargeExplanations(t *testing.T) {
 	}{
 		{&message.TooLargeError{Size: 30 << 20, Limit: 25 << 20}, "large", "This message is 30 MB, so it wasn't downloaded automatically."},
 		{&message.TooLargeError{Limit: 25 << 20}, "large", "This message is larger than 25 MB, so it wasn't downloaded automatically."},
-		{&message.TooLargeError{Size: 80 << 20, Limit: 25 << 20}, "oversize", "This message is 80 MB. Gofer can show messages up to 64 MB."},
-		{&message.TooLargeError{Limit: 64 << 20}, "oversize", "This message is larger than the 64 MB Gofer can show."},
+		{&message.TooLargeError{Size: 80 << 20, Limit: 25 << 20}, "oversize", "This message is 80 MB. Raven can show messages up to 64 MB."},
+		{&message.TooLargeError{Limit: 64 << 20}, "oversize", "This message is larger than the 64 MB Raven can show."},
 	} {
 		kind, text, _ := messageTooLargeFailure(tc.err.(*message.TooLargeError))
 		if kind != tc.kind || text != tc.text {

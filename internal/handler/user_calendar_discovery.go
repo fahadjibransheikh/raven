@@ -374,7 +374,7 @@ func (h *Handler) handleUserDiscoverCalendars(w http.ResponseWriter, r *http.Req
 		if snapshot.Provider() == storage.CalendarSourceProviderCalDAV {
 			sources, dav, err = request.discoverDAV(ctx, r)
 		} else if h.userCredentials == nil {
-			err = errors.New("Mailbox OAuth is not configured for this Gofer instance.")
+			err = errors.New("Mailbox OAuth is not configured for this Raven instance.")
 		} else {
 			request.credentials = h.userCredentials.CalendarAccount(owner, id, false)
 			var calendars []calendar.RemoteCalendar

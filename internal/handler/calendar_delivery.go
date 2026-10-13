@@ -107,7 +107,7 @@ func (h *Handler) calendarDeliveryData(ctx context.Context, e storage.CalendarEv
 			row.Note = "The email’s sender could not be authenticated. It remains in Mail; the guest’s RSVP is unchanged."
 		case "retry":
 			row.Label = "Guest reply waiting to retry"
-			row.Note = "The calendar update could not be confirmed. Gofer will retry automatically."
+			row.Note = "The calendar update could not be confirmed. Raven will retry automatically."
 		case "not_applied":
 			row.Label = "Guest reply not applied"
 			row.Note = "The reply is outdated, the meeting changed, or this reply is unsupported. The email remains in Mail."

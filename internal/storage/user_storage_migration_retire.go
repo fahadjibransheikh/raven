@@ -43,7 +43,7 @@ func RetireSharedDatabase(ctx context.Context, path, retired string) (err error)
 	}
 	if !migrationSharedVersionSupported(version) {
 		if version > CurrentSchemaVersion {
-			return migrationSourceError("schema_version", "source version is newer than this Gofer release")
+			return migrationSourceError("schema_version", "source version is newer than this Raven release")
 		}
 		// Older shared schemas take the ordinary application upgrade first.
 		db, err := New(path)
@@ -105,7 +105,7 @@ func checkpointSharedDatabase(ctx context.Context, path string) (err error) {
 		return err
 	}
 	if busy != 0 {
-		return errors.New("shared database is still in use; stop other Gofer processes and try again")
+		return errors.New("shared database is still in use; stop other Raven processes and try again")
 	}
 	var mode string
 	if err := db.QueryRowContext(ctx, `PRAGMA journal_mode=DELETE`).Scan(&mode); err != nil {

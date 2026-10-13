@@ -56,7 +56,7 @@ func runStorageMigrationCommand(ctx context.Context, args []string, stdout, stde
 	flags.SetOutput(stderr)
 	source := flags.String("db", ConfiguredDatabasePath(), "original shared database")
 	destination := flags.String("to", "", "new central database in the original data directory")
-	workingDirectory := flags.String("working-dir", "", "original Gofer working directory (defaults to current directory)")
+	workingDirectory := flags.String("working-dir", "", "original Raven working directory (defaults to current directory)")
 	retry := flags.Bool("retry", false, "resume recognized interrupted migration work")
 	if err := flags.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {

@@ -27,7 +27,7 @@ func calendarSeriesID(event storage.CalendarEvent) string {
 	return event.RemoteID
 }
 
-const calendarSeriesUnsupported = "This series uses repeat settings that Gofer cannot edit yet. Edit it in your calendar provider."
+const calendarSeriesUnsupported = "This series uses repeat settings that Raven cannot edit yet. Edit it in your calendar provider."
 
 // Never substitute the UI timezone for a series' timezone: that would change
 // its wall-clock schedule across daylight-saving transitions.
@@ -151,7 +151,7 @@ func calendarGoogleSeriesEvent(remote googleCalendarUpdateEvent) (calendar.Remot
 		return event, err
 	}
 	if reason := remote.savedRestriction(draft); reason != "" || !calendarUpdateValidETag(event.ETag, false) {
-		return event, calendarUpdateUnsupported("This series cannot be safely edited in Gofer.")
+		return event, calendarUpdateUnsupported("This series cannot be safely edited in Raven.")
 	}
 	return event, nil
 }
@@ -195,7 +195,7 @@ func calendarOutlookSeriesEvent(remote outlookCalendarUpdateEvent) (calendar.Rem
 		return event, err
 	}
 	if reason := remote.savedRestriction(draft); reason != "" || event.ETag == "" || !calendarUpdateValidETag(remote.ODataETag, true) {
-		return event, calendarUpdateUnsupported("This series cannot be safely edited in Gofer.")
+		return event, calendarUpdateUnsupported("This series cannot be safely edited in Raven.")
 	}
 	return event, nil
 }

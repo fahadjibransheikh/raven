@@ -354,7 +354,7 @@ func TestManagedStorageUpgradesOlderLayoutSchemas(t *testing.T) {
 
 	// A database written by a newer release is refused and left unchanged.
 	exec(userPath("bob"), `INSERT INTO schema_version(version) VALUES(9999)`)
-	if _, err := openManagedStorage(t.Context(), path, 1); err == nil || !strings.Contains(err.Error(), "newer Gofer release") {
+	if _, err := openManagedStorage(t.Context(), path, 1); err == nil || !strings.Contains(err.Error(), "newer Raven release") {
 		t.Fatal("newer schema accepted", err)
 	}
 	db, err := sql.Open("sqlite", userPath("bob"))
@@ -547,7 +547,7 @@ func TestManagedStorageConversionFromAnotherDirectoryLeavesOriginal(t *testing.T
 	if s, err := openManagedStorage(t.Context(), path, 1); err == nil {
 		s.Close()
 		t.Fatal("converted with paths resolved from the wrong directory")
-	} else if !strings.Contains(err.Error(), "run Gofer from the directory the previous version was started from") {
+	} else if !strings.Contains(err.Error(), "run Raven from the directory the previous version was started from") {
 		t.Fatal("unhelpful failure", err)
 	}
 	for _, leftover := range []string{path + ".shared", path + ".migration.json", path + ".layout.json", path + ".users", path + ".staging"} {

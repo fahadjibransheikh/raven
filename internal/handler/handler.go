@@ -2694,7 +2694,7 @@ func (h *Handler) handleCreateAccount(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		message := fmt.Sprintf("Failed to create account: %v", err)
 		if errors.Is(err, config.ErrMailboxExists) {
-			message = "This mailbox is already connected to Gofer."
+			message = "This mailbox is already connected to Raven."
 		}
 		views.AccountFormError(message).Render(r.Context(), w)
 		return

@@ -116,9 +116,9 @@ func upgradeStorageDatabase(ctx context.Context, path, owner string) (err error)
 	}
 	switch {
 	case version > CurrentSchemaVersion:
-		return fmt.Errorf("schema version %d was written by a newer Gofer release; this release supports %d", version, CurrentSchemaVersion)
+		return fmt.Errorf("schema version %d was written by a newer Raven release; this release supports %d", version, CurrentSchemaVersion)
 	case layout > len(steps):
-		return fmt.Errorf("layout schema version %d was written by a newer Gofer release; this release supports %d", layout, len(steps))
+		return fmt.Errorf("layout schema version %d was written by a newer Raven release; this release supports %d", layout, len(steps))
 	case version < 1:
 		return fmt.Errorf("schema version %d cannot be upgraded", version)
 	case version == CurrentSchemaVersion && layout == len(steps):

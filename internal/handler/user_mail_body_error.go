@@ -77,9 +77,9 @@ func messageTooLargeFailure(err *message.TooLargeError) (kind, text string, stat
 		return "large", "This message is larger than " + formatMessageSize(err.Limit) + ", so it wasn't downloaded automatically.", http.StatusRequestEntityTooLarge
 	}
 	if err.Size > 0 {
-		return "oversize", "This message is " + formatMessageSize(err.Size) + ". Gofer can show messages up to " + formatMessageSize(message.MaxDownloadBytes) + ".", http.StatusRequestEntityTooLarge
+		return "oversize", "This message is " + formatMessageSize(err.Size) + ". Raven can show messages up to " + formatMessageSize(message.MaxDownloadBytes) + ".", http.StatusRequestEntityTooLarge
 	}
-	return "oversize", "This message is larger than the " + formatMessageSize(message.MaxDownloadBytes) + " Gofer can show.", http.StatusRequestEntityTooLarge
+	return "oversize", "This message is larger than the " + formatMessageSize(message.MaxDownloadBytes) + " Raven can show.", http.StatusRequestEntityTooLarge
 }
 
 func formatMessageSize(size int64) string {

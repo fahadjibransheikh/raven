@@ -287,7 +287,7 @@ func requireManagedSharedDatabase(ctx context.Context, path string) error {
 		return err
 	}
 	if !convertible {
-		return fmt.Errorf("%s is owned by a user who is not an administrator and cannot be converted for managed mode; start Gofer in its previous mode (nothing was changed)", path)
+		return fmt.Errorf("%s is owned by a user who is not an administrator and cannot be converted for managed mode; start Raven in its previous mode (nothing was changed)", path)
 	}
 	return nil
 }
@@ -306,7 +306,7 @@ func requireStorageConversionAllowed(path string) error {
 		return errors.New("GOFER_PREVENT_STORAGE_CONVERSION must be true or false")
 	}
 	if prevent {
-		return fmt.Errorf("%s uses the shared storage format, and GOFER_PREVENT_STORAGE_CONVERSION stops managed mode from converting it to per-user storage; unset it to convert (nothing was changed), or start Gofer in personal or open mode", path)
+		return fmt.Errorf("%s uses the shared storage format, and GOFER_PREVENT_STORAGE_CONVERSION stops managed mode from converting it to per-user storage; unset it to convert (nothing was changed), or start Raven in personal or open mode", path)
 	}
 	return nil
 }

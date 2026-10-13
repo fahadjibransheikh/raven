@@ -75,7 +75,7 @@ func LoadUserStorageLayout(ctx context.Context, path string) (layout UserStorage
 		return layout, err
 	}
 	if version != CurrentSchemaVersion {
-		return layout, fmt.Errorf("completed layout database has schema version %d, expected %d; starting the Gofer server upgrades it", version, CurrentSchemaVersion)
+		return layout, fmt.Errorf("completed layout database has schema version %d, expected %d; starting the Raven server upgrades it", version, CurrentSchemaVersion)
 	}
 	// Follow current durable store history, not the initial source user count:
 	// users may have been added or removed since publication.
@@ -247,7 +247,7 @@ func VerifySharedStorageRuntime(ctx context.Context, path string) (err error) {
 		// An interrupted automatic migration moved the original aside. Never
 		// start over with an empty database in its place.
 		if _, err := os.Lstat(path + ".shared"); err == nil {
-			return fmt.Errorf("the original database was moved to %q by an interrupted per-user migration; start Gofer in managed mode to finish it, or rename it back", path+".shared")
+			return fmt.Errorf("the original database was moved to %q by an interrupted per-user migration; start Raven in managed mode to finish it, or rename it back", path+".shared")
 		} else if !errors.Is(err, os.ErrNotExist) {
 			return err
 		}

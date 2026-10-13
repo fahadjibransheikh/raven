@@ -265,7 +265,7 @@ func (h *Handler) handleCalendarResponse(w http.ResponseWriter, r *http.Request)
 	result := calendarResponseResult{Event: target.Event}
 	if target.Event.ResponseStatus != response {
 		if err := h.db.BeginCalendarResponse(ctx, userID, source.ID, target.Event.RemoteID, version, response); err != nil {
-			calendarUpdateFailure(w, http.StatusConflict, "A response may already have been sent for this version. Check it in your calendar provider, then refresh Gofer; it will not resend automatically.", true, true)
+			calendarUpdateFailure(w, http.StatusConflict, "A response may already have been sent for this version. Check it in your calendar provider, then refresh Raven; it will not resend automatically.", true, true)
 			return
 		}
 		if h.calendarSendResponse != nil {

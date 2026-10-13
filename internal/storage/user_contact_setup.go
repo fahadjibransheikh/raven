@@ -116,7 +116,7 @@ func (db *DB) ConfirmUserContactSetup(ctx context.Context, snapshot *ContactEdit
 			return ContactEditResult{}, err
 		}
 		event = &ContactActivityNotification{UserID: snapshot.owner, ContactID: snapshot.id, Email: current.contact.Email,
-			EventType: "contact_sync_queued", Status: "pending", Message: "Gofer Sync queued", Count: 1}
+			EventType: "contact_sync_queued", Status: "pending", Message: "Raven Sync queued", Count: 1}
 		if _, err := tx.ExecContext(ctx, `INSERT INTO contact_activity_events(user_id,event_type,email,message,event_count) VALUES(?,?,?,?,?)`, event.UserID, event.EventType, event.Email, event.Message, event.Count); err != nil {
 			return ContactEditResult{}, err
 		}

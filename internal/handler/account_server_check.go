@@ -77,7 +77,7 @@ func (h *Handler) accountServerNotes(ctx context.Context, protocol, host string,
 			note.Text += " Add " + exception + " for " + endpoint + " under Mail security."
 			note.Link, note.LinkText = link, "Open Mail security"
 		} else {
-			note.Text += " Ask your Gofer administrator to add " + exception + " for " + endpoint + "."
+			note.Text += " Ask your Raven administrator to add " + exception + " for " + endpoint + "."
 		}
 		return note
 	}
@@ -92,7 +92,7 @@ func (h *Handler) accountServerNotes(ctx context.Context, protocol, host string,
 		case allowed:
 			notes = append(notes, accountServerNote{Level: "approved", Text: "This server is on a private network and is approved under Mail security."})
 		default:
-			notes = append(notes, blocked("This server is on a private network, so Gofer won't connect to it yet.", "an "+label+" private target exception"))
+			notes = append(notes, blocked("This server is on a private network, so Raven won't connect to it yet.", "an "+label+" private target exception"))
 		}
 	}
 	if tlsMode == "plaintext" {
@@ -103,7 +103,7 @@ func (h *Handler) accountServerNotes(ctx context.Context, protocol, host string,
 		case allowed:
 			notes = append(notes, accountServerNote{Level: "approved", Text: "Unencrypted " + label + " to this server is approved under Mail security."})
 		default:
-			notes = append(notes, blocked("Gofer won't connect to this server without encryption yet.", "an unencrypted "+label+" exception"))
+			notes = append(notes, blocked("Raven won't connect to this server without encryption yet.", "an unencrypted "+label+" exception"))
 		}
 	}
 	return notes

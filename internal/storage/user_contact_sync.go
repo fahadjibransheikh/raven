@@ -300,7 +300,7 @@ func (db *DB) EnqueueUserContactSync(ctx context.Context, owner, profile string,
 		return "", err
 	}
 	event := ContactActivityNotification{UserID: owner, ContactID: profile, Email: p.contact.Email,
-		EventType: "contact_sync_queued", Status: "pending", Message: "Gofer Sync queued", Count: 1}
+		EventType: "contact_sync_queued", Status: "pending", Message: "Raven Sync queued", Count: 1}
 	if _, err := tx.ExecContext(ctx, `INSERT INTO contact_activity_events(user_id,event_type,email,message,event_count) VALUES(?,?,?,?,?)`, event.UserID, event.EventType, event.Email, event.Message, event.Count); err != nil {
 		return "", err
 	}
@@ -366,7 +366,7 @@ func (db *DB) StartUserContactSyncOperation(ctx context.Context, p *ContactSyncP
 		return err
 	}
 	event := ContactActivityNotification{UserID: p.claim.owner, ContactID: p.claim.profile, Email: p.contact.Email,
-		EventType: "contact_sync_started", Status: "running", Message: "Gofer Sync started", Count: 1}
+		EventType: "contact_sync_started", Status: "running", Message: "Raven Sync started", Count: 1}
 	if _, err := tx.ExecContext(ctx, `INSERT INTO contact_activity_events(user_id,event_type,email,message,event_count) VALUES(?,?,?,?,?)`, event.UserID, event.EventType, event.Email, event.Message, event.Count); err != nil {
 		return err
 	}
@@ -673,9 +673,9 @@ func (db *DB) FinishUserContactSyncOperation(ctx context.Context, c *ContactSync
 	if _, err := tx.ExecContext(ctx, `UPDATE contact_sync_operations SET status=?,locked_at=NULL,last_error=?,next_attempt_at=?,updated_at=CURRENT_TIMESTAMP WHERE user_id=? AND id=?`, status, message, retryAt.UTC().Format(time.RFC3339Nano), c.owner, c.id); err != nil {
 		return err
 	}
-	event := ContactActivityNotification{UserID: c.owner, ContactID: c.profile, EventType: "contact_synced", Status: status, Message: "Gofer Sync complete", Count: 1}
+	event := ContactActivityNotification{UserID: c.owner, ContactID: c.profile, EventType: "contact_synced", Status: status, Message: "Raven Sync complete", Count: 1}
 	if status != "done" {
-		event.EventType, event.Message, event.Error = "contact_sync_failed", "Gofer Sync failed: "+message, message
+		event.EventType, event.Message, event.Error = "contact_sync_failed", "Raven Sync failed: "+message, message
 	}
 	if err := tx.QueryRowContext(ctx, `SELECT email FROM contact_sync_operations WHERE user_id=? AND id=?`, c.owner, c.id).Scan(&event.Email); err != nil {
 		return err

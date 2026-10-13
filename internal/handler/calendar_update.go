@@ -42,7 +42,7 @@ func calendarEventEditRestriction(event storage.CalendarEvent) string {
 		return "Only the organizer can edit an online meeting."
 	}
 	if calendarStoredEditableOnline(event) && calendarEventIsSeries(event) {
-		return "Recurring online meetings cannot be edited in Gofer yet."
+		return "Recurring online meetings cannot be edited in Raven yet."
 	}
 	return ""
 }
@@ -73,7 +73,7 @@ func calendarEventMutationRestriction(event storage.CalendarEvent, source storag
 		return "This provider must supply a strong event version before safe editing is available."
 	}
 	if source.Provider == storage.CalendarSourceProviderCalDAV && (event.OrganizerName != "" || event.OrganizerEmail != "") && !calendarCachedOrganizer(event) {
-		return "Invitations cannot be edited in Gofer yet."
+		return "Invitations cannot be edited in Raven yet."
 	}
 	return ""
 }

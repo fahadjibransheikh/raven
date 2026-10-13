@@ -36,7 +36,7 @@ func TestLayoutSchemaStepsRunOnceInOrder(t *testing.T) {
 	if len(runs) != 2 || runs[0] != 1 || runs[1] != 2 {
 		t.Fatal("steps did not run once in order", runs)
 	}
-	if err := ensureLayoutSchema(t.Context(), db, v1); err == nil || !strings.Contains(err.Error(), "newer Gofer release") {
+	if err := ensureLayoutSchema(t.Context(), db, v1); err == nil || !strings.Contains(err.Error(), "newer Raven release") {
 		t.Fatal("newer layout schema accepted", err)
 	}
 	// A failing step leaves the version unchanged.

@@ -320,7 +320,7 @@ func userAccountError(w http.ResponseWriter, r *http.Request, err error) {
 		return
 	}
 	if errors.Is(err, config.ErrMailboxExists) {
-		http.Error(w, "This mailbox is already connected to Gofer.", http.StatusConflict)
+		http.Error(w, "This mailbox is already connected to Raven.", http.StatusConflict)
 		return
 	}
 	if isPermanentOAuthError(err) {

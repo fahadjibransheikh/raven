@@ -455,14 +455,14 @@ func (h *Handler) handleDeleteAdminUser(w http.ResponseWriter, r *http.Request) 
 		owned.h.userIMAP.StopUser(result.TargetUserID)
 		err := owned.enqueue(userRemovalJob{owner: result.TargetUserID, actorSession: currentSession.ID})
 		if errors.Is(err, errUserRemovalBusy) {
-			redirectAdminUsers(w, r, "User deletion is pending. Gofer will retry the local cleanup automatically.")
+			redirectAdminUsers(w, r, "User deletion is pending. Raven will retry the local cleanup automatically.")
 			return
 		}
 		if err != nil {
 			http.Error(w, "User deletion is pending, but cleanup stopped. Retry after the runtime restarts.", http.StatusServiceUnavailable)
 			return
 		}
-		redirectAdminUsers(w, r, "User deletion started. Gofer is permanently removing the user's local data.")
+		redirectAdminUsers(w, r, "User deletion started. Raven is permanently removing the user's local data.")
 		return
 	}
 	for _, accountID := range result.AccountIDs {

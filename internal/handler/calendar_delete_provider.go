@@ -87,7 +87,7 @@ func deleteGoogleCalendarEventScope(ctx context.Context, token, calendarID strin
 		return calendarUpdateUnsupported(reason)
 	}
 	if current.Organizer.Self != nil && !*current.Organizer.Self {
-		return calendarUpdateUnsupported("Invitations cannot be deleted in Gofer yet.")
+		return calendarUpdateUnsupported("Invitations cannot be deleted in Raven yet.")
 	}
 	if calendarUpdateHasDetails(current.Attendees) {
 		endpoint += "?sendUpdates=all"
@@ -111,7 +111,7 @@ func deleteOutlookCalendarEventScope(ctx context.Context, token, calendarID stri
 		return calendarDeletePreflightError{calendarUpdateHTTPError(err)}
 	}
 	if calendarOutlookOnline(current) {
-		return calendarDeletePreflightError{calendarUpdateUnsupported("Online meetings cannot be deleted in Gofer yet.")}
+		return calendarDeletePreflightError{calendarUpdateUnsupported("Online meetings cannot be deleted in Raven yet.")}
 	}
 	if current.ID != existing.RemoteID || (existing.ETag != current.ChangeKey && existing.ETag != current.ODataETag) {
 		return errCalendarUpdateConflict
@@ -131,7 +131,7 @@ func deleteOutlookCalendarEventScope(ctx context.Context, token, calendarID stri
 		return calendarUpdateUnsupported(reason)
 	}
 	if current.IsOrganizer != nil && !*current.IsOrganizer {
-		return calendarUpdateUnsupported("Invitations cannot be deleted in Gofer yet.")
+		return calendarUpdateUnsupported("Invitations cannot be deleted in Raven yet.")
 	}
 	// changeKey is not an HTTP validator; use the freshly read OData entity tag.
 	return calendarDeleteJSON(ctx, endpoint, token, current.ODataETag)

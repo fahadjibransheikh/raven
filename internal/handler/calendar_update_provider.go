@@ -19,7 +19,7 @@ import (
 
 var (
 	errCalendarUpdateConflict    = errors.New("This event has changed. Refresh the calendar before editing it again.")
-	errCalendarUpdateUnsupported = errors.New("This event cannot be edited in Gofer.")
+	errCalendarUpdateUnsupported = errors.New("This event cannot be edited in Raven.")
 )
 
 // calendarUpdateRestriction checks event shape only, including cached events.
@@ -27,10 +27,10 @@ var (
 // Its nonempty return value is suitable for display in the editor.
 func calendarUpdateRestriction(event calendar.RemoteEvent) string {
 	if event.Deleted || strings.EqualFold(strings.TrimSpace(event.Status), "cancelled") || strings.EqualFold(strings.TrimSpace(event.Status), "canceled") {
-		return "Cancelled events cannot be edited in Gofer."
+		return "Cancelled events cannot be edited in Raven."
 	}
 	if strings.TrimSpace(event.SeriesRemoteID) != "" || calendarUpdateHasDetails(event.Recurrence) {
-		return "Recurring events and individual occurrences cannot be edited in Gofer yet."
+		return "Recurring events and individual occurrences cannot be edited in Raven yet."
 	}
 	if calendarUpdateHasDetails(event.Attendees) {
 		if event.ResponseStatus != "organizer" {
@@ -41,7 +41,7 @@ func calendarUpdateRestriction(event calendar.RemoteEvent) string {
 		}
 	}
 	if calendarUpdateHasDetails(event.OnlineMeeting) {
-		return "Online meetings cannot be edited in Gofer yet."
+		return "Online meetings cannot be edited in Raven yet."
 	}
 	return ""
 }
@@ -226,13 +226,13 @@ func (remote googleCalendarUpdateEvent) restriction() string {
 		return reason
 	}
 	if remote.OriginalStartTime != nil {
-		return "Recurring events and individual occurrences cannot be edited in Gofer yet."
+		return "Recurring events and individual occurrences cannot be edited in Raven yet."
 	}
 	if remote.AttendeesOmitted {
-		return "Events with hidden guest details cannot be edited in Gofer."
+		return "Events with hidden guest details cannot be edited in Raven."
 	}
 	if remote.Locked || (remote.EventType != "" && remote.EventType != "default") {
-		return "Only regular appointments can be edited in Gofer."
+		return "Only regular appointments can be edited in Raven."
 	}
 	return ""
 }
@@ -285,10 +285,10 @@ func updateGoogleCalendarEventScope(ctx context.Context, token, remoteCalendarID
 		}
 	}
 	if online && draft.GoogleMeetMeetingSet && !draft.GoogleMeetMeeting {
-		return calendar.RemoteEvent{}, calendarUpdateUnsupported("Removing an existing Google Meet conference is not supported in Gofer yet.")
+		return calendar.RemoteEvent{}, calendarUpdateUnsupported("Removing an existing Google Meet conference is not supported in Raven yet.")
 	}
 	if online && draft.GoogleMeetMeeting && !meet {
-		return calendar.RemoteEvent{}, calendarUpdateUnsupported("Changing an existing conference provider is not supported in Gofer yet.")
+		return calendar.RemoteEvent{}, calendarUpdateUnsupported("Changing an existing conference provider is not supported in Raven yet.")
 	}
 	if addingMeet {
 		supported, err := googleCalendarMeetSupported(ctx, token, remoteCalendarID)
@@ -431,7 +431,7 @@ func (remote outlookCalendarUpdateEvent) restriction() string {
 		return reason
 	}
 	if remote.Type != "" && remote.Type != "singleInstance" {
-		return "Recurring events and individual occurrences cannot be edited in Gofer yet."
+		return "Recurring events and individual occurrences cannot be edited in Raven yet."
 	}
 	if calendarOutlookOnline(remote) && (remote.IsOrganizer == nil || !*remote.IsOrganizer) {
 		return "Only the organizer can edit an online meeting."
@@ -476,7 +476,7 @@ func updateOutlookCalendarEventScope(ctx context.Context, token, remoteCalendarI
 	}
 	if addingTeams {
 		if series || occurrence || draft.Recurrence != nil {
-			return calendar.RemoteEvent{}, calendarUpdateUnsupported("Adding Teams to recurring events is not supported in Gofer yet.")
+			return calendar.RemoteEvent{}, calendarUpdateUnsupported("Adding Teams to recurring events is not supported in Raven yet.")
 		}
 		if calendarOutlookOrganizerStatus(current.outlookCalendarEvent) != "organizer" {
 			return calendar.RemoteEvent{}, calendarUpdateUnsupported("Only the organizer can add a Teams meeting.")
@@ -638,36 +638,36 @@ func calendarUpdateDecodeICS(raw []byte) (cal *ical.Calendar, err error) {
 
 func calendarUpdateCalDAVRestriction(cal *ical.Calendar, headers http.Header) string {
 	if len(cal.Events()) != 1 {
-		return "Only calendar resources containing one appointment can be edited in Gofer."
+		return "Only calendar resources containing one appointment can be edited in Raven."
 	}
 	if cal.Props.Get("METHOD") != nil || headers.Get("Schedule-Tag") != "" {
-		return "Scheduling messages and invitations cannot be edited in Gofer."
+		return "Scheduling messages and invitations cannot be edited in Raven."
 	}
 	for _, child := range cal.Children {
 		if child.Name != ical.CompEvent && child.Name != ical.CompTimezone {
-			return "Only calendar resources containing one appointment can be edited in Gofer."
+			return "Only calendar resources containing one appointment can be edited in Raven."
 		}
 	}
 	props := cal.Events()[0].Props
 	if status := props.Get("STATUS"); status != nil && strings.EqualFold(strings.TrimSpace(status.Value), "CANCELLED") {
-		return "Cancelled events cannot be edited in Gofer."
+		return "Cancelled events cannot be edited in Raven."
 	}
 	for _, name := range []string{"RRULE", "EXRULE", "RDATE", "EXDATE", "RECURRENCE-ID"} {
 		if props.Get(name) != nil {
-			return "Recurring events and individual occurrences cannot be edited in Gofer yet."
+			return "Recurring events and individual occurrences cannot be edited in Raven yet."
 		}
 	}
 	if props.Get("ATTENDEE") != nil || props.Get("ORGANIZER") != nil {
-		return "Invitations and events with guests cannot be edited in Gofer yet."
+		return "Invitations and events with guests cannot be edited in Raven yet."
 	}
 	for name, values := range props {
 		if strings.Contains(name, "CONFERENCE") || strings.Contains(name, "ONLINEMEETING") || strings.Contains(name, "ONLINE-MEETING") || strings.Contains(name, "SKYPETEAMS") {
-			return "Online meetings cannot be edited in Gofer yet."
+			return "Online meetings cannot be edited in Raven yet."
 		}
 		for _, value := range values {
 			for param := range value.Params {
 				if strings.HasPrefix(param, "SCHEDULE-") {
-					return "Scheduling messages and invitations cannot be edited in Gofer."
+					return "Scheduling messages and invitations cannot be edited in Raven."
 				}
 			}
 		}

@@ -127,7 +127,7 @@ func parseCalendarEventDraft(r *http.Request) (calendar.EventDraft, error) {
 	if draft.TeamsMeeting {
 		frequency := r.PostForm.Get("repeat_frequency")
 		if frequency != "" && frequency != "none" {
-			return draft, fmt.Errorf("Teams meetings currently support events that do not repeat in Gofer")
+			return draft, fmt.Errorf("Teams meetings currently support events that do not repeat in Raven")
 		}
 	}
 	draft.TeamsDraftID = strings.TrimSpace(r.PostForm.Get("teams_draft_id"))
@@ -149,7 +149,7 @@ func parseCalendarEventDraft(r *http.Request) (calendar.EventDraft, error) {
 	if draft.GoogleMeetMeeting {
 		frequency := r.PostForm.Get("repeat_frequency")
 		if frequency != "" && frequency != "none" {
-			return draft, fmt.Errorf("Google Meet meetings currently support events that do not repeat in Gofer")
+			return draft, fmt.Errorf("Google Meet meetings currently support events that do not repeat in Raven")
 		}
 	}
 	draft.GoogleMeetDraftID = strings.TrimSpace(r.PostForm.Get("google_meet_draft_id"))

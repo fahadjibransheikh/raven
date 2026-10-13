@@ -29,7 +29,7 @@ func (h *Handler) handleUserSyncContactNow(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if !contact.GoferSyncEnabled {
-		http.Error(w, "Gofer Sync is disabled for this contact", http.StatusConflict)
+		http.Error(w, "Raven Sync is disabled for this contact", http.StatusConflict)
 		return
 	}
 	if _, err := h.userAccounts.EnqueueContactSyncForUser(ctx, owner, id); err != nil {

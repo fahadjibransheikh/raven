@@ -307,7 +307,7 @@ func (db *DB) SaveUserContactEdit(ctx context.Context, s *ContactEditSnapshot, d
 			if err != nil {
 				return ContactEditResult{}, err
 			}
-			events = append(events, ContactActivityNotification{UserID: s.owner, ContactID: s.id, EventType: "contact_sync_queued", Email: p.contact.Email, Status: "pending", Message: "Gofer Sync queued", Count: 1})
+			events = append(events, ContactActivityNotification{UserID: s.owner, ContactID: s.id, EventType: "contact_sync_queued", Email: p.contact.Email, Status: "pending", Message: "Raven Sync queued", Count: 1})
 		}
 	}
 	for _, event := range events {
