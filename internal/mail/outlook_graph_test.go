@@ -1499,3 +1499,57 @@ func TestOutlookGraphMissingSenderRepairThrottledTo24h(t *testing.T) {
 		t.Fatal("full sync 25h ago: repair should be due")
 	}
 }
+
+// In shared mode, an account whose Outlook sync was throttled waits for the
+// time Outlook asked for before syncing again.
+func TestSharedOutlookSyncWaitsAfterThrottling(t *testing.T) {
+	for _, throttled := range []string{"/me/mailFolders", "/me/mailFolders/folder-inbox/messages/delta"} {
+		t.Run(throttled, func(t *testing.T) {
+			ctx := context.Background()
+			db := newLabelSyncTestDB(t)
+			if _, err := db.Write().ExecContext(ctx, `INSERT INTO accounts (id, user_id, provider, email_address) VALUES ('acc', 'default', ?, 'ana@example.com')`, providers.ProviderOutlook); err != nil {
+				t.Fatal(err)
+			}
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == throttled {
+					w.Header().Set("Retry-After", "120")
+					http.Error(w, `{"error":{"code":"TooManyRequests"}}`, http.StatusTooManyRequests)
+					return
+				}
+				switch {
+				case r.URL.Path == "/me/mailFolders":
+					_ = json.NewEncoder(w).Encode(map[string]any{"value": []map[string]any{{"id": "folder-inbox", "displayName": "Inbox", "totalItemCount": 1}}})
+				case r.URL.Path == "/me/outlook/masterCategories":
+					_ = json.NewEncoder(w).Encode(map[string]any{"value": []map[string]any{}})
+				default:
+					http.NotFound(w, r)
+				}
+			}))
+			defer server.Close()
+			previousBaseURL := outlookGraphBaseURL
+			outlookGraphBaseURL = server.URL
+			t.Cleanup(func() { outlookGraphBaseURL = previousBaseURL })
+
+			orchestrator := NewSyncOrchestrator(db, nil, nil, labelSyncTestTokens{})
+			if err := orchestrator.sharedOutlookRetryDeferred("acc"); err != nil {
+				t.Fatalf("deferred before any throttling: %v", err)
+			}
+			err := orchestrator.syncOutlookGraphAccount(ctx, "acc", true)
+			if err == nil {
+				t.Fatal("throttled sync succeeded")
+			}
+			orchestrator.deferSharedOutlookRetry("acc", err)
+			deferred := orchestrator.sharedOutlookRetryDeferred("acc")
+			if deferred == nil || !strings.Contains(deferred.Error(), "deferred until") {
+				t.Fatalf("next sync after throttling = %v, want deferred", deferred)
+			}
+			until, _ := orchestrator.outlookRetryUntil.Load("acc")
+			if wait := time.Until(until.(time.Time)); wait < 100*time.Second || wait > 121*time.Second {
+				t.Fatalf("deferred for %v, want the 120 seconds Outlook asked for", wait)
+			}
+			if orchestrator.sharedOutlookRetryDeferred("other") != nil {
+				t.Fatal("another account was deferred too")
+			}
+		})
+	}
+}

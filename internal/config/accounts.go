@@ -4,11 +4,9 @@ import (
 	"context"
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/rand"
 	"database/sql"
 	"errors"
 	"fmt"
-	"io"
 	"strings"
 
 	mailtransport "github.com/cristianadrielbraun/gofer/internal/mail/transport"
@@ -46,53 +44,34 @@ func NewAccountStore(db *storage.DB, secretKey []byte) (*AccountStore, error) {
 	return &AccountStore{db: db, policyDB: db, aes: gcm}, nil
 }
 
-func (s *AccountStore) encrypt(plaintext string) ([]byte, error) {
-	nonce := make([]byte, s.aes.NonceSize())
-	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-		return nil, fmt.Errorf("generate nonce: %w", err)
-	}
-	return s.aes.Seal(nonce, nonce, []byte(plaintext), nil), nil
-}
-
-func (s *AccountStore) decrypt(ciphertext []byte) (string, error) {
-	nonceSize := s.aes.NonceSize()
-	if len(ciphertext) < nonceSize {
-		return "", fmt.Errorf("ciphertext too short")
-	}
-	nonce, ciphertext := ciphertext[:nonceSize], ciphertext[nonceSize:]
-	plaintext, err := s.aes.Open(nil, nonce, ciphertext, nil)
-	if err != nil {
-		return "", fmt.Errorf("decrypt: %w", err)
-	}
-	return string(plaintext), nil
-}
-
 func (s *AccountStore) DecryptPassword(ctx context.Context, accountID string) (string, error) {
+	var userID string
 	var encrypted []byte
 	err := s.db.Read().QueryRowContext(ctx,
-		`SELECT encrypted_password FROM accounts WHERE id = ? AND COALESCE(is_deleting, 0) = 0`, accountID,
-	).Scan(&encrypted)
+		`SELECT user_id, encrypted_password FROM accounts WHERE id = ? AND COALESCE(is_deleting, 0) = 0`, accountID,
+	).Scan(&userID, &encrypted)
 	if err != nil {
 		return "", fmt.Errorf("query password: %w", err)
 	}
 	if encrypted == nil {
 		return "", nil
 	}
-	return s.decrypt(encrypted)
+	return s.decryptPassword(userID, accountID, passwordKindIMAP, encrypted)
 }
 
 func (s *AccountStore) DecryptSmtpPassword(ctx context.Context, accountID string) (string, error) {
+	var userID string
 	var encrypted []byte
 	err := s.db.Read().QueryRowContext(ctx,
-		`SELECT encrypted_smtp_password FROM accounts WHERE id = ? AND COALESCE(is_deleting, 0) = 0`, accountID,
-	).Scan(&encrypted)
+		`SELECT user_id, encrypted_smtp_password FROM accounts WHERE id = ? AND COALESCE(is_deleting, 0) = 0`, accountID,
+	).Scan(&userID, &encrypted)
 	if err != nil {
 		return "", fmt.Errorf("query smtp password: %w", err)
 	}
 	if encrypted == nil {
 		return "", nil
 	}
-	return s.decrypt(encrypted)
+	return s.decryptPassword(userID, accountID, passwordKindSMTP, encrypted)
 }
 
 func (s *AccountStore) GetConfig(ctx context.Context, accountID string) (*models.AccountConfig, error) {
@@ -130,6 +109,14 @@ func (s *AccountStore) GetConfig(ctx context.Context, accountID string) (*models
 		}
 		if (cfg.IMAPTLSMode == mailtransport.TLSModePlaintext || cfg.SMTPTLSMode == mailtransport.TLSModePlaintext) && !strings.EqualFold(strings.TrimSpace(cfg.AuthMethod), "plain") {
 			return nil, fmt.Errorf("account %s: OAuth authentication is not allowed over a plaintext connection", accountID)
+		}
+		cfg.IMAPAllowPrivate, err = s.policyDB.IsPrivateTargetAllowed(ctx, "imap", cfg.IMAPHost, cfg.IMAPPort)
+		if err != nil {
+			return nil, fmt.Errorf("account %s: check IMAP private target exception: %w", accountID, err)
+		}
+		cfg.SMTPAllowPrivate, err = s.policyDB.IsPrivateTargetAllowed(ctx, "smtp", cfg.SMTPHost, cfg.SMTPPort)
+		if err != nil {
+			return nil, fmt.Errorf("account %s: check SMTP private target exception: %w", accountID, err)
 		}
 	}
 	return &cfg, nil
@@ -233,7 +220,7 @@ func (s *AccountStore) CalDAVPassword(ctx context.Context, userID, accountID str
 	if err != nil {
 		return "", fmt.Errorf("query CalDAV password: %w", err)
 	}
-	password, err := s.decrypt(encrypted)
+	password, err := s.decryptPassword(userID, accountID, passwordKindCalDAV, encrypted)
 	if err != nil {
 		return "", fmt.Errorf("decrypt CalDAV password: %w", err)
 	}
@@ -269,7 +256,7 @@ func (s *AccountStore) saveCalDAVConfigTx(ctx context.Context, tx *sql.Tx, userI
 		username = ""
 	} else if strings.TrimSpace(password) != "" {
 		var err error
-		encrypted, err = s.encrypt(password)
+		encrypted, err = s.encryptPassword(userID, accountID, passwordKindCalDAV, password)
 		if err != nil {
 			return fmt.Errorf("encrypt CalDAV password: %w", err)
 		}
@@ -388,7 +375,7 @@ func (s *AccountStore) saveContactSyncConfig(ctx context.Context, userID, accoun
 	var encrypted []byte
 	if password != "" {
 		var err error
-		encrypted, err = s.encrypt(password)
+		encrypted, err = s.encryptPassword(userID, accountID, passwordKindCardDAV, password)
 		if err != nil {
 			return err
 		}
@@ -510,7 +497,7 @@ func (s *AccountStore) DecryptContactSyncPassword(ctx context.Context, userID, a
 	if encrypted == nil {
 		return "", nil
 	}
-	return s.decrypt(encrypted)
+	return s.decryptPassword(userID, accountID, passwordKindCardDAV, encrypted)
 }
 
 func (s *AccountStore) MarkContactSyncSuccess(ctx context.Context, userID, accountID, syncToken string) error {
@@ -641,14 +628,14 @@ func (s *AccountStore) createAccountWithID(ctx context.Context, userID, id strin
 		}
 	}
 
-	encrypted, err := s.encrypt(req.Password)
+	encrypted, err := s.encryptPassword(userID, id, passwordKindIMAP, req.Password)
 	if err != nil {
 		return nil, fmt.Errorf("encrypt password: %w", err)
 	}
 
 	var encryptedSmtpPw []byte
 	if req.SmtpPassword != "" {
-		encryptedSmtpPw, err = s.encrypt(req.SmtpPassword)
+		encryptedSmtpPw, err = s.encryptPassword(userID, id, passwordKindSMTP, req.SmtpPassword)
 		if err != nil {
 			return nil, fmt.Errorf("encrypt smtp password: %w", err)
 		}
@@ -674,6 +661,11 @@ func (s *AccountStore) createAccountWithID(ctx context.Context, userID, id strin
 		// UUID reservations. The same email may belong to different user stores.
 		query += ` WHERE NOT EXISTS (SELECT 1 FROM accounts WHERE user_id = ? AND email_address = ? COLLATE NOCASE)`
 		args = append(args, userID, req.EmailAddress)
+	} else {
+		// The ID comes from the mailbox, and an account being deleted was purged
+		// above, so a row with this ID is the same mailbox already connected.
+		query += ` WHERE NOT EXISTS (SELECT 1 FROM accounts WHERE id = ?)`
+		args = append(args, id)
 	}
 	tx, err := s.db.Write().BeginTx(ctx, nil)
 	if err != nil {
@@ -782,8 +774,15 @@ func (s *AccountStore) updateAccount(ctx context.Context, accountID, userID stri
 			args = append(args, req.SmtpUsername)
 		}
 	}
+	if req.Password != "" || (!accountProviderUsesGraphMail(req.Provider) && req.SmtpPassword != "") {
+		owner, err := s.accountOwner(ctx, accountID, userID)
+		if err != nil {
+			return err
+		}
+		userID = owner
+	}
 	if req.Password != "" {
-		encrypted, err := s.encrypt(req.Password)
+		encrypted, err := s.encryptPassword(userID, accountID, passwordKindIMAP, req.Password)
 		if err != nil {
 			return fmt.Errorf("encrypt password: %w", err)
 		}
@@ -791,7 +790,7 @@ func (s *AccountStore) updateAccount(ctx context.Context, accountID, userID stri
 		args = append(args, encrypted)
 	}
 	if !accountProviderUsesGraphMail(req.Provider) && req.SmtpPassword != "" {
-		encrypted, err := s.encrypt(req.SmtpPassword)
+		encrypted, err := s.encryptPassword(userID, accountID, passwordKindSMTP, req.SmtpPassword)
 		if err != nil {
 			return fmt.Errorf("encrypt smtp password: %w", err)
 		}
@@ -838,6 +837,17 @@ func (s *AccountStore) updateAccount(ctx context.Context, accountID, userID stri
 		}
 	}
 	return tx.Commit()
+}
+
+// accountOwner returns the user an account belongs to, checking it against
+// the caller's user when one is given.
+func (s *AccountStore) accountOwner(ctx context.Context, accountID, userID string) (string, error) {
+	var owner string
+	err := s.db.Read().QueryRowContext(ctx, `SELECT user_id FROM accounts WHERE id = ? AND COALESCE(is_deleting, 0) = 0`, accountID).Scan(&owner)
+	if err == nil && userID != "" && owner != userID {
+		return "", sql.ErrNoRows
+	}
+	return owner, err
 }
 
 func (s *AccountStore) FindProviderAccountID(ctx context.Context, userID, provider, providerAccountID, email string) (string, error) {

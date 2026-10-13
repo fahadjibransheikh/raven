@@ -2113,7 +2113,7 @@ func TestEmailFiltersCoverStructuredSearchFields(t *testing.T) {
 	if err := os.WriteFile(bodyPath, []byte("body contains bodyneedle for full text search"), 0600); err != nil {
 		t.Fatalf("write body: %v", err)
 	}
-	if err := db.UpdateMessageBodyInternal(ctx, targetID, bodyPath, "", "", "budget planning preview"); err != nil {
+	if err := db.UpdateMessageBodyInternal(ctx, targetID, bodyPath, "", "", "budget planning preview", 0); err != nil {
 		t.Fatalf("UpdateMessageBodyInternal() error = %v", err)
 	}
 	if err := db.ReplaceAttachmentsInternal(ctx, targetID, []AttachmentRow{{Filename: "receipt-deep.pdf", ContentType: "application/pdf", SizeBytes: 1024}}); err != nil {
@@ -2196,7 +2196,7 @@ func TestEmailBodyFilterUsesMaintainedSearchIndex(t *testing.T) {
 	if err := os.WriteFile(bodyPath, []byte("full body includes uniquebodytoken for search"), 0600); err != nil {
 		t.Fatalf("write body: %v", err)
 	}
-	if err := db.UpdateMessageBodyInternal(ctx, msgID, bodyPath, "", "", "preview without unique body token"); err != nil {
+	if err := db.UpdateMessageBodyInternal(ctx, msgID, bodyPath, "", "", "preview without unique body token", 0); err != nil {
 		t.Fatalf("UpdateMessageBodyInternal() error = %v", err)
 	}
 
@@ -2241,7 +2241,7 @@ func TestEmailBodyFilterIndexesCompleteHTMLBody(t *testing.T) {
 	if err := os.WriteFile(bodyPath, []byte(body), 0600); err != nil {
 		t.Fatalf("write HTML body: %v", err)
 	}
-	if err := db.UpdateMessageBodyInternal(ctx, msgID, "", bodyPath, "", "short preview without the target"); err != nil {
+	if err := db.UpdateMessageBodyInternal(ctx, msgID, "", bodyPath, "", "short preview without the target", 0); err != nil {
 		t.Fatalf("UpdateMessageBodyInternal() error = %v", err)
 	}
 

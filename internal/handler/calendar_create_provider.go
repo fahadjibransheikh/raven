@@ -367,7 +367,7 @@ func createCalDAVCalendarEvent(ctx context.Context, source storage.CalendarSourc
 	if err != nil {
 		return calendar.RemoteEvent{}, err
 	}
-	client := &http.Client{Transport: calDAVHTTPTransport, Timeout: 30 * time.Second,
+	client := &http.Client{Transport: davHTTPTransport, Timeout: 30 * time.Second,
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	req, err := newCardDAVRequest(ctx, http.MethodPut, endpoint, username, password, strings.NewReader(body))
 	if err != nil {

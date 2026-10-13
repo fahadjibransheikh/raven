@@ -16,6 +16,7 @@ import (
 
 	"github.com/cristianadrielbraun/gofer/internal/auth"
 	"github.com/cristianadrielbraun/gofer/internal/config"
+	"github.com/cristianadrielbraun/gofer/internal/models"
 	"github.com/cristianadrielbraun/gofer/internal/storage"
 )
 
@@ -104,9 +105,9 @@ func TestCalDAVReportRejectsCrossOriginRedirect(t *testing.T) {
 		w.WriteHeader(http.StatusTemporaryRedirect)
 	}))
 	defer server.Close()
-	previousTransport := calDAVHTTPTransport
-	calDAVHTTPTransport = server.Client().Transport
-	t.Cleanup(func() { calDAVHTTPTransport = previousTransport })
+	previousTransport := davHTTPTransport
+	davHTTPTransport = server.Client().Transport
+	t.Cleanup(func() { davHTTPTransport = previousTransport })
 	if _, err := calDAVRequest(t.Context(), "REPORT", server.URL+"/calendar/", "username", "password", "1", "<query/>", time.Second); err == nil {
 		t.Fatal("accepted a redirect to a different origin")
 	}
@@ -152,9 +153,9 @@ func TestCalDAVCalendarRefreshPreservesCacheAndAccountScope(t *testing.T) {
 				}
 			}))
 			defer server.Close()
-			previousTransport := calDAVHTTPTransport
-			calDAVHTTPTransport = server.Client().Transport
-			t.Cleanup(func() { calDAVHTTPTransport = previousTransport })
+			previousTransport := davHTTPTransport
+			davHTTPTransport = server.Client().Transport
+			t.Cleanup(func() { davHTTPTransport = previousTransport })
 			db, err := storage.New(filepath.Join(t.TempDir(), "gofer.db"))
 			if err != nil {
 				t.Fatal(err)
@@ -173,7 +174,7 @@ func TestCalDAVCalendarRefreshPreservesCacheAndAccountScope(t *testing.T) {
 				t.Fatal(err)
 			}
 			if reuseMailbox {
-				if _, err := db.Write().Exec(`UPDATE accounts SET encrypted_password = (SELECT encrypted_password FROM account_caldav_configs WHERE account_id = 'calendar-account') WHERE id = 'calendar-account'`); err != nil {
+				if err := store.UpdateAccount(t.Context(), "calendar-account", &models.CreateAccountRequest{Password: "test-password"}); err != nil {
 					t.Fatal(err)
 				}
 				if err := store.SaveCalDAVConfig(t.Context(), "calendar-user", "calendar-account", server.URL, "", "", true); err != nil {

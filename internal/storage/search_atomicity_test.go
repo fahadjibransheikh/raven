@@ -209,7 +209,7 @@ func TestMessageSearchMutationAtomicity(t *testing.T) {
 					if err := os.WriteFile(htmlPath, []byte("<p>changedhtml</p>"), 0600); err != nil {
 						t.Fatal(err)
 					}
-					if err := db.UpdateMessageBodyInternal(ctx, id, bodyPath, "", "", "originalsnippet"); err != nil {
+					if err := db.UpdateMessageBodyInternal(ctx, id, bodyPath, "", "", "originalsnippet", 0); err != nil {
 						t.Fatal(err)
 					}
 					if err := db.InsertAttachmentsInternal(ctx, id, []AttachmentRow{{Filename: "originalattachment.txt"}}); err != nil {
@@ -258,7 +258,7 @@ func TestMessageSearchMutationAtomicity(t *testing.T) {
 						case "provider-insert", "provider-update":
 							_, err = db.UpsertProviderSyncMessages(ctx, []ProviderSyncMessage{{AccountID: "acc", FolderID: "folder", InternetMessageID: messageKey, ProviderMessageID: "remote-1", Subject: "changedsubject", FromEmail: "me@example.com", DateSent: draft.Date, ToRecipients: draft.ToRecipients}})
 						case "body":
-							err = db.UpdateMessageBodyInternal(ctx, id, "", htmlPath, "raw-path", "changedsnippet")
+							err = db.UpdateMessageBodyInternal(ctx, id, "", htmlPath, "raw-path", "changedsnippet", 0)
 						case "clear-body":
 							err = db.ClearEmailBody(ctx, id)
 						case "clear-data":

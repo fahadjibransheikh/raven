@@ -160,7 +160,7 @@ func userContactDAVDelete(ctx context.Context, cfg models.ContactSyncConfig, pas
 	if etag != "" {
 		req.Header.Set("If-Match", etag)
 	}
-	client := &http.Client{Timeout: 30 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return errors.New("contact provider delete redirected") }}
+	client := &http.Client{Transport: davHTTPTransport, Timeout: 30 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return errors.New("contact provider delete redirected") }}
 	resp, err := client.Do(req)
 	if err != nil {
 		return err

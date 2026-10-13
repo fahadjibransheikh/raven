@@ -288,6 +288,132 @@ function toggleUnencryptedTransportWarning(input) {
   warning.classList.toggle("inline-flex", active)
 }
 
+// While an account form is filled in, say whether Gofer will refuse the server:
+// one on a private network, or an unencrypted connection, without a Mail
+// security exception. The check runs once typing pauses, and only the answer
+// for the fields' latest values is shown.
+var accountServerCheckField = /^(imap|smtp)_(host|port|tls_mode)$/
+
+// Calendar and contacts server addresses are checked the same way.
+var accountServerCheckURLField = /^(base_url|caldav_url|addressbook_url)$/
+
+function accountServerURLNote(input) {
+  for (var node = input.parentElement, depth = 0; node && depth < 3; node = node.parentElement, depth++) {
+    var note = node.querySelector(":scope > [data-server-check-url]")
+    if (note) return note
+  }
+  return null
+}
+
+function scheduleAccountServerCheck(event) {
+  var input = event.target
+  if (input && input.name && input.type === "url" && accountServerCheckURLField.test(input.name)) {
+    var note = accountServerURLNote(input)
+    if (!note) return
+    clearTimeout(note._serverCheckTimer)
+    note._serverCheckTimer = setTimeout(function () {
+      runAccountServerURLCheck(input, note)
+    }, 600)
+    return
+  }
+  if (!input || !input.name || !accountServerCheckField.test(input.name)) return
+  var form = input.form || (input.closest && input.closest("form"))
+  var protocol = input.name.split("_")[0]
+  var target = form ? form.querySelector('[data-server-check="' + protocol + '"]') : null
+  if (!target) return
+  clearTimeout(target._serverCheckTimer)
+  target._serverCheckTimer = setTimeout(function () {
+    runAccountServerCheck(form, protocol, target)
+  }, 600)
+}
+
+function runAccountServerURLCheck(input, target) {
+  var address = String(input.value || "").trim()
+  if (!/^https?:\/\/[^/]/i.test(address)) {
+    target._serverCheckKey = ""
+    renderAccountServerCheck(target, [])
+    return
+  }
+  fetchAccountServerCheck(target, new URLSearchParams({ url: address }).toString())
+}
+
+function runAccountServerCheck(form, protocol, target) {
+  function field(name) {
+    var input = form.querySelector('[name="' + protocol + "_" + name + '"]')
+    return input ? String(input.value || "").trim() : ""
+  }
+  var host = field("host")
+  var port = field("port")
+  if (!host || !port) {
+    target._serverCheckKey = ""
+    renderAccountServerCheck(target, [])
+    return
+  }
+  fetchAccountServerCheck(target, new URLSearchParams({ protocol: protocol, host: host, port: port, tls_mode: field("tls_mode") }).toString())
+}
+
+function fetchAccountServerCheck(target, key) {
+  if (target._serverCheckKey === key) return
+  target._serverCheckKey = key
+  if (target._serverCheckAbort) target._serverCheckAbort.abort()
+  var controller = typeof AbortController === "function" ? new AbortController() : null
+  target._serverCheckAbort = controller
+  fetch("/api/accounts/server-check?" + key, { credentials: "same-origin", signal: controller ? controller.signal : undefined })
+    .then(function (response) {
+      return response.ok ? response.json() : { notes: [] }
+    })
+    .then(function (data) {
+      if (target._serverCheckKey === key) renderAccountServerCheck(target, (data && data.notes) || [])
+    })
+    .catch(function () {})
+}
+
+function renderAccountServerCheck(target, notes) {
+  target.replaceChildren()
+  notes.forEach(function (note) {
+    var line = document.createElement("p")
+    line.className = note.level === "blocked"
+      ? "text-xs leading-relaxed text-amber-800 dark:text-amber-200"
+      : "text-xs leading-relaxed text-emerald-800 dark:text-emerald-200"
+    line.textContent = note.text
+    if (note.link) {
+      var link = document.createElement("a")
+      link.href = note.link
+      link.target = "_blank"
+      link.rel = "noopener"
+      link.className = "font-semibold underline underline-offset-2"
+      link.textContent = note.link_text || "Open Mail security"
+      line.appendChild(document.createTextNode(" "))
+      line.appendChild(link)
+    }
+    target.appendChild(line)
+  })
+  target.classList.toggle("hidden", notes.length === 0)
+}
+
+// Forms opened with servers already filled in, such as editing an account,
+// are checked straight away.
+function checkAccountServers(root) {
+  if (!root || !root.querySelectorAll) return
+  root.querySelectorAll("[data-server-check]").forEach(function (target) {
+    var form = target.closest("form")
+    if (form) runAccountServerCheck(form, target.getAttribute("data-server-check"), target)
+  })
+  root.querySelectorAll("[data-server-check-url]").forEach(function (target) {
+    var input = target.parentElement && target.parentElement.querySelector('input[type="url"]')
+    if (input && accountServerCheckURLField.test(input.name)) runAccountServerURLCheck(input, target)
+  })
+}
+
+document.addEventListener("input", scheduleAccountServerCheck)
+document.addEventListener("change", scheduleAccountServerCheck)
+document.addEventListener("DOMContentLoaded", function () {
+  checkAccountServers(document)
+})
+document.body.addEventListener("htmx:afterSettle", function (e) {
+  checkAccountServers(e.target)
+})
+
 function normalizeAccountColorInput(color) {
   color = (color || "").trim()
   if (/^[0-9a-f]{6}$/i.test(color)) color = "#" + color
@@ -895,6 +1021,7 @@ function setupModePickers() {
       buttons.forEach(function (btn) {
         var isActive = btn === activeButton
         btn.className = modeButtonClasses(isActive)
+        btn.setAttribute("aria-pressed", isActive ? "true" : "false")
       })
 
       var pickerRect = picker.getBoundingClientRect()
@@ -1151,5 +1278,33 @@ document.addEventListener("click", function (e) {
     requestAnimationFrame(function () {
       if (typeof refreshModePickers === 'function') refreshModePickers(false)
     })
+  }
+})
+
+// Opens the edit account dialog at its first step once it has been loaded.
+function setupEditAccountDialog() {
+  var dlg = document.querySelector("#edit-account-dialog dialog[data-tui-dialog-content]")
+  if (!dlg) return
+
+  if (window.tui && window.tui.dialog) {
+    window.tui.dialog.open("edit-account-dialog")
+  }
+
+  requestAnimationFrame(function () {
+    var track = document.getElementById("edit-wizard-track")
+    if (!track || !dlg.open) return
+
+    track.style.transform = "translateX(0)"
+    if (typeof _editWizStep !== "undefined") _editWizStep = 0
+
+    document.querySelectorAll("#edit-account-dialog [data-account-wizard-step]").forEach(function (item) {
+      item.dataset.active = String(+item.dataset.accountWizardStep === 0)
+    })
+  })
+}
+
+document.addEventListener("htmx:afterSettle", function (e) {
+  if (e.target && e.target.querySelector && e.target.querySelector("#edit-account-dialog")) {
+    setTimeout(setupEditAccountDialog, 20)
   }
 })

@@ -25,6 +25,9 @@ type MailSecurityExceptionAccount struct {
 }
 
 type MailSecurityAdminData struct {
+	// ActionBase is where the panel's forms post: the admin page in managed
+	// and open mode, the owner's security settings in personal mode.
+	ActionBase     string
 	Exceptions     []MailSecurityException
 	Notice         string
 	Error          string

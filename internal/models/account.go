@@ -8,10 +8,14 @@ type AccountConfig struct {
 	IMAPPort           int
 	IMAPTLSMode        string
 	IMAPAllowPlaintext bool
+	// IMAPAllowPrivate is set when an administrator approved this private
+	// server; otherwise Gofer refuses to connect to private addresses.
+	IMAPAllowPrivate   bool
 	SMTPHost           string
 	SMTPPort           int
 	SMTPTLSMode        string
 	SMTPAllowPlaintext bool
+	SMTPAllowPrivate   bool
 	Username           string
 	AuthMethod         string
 	SmtpUsername       string

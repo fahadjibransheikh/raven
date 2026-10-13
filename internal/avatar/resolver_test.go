@@ -718,3 +718,36 @@ func TestDefaultClientRefusesInternalAddressAtDialTime(t *testing.T) {
 		}
 	}
 }
+func TestImageContentTypeAcceptsOnlyOnePlainImageType(t *testing.T) {
+	for header, want := range map[string]string{
+		"image/png":                 "image/png",
+		"IMAGE/PNG; charset=binary": "image/png",
+		"image/jpg":                 "image/jpeg",
+		"application/svg+xml":       "image/svg+xml",
+		"image/x-icon":              "image/x-icon",
+	} {
+		if got, ok := ImageContentType(header); !ok || got != want {
+			t.Errorf("ImageContentType(%q) = %q, %v; want %q", header, got, ok, want)
+		}
+	}
+	// Browsers read the last type of a list, so a list is never an image.
+	for _, header := range []string{"", "image/png, text/html", "image/png,text/html", "text/html", "image/", "image/png; x=\"a,b\", text/html", "image/x-unknown", "image/svg+xml, text/html"} {
+		if got, ok := ImageContentType(header); ok {
+			t.Errorf("ImageContentType(%q) = %q, want refused", header, got)
+		}
+	}
+}
+
+func TestHashedAvatarRefusesAListOfTypes(t *testing.T) {
+	r := NewResolver()
+	r.client = &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": []string{"image/png, text/html"}},
+			Body:       io.NopCloser(strings.NewReader("<script>alert(1)</script>")),
+		}, nil
+	})}
+	if _, found, err := r.ResolveLibravatar(context.Background(), "0bc83cb571cd1c50ba6f3e8a78ef1346"); found || err == nil {
+		t.Fatalf("avatar with a list of types accepted: found=%v err=%v", found, err)
+	}
+}

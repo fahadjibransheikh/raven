@@ -119,16 +119,15 @@ func (h *Handler) handlePrintMessage(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	body, ok := h.emailBodyHTML(ctx, id, msgID, userID, false)
-	if !ok {
+	body, ok, fetchErr := h.emailBodyHTML(ctx, id, msgID, userID, false)
+	if fetchErr != nil || !ok {
 		http.NotFound(w, r)
 		return
 	}
-	loadRemote := h.remoteImagesAllowed(ctx, userID, msgID)
-	if loadRemote {
-		body = message.RestoreRemoteImages(body)
+	if h.remoteImagesAllowed(ctx, userID, msgID) {
+		body = message.RestoreRemoteContent(body, h.remoteContentLinks(ctx, userID, msgID))
 	}
-	body = h.withImageGrants(ctx, msgID, body)
+	body = h.signMessageFileLinks(ctx, body, userID, msgID)
 
 	var head bytes.Buffer
 	if err := views.MessagePrintHeader(email).Render(ctx, &head); err != nil {
@@ -136,13 +135,11 @@ func (h *Handler) handlePrintMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	nonce := newCSPNonce()
-	img := "img-src 'self' data:"
-	if loadRemote {
-		img += " https: http:"
-	}
 	hd := w.Header()
-	// Add, not Set: keep the global frame-ancestors policy.
-	hd.Add("Content-Security-Policy", "default-src 'none'; "+img+"; style-src 'unsafe-inline'; font-src data:; script-src 'nonce-"+nonce+"'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'")
+	// Set, not Add: this page's own policy replaces the page-wide script policy,
+	// which would refuse the one nonced print script. Remote content comes
+	// through Gofer, so images load from 'self' only.
+	hd.Set("Content-Security-Policy", "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; font-src data:; script-src 'nonce-"+nonce+"'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'")
 	hd.Set("X-Content-Type-Options", "nosniff")
 	hd.Set("Content-Type", "text/html; charset=utf-8")
 	hd.Set("Cache-Control", "no-store")

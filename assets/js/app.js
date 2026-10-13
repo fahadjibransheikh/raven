@@ -1,3 +1,6 @@
+// Gofer's pages run no inline code, so htmx needn't evaluate any either.
+if (window.htmx) window.htmx.config.allowEval = false
+
 function setupPageRequestOwnership() {
   if (window._goferPageRequestOwnershipReady) return
   window._goferPageRequestOwnershipReady = true
@@ -92,6 +95,18 @@ document.addEventListener("DOMContentLoaded", function () {
   setupMailFilters()
   setupMailTableColumnResize()
   setupSSE()
+  // Leaving the page closes its event stream at once. Otherwise the browser
+  // keeps the page it left, stream included, alive for a while in case the
+  // person goes back, and a few page loads fill the six connections it allows
+  // to one site, so new requests wait until old streams time out.
+  window.addEventListener("pagehide", function () {
+    if (!appEventSource) return
+    appEventSource.close()
+    appEventSource = null
+  })
+  window.addEventListener("pageshow", function (event) {
+    if (event.persisted) setupSSE()
+  })
   setupOutgoingSendStatus()
   setupMailOperationActions()
   setupContactAvatarImages()
@@ -1508,7 +1523,11 @@ document.addEventListener("DOMContentLoaded", function () {
         e.stopPropagation()
         e.stopImmediatePropagation()
         var emailId = starBtn.dataset.emailId
-        if (emailId) toggleStar(emailId)
+        var starRow = starBtn.closest(".mail-list-item")
+        // A collapsed thread row stands for the whole thread; expanded messages star alone.
+        var threadRow = starRow && starRow.dataset.emailId === emailId && starRow.dataset.hasThread === "true"
+        if (emailId && threadRow) toggleThreadStar(emailId, starRow.dataset.threadId)
+        else if (emailId) toggleStar(emailId)
       }
 
       var repairBtn = e.target.closest("[data-repair-account-action]")
@@ -2253,7 +2272,7 @@ document.addEventListener("DOMContentLoaded", function () {
       var id = selectedMailIdForKeyboard()
       if (!id) return
       var row = mailRowById(id)
-      if (row && row.dataset.hasThread === "true" && typeof toggleThreadRead === "function") toggleThreadRead(id)
+      if (row && row.dataset.hasThread === "true" && typeof toggleThreadRead === "function") toggleThreadRead(id, row.dataset.threadId)
       else if (typeof toggleRead === "function") toggleRead(id)
     }
 
@@ -3410,8 +3429,15 @@ document.addEventListener("DOMContentLoaded", function () {
       if (!row) return
       var emailId = row.dataset.emailId
       if (!emailId || prefetchedBodies[emailId]) return
+      var accountId = row.dataset.accountId
+      if (accountId && accountsNeedingReconnect[accountId]) return
       prefetchedBodies[emailId] = true
-      fetch("/api/messages/" + encodeURIComponent(emailId) + "/prefetch-body", { method: "POST" }).catch(function () {
+      fetch("/api/messages/" + encodeURIComponent(emailId) + "/prefetch-body", { method: "POST" }).then(function (res) {
+        if (res.headers.get("X-Gofer-Account-Reconnect") === "true") {
+          delete prefetchedBodies[emailId]
+          markAccountNeedsReconnect(accountId)
+        }
+      }).catch(function () {
         delete prefetchedBodies[emailId]
       })
     }
@@ -4151,6 +4177,8 @@ document.addEventListener("DOMContentLoaded", function () {
       else if (browserNotificationsSupported()) labels[j].textContent = "Browser-tab notifications are available while Raven is open."
       else labels[j].textContent = "No notification method is available for this browser/origin."
     }
+    // The switch may have been turned off here without a change event.
+    if (window.goferSyncSettingDependents) window.goferSyncSettingDependents()
   }
 
   function showNotificationsUnavailableToast(err) {
@@ -4214,6 +4242,38 @@ document.addEventListener("DOMContentLoaded", function () {
         showNotificationsUnavailableToast(err)
       }).then(updateDesktopNotificationControls)
     })
+    document.addEventListener("click", function (e) {
+      var button = e.target && e.target.closest ? e.target.closest("[data-desktop-notifications-test]") : null
+      if (!button || button.disabled) return
+      button.disabled = true
+      button.setAttribute("data-busy", "")
+      sendTestNotification().then(function () {
+        showGoferToast({
+          id: "desktop-notifications-test-toast",
+          title: "Test notification sent",
+          description: "It should appear in a moment. If it does not, check your system's notification settings.",
+          variant: "success",
+          icon: "success",
+          position: "bottom-right",
+          duration: 5000,
+          dismissible: true,
+        })
+      }).catch(function (err) {
+        showGoferToast({
+          id: "desktop-notifications-test-toast",
+          title: "Test notification failed",
+          description: err && err.message ? err.message : "Could not send the test notification.",
+          variant: "warning",
+          icon: "warning",
+          position: "bottom-right",
+          duration: 7000,
+          dismissible: true,
+        })
+      }).finally(function () {
+        button.removeAttribute("data-busy")
+        setNotificationActiveMethod(_notificationActiveMethod)
+      })
+    })
     document.addEventListener("htmx:afterSwap", function () {
       updateDesktopNotificationControls()
       setNotificationActiveMethod(_notificationActiveMethod)
@@ -4271,6 +4331,53 @@ document.addEventListener("DOMContentLoaded", function () {
     else if (_notificationActiveMethod === "browser_tab") label = "Browser tab"
     var nodes = document.querySelectorAll("[data-notification-active-method]")
     for (var i = 0; i < nodes.length; i++) nodes[i].textContent = "Active method: " + label
+    var testable = _notificationActiveMethod === "web_push" || _notificationActiveMethod === "browser_tab"
+    var tests = document.querySelectorAll("[data-desktop-notifications-test]")
+    for (var j = 0; j < tests.length; j++) {
+      if (!tests[j].hasAttribute("data-busy")) tests[j].disabled = !testable
+    }
+  }
+
+  // Sends a test notification through the active method. Web Push goes through the
+  // server and the push service to this browser's subscription, like new mail does;
+  // browser-tab notifications are shown by the page itself.
+  function sendTestNotification() {
+    if (_notificationActiveMethod === "web_push") {
+      if (!("serviceWorker" in navigator)) return Promise.reject(new Error("This browser does not support Web Push."))
+      return navigator.serviceWorker.getRegistration("/sw.js").then(function (registration) {
+        return registration ? registration.pushManager.getSubscription() : null
+      }).then(function (subscription) {
+        if (!subscription) throw new Error("This browser has no push subscription. Turn notifications off and on again to register it.")
+        return fetch("/api/push/test", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ endpoint: subscription.endpoint }),
+        })
+      }).then(function (res) {
+        if (res.ok) return
+        return res.text().then(function (message) {
+          throw new Error((message || "").trim() || "Could not send the test notification.")
+        })
+      })
+    }
+    if (_notificationActiveMethod === "browser_tab") {
+      if (!browserNotificationsSupported() || Notification.permission !== "granted") {
+        return Promise.reject(new Error("Notification permission was not granted."))
+      }
+      var notification = new Notification("Raven", {
+        body: "Test notification. Desktop notifications are working.",
+        tag: "gofer-test-notification",
+        icon: "/assets/logo.png",
+        badge: "/assets/logo.png",
+      })
+      notification.onclick = function () {
+        window.focus()
+        notification.close()
+      }
+      setTimeout(function () { notification.close() }, 12000)
+      return Promise.resolve()
+    }
+    return Promise.reject(new Error("Turn on desktop notifications first."))
   }
 
   function requestNativeNotificationPermission(native, prompt) {
@@ -4900,6 +5007,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     }).catch(function () {})
   }
+  window.goferRefreshSidebarUnread = refreshSidebarUnread
 
   function initVirtualScroll() {
     var container = document.getElementById("mail-list-scroll")
@@ -5912,6 +6020,9 @@ document.addEventListener("DOMContentLoaded", function () {
       .then(function (r) { return r.json() })
       .then(function (data) {
         if (!data.is_read) return
+        var readButtons = document.querySelectorAll('[data-read-email="' + emailId + '"]')
+        for (var i = 0; i < readButtons.length; i++) setReadButtonIcon(readButtons[i], true)
+        syncThreadReadButtons()
         var row = trigger && trigger.closest ? trigger.closest(".mail-list-item") : null
         if (row) {
           var link = row.querySelector("a")
@@ -8272,14 +8383,6 @@ function _calendarAgendaEventMatchesDay(event, day) {
   return start < dayEnd && (end > dayStart || (start === end && start >= dayStart))
 }
 
-function _calendarAgendaEventIsUpcoming(event, today) {
-  if (event.calendarEventAllDay === "true") {
-    return !event.calendarEventEndDate || event.calendarEventEndDate > today
-  }
-  var end = Date.parse(event.calendarEventEnd)
-  return isNaN(end) || end >= Date.now()
-}
-
 // Session overrides also protect optimistic choices from an older HTMX cache
 // response. Persistence is per source and independent of provider sync.
 var _calendarVisibility = new Map()
@@ -8377,12 +8480,12 @@ function initializeCalendarDaySelection() {
   })
   var visible = 0
   agenda.querySelectorAll("[data-calendar-agenda-event]").forEach(function (event) {
-    var show = _calendarSourceIsVisible(event) && (selected ? _calendarAgendaEventMatchesDay(event.dataset, selected.dataset) :
-      _calendarAgendaEventIsUpcoming(event.dataset, calendar.dataset.calendarTodayDate))
+    // Without a selected day the agenda lists every event in the open month or week.
+    var show = _calendarSourceIsVisible(event) && (!selected || _calendarAgendaEventMatchesDay(event.dataset, selected.dataset))
     event.hidden = !show
     if (show) visible++
   })
-  agenda.querySelector("#calendar-agenda-heading").textContent = selected ? selected.dataset.calendarDayTitle : "Upcoming"
+  agenda.querySelector("#calendar-agenda-heading").textContent = selected ? selected.dataset.calendarDayTitle : "All events"
   agenda.querySelector("[data-calendar-agenda-context]").textContent = selected ?
     visible + (visible === 1 ? " event" : " events") : calendar.dataset.calendarMonthLabel
   agenda.querySelector("[data-calendar-agenda-clear]").hidden = !selected
@@ -8390,12 +8493,11 @@ function initializeCalendarDaySelection() {
   agenda.querySelector("[data-calendar-agenda-empty]").hidden = visible !== 0
   var sources = Array.from(document.querySelectorAll("[data-calendar-visibility]"))
   var allHidden = sources.length > 0 && sources.every(function (input) { return !_calendarSourceIsVisible(input) })
-  agenda.querySelector("[data-calendar-agenda-empty-title]").textContent = allHidden ? "All calendars are hidden" : selected ? "No events for this day" : "No upcoming events"
+  agenda.querySelector("[data-calendar-agenda-empty-title]").textContent = allHidden ? "All calendars are hidden" : selected ? "No events for this day" : "No events"
   agenda.querySelector("[data-calendar-agenda-empty-detail]").textContent = allHidden ?
-    "Show a calendar in the sidebar to see its events. Hidden calendars continue syncing." : selected ?
-    "Choose another date to browse your cached calendar events." :
-    "Events from Google, Microsoft, or CalDAV will appear here after your selected calendars are synchronized."
-  agenda.querySelector("[data-calendar-agenda-providers]").hidden = !!selected || allHidden
+    "Show a calendar in the sidebar to see its events." : selected ?
+    "Nothing is scheduled on this day." :
+    calendar.dataset.calendarView === "week" ? "Nothing is scheduled this week." : "Nothing is scheduled this month."
   // Switch views around the selected date rather than an unrelated week.
   var focusDate = selected ? selected.dataset.calendarDay : calendar.dataset.calendarDate
   calendar.querySelectorAll("[data-calendar-view-switch]").forEach(function (link) {
@@ -13383,8 +13485,19 @@ function _discardReadPaneDraft(emailId) {
   fetch("/api/drafts/" + encodeURIComponent(emailId), { method: "DELETE" })
     .then(function (r) {
       if (!r.ok) throw new Error("Failed to discard draft")
+      if (window.goferRefreshSidebarUnread) window.goferRefreshSidebarUnread()
+      // In a thread, only the draft goes; the rest of the thread stays open.
+      var card = document.querySelector('[data-thread-card="' + CSS.escape(String(emailId)) + '"]')
+      var slot = card && card.closest("[data-thread-slot]")
+      var list = slot && slot.parentElement
+      if (slot && list && list.querySelectorAll("[data-thread-slot]").length > 1) {
+        slot.remove()
+        var remaining = list.querySelectorAll("[data-thread-slot]").length
+        var count = document.querySelector("[data-thread-count]")
+        if (count) count.textContent = remaining === 1 ? "1 message in this thread" : remaining + " messages in this thread"
+        return
+      }
       setMailViewEmpty()
-      refreshSidebarUnread()
     })
     .catch(function (err) {
       showSendStatus("failed", err && err.message ? err.message : "Failed to discard draft")
@@ -14502,41 +14615,51 @@ function openComposeInMain(fullWidth, instantFullWidth) {
   }
 }
 
+var MAIL_READ_ICON = '<path d="m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7"/>\n  <rect x="2" y="4" width="20" height="16" rx="2"/>'
+var MAIL_UNREAD_ICON = '<path d="M21.2 8.4c.5.38.8.97.8 1.6v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V10a2 2 0 0 1 .8-1.6l8-6a2 2 0 0 1 2.4 0l8 6Z"/>\n  <path d="m22 10-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 10"/>'
+
+function setReadButtonIcon(button, isRead) {
+  if (!button) return
+  button.dataset.isRead = isRead ? "true" : "false"
+  var svg = button.querySelector('svg')
+  if (svg) svg.innerHTML = isRead ? MAIL_READ_ICON : MAIL_UNREAD_ICON
+}
+
+// The reader's thread read toggle shows the thread as read only when every message is read.
+function syncThreadReadButtons() {
+  var threadButtons = document.querySelectorAll('#mail-view [data-read-thread]')
+  if (!threadButtons.length) return
+  var allRead = !document.querySelector('#mail-view [data-read-email][data-is-read="false"]')
+  for (var i = 0; i < threadButtons.length; i++) setReadButtonIcon(threadButtons[i], allRead)
+}
+
 function toggleRead(emailId) {
   fetch("/api/messages/" + emailId + "/read", { method: "POST" })
     .then(mailActionJSON)
     .then(function (data) {
-      var btn = document.querySelector('[data-read-email="' + emailId + '"]')
-      if (btn) {
-        var svg = btn.querySelector('svg')
-        if (svg) {
-          if (data.is_read) {
-            svg.innerHTML = '<path d="m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7"/>\n  <rect x="2" y="4" width="20" height="16" rx="2"/>'
-          } else {
-            svg.innerHTML = '<path d="M21.2 8.4c.5.38.8.97.8 1.6v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V10a2 2 0 0 1 .8-1.6l8-6a2 2 0 0 1 2.4 0l8 6Z"/>\n  <path d="m22 10-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 10"/>'
-          }
-        }
-      }
+      var buttons = document.querySelectorAll('[data-read-email="' + emailId + '"]')
+      for (var i = 0; i < buttons.length; i++) setReadButtonIcon(buttons[i], data.is_read)
+      syncThreadReadButtons()
       invalidateMailListItem(emailId)
       refreshSidebarUnread()
     })
     .catch(function () { showMailActionError("Could not change read state") })
 }
 
-function toggleThreadRead(emailId) {
+function toggleThreadRead(emailId, threadId) {
   fetch("/api/messages/" + emailId + "/thread/read", { method: "POST" })
     .then(mailActionJSON)
     .then(function (data) {
-      var btn = document.querySelector('[data-read-email="' + emailId + '"]')
-      if (btn) {
-        var svg = btn.querySelector('svg')
-        if (svg) {
-          if (data.is_read) {
-            svg.innerHTML = '<path d="m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7"/>\n  <rect x="2" y="4" width="20" height="16" rx="2"/>'
-          } else {
-            svg.innerHTML = '<path d="M21.2 8.4c.5.38.8.97.8 1.6v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V10a2 2 0 0 1 .8-1.6l8-6a2 2 0 0 1 2.4 0l8 6Z"/>\n  <path d="m22 10-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 10"/>'
-          }
-        }
+      // Every message in the open thread now has the same read state.
+      var readerThread = document.querySelector('#mail-view [data-read-thread]')
+      var readerShowsThread = readerThread && (readerThread.getAttribute('data-read-thread') === String(emailId) ||
+        (threadId && readerThread.getAttribute('data-read-thread-id') === String(threadId)))
+      if (readerShowsThread) {
+        var buttons = document.querySelectorAll('#mail-view [data-read-email], #mail-view [data-read-thread]')
+        for (var i = 0; i < buttons.length; i++) setReadButtonIcon(buttons[i], data.is_read)
+      } else {
+        var button = document.querySelector('[data-read-email="' + emailId + '"]')
+        if (button) setReadButtonIcon(button, data.is_read)
       }
       invalidateMailListItem(emailId)
       refreshSidebarUnread()
@@ -14550,11 +14673,53 @@ function setStarButtonState(emailId, starred) {
   svg.setAttribute("class", starred ? "size-4 text-warning fill-warning drop-shadow-[0_1px_1px_rgba(180,120,0,0.3)]" : "size-4 text-subtle-foreground")
 }
 
+function setStarButtonIcon(button, starred) {
+  var svg = button && button.querySelector('svg')
+  if (!svg) return
+  var size = (svg.getAttribute('class') || '').match(/\bsize-[\w.]+/)
+  size = size ? size[0] : 'size-4'
+  if (starred) {
+    svg.setAttribute('class', size + ' text-warning fill-warning drop-shadow-[0_1px_1px_rgba(180,120,0,0.3)]')
+  } else {
+    svg.setAttribute('class', size + ' text-subtle-foreground')
+  }
+}
+
+// The reader's thread star is filled while any message in the open thread is starred.
+function syncThreadStarButtons() {
+  var threadStars = document.querySelectorAll('#mail-view [data-star-thread]')
+  if (!threadStars.length) return
+  var starred = !!document.querySelector('#mail-view [data-star-email] svg.fill-warning')
+  for (var i = 0; i < threadStars.length; i++) setStarButtonIcon(threadStars[i], starred)
+}
+
 function toggleStar(emailId) {
   fetch("/api/messages/" + emailId + "/star", { method: "POST" })
     .then(mailActionJSON)
     .then(function (data) {
-      setStarButtonState(emailId, data.is_starred)
+      var starBtns = document.querySelectorAll('[data-star-email="' + emailId + '"]')
+      for (var i = 0; i < starBtns.length; i++) setStarButtonIcon(starBtns[i], data.is_starred)
+      syncThreadStarButtons()
+      invalidateMailListItem(emailId)
+    })
+    .catch(function () {})
+}
+
+// Stars every message in the thread, or unstars them all when any is starred.
+function toggleThreadStar(emailId, threadId) {
+  fetch("/api/messages/" + encodeURIComponent(emailId) + "/thread/star", { method: "POST" })
+    .then(function (r) {
+      if (!r.ok) throw new Error("Failed to star thread")
+      return r.json()
+    })
+    .then(function (data) {
+      var readerThread = document.querySelector('#mail-view [data-star-thread]')
+      var readerShowsThread = readerThread && (readerThread.getAttribute('data-star-thread') === String(emailId) ||
+        (threadId && readerThread.getAttribute('data-star-thread-id') === String(threadId)))
+      if (readerShowsThread) {
+        var stars = document.querySelectorAll('#mail-view [data-star-email], #mail-view [data-star-thread]')
+        for (var i = 0; i < stars.length; i++) setStarButtonIcon(stars[i], data.is_starred)
+      }
       invalidateMailListItem(emailId)
     })
     .catch(function () { showMailActionError("Could not change the star") })
@@ -14982,40 +15147,40 @@ function emailBodyFrameForSource(source) {
 
 window.addEventListener("message", function (e) {
   if (!e.data || !e.data.type) return
+  // Only a real message frame may send anything, and the message it belongs to comes
+  // from that frame's element, never from the message: a script in another frame
+  // cannot steer a selector or touch another message's frame.
+  var iframe = emailBodyFrameForSource(e.source)
+  if (!iframe) return
+  var emailId = iframe.getAttribute("data-email-id") || ""
+  if (!/^\d+$/.test(emailId)) return
   if (e.data.type === "emailBodyResize") {
-    // Only a real message frame may resize itself, and the id comes from that frame's
-    // element, never from the message: a script in another frame cannot steer the
-    // selector or touch another message's frame.
-    var iframe = emailBodyFrameForSource(e.source)
     var height = Number(e.data.height)
-    if (iframe && isFinite(height) && height >= 0) {
-      var frameEmailId = iframe.dataset.emailId || ""
-      iframe.style.height = Math.min(height, 100000) + "px"
-      iframe.classList.remove("opacity-0")
-      var threadContent = iframe.closest(".mail-view-content")
-      if (threadContent && threadContent._threadRepin) threadContent._threadRepin()
-      var loader = frameEmailId ? document.querySelector('[data-email-body-loading="' + _cssAttrEscape(frameEmailId) + '"]') : null
-      if (loader) loader.remove()
-      revealUnsubscribeButton(frameEmailId)
-      if (iframe.dataset.translationActive === "true" && typeof window.goferEmailTranslationFrameLoaded === "function") {
-        window.goferEmailTranslationFrameLoaded(frameEmailId)
-      }
+    if (!isFinite(height) || height < 0) return
+    iframe.style.height = Math.min(Math.ceil(height), 100000) + "px"
+    iframe.classList.remove("opacity-0")
+    var threadContent = iframe.closest(".mail-view-content")
+    if (threadContent && threadContent._threadRepin) threadContent._threadRepin()
+    var loader = document.querySelector('[data-email-body-loading="' + _cssAttrEscape(emailId) + '"]')
+    if (loader) loader.remove()
+    revealUnsubscribeButton(emailId)
+    clearEmailBodyError(emailId)
+    if (iframe.dataset.translationActive === "true" && typeof window.goferEmailTranslationFrameLoaded === "function") {
+      window.goferEmailTranslationFrameLoaded(emailId)
     }
     return
   }
   if (e.data.type === "emailLinkClick") {
     // The sandboxed message frame cannot open popups; open its links here.
-    // Only a real message frame may ask, and only for web/mail links.
-    var linkFrame = Array.prototype.find.call(document.querySelectorAll("[data-email-body-frame]"), function (f) { return f.contentWindow === e.source })
-    if (linkFrame && /^(https?:|mailto:)/i.test(String(e.data.href || ""))) window.open(String(e.data.href), "_blank", "noopener,noreferrer")
+    // Only web and mail links are opened.
+    if (/^(https?:|mailto:)/i.test(String(e.data.href || ""))) window.open(String(e.data.href), "_blank", "noopener,noreferrer")
     return
   }
   if (e.data.type === "emailKeydown") {
     // Focus inside the sandboxed frame hides keystrokes from the page, so the shortcuts
-    // would die after a click into the body. Replay them, from a real message frame only.
-    var keyFrame = Array.prototype.find.call(document.querySelectorAll("[data-email-body-frame]"), function (f) { return f.contentWindow === e.source })
+    // would die after a click into the body. Replay them.
     var key = String(e.data.key || "")
-    if (keyFrame && key.length > 0 && key.length <= 12) {
+    if (key.length > 0 && key.length <= 12) {
       document.body.dispatchEvent(new KeyboardEvent("keydown", {
         key: key, shiftKey: !!e.data.shiftKey, ctrlKey: !!e.data.ctrlKey, metaKey: !!e.data.metaKey, altKey: !!e.data.altKey,
         bubbles: true, cancelable: true
@@ -15024,12 +15189,139 @@ window.addEventListener("message", function (e) {
     return
   }
   if (e.data.type === "remoteContentBlocked") {
-    var blockedFrame = emailBodyFrameForSource(e.source)
-    var blockedId = blockedFrame && blockedFrame.dataset.emailId
-    var banner = blockedId ? document.querySelector('[data-remote-content-banner="' + _cssAttrEscape(blockedId) + '"]') : null
+    var banner = document.querySelector('[data-remote-content-banner="' + _cssAttrEscape(emailId) + '"]')
     if (banner) banner.classList.remove("hidden")
   }
+  if (e.data.type === "emailBodyError") {
+    showEmailBodyError(Object.assign({}, e.data, { emailId: emailId }))
+  }
 })
+
+// The body iframe stays hidden until it reports a height, so a failed load
+// replaces the loader with an explanation here instead.
+function showEmailBodyError(failure) {
+  var emailId = String(failure.emailId)
+  var iframe = document.querySelector('[data-email-body-frame][data-email-id="' + emailId + '"]')
+  if (!iframe) return
+  clearEmailBodyError(emailId)
+  var loader = document.querySelector('[data-email-body-loading="' + emailId + '"]')
+  if (loader) loader.classList.add("hidden")
+  if (failure.kind === "reconnect" && failure.accountId) markAccountNeedsReconnect(failure.accountId)
+
+  var card = document.createElement("div")
+  card.setAttribute("data-email-body-error", emailId)
+  card.setAttribute("role", "alert")
+  card.className = "my-2 rounded-lg border border-ink/10 bg-ink/[0.02] px-4 py-3.5"
+  var title = document.createElement("p")
+  title.className = "text-[13px] font-medium text-ink"
+  title.textContent = failure.kind === "missing" ? "Message unavailable" :
+    failure.kind === "large" ? "Large message" :
+    failure.kind === "oversize" ? "Message too large" : "Couldn't load this message"
+  var message = document.createElement("p")
+  message.className = "mt-1 text-xs leading-relaxed text-ink/60"
+  message.textContent = failure.message || ""
+  card.appendChild(title)
+  card.appendChild(message)
+  if (failure.detail) {
+    var detail = document.createElement("p")
+    detail.className = "mt-1 break-words text-xs leading-relaxed text-ink/45"
+    detail.textContent = failure.detail
+    card.appendChild(detail)
+  }
+
+  var actions = document.createElement("div")
+  actions.className = "mt-3 flex flex-wrap items-center gap-2"
+  var buttonClass = "inline-flex h-8 items-center rounded-md border border-ink/10 px-3 text-xs font-medium text-ink/70 transition-colors hover:border-ink/20 hover:text-ink cursor-pointer"
+  if (failure.kind === "reconnect" && failure.provider && failure.email) {
+    var form = document.createElement("form")
+    form.method = "POST"
+    form.action = "/api/accounts/oauth2/authorize"
+    form.className = "contents"
+    var fields = { flow_action: "reconnect", provider: failure.provider, email_address: failure.email, display_name: failure.name || "" }
+    Object.keys(fields).forEach(function (name) {
+      var input = document.createElement("input")
+      input.type = "hidden"
+      input.name = name
+      input.value = fields[name]
+      form.appendChild(input)
+    })
+    var reconnect = document.createElement("button")
+    reconnect.type = "submit"
+    reconnect.className = buttonClass + " bg-ink/[0.04]"
+    reconnect.textContent = "Reconnect account"
+    form.appendChild(reconnect)
+    actions.appendChild(form)
+  } else if (failure.kind === "reconnect") {
+    var settings = document.createElement("a")
+    settings.href = "/settings/accounts"
+    settings.className = buttonClass
+    settings.textContent = "Open account settings"
+    actions.appendChild(settings)
+  }
+  if (failure.kind === "large") {
+    var full = document.createElement("button")
+    full.type = "button"
+    full.className = buttonClass + " bg-ink/[0.04]"
+    full.textContent = "Show full message"
+    full.addEventListener("click", function () {
+      full.disabled = true
+      full.textContent = "Downloading…"
+      fetch("/api/messages/" + encodeURIComponent(emailId) + "/download-full", { method: "POST" })
+        .then(function (r) {
+          if (r.ok) return null
+          return r.text().then(function (text) {
+            try { return JSON.parse(text).message || text } catch (e) { return text }
+          })
+        })
+        .then(function (problem) {
+          if (problem === null) {
+            // The message view was drawn before its attachments were known.
+            var mailView = document.getElementById("mail-view")
+            if (window.htmx && mailView && mailView.contains(iframe)) {
+              htmx.ajax("GET", mailViewRequestURL(emailId), { target: "#mail-view", swap: "innerHTML" })
+            } else {
+              applyEmailBodyTheme(iframe)
+            }
+            return
+          }
+          message.textContent = String(problem || "").trim() || "This message couldn't be downloaded from the mail server."
+          full.disabled = false
+          full.textContent = "Show full message"
+        })
+        .catch(function () {
+          message.textContent = "This message couldn't be downloaded from the mail server."
+          full.disabled = false
+          full.textContent = "Show full message"
+        })
+    })
+    actions.appendChild(full)
+  } else if (failure.kind !== "missing" && failure.kind !== "oversize") {
+    var retry = document.createElement("button")
+    retry.type = "button"
+    retry.className = buttonClass
+    retry.textContent = "Try again"
+    retry.addEventListener("click", function () {
+      if (failure.accountId) delete accountsNeedingReconnect[failure.accountId]
+      applyEmailBodyTheme(iframe)
+    })
+    actions.appendChild(retry)
+  }
+  if (actions.childNodes.length) card.appendChild(actions)
+  iframe.parentNode.insertBefore(card, iframe)
+}
+
+function clearEmailBodyError(emailId) {
+  var card = document.querySelector('[data-email-body-error="' + emailId + '"]')
+  if (card) card.remove()
+}
+
+// Accounts whose provider rejected their saved authorization this page load.
+// Background prefetches skip them until the user retries or reconnects.
+var accountsNeedingReconnect = Object.create(null)
+
+function markAccountNeedsReconnect(accountId) {
+  if (accountId) accountsNeedingReconnect[accountId] = true
+}
 
 function translatedEmailBodyURL(iframe, theme, bg, fg, link, original) {
   var params = new URLSearchParams()
@@ -15057,6 +15349,7 @@ function applyEmailBodyTheme(targetFrame) {
   var iframe = targetFrame
   if (!iframe || !iframe.dataset.emailId) return
   iframe.classList.add("opacity-0")
+  clearEmailBodyError(iframe.dataset.emailId)
   var loader = document.querySelector('[data-email-body-loading="' + iframe.dataset.emailId + '"]')
   if (loader) loader.classList.remove("hidden")
   var baseTheme = getEmailBodyBaseTheme()
@@ -15079,20 +15372,42 @@ function applyEmailBodyTheme(targetFrame) {
   if (!original && fg) params.set("fg", fg)
   if (!original && link) params.set("link", link)
   if (iframe.dataset.remoteLoaded === "true") params.set("remote", "true")
-  iframe.src = iframe.dataset.translationActive === "true" ?
+  setEmailBodyFrameSrc(iframe, iframe.dataset.translationActive === "true" ?
     translatedEmailBodyURL(iframe, theme, bg, fg, link, original) :
-    "/email/" + iframe.dataset.emailId + "/body?" + params.toString()
+    "/email/" + iframe.dataset.emailId + "/body?" + params.toString())
   updateEmailBodySchemeButton(iframe, baseTheme, theme, bodyMode)
+}
+
+// Reloading the body by assigning a new src adds an entry to the page's history, so
+// Back would step through every restyle, translation or remote-content load before
+// leaving the message. After the first load the frame's location is replaced instead,
+// and the current address is kept in data-body-src, since src then goes stale.
+function setEmailBodyFrameSrc(iframe, url) {
+  var absolute
+  try { absolute = new URL(url, window.location.href).toString() } catch (e) { absolute = url }
+  if (iframe.getAttribute("src") && iframe.contentWindow) {
+    try {
+      iframe.contentWindow.location.replace(absolute)
+      iframe.dataset.bodySrc = absolute
+      return
+    } catch (e) {}
+  }
+  iframe.dataset.bodySrc = absolute
+  iframe.src = absolute
+}
+
+function emailBodyFrameSrc(iframe) {
+  return iframe.dataset.bodySrc || iframe.src
 }
 
 function loadRemoteContent(emailId) {
   var iframe = document.querySelector('[data-email-body-frame][data-email-id="' + emailId + '"]')
   if (!iframe) return
-  var src = iframe.src
+  var src = emailBodyFrameSrc(iframe)
   if (!src) return
   var url = new URL(src, window.location.origin)
   url.searchParams.set("remote", "true")
-  iframe.src = url.toString()
+  setEmailBodyFrameSrc(iframe, url.toString())
   var banner = document.querySelector('[data-remote-content-banner="' + emailId + '"]')
   if (banner) banner.remove()
   iframe.dataset.remoteLoaded = "true"
@@ -15111,10 +15426,10 @@ function allowRemoteContent(emailId, mode) {
     .then(function () {
       if (banner) banner.remove()
       if (iframe) iframe.dataset.remoteLoaded = "true"
-      if (iframe && iframe.src) {
-        var url = new URL(iframe.src, window.location.origin)
+      if (iframe && emailBodyFrameSrc(iframe)) {
+        var url = new URL(emailBodyFrameSrc(iframe), window.location.origin)
         url.searchParams.set("remote", "true")
-        iframe.src = url.toString()
+        setEmailBodyFrameSrc(iframe, url.toString())
       }
     })
     .catch(function () {})

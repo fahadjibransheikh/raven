@@ -172,7 +172,7 @@ templ CalendarEventGuests(details CalendarEventDetails) {
 	{{
 		attrs := templ.Attributes{}
 		if details.Delivery != nil {
-			attrs = templ.Attributes{"hx-get": calendarEventDetailsURL(details.Event.ID) + "/delivery", "hx-trigger": "every 5s [document.visibilityState === 'visible' && document.getElementById('calendar-event-guests')?.getClientRects().length > 0]", "hx-target": "this", "hx-swap": "outerHTML", "hx-sync": "this:drop", "hx-params": "none"}
+			attrs = templ.Attributes{"hx-get": calendarEventDetailsURL(details.Event.ID) + "/delivery", "hx-trigger": "every 5s", "data-poll-when-visible": "", "hx-target": "this", "hx-swap": "outerHTML", "hx-sync": "this:drop", "hx-params": "none"}
 		}
 	}}
 	<section id="calendar-event-guests" aria-labelledby="calendar-event-guests-heading" { attrs... }>
@@ -293,11 +293,11 @@ templ CalendarEventDeleteConfirmation(details CalendarEventDetails) {
 		<p class="mt-2 break-words text-sm font-medium">{ calendarEventSummary(details.Event) }</p>
 		<p id="calendar-event-delete-description" class="mt-2 text-xs leading-relaxed text-muted-foreground">
 			if details.DeleteSeries {
-				This deletes all occurrences, including past and future events, from your calendar provider—not just Gofer. You can’t undo this in Gofer.
+				This deletes all occurrences, including past and future events, from your calendar provider—not just Raven. You can’t undo this in Raven.
 			} else if details.DeleteOccurrence {
-				Only this occurrence will be removed from your calendar provider. The rest of the series stays unchanged. You can’t undo this in Gofer.
+				Only this occurrence will be removed from your calendar provider. The rest of the series stays unchanged. You can’t undo this in Raven.
 			} else {
-				This deletes the event from your calendar provider, not just Gofer. You can’t undo this in Gofer.
+				This deletes the event from your calendar provider, not just Raven. You can’t undo this in Raven.
 			}
 			if len(details.Attendees) > 0 {
 				Guests will receive a cancellation.

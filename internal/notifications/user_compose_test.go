@@ -182,6 +182,9 @@ func newUserComposeFixture(t *testing.T) (*userStorageFixture, *routedIMAPServer
 	if err := f.system.AddPlaintextTransportException(t.Context(), "smtp", host, port, "alice"); err != nil {
 		t.Fatal(err)
 	}
+	if err := f.system.AddPrivateTargetException(t.Context(), "smtp", host, port, "alice"); err != nil {
+		t.Fatal(err)
+	}
 	for _, owner := range []string{"alice", "bob"} {
 		if err := f.accountStore.UpdateAccount(t.Context(), owner, f.accounts[owner].ID, &models.CreateAccountRequest{Provider: "imap", AuthMethod: "plain", SMTPHost: host, SMTPPort: port, SMTPTLSMode: "plaintext"}); err != nil {
 			t.Fatal(err)

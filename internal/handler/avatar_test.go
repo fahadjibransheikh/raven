@@ -403,4 +403,9 @@ func TestReuseStoredDomainIconAvatarMarksSenderFound(t *testing.T) {
 	if rec == nil || rec.Status != "found" || rec.StoragePath != storagePath {
 		t.Fatalf("reused record = %+v, want found sender with reused storage path %q", rec, storagePath)
 	}
+	// The other sender's icon expires within the hour; the reused one gets a
+	// lifetime of its own instead of being due again right away.
+	if !rec.ExpiresAtValid || rec.ExpiresAt.Before(time.Now().Add(avatarFoundTTL-time.Hour)) {
+		t.Fatalf("reused icon expires at %v, want about %v from now", rec.ExpiresAt, avatarFoundTTL)
+	}
 }

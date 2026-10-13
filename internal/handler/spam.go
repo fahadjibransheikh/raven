@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -11,6 +12,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/cristianadrielbraun/gofer/internal/providerquota"
 	"github.com/cristianadrielbraun/gofer/internal/providers"
 	"github.com/cristianadrielbraun/gofer/internal/storage"
 
@@ -259,6 +261,14 @@ func (h *Handler) resolveGmailMessageID(ctx context.Context, token string, messa
 }
 
 func doGoogleJSON(ctx context.Context, method, endpoint, token string, body any, out any) error {
+	return doGoogleJSONWithLimit(ctx, method, endpoint, token, body, out, 0)
+}
+
+var errGoogleResponseTooLarge = errors.New("Google response is too large")
+
+// doGoogleJSONWithLimit is doGoogleJSON reading at most limit bytes of the
+// response, or any amount when limit is 0.
+func doGoogleJSONWithLimit(ctx context.Context, method, endpoint, token string, body any, out any, limit int64) error {
 	var reader io.Reader
 	if body != nil {
 		buf := &bytes.Buffer{}
@@ -277,7 +287,7 @@ func doGoogleJSON(ctx context.Context, method, endpoint, token string, body any,
 		req.Header.Set("Content-Type", "application/json")
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := providerquota.Do(req)
 	if err != nil {
 		return err
 	}
@@ -291,7 +301,17 @@ func doGoogleJSON(ctx context.Context, method, endpoint, token string, body any,
 		io.Copy(io.Discard, resp.Body)
 		return nil
 	}
-	return json.NewDecoder(resp.Body).Decode(out)
+	if limit <= 0 {
+		return json.NewDecoder(resp.Body).Decode(out)
+	}
+	data, err := io.ReadAll(io.LimitReader(resp.Body, limit+1))
+	if err != nil {
+		return err
+	}
+	if int64(len(data)) > limit {
+		return errGoogleResponseTooLarge
+	}
+	return json.Unmarshal(data, out)
 }
 
 func googleAPIStatus(err error, status int) bool {

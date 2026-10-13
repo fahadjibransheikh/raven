@@ -51,9 +51,9 @@ func TestCalendarCalDAVInitialOccurrenceMetadata(t *testing.T) {
 				_, _ = fmt.Fprintf(w, `<d:multistatus xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">%s</d:multistatus>`, entry)
 			}))
 			defer server.Close()
-			previous := calDAVHTTPTransport
-			calDAVHTTPTransport = server.Client().Transport
-			defer func() { calDAVHTTPTransport = previous }()
+			previous := davHTTPTransport
+			davHTTPTransport = server.Client().Transport
+			defer func() { davHTTPTransport = previous }()
 			at := time.Date(2026, 10, 30, 8, 0, 0, 0, time.UTC)
 			events := []calendar.RemoteEvent{{RemoteID: server.URL + "/cal/first.ics", ICalUID: "uid", ETag: `"v1"`, StartAt: &at}}
 			if mode == "all-day" {

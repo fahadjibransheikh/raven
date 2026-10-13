@@ -1,0 +1,2232 @@
+/* === EXPRESS THEME === */
+/* Old desktop mail: silver window chrome, bevelled 3D controls, white panes,
+   navy selection and title-bar gradients. Light is the original look; dark
+   keeps the same materials in charcoal. */
+
+/* Wine's Tahoma replacement (LGPL, see assets/fonts/README.md). Only
+   downloaded when the theme is active and Tahoma isn't installed. */
+@font-face {
+  font-family: "Express Tahoma";
+  src: url("/assets/fonts/wine-tahoma.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Express Tahoma";
+  src: url("/assets/fonts/wine-tahoma-bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+[data-theme="express"] {
+  --radius: 0px;
+  --background: #d4d0c8;
+  --foreground: #000000;
+  --card: #ffffff;
+  --card-foreground: #000000;
+  --popover: #ffffff;
+  --popover-foreground: #000000;
+  --primary: #0a246a;
+  --primary-foreground: #ffffff;
+  --secondary: #d4d0c8;
+  --secondary-foreground: #000000;
+  --muted: #e4e1db;
+  --muted-foreground: #555555;
+  --accent: #c8d5ec;
+  --accent-foreground: #000000;
+  --destructive: #c00000;
+  --success: #2d7d2d;
+  --border: #a0a0a0;
+  --input: #808080;
+  --ring: #0a246a;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #000000;
+  --sidebar-primary: #0a246a;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e4e1db;
+  --sidebar-accent-foreground: #000000;
+  --sidebar-border: #a0a0a0;
+  --sidebar-ring: #0a246a;
+  --paper: #ffffff;
+  --paper-foreground: #000000;
+  --copper: #0a246a;
+  --brass: #808080;
+  --ink: #000000;
+
+  /* Bevel materials */
+  --xp-face: #d4d0c8;
+  --xp-light: #ffffff;
+  --xp-mid: #808080;
+  --xp-dark: #404040;
+  --xp-title: linear-gradient(90deg, #0a246a 0%, #3a6ea5 55%, #a6caf0 100%);
+  --xp-title-foreground: #ffffff;
+  --xp-tip: #ffffe1;
+  --xp-tip-foreground: #000000;
+  --xp-select: #0a246a;
+  --xp-select-foreground: #ffffff;
+  --xp-frame: #000000;
+  --xp-count: #0000ff;
+  --xp-bevel-out: inset -1px -1px 0 var(--xp-dark), inset 1px 1px 0 var(--xp-light), inset -2px -2px 0 var(--xp-mid), inset 2px 2px 0 var(--xp-face);
+  --xp-bevel-in: inset 1px 1px 0 var(--xp-mid), inset -1px -1px 0 var(--xp-light), inset 2px 2px 0 var(--xp-dark), inset -2px -2px 0 var(--xp-face);
+  --xp-bevel-pressed: inset 1px 1px 0 var(--xp-dark), inset -1px -1px 0 var(--xp-light), inset 2px 2px 0 var(--xp-mid), inset -2px -2px 0 var(--xp-face);
+  --xp-font: Tahoma, "Express Tahoma", Verdana, "DejaVu Sans", "Segoe UI", sans-serif;
+
+  --font-sans: var(--xp-font);
+  --font-serif: var(--xp-font);
+  --shadow-card: none;
+  --shadow-card-hover: none;
+  --shadow-raised: none;
+  --shadow-emboss: none;
+  --shadow-inset: none;
+  --shadow-paper: none;
+  --shadow-button: none;
+  --shadow-button-pressed: none;
+}
+
+[data-theme="express"].dark {
+  --background: #2b2b2b;
+  --foreground: #e6e6e6;
+  --card: #1c1c1c;
+  --card-foreground: #e6e6e6;
+  --popover: #1c1c1c;
+  --popover-foreground: #e6e6e6;
+  --primary: #3a6ea5;
+  --primary-foreground: #ffffff;
+  --secondary: #3a3a3a;
+  --secondary-foreground: #e6e6e6;
+  --muted: #333333;
+  --muted-foreground: #a8a8a8;
+  --accent: #23395e;
+  --accent-foreground: #ffffff;
+  --destructive: #ff5f5f;
+  --success: #7fc27f;
+  --border: #4a4a4a;
+  --input: #5a5a5a;
+  --ring: #6b9bd1;
+  --sidebar: #1c1c1c;
+  --sidebar-foreground: #e6e6e6;
+  --sidebar-primary: #6b9bd1;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #333333;
+  --sidebar-accent-foreground: #f2f2f2;
+  --sidebar-border: #4a4a4a;
+  --sidebar-ring: #6b9bd1;
+  --paper: #1c1c1c;
+  --paper-foreground: #e6e6e6;
+  --copper: #6b9bd1;
+  --brass: #a8a8a8;
+  --ink: #e6e6e6;
+
+  --xp-face: #3a3a3a;
+  --xp-light: #5e5e5e;
+  --xp-mid: #222222;
+  --xp-dark: #0c0c0c;
+  --xp-title: linear-gradient(90deg, #0a246a 0%, #24508a 55%, #4a7ab0 100%);
+  --xp-select: #0a246a;
+  --xp-frame: #8a8a8a;
+  --xp-count: #7fb2ff;
+  --xp-tip: #48463a;
+  --xp-tip-foreground: #f2f0dc;
+}
+
+/* === TYPE === */
+
+[data-theme="express"] body,
+[data-theme="express"] .font-sans,
+[data-theme="express"] .font-serif {
+  font-family: var(--xp-font);
+}
+
+/* No ligatures, as Tahoma had none on Windows. Wine's bold Tahoma also has a
+   regular-weight "fi", which left words like "Unified" half bold. */
+[data-theme="express"] body {
+  -webkit-font-smoothing: auto;
+  -moz-osx-font-smoothing: auto;
+  font-variant-ligatures: none;
+}
+
+[data-theme="express"] ::selection {
+  background-color: var(--xp-select);
+  color: var(--xp-select-foreground);
+}
+
+/* === SURFACES === */
+
+[data-theme="express"] .surface-desk {
+  background: var(--background);
+}
+
+[data-theme="express"] .surface-leather {
+  background: var(--sidebar);
+  box-shadow: var(--xp-bevel-in);
+}
+
+[data-theme="express"] .surface-paper,
+[data-theme="express"].dark .surface-paper {
+  background: var(--paper);
+  color: var(--paper-foreground);
+  box-shadow: var(--xp-bevel-in);
+}
+
+[data-theme="express"] .raised {
+  box-shadow: var(--xp-bevel-out);
+}
+
+[data-theme="express"] .groove {
+  box-shadow: var(--xp-bevel-in);
+}
+
+[data-theme="express"] .embossed,
+[data-theme="express"] .debossed {
+  text-shadow: none;
+}
+
+[data-theme="express"] .divider-etched {
+  height: 2px;
+  background: none;
+  border-top: 1px solid var(--xp-mid);
+  border-bottom: 1px solid var(--xp-light);
+}
+
+/* Settings sections are etched group boxes on the dialog's silver, with the
+   section title sitting in the top edge. */
+[data-theme="express"] .settings-card {
+  --xp-group-pad: 1.5rem;
+  background: transparent;
+  border: 1px solid var(--xp-mid);
+  box-shadow: inset 1px 1px 0 var(--xp-light), 1px 1px 0 var(--xp-light);
+}
+
+@media (max-width: 1023.98px) {
+  [data-theme="express"] .settings-card {
+    --xp-group-pad: 1rem;
+  }
+}
+
+[data-theme="express"] .settings-card > :first-child h3.uppercase:first-child,
+[data-theme="express"] .settings-card > h3.uppercase:first-child {
+  width: fit-content;
+  max-width: 100%;
+  margin-top: calc(-1 * var(--xp-group-pad) - 0.625rem);
+  margin-left: -0.25rem;
+  padding: 0 0.25rem;
+  background: var(--background);
+  color: var(--foreground);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+/* A title sharing a row with a control would be re-centred off the edge. */
+[data-theme="express"] .settings-card > .flex:first-child > :first-child:has(> h3.uppercase:first-child) {
+  align-self: flex-start;
+}
+
+/* Lists inside a group box are white sunken wells. */
+[data-theme="express"] .settings-card .bg-card\/60 {
+  background: var(--card);
+  border-color: transparent;
+  box-shadow: var(--xp-bevel-in);
+}
+
+/* === CORNERS === */
+
+/* Everything is square. The theme's radius is zero, but some corner sizes are
+   fixed, so those are squared here too. Badges and pills (rounded-full with
+   side padding) go square; true circles such as avatars, colour dots,
+   spinners and switch knobs stay round. */
+[data-theme="express"] :is(.rounded, [class*="rounded-"]:not(.rounded-full, .rounded-none)),
+[data-theme="express"] .rounded-full:is([class*=" px-"], [class^="px-"], [class*=" sm:px-"]) {
+  border-radius: 0;
+}
+
+/* === TABS === */
+
+/* Silver tabs on a highlight line; the selected one stands taller and covers it. */
+[data-theme="express"] [data-tui-tabs]:not([data-email-body-style-toggle]) [data-tui-tabs-list] {
+  width: 100%;
+  height: auto;
+  justify-content: flex-start;
+  align-items: flex-end;
+  gap: 0;
+  padding: 2px 0 0;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: inset 0 -1px 0 var(--xp-light);
+}
+
+/* The tabs script slides its own highlight box and clears each tab's
+   background and shadow inline; the bevelled tabs replace both. */
+[data-theme="express"] [data-tui-tabs]:not([data-email-body-style-toggle]) [data-tui-tabs-indicator] {
+  display: none !important;
+}
+
+[data-theme="express"] [data-tui-tabs]:not([data-email-body-style-toggle]) [data-tui-tabs-trigger] {
+  flex: none;
+  height: 1.75rem;
+  margin-bottom: 1px;
+  border: none;
+  border-radius: 0;
+  background: var(--xp-face) !important;
+  color: var(--foreground);
+  font-weight: 400;
+  box-shadow: inset 1px 1px 0 var(--xp-light), inset -1px 0 0 var(--xp-dark), inset -2px 0 0 var(--xp-mid) !important;
+}
+
+[data-theme="express"] [data-tui-tabs]:not([data-email-body-style-toggle]) [data-tui-tabs-trigger][data-tui-tabs-state="active"] {
+  z-index: 2 !important;
+  height: calc(1.75rem + 3px);
+  margin: 0 -2px -1px;
+}
+
+[data-theme="express"] [data-tui-tabs]:not([data-email-body-style-toggle]) [data-tui-tabs-trigger]:first-of-type[data-tui-tabs-state="active"] {
+  margin-left: 0;
+}
+
+[data-theme="express"] [data-tui-tabs]:not([data-email-body-style-toggle]) [data-tui-tabs-trigger]:focus-visible {
+  --tw-ring-shadow: 0 0 #0000;
+  outline: 1px dotted var(--foreground);
+  outline-offset: -4px;
+}
+
+[data-theme="express"] .empty-icon-box {
+  border-radius: 0;
+  background: var(--xp-face);
+  box-shadow: var(--xp-bevel-out);
+}
+
+/* Window title bar: dialogs and popovers get the navy gradient strip. */
+[data-theme="express"] dialog[data-tui-dialog-content],
+[data-theme="express"] [data-tui-popover-content] {
+  border: none;
+  background-color: var(--background);
+  box-shadow: var(--xp-bevel-out), 2px 2px 0 rgba(0,0,0,0.25);
+}
+
+/* The strip is padding (not border) so the title and buttons can sit in it
+   without the dialog's overflow clipping them. A dialog that scrolls takes
+   the strip along with its title. */
+[data-theme="express"] dialog[data-tui-dialog-content]:not(.bg-transparent) {
+  padding-top: 36px;
+  background: var(--xp-title) top / 100% 36px no-repeat local, var(--background);
+}
+
+/* Each dialog lays out its own header, so the title and the close button are
+   placed against the dialog itself: the panel stops being their frame. */
+[data-theme="express"] dialog[data-tui-dialog-content]:not(.bg-transparent) > [data-tui-dialog-panel] {
+  position: static;
+}
+
+[data-theme="express"] dialog[data-tui-dialog-content]:not(.bg-transparent) [data-tui-dialog-title]:not(.sr-only) {
+  position: absolute;
+  top: 0;
+  left: 10px;
+  right: 2.75rem;
+  margin: 0;
+  overflow: hidden;
+  color: var(--xp-title-foreground);
+  font-family: var(--xp-font) !important;
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: normal;
+  line-height: 36px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A header left holding only the title and close button drops out of the
+   layout, so it leaves no gap behind. */
+[data-theme="express"] dialog[data-tui-dialog-content]:not(.bg-transparent) :has(> [data-tui-dialog-title]):not(:has(> :not([data-tui-dialog-title], :is(button[data-tui-dialog-close], button[data-contact-editor-cancel], button[data-contact-sync-setup-cancel]):has(> svg[data-lucide="x"])))) {
+  display: contents;
+}
+
+/* Footers that paint their own white or tinted strip take the dialog's silver,
+   with an etched line above them. */
+[data-theme="express"] dialog[data-tui-dialog-content] :is(.bg-card, .bg-paper, .bg-paper\/90, .bg-muted\/30).border-t,
+[data-theme="express"] dialog[data-tui-dialog-content] footer.border-t {
+  border-top-color: var(--xp-mid);
+  background: var(--background);
+  box-shadow: inset 0 1px 0 var(--xp-light);
+  backdrop-filter: none;
+}
+
+/* The account wizard paints its section heading and footer white; they take
+   the silver too, the heading over an etched line. */
+html:root[data-theme="express"] .account-wizard-sticky-header {
+  background: var(--background);
+  box-shadow: 0 1px 0 var(--xp-mid), 0 2px 0 var(--xp-light);
+}
+
+@media (max-width: 1023.98px) {
+  html:root[data-theme="express"] .mobile-page-dialog > [data-tui-dialog-panel] > :first-child {
+    background: var(--background);
+  }
+}
+
+html:root[data-theme="express"] :is(.account-wizard-card-footer, .account-wizard-controls) {
+  border-top-color: var(--xp-mid);
+  background: var(--background);
+  box-shadow: inset 0 1px 0 var(--xp-light);
+}
+
+/* Full-screen compose on small screens has its own top bar instead. */
+@media (max-width: 1023.98px) {
+  [data-theme="express"] dialog.compose-dialog-content {
+    padding-top: 0;
+    background: var(--background);
+  }
+
+  [data-theme="express"] dialog.compose-dialog-content > [data-tui-dialog-panel] > div:first-child:first-child {
+    display: none !important;
+  }
+}
+
+/* Window buttons: small silver caption buttons at the bar's right end. */
+[data-theme="express"] dialog[data-tui-dialog-content]:not(.bg-transparent) :is(button[data-tui-dialog-close], button[data-contact-editor-cancel], button[data-contact-sync-setup-cancel]):has(> svg[data-lucide="x"]) {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  margin: 0;
+}
+
+[data-theme="express"] .compose-dialog-corner {
+  top: 0;
+  right: 5px;
+  height: 36px;
+  gap: 2px;
+}
+
+[data-theme="express"] dialog[data-tui-dialog-content]:not(.bg-transparent) :is(button[data-tui-dialog-close], button[data-contact-editor-cancel], button[data-contact-sync-setup-cancel]):has(> svg[data-lucide="x"]),
+[data-theme="express"] .compose-dialog-corner button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: var(--xp-face);
+  color: var(--foreground);
+  opacity: 1;
+  box-shadow: var(--xp-bevel-out);
+  transition: none;
+}
+
+[data-theme="express"] dialog[data-tui-dialog-content]:not(.bg-transparent) :is(button[data-tui-dialog-close], button[data-contact-editor-cancel], button[data-contact-sync-setup-cancel]):has(> svg[data-lucide="x"]) svg,
+[data-theme="express"] .compose-dialog-corner button svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 3;
+}
+
+/* "Compose inline" keeps its label, so it is a wider caption button. */
+[data-theme="express"] .compose-dialog-corner button[aria-label="Compose inline"] {
+  width: auto;
+  gap: 5px;
+  padding: 0 8px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+[data-theme="express"] dialog[data-tui-dialog-content]:not(.bg-transparent) :is(button[data-tui-dialog-close], button[data-contact-editor-cancel], button[data-contact-sync-setup-cancel]):has(> svg[data-lucide="x"]):hover,
+[data-theme="express"] .compose-dialog-corner button:hover {
+  background: var(--xp-face);
+  color: var(--foreground);
+}
+
+[data-theme="express"] dialog[data-tui-dialog-content]:not(.bg-transparent) :is(button[data-tui-dialog-close], button[data-contact-editor-cancel], button[data-contact-sync-setup-cancel]):has(> svg[data-lucide="x"]):active,
+[data-theme="express"] .compose-dialog-corner button:active {
+  box-shadow: var(--xp-bevel-pressed);
+}
+
+[data-theme="express"] dialog[data-tui-dialog-content]:not(.bg-transparent) :is(button[data-tui-dialog-close], button[data-contact-editor-cancel], button[data-contact-sync-setup-cancel]):has(> svg[data-lucide="x"]):focus-visible,
+[data-theme="express"] .compose-dialog-corner button:focus-visible {
+  --tw-ring-shadow: 0 0 #0000;
+  --tw-ring-offset-shadow: 0 0 #0000;
+  outline: 1px dotted var(--foreground);
+  outline-offset: -3px;
+}
+
+[data-theme="express"] [data-tui-popover-content] {
+  background-color: var(--popover);
+}
+
+/* Tooltips are the classic pale yellow info tips: thin black frame, no arrow. */
+[data-theme="express"] [data-tui-popover-content]:is(.bg-foreground, .sidebar-account-error-tooltip) {
+  padding: 2px 6px;
+  border: 1px solid var(--xp-frame);
+  border-radius: 0;
+  background: var(--xp-tip);
+  color: var(--xp-tip-foreground);
+  font-size: 0.75rem;
+  box-shadow: 2px 2px 0 rgba(0,0,0,0.25);
+}
+
+/* Windows popups had no pointer arrows. */
+[data-theme="express"] [data-tui-popover-content] [data-tui-popover-arrow] {
+  display: none !important;
+}
+
+/* === CONTROLS === */
+
+[data-theme="express"] .btn-skeuo,
+[data-theme="express"] .account-action-btn,
+[data-theme="express"] button.bg-primary,
+[data-theme="express"] button.bg-secondary,
+[data-theme="express"] button.border.bg-background,
+[data-theme="express"] a.border.bg-background,
+[data-theme="express"] .compose-draft-btn,
+[data-theme="express"] .compose-send-btn {
+  background: var(--xp-face);
+  color: var(--foreground);
+  border: none;
+  border-radius: 0;
+  box-shadow: var(--xp-bevel-out);
+  transition: none;
+}
+
+[data-theme="express"] .btn-skeuo:hover,
+[data-theme="express"] .account-action-btn:hover,
+[data-theme="express"] button.bg-primary:hover,
+[data-theme="express"] button.bg-secondary:hover,
+[data-theme="express"] button.border.bg-background:hover,
+[data-theme="express"] a.border.bg-background:hover,
+[data-theme="express"] .compose-draft-btn:hover,
+[data-theme="express"] .compose-send-btn:hover {
+  background: color-mix(in srgb, var(--xp-face) 92%, var(--xp-light));
+  color: var(--foreground);
+  box-shadow: var(--xp-bevel-out);
+}
+
+[data-theme="express"] .btn-skeuo:active,
+[data-theme="express"] .account-action-btn:active,
+[data-theme="express"] button.bg-primary:active,
+[data-theme="express"] button.bg-secondary:active,
+[data-theme="express"] button.border.bg-background:active,
+[data-theme="express"] a.border.bg-background:active,
+[data-theme="express"] .compose-draft-btn:active,
+[data-theme="express"] .compose-send-btn:active {
+  box-shadow: var(--xp-bevel-pressed);
+  transform: translate(1px, 1px);
+}
+
+/* The message's Translate control is two buttons in one frame. It looks like
+   the other buttons, and stays latched down while a translation is shown. */
+[data-theme="express"] [data-email-translation-button] {
+  border: none;
+  border-radius: 0;
+  background: var(--xp-face);
+  color: var(--foreground);
+  box-shadow: var(--xp-bevel-out);
+  transition: none;
+}
+
+[data-theme="express"] [data-email-translation-button]:hover {
+  background: color-mix(in srgb, var(--xp-face) 92%, var(--xp-light));
+  color: var(--foreground);
+}
+
+[data-theme="express"] [data-email-translation-button]:has(button:active) {
+  box-shadow: var(--xp-bevel-pressed);
+}
+
+[data-theme="express"] [data-email-translation-button][data-translated="true"],
+[data-theme="express"] [data-email-translation-button][data-translated="true"]:hover {
+  background: color-mix(in srgb, var(--xp-face), var(--xp-light));
+  color: var(--foreground);
+  box-shadow: var(--xp-bevel-in);
+}
+
+[data-theme="express"] [data-email-translation-button] button {
+  color: inherit;
+}
+
+[data-theme="express"] [data-email-translation-button] .email-translation-language-trigger {
+  border-left: 1px solid var(--xp-mid);
+  box-shadow: inset 1px 0 0 var(--xp-light);
+}
+
+/* The default action keeps a heavier frame, like a dialog's default button. */
+[data-theme="express"] button.bg-primary,
+[data-theme="express"] .compose-send-btn {
+  font-weight: 700;
+  outline: 1px solid var(--xp-dark);
+  outline-offset: 0;
+}
+
+[data-theme="express"] .btn-skeuo:disabled:hover {
+  box-shadow: var(--xp-bevel-out);
+}
+
+[data-theme="express"] input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"], [role="switch"]),
+[data-theme="express"] textarea,
+[data-theme="express"] .select-trigger {
+  background-color: var(--card);
+  border-color: transparent;
+  border-radius: 0;
+  box-shadow: var(--xp-bevel-in);
+}
+
+[data-theme="express"] input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"], [role="switch"]):focus-visible,
+[data-theme="express"] textarea:focus-visible {
+  --tw-ring-shadow: 0 0 #0000;
+  box-shadow: var(--xp-bevel-in);
+  outline: 1px dotted var(--foreground);
+  outline-offset: -4px;
+}
+
+[data-theme="express"] .compose-field-input,
+[data-theme="express"] .compose-subject-input,
+[data-theme="express"] .compose-body-input,
+[data-theme="express"] .compose-rich-editor,
+[data-theme="express"] [contenteditable="true"] {
+  box-shadow: none;
+}
+
+[data-theme="express"] .compose-body {
+  background: var(--paper);
+}
+
+/* The message body is a white sunken field, like the other inputs. */
+[data-theme="express"] div:has(> [data-compose-editor]) {
+  border-color: transparent;
+  border-radius: 0;
+  background: var(--card);
+  box-shadow: var(--xp-bevel-in);
+}
+
+[data-theme="express"] .compose-toolbar,
+[data-theme="express"] .compose-footer {
+  background: var(--xp-face);
+  border-color: var(--xp-mid);
+}
+
+[data-theme="express"] .compose-tool-btn {
+  border-radius: 0;
+}
+
+[data-theme="express"] .compose-tool-btn:hover {
+  background: transparent;
+  box-shadow: inset -1px -1px 0 var(--xp-mid), inset 1px 1px 0 var(--xp-light);
+}
+
+[data-theme="express"] .compose-seal {
+  border-radius: 0;
+  background: var(--xp-title);
+  box-shadow: none;
+}
+
+[data-theme="express"] label:has(input[role="switch"]) > div,
+[data-theme="express"] label:has(input[role="switch"]) > div::after {
+  border-radius: 0;
+}
+
+[data-theme="express"] label:has(input[role="switch"]) > div::after {
+  box-shadow: var(--xp-bevel-out);
+}
+
+/* === DROPDOWNS === */
+
+/* Closed: a white sunken field with a silver arrow button on the right. */
+[data-theme="express"] button.select-trigger.select-trigger.border,
+[data-theme="express"] button.select-trigger.select-trigger.border:hover,
+[data-theme="express"] button.select-trigger.select-trigger.border:active {
+  position: relative;
+  padding-right: 1.5rem;
+  background: var(--card);
+  color: var(--foreground);
+  font-weight: 400;
+  outline: none;
+  box-shadow: var(--xp-bevel-in);
+  transform: none;
+}
+
+[data-theme="express"] .select-trigger [data-tui-selectbox-chevron] {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  bottom: 2px;
+  width: 1.125rem;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--xp-face);
+  box-shadow: var(--xp-bevel-out);
+}
+
+[data-theme="express"] .select-trigger [data-tui-selectbox-chevron] svg {
+  display: none;
+}
+
+[data-theme="express"] .select-trigger [data-tui-selectbox-chevron]::after {
+  content: "";
+  border-top: 4px solid var(--foreground);
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+}
+
+[data-theme="express"] [data-tui-popover-trigger][data-tui-popover-open="true"]:not([data-tui-popover-type="hover"]) .select-trigger [data-tui-selectbox-chevron],
+[data-theme="express"] .select-trigger:active [data-tui-selectbox-chevron] {
+  box-shadow: inset 1px 1px 0 var(--xp-mid), inset -1px -1px 0 var(--xp-mid);
+}
+
+[data-theme="express"] [data-tui-popover-trigger][data-tui-popover-open="true"]:not([data-tui-popover-type="hover"]) .select-trigger [data-tui-selectbox-chevron]::after,
+[data-theme="express"] .select-trigger:active [data-tui-selectbox-chevron]::after {
+  translate: 1px 1px;
+}
+
+/* Menu buttons dressed as a select (like Autosave conditions) carry a bare
+   chevron icon: it becomes the same arrow button, the triangle drawn on top. */
+[data-theme="express"] button.select-trigger:has(> svg[data-lucide="chevron-down"]) > svg[data-lucide="chevron-down"] {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  bottom: 2px;
+  width: 1.125rem;
+  height: calc(100% - 4px);
+  background: var(--xp-face);
+  box-shadow: var(--xp-bevel-out);
+}
+
+[data-theme="express"] button.select-trigger:has(> svg[data-lucide="chevron-down"]) > svg[data-lucide="chevron-down"] > * {
+  visibility: hidden;
+}
+
+[data-theme="express"] button.select-trigger:has(> svg[data-lucide="chevron-down"])::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: calc(2px + 0.5625rem - 4px);
+  margin-top: -2px;
+  border-top: 4px solid var(--foreground);
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  pointer-events: none;
+}
+
+[data-theme="express"] [data-tui-popover-trigger][data-tui-popover-open="true"]:not([data-tui-popover-type="hover"]) button.select-trigger:has(> svg[data-lucide="chevron-down"]) > svg[data-lucide="chevron-down"],
+[data-theme="express"] button.select-trigger:has(> svg[data-lucide="chevron-down"]):active > svg[data-lucide="chevron-down"] {
+  box-shadow: inset 1px 1px 0 var(--xp-mid), inset -1px -1px 0 var(--xp-mid);
+}
+
+[data-theme="express"] [data-tui-popover-trigger][data-tui-popover-open="true"]:not([data-tui-popover-type="hover"]) button.select-trigger:has(> svg[data-lucide="chevron-down"])::after,
+[data-theme="express"] button.select-trigger:has(> svg[data-lucide="chevron-down"]):active::after {
+  translate: 1px 1px;
+}
+
+[data-theme="express"] button.select-trigger:has(> svg[data-lucide="chevron-down"]):disabled::after {
+  border-top-color: var(--xp-mid);
+}
+
+/* Focused, the chosen value is highlighted like selected text. */
+[data-theme="express"] .select-trigger:focus-visible .select-value {
+  background: var(--xp-select);
+  color: var(--xp-select-foreground);
+  outline: 1px dotted var(--foreground);
+  outline-offset: 1px;
+}
+
+/* Open: a white list in a plain black frame. */
+[data-theme="express"] [data-tui-popover-content].select-content {
+  padding: 0;
+  border: 1px solid var(--xp-frame);
+  background: var(--card);
+  box-shadow: none;
+}
+
+[data-theme="express"] .select-content > .sticky {
+  background: var(--card);
+}
+
+/* The highlight follows the mouse; the chosen item only keeps it while the
+   pointer is elsewhere. */
+[data-theme="express"] .select-item,
+[data-theme="express"] [data-tui-dropdown-item] {
+  border-radius: 0;
+  font-weight: 400;
+  transition: none;
+}
+
+[data-theme="express"] .select-item:hover,
+[data-theme="express"] .select-item:focus-visible,
+[data-theme="express"] .select-item[data-tui-selectbox-selected="true"],
+[data-theme="express"] [data-tui-dropdown-item]:hover,
+[data-theme="express"] [data-tui-dropdown-item]:focus-visible {
+  background: var(--xp-select);
+  color: var(--xp-select-foreground);
+}
+
+[data-theme="express"] .select-content:hover .select-item[data-tui-selectbox-selected="true"]:not(:hover) {
+  background: transparent;
+  color: var(--popover-foreground);
+}
+
+[data-theme="express"] .select-item .select-check {
+  display: none;
+}
+
+/* Menus: a silver raised panel; the item under the pointer turns navy with
+   white text, and groups are split by an etched line. */
+[data-theme="express"] [data-tui-popover-content]:is(:has([data-tui-dropdown-item]), :has([data-mail-account-sync-button]), :has([data-contact-account-sync-button])) {
+  padding: 3px;
+  border: none;
+  border-radius: 0;
+  background: var(--xp-face);
+  color: var(--foreground);
+  box-shadow: var(--xp-bevel-out), 2px 2px 0 rgba(0,0,0,0.25);
+}
+
+[data-theme="express"] [data-tui-popover-content]:has([data-tui-dropdown-item]) [data-tui-popover-arrow],
+[data-theme="express"] [data-tui-popover-content]:has([data-mail-account-sync-button]) [data-tui-popover-arrow],
+[data-theme="express"] [data-tui-popover-content]:has([data-contact-account-sync-button]) [data-tui-popover-arrow] {
+  display: none;
+}
+
+[data-theme="express"] [data-tui-dropdown-item],
+[data-theme="express"] :is([data-mail-account-sync-button], [data-contact-account-sync-button]) {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--foreground);
+  box-shadow: none;
+  transition: none;
+}
+
+[data-theme="express"] :is([data-mail-account-sync-button], [data-contact-account-sync-button]):is(:hover, :focus-visible) {
+  background: var(--xp-select);
+  color: var(--xp-select-foreground);
+}
+
+/* Inside a highlighted item, dimmed and coloured text turns white too. */
+[data-theme="express"] :is([data-tui-dropdown-item], [data-mail-account-sync-button], [data-contact-account-sync-button]):is(:hover, :focus-visible) * {
+  color: inherit;
+}
+
+[data-theme="express"] [data-tui-popover-content] [role="separator"] {
+  height: 0;
+  margin: 3px 1px;
+  border-top: 1px solid var(--xp-mid);
+  border-bottom: 1px solid var(--xp-light);
+  background: none;
+}
+
+/* === FILTERS WINDOW === */
+
+/* A silver window like the dialogs. */
+[data-theme="express"] [data-tui-popover-content].mail-filters-sheet {
+  background: var(--background);
+}
+
+[data-theme="express"] .mail-filters-sheet-body .border-b,
+[data-theme="express"] .mail-filters-sheet-body .border-t {
+  border-color: var(--xp-mid);
+}
+
+/* Categories: a white sunken list; the open one is highlighted navy. */
+[data-theme="express"] .mail-filters-sheet nav[aria-label="Filter categories"] {
+  gap: 0;
+  padding: 2px;
+  border: none;
+  border-radius: 0;
+  background: var(--card);
+  box-shadow: var(--xp-bevel-in);
+}
+
+[data-theme="express"] [data-mail-filter-panel-button] {
+  border-radius: 0;
+  color: var(--foreground);
+  font-weight: 400;
+  transition: none;
+}
+
+[data-theme="express"] [data-mail-filter-panel-button]:hover {
+  background: transparent;
+  color: var(--foreground);
+}
+
+[data-theme="express"] [data-mail-filter-panel-button][data-active="true"] {
+  --tw-ring-shadow: 0 0 #0000;
+  background: var(--xp-select);
+  color: var(--xp-select-foreground);
+  box-shadow: none;
+}
+
+[data-theme="express"] [data-mail-filter-panel-button]:focus-visible {
+  outline: 1px dotted var(--foreground);
+  outline-offset: -2px;
+}
+
+/* The open category's fields sit in an etched group box. */
+[data-theme="express"] [data-mail-filter-panel-box] {
+  border: 1px solid var(--xp-mid);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: inset 1px 1px 0 var(--xp-light), 1px 1px 0 var(--xp-light);
+}
+
+/* Date fields are white sunken fields like the other inputs. */
+[data-theme="express"] .mail-filters-sheet button.border-input {
+  border-color: transparent;
+  border-radius: 0;
+  background: var(--card);
+  box-shadow: var(--xp-bevel-in);
+}
+
+/* Read status, Attachments and the like are toolbar toggle buttons. */
+[data-theme="express"] .mail-filter-tristate {
+  gap: 2px;
+  height: auto;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+[data-theme="express"] .mail-filter-tristate-indicator {
+  display: none;
+}
+
+[data-theme="express"] .mail-filter-tristate [data-mail-tristate-option] {
+  height: 1.5rem;
+  border-radius: 0;
+  color: var(--foreground);
+  transition: none;
+}
+
+[data-theme="express"] .mail-filter-tristate [data-mail-tristate-option]:hover {
+  box-shadow: inset -1px -1px 0 var(--xp-mid), inset 1px 1px 0 var(--xp-light);
+}
+
+[data-theme="express"] .mail-filter-tristate [data-mail-tristate-option][aria-pressed="true"],
+[data-theme="express"] .mail-filter-tristate [data-mail-tristate-option]:active {
+  padding: 1px 5px 0 7px;
+  background: color-mix(in srgb, var(--xp-face), var(--xp-light));
+  box-shadow: inset 1px 1px 0 var(--xp-mid), inset -1px -1px 0 var(--xp-light);
+}
+
+/* Clear all and Cancel are ordinary buttons. */
+[data-theme="express"] :is([data-mail-advanced-filter-clear], [data-mail-filters-close]) {
+  border: none;
+  border-radius: 0;
+  background: var(--xp-face);
+  color: var(--foreground);
+  box-shadow: var(--xp-bevel-out);
+  transition: none;
+}
+
+[data-theme="express"] :is([data-mail-advanced-filter-clear], [data-mail-filters-close]):hover {
+  background: color-mix(in srgb, var(--xp-face) 92%, var(--xp-light));
+  color: var(--foreground);
+}
+
+[data-theme="express"] :is([data-mail-advanced-filter-clear], [data-mail-filters-close]):active {
+  box-shadow: var(--xp-bevel-pressed);
+}
+
+/* === ICONS === */
+
+/* Common icons are swapped for Tango Desktop Project pictures (public domain,
+   see assets/icons/express/README.md): the line drawing is hidden and the
+   picture shown in its place. Icons without a match keep the line drawing. */
+[data-theme="express"] svg[data-lucide="arrow-left"] {
+  --xp-icon: image-set(url("/assets/icons/express/go-previous-16.png") 1x, url("/assets/icons/express/go-previous-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="arrow-right"] {
+  --xp-icon: image-set(url("/assets/icons/express/go-next-16.png") 1x, url("/assets/icons/express/go-next-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="upload"] {
+  --xp-icon: image-set(url("/assets/icons/express/go-up-16.png") 1x, url("/assets/icons/express/go-up-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="triangle-alert"] {
+  --xp-icon: image-set(url("/assets/icons/express/dialog-warning-16.png") 1x, url("/assets/icons/express/dialog-warning-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="info"],
+[data-theme="express"] svg[data-lucide="badge-info"] {
+  --xp-icon: image-set(url("/assets/icons/express/dialog-information-16.png") 1x, url("/assets/icons/express/dialog-information-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="circle-alert"],
+[data-theme="express"] svg[data-lucide="circle-x"] {
+  --xp-icon: image-set(url("/assets/icons/express/dialog-error-16.png") 1x, url("/assets/icons/express/dialog-error-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="image"] {
+  --xp-icon: image-set(url("/assets/icons/express/image-x-generic-16.png") 1x, url("/assets/icons/express/image-x-generic-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="calendar-plus"] {
+  --xp-icon: image-set(url("/assets/icons/express/appointment-new-16.png") 1x, url("/assets/icons/express/appointment-new-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="rotate-ccw"] {
+  --xp-icon: image-set(url("/assets/icons/express/edit-undo-16.png") 1x, url("/assets/icons/express/edit-undo-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="bold"] {
+  --xp-icon: image-set(url("/assets/icons/express/format-text-bold-16.png") 1x, url("/assets/icons/express/format-text-bold-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="italic"] {
+  --xp-icon: image-set(url("/assets/icons/express/format-text-italic-16.png") 1x, url("/assets/icons/express/format-text-italic-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="underline"] {
+  --xp-icon: image-set(url("/assets/icons/express/format-text-underline-16.png") 1x, url("/assets/icons/express/format-text-underline-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="strikethrough"] {
+  --xp-icon: image-set(url("/assets/icons/express/format-text-strikethrough-16.png") 1x, url("/assets/icons/express/format-text-strikethrough-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="text-align-start"] {
+  --xp-icon: image-set(url("/assets/icons/express/format-justify-left-16.png") 1x, url("/assets/icons/express/format-justify-left-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="circle-question-mark"] {
+  --xp-icon: image-set(url("/assets/icons/express/help-browser-16.png") 1x, url("/assets/icons/express/help-browser-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="globe"] {
+  --xp-icon: image-set(url("/assets/icons/express/internet-web-browser-16.png") 1x, url("/assets/icons/express/internet-web-browser-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="palette"] {
+  --xp-icon: image-set(url("/assets/icons/express/preferences-desktop-theme-16.png") 1x, url("/assets/icons/express/preferences-desktop-theme-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="languages"] {
+  --xp-icon: image-set(url("/assets/icons/express/preferences-desktop-locale-16.png") 1x, url("/assets/icons/express/preferences-desktop-locale-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="messages-square"] {
+  --xp-icon: image-set(url("/assets/icons/express/internet-group-chat-16.png") 1x, url("/assets/icons/express/internet-group-chat-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="file-text"] {
+  --xp-icon: image-set(url("/assets/icons/express/text-x-generic-16.png") 1x, url("/assets/icons/express/text-x-generic-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="user-plus"] {
+  --xp-icon: image-set(url("/assets/icons/express/contact-new-16.png") 1x, url("/assets/icons/express/contact-new-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="users"] {
+  --xp-icon: image-set(url("/assets/icons/express/system-users-16.png") 1x, url("/assets/icons/express/system-users-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="save"] {
+  --xp-icon: image-set(url("/assets/icons/express/document-save-16.png") 1x, url("/assets/icons/express/document-save-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="pencil"] {
+  --xp-icon: image-set(url("/assets/icons/express/accessories-text-editor-16.png") 1x, url("/assets/icons/express/accessories-text-editor-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+/* A picture can't spin like a line icon: the busy refresh icon pulses instead. */
+@keyframes xp-busy-pulse {
+  50% { opacity: 0.45; }
+}
+
+[data-theme="express"] svg[data-lucide="refresh-cw"].animate-spin {
+  animation: xp-busy-pulse 1.2s ease-in-out infinite;
+}
+
+/* Tango has no star or tag; these are drawn for this theme in its style. */
+[data-theme="express"] svg[data-lucide="star"] {
+  --xp-icon: url("/assets/icons/express/star.svg");
+  --xp-icon-paths: hidden;
+}
+
+/* Tango's envelope is drawn open; a closed one is drawn to pair with it. */
+[data-theme="express"] svg[data-lucide="mail"] {
+  --xp-icon: url("/assets/icons/express/mail.svg");
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="tag"] {
+  --xp-icon: url("/assets/icons/express/tag.svg");
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="tags"] {
+  --xp-icon: url("/assets/icons/express/tags.svg");
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="user"],
+[data-theme="express"] svg[data-lucide="user-round"] {
+  --xp-icon: url("/assets/icons/express/user.svg");
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="map-pin"] {
+  --xp-icon: url("/assets/icons/express/map-pin.svg");
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="clock"],
+[data-theme="express"] svg[data-lucide="clock-3"] {
+  --xp-icon: url("/assets/icons/express/clock.svg");
+  --xp-icon-paths: hidden;
+}
+
+/* An unstarred message's star is a faded grey one. */
+[data-theme="express"] svg[data-lucide="star"]:is(.text-muted-foreground\/30, .text-ink\/30) {
+  filter: grayscale(1);
+  opacity: 0.4;
+}
+
+[data-theme="express"] svg[data-lucide="inbox"],
+[data-theme="express"] svg[data-lucide="mail-open"] {
+  --xp-icon: image-set(url("/assets/icons/express/internet-mail-16.png") 1x, url("/assets/icons/express/internet-mail-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="forward"],
+[data-theme="express"] svg[data-lucide="send"] {
+  --xp-icon: image-set(url("/assets/icons/express/mail-forward-16.png") 1x, url("/assets/icons/express/mail-forward-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="reply"] {
+  --xp-icon: image-set(url("/assets/icons/express/mail-reply-sender-16.png") 1x, url("/assets/icons/express/mail-reply-sender-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="reply-all"] {
+  --xp-icon: image-set(url("/assets/icons/express/mail-reply-all-16.png") 1x, url("/assets/icons/express/mail-reply-all-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="pen"] {
+  --xp-icon: image-set(url("/assets/icons/express/mail-message-new-16.png") 1x, url("/assets/icons/express/mail-message-new-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="shield-alert"],
+[data-theme="express"] [data-folder-role] svg[data-lucide="circle-alert"] {
+  --xp-icon: image-set(url("/assets/icons/express/mail-mark-junk-16.png") 1x, url("/assets/icons/express/mail-mark-junk-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="shield-check"] {
+  --xp-icon: image-set(url("/assets/icons/express/mail-mark-not-junk-16.png") 1x, url("/assets/icons/express/mail-mark-not-junk-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="paperclip"] {
+  --xp-icon: image-set(url("/assets/icons/express/mail-attachment-16.png") 1x, url("/assets/icons/express/mail-attachment-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="refresh-cw"] {
+  --xp-icon: image-set(url("/assets/icons/express/mail-send-receive-16.png") 1x, url("/assets/icons/express/mail-send-receive-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="trash-2"],
+[data-theme="express"] svg[data-lucide="trash"] {
+  --xp-icon: image-set(url("/assets/icons/express/user-trash-16.png") 1x, url("/assets/icons/express/user-trash-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="file"] {
+  --xp-icon: image-set(url("/assets/icons/express/accessories-text-editor-16.png") 1x, url("/assets/icons/express/accessories-text-editor-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="archive"] {
+  --xp-icon: image-set(url("/assets/icons/express/package-16.png") 1x, url("/assets/icons/express/package-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="folder"],
+[data-theme="express"] svg[data-lucide="folders"],
+[data-theme="express"] svg[data-lucide="folder-input"] {
+  --xp-icon: image-set(url("/assets/icons/express/folder-16.png") 1x, url("/assets/icons/express/folder-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="calendar-days"],
+[data-theme="express"] svg[data-lucide="calendar"] {
+  --xp-icon: image-set(url("/assets/icons/express/x-office-calendar-16.png") 1x, url("/assets/icons/express/x-office-calendar-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="calendar-clock"] {
+  --xp-icon: image-set(url("/assets/icons/express/appointment-16.png") 1x, url("/assets/icons/express/appointment-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="book-user"] {
+  --xp-icon: image-set(url("/assets/icons/express/x-office-address-book-16.png") 1x, url("/assets/icons/express/x-office-address-book-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="settings"] {
+  --xp-icon: image-set(url("/assets/icons/express/preferences-system-16.png") 1x, url("/assets/icons/express/preferences-system-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="search"] {
+  --xp-icon: image-set(url("/assets/icons/express/system-search-16.png") 1x, url("/assets/icons/express/system-search-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="printer"] {
+  --xp-icon: image-set(url("/assets/icons/express/document-print-16.png") 1x, url("/assets/icons/express/document-print-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="log-out"] {
+  --xp-icon: image-set(url("/assets/icons/express/system-log-out-16.png") 1x, url("/assets/icons/express/system-log-out-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="download"] {
+  --xp-icon: image-set(url("/assets/icons/express/document-save-16.png") 1x, url("/assets/icons/express/document-save-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="clipboard-list"] {
+  --xp-icon: image-set(url("/assets/icons/express/edit-paste-16.png") 1x, url("/assets/icons/express/edit-paste-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+/* Settings categories whose icons mean something else elsewhere. */
+[data-theme="express"] [data-settings-sidebar-value="accounts"] svg[data-lucide] {
+  --xp-icon: image-set(url("/assets/icons/express/system-users-16.png") 1x, url("/assets/icons/express/system-users-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] [data-settings-sidebar-value="security"] svg[data-lucide] {
+  --xp-icon: image-set(url("/assets/icons/express/system-lock-screen-16.png") 1x, url("/assets/icons/express/system-lock-screen-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] [data-settings-sidebar-value="advanced"] svg[data-lucide] {
+  --xp-icon: image-set(url("/assets/icons/express/applications-system-16.png") 1x, url("/assets/icons/express/applications-system-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+/* Contacts sidebar: all contacts and the ones kept on this computer. */
+[data-theme="express"] [data-contact-sidebar-target=""] svg[data-lucide] {
+  --xp-icon: image-set(url("/assets/icons/express/system-users-16.png") 1x, url("/assets/icons/express/system-users-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] [data-contact-sidebar-target="local"] svg[data-lucide] {
+  --xp-icon: image-set(url("/assets/icons/express/computer-16.png") 1x, url("/assets/icons/express/computer-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="wifi"],
+[data-theme="express"] svg[data-lucide="plug-zap"] {
+  --xp-icon: image-set(url("/assets/icons/express/network-transmit-receive-16.png") 1x, url("/assets/icons/express/network-transmit-receive-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="activity"] {
+  --xp-icon: image-set(url("/assets/icons/express/utilities-system-monitor-16.png") 1x, url("/assets/icons/express/utilities-system-monitor-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="video"] {
+  --xp-icon: image-set(url("/assets/icons/express/camera-video-16.png") 1x, url("/assets/icons/express/camera-video-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide="lock"],
+[data-theme="express"] svg[data-lucide="lock-keyhole"] {
+  --xp-icon: image-set(url("/assets/icons/express/emblem-readonly-16.png") 1x, url("/assets/icons/express/emblem-readonly-32.png") 2x);
+  --xp-icon-paths: hidden;
+}
+
+[data-theme="express"] svg[data-lucide] {
+  background: var(--xp-icon, none) center / contain no-repeat;
+}
+
+[data-theme="express"] svg[data-lucide] > * {
+  visibility: var(--xp-icon-paths, visible);
+}
+
+/* === CALENDAR === */
+
+/* Previous/next and the week zoom buttons are separate raised buttons. */
+[data-theme="express"] div:has(> [data-calendar-navigate]),
+[data-theme="express"] div:has(> [data-calendar-week-zoom]) {
+  gap: 2px;
+  overflow: visible;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+[data-theme="express"] :is([data-calendar-navigate], [data-calendar-week-zoom]) {
+  border: none;
+  border-radius: 0;
+  background: var(--xp-face);
+  color: var(--foreground);
+  box-shadow: var(--xp-bevel-out);
+  transition: none;
+}
+
+[data-theme="express"] :is([data-calendar-navigate], [data-calendar-week-zoom]):hover:not(:disabled) {
+  background: color-mix(in srgb, var(--xp-face) 92%, var(--xp-light));
+  color: var(--foreground);
+}
+
+[data-theme="express"] :is([data-calendar-navigate], [data-calendar-week-zoom]):active:not(:disabled) {
+  box-shadow: var(--xp-bevel-pressed);
+}
+
+[data-theme="express"] :is([data-calendar-navigate], [data-calendar-week-zoom]):active:not(:disabled) > * {
+  translate: 1px 1px;
+}
+
+/* Fit stays pushed in while it is on. */
+[data-theme="express"] [data-calendar-week-zoom][aria-pressed="true"] {
+  padding-top: 1px;
+  padding-left: calc(0.625rem + 1px);
+  background: color-mix(in srgb, var(--xp-face), var(--xp-light));
+  box-shadow: var(--xp-bevel-in);
+}
+
+[data-theme="express"] [data-calendar-week-zoom]:disabled {
+  opacity: 1;
+  color: var(--xp-mid);
+  text-shadow: 1px 1px 0 var(--xp-light);
+}
+
+[data-theme="express"] :is([data-calendar-navigate], [data-calendar-week-zoom]):focus-visible {
+  --tw-ring-shadow: 0 0 #0000;
+  outline: 1px dotted var(--foreground);
+  outline-offset: -4px;
+}
+
+/* The grid: white days, days outside the month in silver, square day numbers
+   with today's in navy. */
+[data-theme="express"] [data-calendar-day] {
+  border-color: var(--xp-mid);
+  background: var(--card);
+}
+
+[data-theme="express"] [data-calendar-day].bg-muted\/20 {
+  background: var(--background);
+}
+
+[data-theme="express"] [data-calendar-day][data-calendar-day-selected="true"] {
+  --tw-ring-color: var(--xp-select);
+  background: color-mix(in srgb, var(--card), var(--accent));
+}
+
+[data-theme="express"] [data-calendar-day] span.rounded-full {
+  border-radius: 0;
+  box-shadow: none;
+}
+
+[data-theme="express"] [data-calendar-day] span.bg-primary {
+  background: var(--xp-select);
+  color: var(--xp-select-foreground);
+}
+
+[data-theme="express"] [data-calendar-day] span.bg-primary\/10 {
+  background: var(--xp-select);
+  color: var(--xp-select-foreground);
+}
+
+[data-theme="express"] [data-calendar-timed-column] {
+  border-color: var(--xp-mid);
+  background: var(--card);
+}
+
+/* Event colour markers are small framed squares, like a legend swatch. */
+[data-theme="express"] [data-calendar-event-trigger] span.size-1\.5.rounded-full {
+  width: 7px;
+  height: 7px;
+  border-radius: 0;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.45);
+}
+
+/* The app's own event styling is specific, so these rules are anchored on
+   html:root to win. Accepted events (and ones with no reply) get the classic
+   look; pending, maybe and declined keep their own drawings. */
+html:root[data-theme="express"] :is([data-calendar-month-event], [data-calendar-week-all-day], [data-calendar-week-event]) {
+  --calendar-response-surface: var(--card);
+  border-radius: 0;
+  transition: none;
+}
+
+/* Month view: events are plain lines that highlight navy under the pointer. */
+html:root[data-theme="express"] [data-calendar-month-event]:is([data-calendar-response-state=""], [data-calendar-response-state="accepted"], :not([data-calendar-response-state])) {
+  border-color: transparent;
+  background: transparent;
+}
+
+html:root[data-theme="express"] [data-calendar-month-event]:is([data-calendar-response-state=""], [data-calendar-response-state="accepted"], :not([data-calendar-response-state])):is(:hover, [data-calendar-event-hover]),
+html:root[data-theme="express"] [data-calendar-day-overflow]:hover {
+  background: var(--xp-select);
+  color: var(--xp-select-foreground);
+}
+
+html:root[data-theme="express"] [data-calendar-month-event]:is([data-calendar-response-state=""], [data-calendar-response-state="accepted"], :not([data-calendar-response-state])):is(:hover, [data-calendar-event-hover]) :is(*, .text-primary),
+html:root[data-theme="express"] [data-calendar-day-overflow]:hover * {
+  color: inherit;
+}
+
+[data-theme="express"] [data-calendar-day-overflow] {
+  border-radius: 0;
+  color: var(--xp-count);
+}
+
+/* Week view: appointments are white boxes in a thin black frame with a navy
+   busy bar down the left. */
+html:root[data-theme="express"] :is([data-calendar-week-event], [data-calendar-week-all-day]):is([data-calendar-response-state=""], [data-calendar-response-state="accepted"], :not([data-calendar-response-state])) {
+  border: 1px solid var(--xp-frame);
+  border-left: 5px solid var(--xp-select);
+  background-color: var(--card);
+  box-shadow: none;
+}
+
+html:root[data-theme="express"] :is([data-calendar-week-event], [data-calendar-week-all-day]):is([data-calendar-response-state=""], [data-calendar-response-state="accepted"], :not([data-calendar-response-state])):is(:hover, [data-calendar-event-hover]) {
+  background-color: var(--accent);
+}
+
+/* An all-day event carried over from an earlier day has no busy bar. */
+html:root[data-theme="express"] [data-calendar-week-all-day]:is([data-calendar-response-state=""], [data-calendar-response-state="accepted"], :not([data-calendar-response-state]))[data-calendar-continues-before] {
+  border-left: 0;
+}
+
+html:root[data-theme="express"] :is([data-calendar-month-event], [data-calendar-week-all-day], [data-calendar-week-event]):is([data-calendar-response-state=""], [data-calendar-response-state="accepted"], :not([data-calendar-response-state])) .text-primary {
+  color: var(--xp-select);
+}
+
+/* Agenda: flat white panels. */
+[data-theme="express"] #calendar-agenda-list [data-calendar-event-trigger] {
+  border-color: var(--xp-mid);
+  border-radius: 0;
+  background: var(--card);
+  box-shadow: none;
+  transition: none;
+}
+
+[data-theme="express"] #calendar-agenda-list [data-calendar-event-trigger]:hover {
+  background: var(--accent);
+}
+
+[data-theme="express"] :is([data-calendar-event-trigger], [data-calendar-day-overflow]):focus-visible {
+  --tw-ring-shadow: 0 0 #0000;
+  outline: 1px dotted var(--foreground);
+  outline-offset: -2px;
+}
+
+/* Month/Week works like the app switcher: flat toolbar toggle buttons, the
+   current one latched down. */
+[data-theme="express"] [data-calendar-view-nav] {
+  gap: 2px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+[data-theme="express"] [data-calendar-view-indicator] {
+  display: none;
+}
+
+[data-theme="express"] [data-calendar-view-switch] {
+  border-radius: 0;
+  color: var(--foreground);
+  transition: none;
+}
+
+[data-theme="express"] [data-calendar-view-switch]:hover {
+  box-shadow: inset -1px -1px 0 var(--xp-mid), inset 1px 1px 0 var(--xp-light);
+}
+
+[data-theme="express"] [data-calendar-view-switch][aria-current="page"],
+[data-theme="express"] [data-calendar-view-switch]:active {
+  padding: 1px 0.4375rem 0 0.5625rem;
+  background: color-mix(in srgb, var(--xp-face), var(--xp-light));
+  box-shadow: inset 1px 1px 0 var(--xp-mid), inset -1px -1px 0 var(--xp-light);
+}
+
+[data-theme="express"] [data-calendar-view-switch]:focus-visible {
+  --tw-ring-shadow: 0 0 #0000;
+  outline: 1px dotted var(--foreground);
+  outline-offset: -3px;
+}
+
+/* === SIDEBAR SYNC AND FILTERS === */
+
+/* Sync and its account arrow are a flat toolbar split button, like Send/Recv:
+   raised under the pointer, pushed in while syncing or while the menu is open. */
+[data-theme="express"] div.border:has([data-mail-sidebar-sync-button], [data-contact-sidebar-sync-button], [data-calendar-sync-button], button[aria-label="No calendars selected"]) {
+  gap: 1px;
+  overflow: visible;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+[data-theme="express"] :is([data-mail-sidebar-sync-button], [data-contact-sidebar-sync-button], [data-calendar-sync-button], button[aria-label="No calendars selected"], button[aria-label="Choose account to sync"]) {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--sidebar-foreground);
+  transition: none;
+}
+
+[data-theme="express"] :is([data-mail-sidebar-sync-button], [data-contact-sidebar-sync-button], [data-calendar-sync-button], button[aria-label="No calendars selected"], button[aria-label="Choose account to sync"]):hover:not(:disabled) {
+  background: transparent;
+  color: var(--sidebar-foreground);
+  box-shadow: inset -1px -1px 0 var(--xp-mid), inset 1px 1px 0 var(--xp-light);
+}
+
+[data-theme="express"] :is([data-mail-sidebar-sync-button], [data-contact-sidebar-sync-button], [data-calendar-sync-button], button[aria-label="No calendars selected"], button[aria-label="Choose account to sync"]):active,
+[data-theme="express"] :is([data-mail-sidebar-sync-button], [data-contact-sidebar-sync-button], [data-calendar-sync-button], button[aria-label="No calendars selected"], button[aria-label="Choose account to sync"])[data-syncing="true"],
+[data-theme="express"] :is([data-mail-sidebar-sync-button], [data-contact-sidebar-sync-button], [data-calendar-sync-button], button[aria-label="No calendars selected"], button[aria-label="Choose account to sync"])[aria-busy="true"],
+[data-theme="express"] [data-tui-popover-open="true"]:not([data-tui-popover-type="hover"]) > :is([data-mail-sidebar-sync-button], [data-contact-sidebar-sync-button], [data-calendar-sync-button], button[aria-label="No calendars selected"], button[aria-label="Choose account to sync"]),
+[data-theme="express"] :is([data-mail-sidebar-sync-button], [data-contact-sidebar-sync-button], [data-calendar-sync-button], button[aria-label="No calendars selected"], button[aria-label="Choose account to sync"])[data-tui-popover-open="true"] {
+  background: color-mix(in srgb, var(--xp-face), var(--xp-light));
+  color: var(--sidebar-foreground);
+  box-shadow: inset 1px 1px 0 var(--xp-mid), inset -1px -1px 0 var(--xp-light);
+}
+
+[data-theme="express"] :is([data-mail-sidebar-sync-button], [data-contact-sidebar-sync-button], [data-calendar-sync-button], button[aria-label="No calendars selected"], button[aria-label="Choose account to sync"]):is(:active, [data-syncing="true"], [aria-busy="true"]) > svg {
+  translate: 1px 1px;
+}
+
+[data-theme="express"] :is([data-mail-sidebar-sync-button], [data-contact-sidebar-sync-button], [data-calendar-sync-button], button[aria-label="No calendars selected"], button[aria-label="Choose account to sync"]):focus-visible {
+  --tw-ring-shadow: 0 0 #0000;
+  --tw-ring-offset-shadow: 0 0 #0000;
+  outline: 1px dotted var(--foreground);
+  outline-offset: -3px;
+}
+
+/* Filters opens a window, so it is an ordinary raised push button. */
+[data-theme="express"] [data-mail-filter-button] {
+  border: none;
+  border-radius: 0;
+  background: var(--xp-face);
+  color: var(--foreground);
+  font-weight: 400;
+  box-shadow: var(--xp-bevel-out);
+  transition: none;
+}
+
+[data-theme="express"] [data-mail-filter-button]:hover {
+  background: color-mix(in srgb, var(--xp-face) 92%, var(--xp-light));
+}
+
+[data-theme="express"] [data-mail-filter-button]:active,
+[data-theme="express"] [data-tui-popover-open="true"]:not([data-tui-popover-type="hover"]) > [data-mail-filter-button] {
+  box-shadow: var(--xp-bevel-pressed);
+}
+
+[data-theme="express"] [data-mail-filter-button][data-active="true"] {
+  background: var(--xp-face);
+  font-weight: 700;
+}
+
+/* Settings' "Back to inbox" is a flat toolbar button, like a Back button. */
+[data-theme="express"] .app-drawer > div > a[href="/"]:has(> svg[data-lucide="arrow-left"]) {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--sidebar-foreground);
+  font-weight: 400;
+  transition: none;
+}
+
+[data-theme="express"] .app-drawer > div > a[href="/"]:has(> svg[data-lucide="arrow-left"]):hover {
+  background: transparent;
+  color: var(--sidebar-foreground);
+  box-shadow: inset -1px -1px 0 var(--xp-mid), inset 1px 1px 0 var(--xp-light);
+}
+
+[data-theme="express"] .app-drawer > div > a[href="/"]:has(> svg[data-lucide="arrow-left"]):active {
+  box-shadow: inset 1px 1px 0 var(--xp-mid), inset -1px -1px 0 var(--xp-light);
+}
+
+[data-theme="express"] .app-drawer > div > a[href="/"]:has(> svg[data-lucide="arrow-left"]):active > * {
+  translate: 1px 1px;
+}
+
+/* === CONTACT DETAILS === */
+
+/* Laid out like a contact's Properties window: a silver panel, group boxes,
+   and each value in a white read-only field. */
+[data-theme="express"] #contacts-detail > .surface-paper {
+  border-radius: 0;
+  background: var(--background);
+  color: var(--foreground);
+  box-shadow: var(--xp-bevel-out);
+}
+
+[data-theme="express"] #contacts-detail .contact-editor-header {
+  border-bottom: 1px solid var(--xp-mid);
+  background: transparent;
+  box-shadow: 0 1px 0 var(--xp-light);
+}
+
+[data-theme="express"] #contacts-detail .contact-editor-header h1 {
+  font-size: 1.25rem;
+  letter-spacing: normal;
+}
+
+/* Edit, Sync now and See all are raised buttons; the header's icon actions
+   are flat toolbar buttons. */
+[data-theme="express"] #contacts-detail :is(button, a).border {
+  border: none;
+  border-radius: 0;
+  background: var(--xp-face);
+  color: var(--foreground);
+  font-weight: 400;
+  box-shadow: var(--xp-bevel-out);
+  transition: none;
+}
+
+[data-theme="express"] #contacts-detail :is(button, a).border:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--xp-face) 92%, var(--xp-light));
+  color: var(--foreground);
+}
+
+[data-theme="express"] #contacts-detail :is(button, a).border:active:not(:disabled) {
+  box-shadow: var(--xp-bevel-pressed);
+}
+
+[data-theme="express"] #contacts-detail :is(button, a).border:disabled {
+  opacity: 1;
+  color: var(--xp-mid);
+  text-shadow: 1px 1px 0 var(--xp-light);
+}
+
+[data-theme="express"] #contacts-detail .contact-header-actions :is(a, button).size-9 {
+  border-radius: 0;
+  color: var(--foreground);
+  transition: none;
+}
+
+[data-theme="express"] #contacts-detail .contact-header-actions :is(a, button).size-9:hover {
+  background: transparent;
+  color: var(--foreground);
+  box-shadow: inset -1px -1px 0 var(--xp-mid), inset 1px 1px 0 var(--xp-light);
+}
+
+[data-theme="express"] #contacts-detail .contact-header-actions :is(a, button).size-9:active {
+  box-shadow: inset 1px 1px 0 var(--xp-mid), inset -1px -1px 0 var(--xp-light);
+}
+
+/* Sections are etched group boxes with a plain bold title. */
+[data-theme="express"] #contacts-detail .contact-readonly > :is(section, div) {
+  border: 1px solid var(--xp-mid);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: inset 1px 1px 0 var(--xp-light), 1px 1px 0 var(--xp-light);
+}
+
+[data-theme="express"] #contacts-detail .contact-readonly > section > div:first-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+[data-theme="express"] #contacts-detail .contact-readonly h2 {
+  color: var(--foreground);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+/* Fields: "Label:" over a white sunken box, no dividers between them. */
+[data-theme="express"] #contacts-detail .contact-readonly section .grid > div {
+  border-bottom: none;
+  padding-block: 0.375rem;
+}
+
+[data-theme="express"] #contacts-detail .contact-readonly section .grid > div > div:first-child {
+  color: var(--foreground);
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+[data-theme="express"] #contacts-detail .contact-readonly section .grid > div > div:first-child::after {
+  content: ":";
+}
+
+[data-theme="express"] #contacts-detail .contact-readonly section .grid > div > div:last-child {
+  margin-top: 2px;
+  padding: 3px 5px;
+  background: var(--card);
+  font-weight: 400;
+  box-shadow: var(--xp-bevel-in);
+}
+
+[data-theme="express"] #contacts-detail .contact-readonly section .grid > div > div:last-child a {
+  color: var(--xp-count);
+  font-weight: 400;
+  text-decoration: underline;
+}
+
+/* Small labels (Work, sync locations, In/Out, Top 10) are etched tags. */
+[data-theme="express"] #contacts-detail span.rounded:is(.border, [class*="bg-ink"]),
+[data-theme="express"] #contacts-detail .contact-readonly section span.rounded-full {
+  border: 1px solid var(--xp-mid);
+  background: var(--xp-face);
+  color: var(--foreground);
+  font-weight: 400;
+  letter-spacing: normal;
+  box-shadow: inset 1px 1px 0 var(--xp-light);
+}
+
+/* Recent activity is a white list; the row under the pointer turns navy. */
+[data-theme="express"] #contacts-detail .contact-readonly .divide-y {
+  border: none;
+  border-radius: 0;
+  background: var(--card);
+  box-shadow: var(--xp-bevel-in);
+}
+
+[data-theme="express"] #contacts-detail .contact-readonly .divide-y > a {
+  border-color: transparent;
+  transition: none;
+}
+
+[data-theme="express"] #contacts-detail .contact-readonly .divide-y > a:hover {
+  background: var(--xp-select);
+  color: var(--xp-select-foreground);
+}
+
+[data-theme="express"] #contacts-detail .contact-readonly .divide-y > a:hover :is(p, span) {
+  color: inherit;
+}
+
+[data-theme="express"] #contacts-detail .contact-readonly .divide-y > a:hover span.rounded {
+  border-color: var(--xp-select-foreground);
+  background: transparent;
+  box-shadow: none;
+}
+
+/* On a phone the actions are a sticky silver toolbar, Edit included. */
+@media (max-width: 1023.98px) {
+  [data-theme="express"] #contacts-detail .contact-header-actions {
+    border-bottom: 1px solid var(--xp-mid);
+    background: var(--background);
+    box-shadow: 0 1px 0 var(--xp-light);
+  }
+
+  [data-theme="express"] #contacts-detail .contact-header-actions [data-contact-edit-trigger] {
+    background: transparent;
+    box-shadow: none;
+  }
+
+  [data-theme="express"] #contacts-detail .contact-header-actions [data-contact-edit-trigger]:hover {
+    background: transparent;
+    box-shadow: inset -1px -1px 0 var(--xp-mid), inset 1px 1px 0 var(--xp-light);
+  }
+
+  [data-theme="express"] #contacts-detail .contact-readonly section > .grid > div:not([data-contact-field-empty]) ~ div:not([data-contact-field-empty]) {
+    border-top: none;
+  }
+}
+
+/* === PROGRESS BARS === */
+
+/* Progress bars are the Windows 2000 kind: a sunken white track filled with
+   navy blocks. */
+[data-theme="express"] .overflow-hidden:has(> .h-full.bg-primary[style*="width"]) {
+  height: 14px;
+  padding: 2px;
+  border: none;
+  border-radius: 0;
+  background: var(--card);
+  box-shadow: inset 1px 1px 0 var(--xp-mid), inset -1px -1px 0 var(--xp-light);
+}
+
+[data-theme="express"] .overflow-hidden:has(> .h-full.bg-primary[style*="width"]) > .h-full.bg-primary {
+  border-radius: 0;
+  background: repeating-linear-gradient(90deg, var(--xp-select) 0 7px, transparent 7px 9px);
+}
+
+/* === TOASTS === */
+
+/* Notices are small silver alert windows: classic dialog icons, a silver close
+   button, and the time left shown as a sunken progress bar of navy blocks. */
+[data-theme="express"] .gofer-toast-card {
+  border: none;
+  border-radius: 0;
+  background: var(--background);
+  color: var(--foreground);
+  padding: 0.75rem 0.875rem;
+  box-shadow: var(--xp-bevel-out), 2px 2px 0 rgba(0,0,0,0.25);
+}
+
+[data-theme="express"] .gofer-toast-card:has(.gofer-toast-progress-wrap) {
+  padding-bottom: 1.375rem;
+}
+
+[data-theme="express"] .gofer-toast-card .gofer-toast-progress-wrap {
+  top: auto;
+  right: 6px;
+  bottom: 6px;
+  left: 6px;
+  height: 9px;
+  padding: 2px;
+  background: var(--card);
+  box-shadow: inset 1px 1px 0 var(--xp-mid), inset -1px -1px 0 var(--xp-light);
+}
+
+[data-theme="express"] .gofer-toast-card .gofer-toast-progress {
+  background: repeating-linear-gradient(90deg, var(--xp-select) 0 7px, transparent 7px 9px) !important;
+}
+
+[data-theme="express"] .gofer-toast-card .gofer-toast-dismiss {
+  width: 22px;
+  height: 20px;
+  border-radius: 0;
+  background: var(--xp-face);
+  color: var(--foreground);
+  font-weight: 700;
+  box-shadow: var(--xp-bevel-out);
+  transition: none;
+}
+
+[data-theme="express"] .gofer-toast-card .gofer-toast-dismiss:hover {
+  background: var(--xp-face);
+  color: var(--foreground);
+}
+
+[data-theme="express"] .gofer-toast-card .gofer-toast-dismiss:active {
+  box-shadow: var(--xp-bevel-pressed);
+}
+
+[data-theme="express"] .gofer-toast-card [data-gofer-toast-secondary],
+[data-theme="express"] .gofer-toast-card span.underline {
+  color: var(--xp-count);
+  opacity: 1;
+}
+
+[data-theme="express"] .gofer-toast-card svg[data-toast-icon="info"] {
+  background: image-set(url("/assets/icons/express/dialog-information-22.png") 1x, url("/assets/icons/express/dialog-information-48.png") 2x) center / contain no-repeat;
+}
+
+[data-theme="express"] .gofer-toast-card svg[data-toast-icon="info"] > * {
+  visibility: hidden;
+}
+
+[data-theme="express"] .gofer-toast-card svg[data-toast-icon="warning"] {
+  background: image-set(url("/assets/icons/express/dialog-warning-22.png") 1x, url("/assets/icons/express/dialog-warning-48.png") 2x) center / contain no-repeat;
+}
+
+[data-theme="express"] .gofer-toast-card svg[data-toast-icon="warning"] > * {
+  visibility: hidden;
+}
+
+[data-theme="express"] .gofer-toast-card svg[data-toast-icon="error"] {
+  background: image-set(url("/assets/icons/express/dialog-error-22.png") 1x, url("/assets/icons/express/dialog-error-48.png") 2x) center / contain no-repeat;
+}
+
+[data-theme="express"] .gofer-toast-card svg[data-toast-icon="error"] > * {
+  visibility: hidden;
+}
+
+/* === FOLDER PANE === */
+
+/* Active folder: solid navy highlight with white text. */
+[data-theme="express"] .app-drawer a.bg-sidebar-accent,
+[data-theme="express"] .app-drawer button.bg-sidebar-accent {
+  background: var(--xp-select);
+  color: var(--xp-select-foreground);
+}
+
+[data-theme="express"] .app-drawer a.bg-sidebar-accent *,
+[data-theme="express"] .app-drawer button.bg-sidebar-accent * {
+  color: inherit;
+}
+
+/* Unread counts are plain blue "(12)" after the name, and the name turns bold. */
+[data-theme="express"] [data-folder-unread] {
+  min-width: 0;
+  height: auto;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--xp-count);
+  font-size: inherit;
+  font-weight: 400;
+}
+
+[data-theme="express"] [data-folder-unread]::before {
+  content: "(";
+}
+
+[data-theme="express"] [data-folder-unread]::after {
+  content: ")";
+}
+
+[data-theme="express"] .app-drawer a:has(> [data-folder-unread]:not([style*="none"]):not(:empty)) > span.truncate {
+  font-weight: 700;
+}
+
+/* === TOGGLE GROUPS === */
+
+/* Pick-one groups (app switcher, Cards/Table) are toolbar toggle buttons:
+   flat, raised on hover, and the chosen one latched down with a lighter
+   fill (how the old checkered "on" pattern reads on modern screens). The
+   sliding highlight boxes are not used. */
+[data-theme="express"] [data-sidebar-app-indicator],
+[data-theme="express"] [data-mail-list-view-indicator],
+[data-theme="express"] [data-contact-list-view-indicator] {
+  display: none;
+}
+
+[data-theme="express"] :is([data-mail-list-view-toggle], [data-contact-list-view-toggle]) {
+  height: auto;
+  gap: 2px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+[data-theme="express"] :is([data-mail-list-view-button], [data-contact-list-view-button]) {
+  border-radius: 0;
+  color: var(--foreground);
+  font-weight: 400;
+  transition: none;
+}
+
+[data-theme="express"] :is([data-mail-list-view-button], [data-contact-list-view-button]):hover {
+  box-shadow: inset -1px -1px 0 var(--xp-mid), inset 1px 1px 0 var(--xp-light);
+}
+
+[data-theme="express"] :is([data-mail-list-view-button], [data-contact-list-view-button])[aria-pressed="true"],
+[data-theme="express"] :is([data-mail-list-view-button], [data-contact-list-view-button]):active {
+  background: color-mix(in srgb, var(--xp-face), var(--xp-light));
+  box-shadow: inset 1px 1px 0 var(--xp-mid), inset -1px -1px 0 var(--xp-light);
+}
+
+[data-theme="express"] :is([data-mail-list-view-button], [data-contact-list-view-button]):is([aria-pressed="true"], :active) > * {
+  translate: 1px 1px;
+}
+
+@media (min-width: 1024px) {
+  [data-theme="express"] [data-sidebar-app-nav] {
+    gap: 2px;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  [data-theme="express"] [data-sidebar-app-button] {
+    border-radius: 0;
+    color: var(--sidebar-foreground);
+    font-weight: 400;
+    transition: none;
+  }
+
+  [data-theme="express"] [data-sidebar-app-button]:hover {
+    box-shadow: inset -1px -1px 0 var(--xp-mid), inset 1px 1px 0 var(--xp-light);
+  }
+
+  [data-theme="express"] [data-sidebar-app-button][aria-current],
+  [data-theme="express"] [data-sidebar-app-button]:active {
+    background: color-mix(in srgb, var(--xp-face), var(--xp-light));
+    box-shadow: inset 1px 1px 0 var(--xp-mid), inset -1px -1px 0 var(--xp-light);
+  }
+
+  [data-theme="express"] [data-sidebar-app-button]:is([aria-current], :active) > * {
+    translate: 1px 1px;
+  }
+}
+
+/* The message's Dark/Light/Original switch works the same way. The tabs
+   script sets each tab's background and shadow inline, so these override it. */
+[data-theme="express"] [data-email-body-style-toggle] [data-tui-tabs-indicator] {
+  display: none !important;
+}
+
+[data-theme="express"] [data-email-body-style-toggle] [data-tui-tabs-list] {
+  gap: 2px;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+[data-theme="express"] [data-email-body-style-toggle] [data-tui-tabs-trigger] {
+  border: none;
+  border-radius: 0;
+  background: transparent !important;
+  color: var(--foreground);
+  font-weight: 400;
+  box-shadow: none !important;
+  transition: none;
+}
+
+[data-theme="express"] [data-email-body-style-toggle] [data-tui-tabs-trigger]:hover {
+  box-shadow: inset -1px -1px 0 var(--xp-mid), inset 1px 1px 0 var(--xp-light) !important;
+}
+
+[data-theme="express"] [data-email-body-style-toggle] [data-tui-tabs-trigger][data-tui-tabs-state="active"],
+[data-theme="express"] [data-email-body-style-toggle] [data-tui-tabs-trigger]:active {
+  background: color-mix(in srgb, var(--xp-face), var(--xp-light)) !important;
+  box-shadow: inset 1px 1px 0 var(--xp-mid), inset -1px -1px 0 var(--xp-light) !important;
+}
+
+/* The labels are bare text, so the press shifts the padding rather than the children. */
+[data-theme="express"] [data-email-body-style-toggle] [data-tui-tabs-trigger]:is([data-tui-tabs-state="active"], :active) {
+  padding: 1px 5px 0 7px;
+}
+
+[data-theme="express"] [data-email-body-style-toggle] [data-tui-tabs-trigger]:focus-visible {
+  --tw-ring-shadow: 0 0 #0000;
+  outline: 1px dotted var(--foreground);
+  outline-offset: -3px;
+}
+
+/* Color Mode (Light/Dark) in Settings is the same kind of toggle. The picker
+   script styles the buttons inline, hence the !important. Dark is disabled
+   while Express is chosen, and drawn greyed and embossed. */
+[data-theme="express"] [data-mode-picker-indicator] {
+  display: none !important;
+}
+
+[data-theme="express"] [data-mode-picker] > div:has([data-mode]) {
+  gap: 2px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+[data-theme="express"] [data-mode-picker] [data-mode] {
+  border-radius: 0;
+  color: var(--foreground);
+  transition: none;
+}
+
+[data-theme="express"] [data-mode-picker] [data-mode]:hover:not(:disabled) {
+  box-shadow: inset -1px -1px 0 var(--xp-mid), inset 1px 1px 0 var(--xp-light) !important;
+}
+
+[data-theme="express"] [data-mode-picker] [data-mode][aria-pressed="true"],
+[data-theme="express"] [data-mode-picker] [data-mode]:active:not(:disabled) {
+  padding: calc(0.375rem + 1px) 0.6875rem calc(0.375rem - 1px) 0.8125rem;
+  background: color-mix(in srgb, var(--xp-face), var(--xp-light)) !important;
+  box-shadow: inset 1px 1px 0 var(--xp-mid), inset -1px -1px 0 var(--xp-light) !important;
+}
+
+[data-theme="express"] [data-mode-picker] [data-mode]:disabled {
+  pointer-events: none;
+  color: var(--xp-mid);
+  text-shadow: 1px 1px 0 var(--xp-light);
+  cursor: default;
+}
+
+[data-theme="express"] [data-mode-picker] [data-mode]:disabled svg {
+  filter: drop-shadow(1px 1px 0 var(--xp-light));
+}
+
+[data-theme="express"] [data-mode-picker] [data-mode]:focus-visible {
+  outline: 1px dotted var(--foreground);
+  outline-offset: -3px;
+}
+
+/* === MESSAGE LIST === */
+
+/* The folder name sits in a title bar above the list. */
+[data-theme="express"] .mail-list-title-row {
+  padding: 0.25rem 0.625rem;
+  background: var(--xp-title);
+  color: var(--xp-title-foreground);
+}
+
+[data-theme="express"] #mail-folder-name {
+  color: var(--xp-title-foreground);
+  letter-spacing: normal;
+}
+
+[data-theme="express"] #mail-folder-count {
+  min-width: 0;
+  height: auto;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: color-mix(in srgb, var(--xp-title-foreground) 80%, transparent);
+  font-size: 0.8125rem;
+  font-weight: 400;
+}
+
+[data-theme="express"] #mail-folder-count:not(:empty)::before {
+  content: "(";
+}
+
+[data-theme="express"] #mail-folder-count:not(:empty)::after {
+  content: ")";
+}
+
+/* Toolbar buttons are flat until hovered, then raise; pressed, they sink. */
+[data-theme="express"] :is(.mail-view-toolbar, .mail-list-toolbar) button:not([data-mail-list-view-toggle] *, .mail-select-all *, [data-tui-popover-content] *) {
+  border-color: transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--foreground);
+  box-shadow: none;
+  transition: none;
+}
+
+[data-theme="express"] :is(.mail-view-toolbar, .mail-list-toolbar) button:not([data-mail-list-view-toggle] *, .mail-select-all *, [data-tui-popover-content] *):hover {
+  background: transparent;
+  box-shadow: inset -1px -1px 0 var(--xp-mid), inset 1px 1px 0 var(--xp-light);
+}
+
+[data-theme="express"] :is(.mail-view-toolbar, .mail-list-toolbar) button:not([data-mail-list-view-toggle] *, .mail-select-all *, [data-tui-popover-content] *):active,
+[data-theme="express"] :is(.mail-view-toolbar, .mail-list-toolbar) [data-tui-popover-trigger][data-tui-popover-open="true"]:not([data-tui-popover-type="hover"]) button:not([data-mail-list-view-toggle] *, .mail-select-all *, [data-tui-popover-content] *) {
+  box-shadow: inset 1px 1px 0 var(--xp-mid), inset -1px -1px 0 var(--xp-light);
+}
+
+[data-theme="express"] :is(.mail-view-toolbar, .mail-list-toolbar) button:not([data-mail-list-view-toggle] *, .mail-select-all *, [data-tui-popover-content] *):active > * {
+  translate: 1px 1px;
+}
+
+/* Permanent delete (in Trash) keeps its warning colour. */
+[data-theme="express"] :is(.mail-view-toolbar, .mail-list-toolbar) button.text-red-700.text-red-700 {
+  color: var(--destructive);
+}
+
+[data-theme="express"] :is(.mail-view-toolbar, .mail-list-toolbar) button:disabled {
+  color: var(--xp-mid);
+  box-shadow: none;
+}
+
+
+/* The toolbar's own bottom edge already separates it from the list. */
+[data-theme="express"] #mail-list > hr.divider-etched {
+  display: none;
+}
+
+[data-theme="express"] .mail-list-toolbar,
+[data-theme="express"] .mail-view-toolbar {
+  background: var(--xp-face);
+  box-shadow: inset 0 -1px 0 var(--xp-mid), inset 0 1px 0 var(--xp-light);
+}
+
+[data-theme="express"] .envelope {
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: none;
+}
+
+[data-theme="express"] .envelope:hover {
+  background: var(--card);
+  border-color: var(--xp-mid);
+  box-shadow: none;
+  transform: none;
+}
+
+[data-theme="express"] [data-view-mode="table"] .mail-list-item > a.envelope,
+[data-theme="express"] [data-view-mode="table"] .mail-list-item > a.envelope:hover {
+  border-color: transparent;
+}
+
+[data-theme="express"] .envelope-active,
+[data-theme="express"] .mail-list-item[data-mail-selected] > a,
+[data-theme="express"] .mail-list-item > a[data-mail-selected],
+[data-theme="express"] [data-view-mode="table"] .mail-list-item > a.envelope-active,
+[data-theme="express"] [data-view-mode="table"] .mail-list-item[data-mail-selected] > a,
+[data-theme="express"] [data-view-mode="table"] .mail-list-item > a[data-mail-selected] {
+  background: var(--xp-select);
+  color: var(--xp-select-foreground);
+  border-color: var(--xp-select);
+  box-shadow: none;
+}
+
+[data-theme="express"] .envelope-active :is(span, p, div, time, svg),
+[data-theme="express"] .mail-list-item[data-mail-selected] > a :is(span, p, div, time, svg),
+[data-theme="express"] .mail-list-item > a[data-mail-selected] :is(span, p, div, time, svg) {
+  color: inherit;
+}
+
+[data-theme="express"] .mail-list-item > a.mail-list-card {
+  --mail-card-pick-edge: var(--xp-select);
+  --mail-card-pick-bar: var(--xp-select);
+}
+
+[data-theme="express"] .mail-list-item > a:focus-visible {
+  outline: 1px dotted var(--foreground);
+  outline-offset: -2px;
+  box-shadow: none;
+}
+
+[data-theme="express"] .resize-handle {
+  background: var(--xp-face);
+}
+
+/* === SCROLLBARS === */
+
+[data-theme="express"] * {
+  scrollbar-width: auto;
+  scrollbar-color: var(--xp-face) color-mix(in srgb, var(--xp-face) 55%, var(--xp-light));
+}
+
+[data-theme="express"] *::-webkit-scrollbar {
+  width: 16px;
+  height: 16px;
+  background: color-mix(in srgb, var(--xp-face) 55%, var(--xp-light));
+}
+
+[data-theme="express"] *::-webkit-scrollbar-thumb,
+[data-theme="express"] *::-webkit-scrollbar-thumb:hover,
+[data-theme="express"] #mail-list-scroll::-webkit-scrollbar-thumb {
+  background: var(--xp-face);
+  border-radius: 0;
+  box-shadow: var(--xp-bevel-out);
+}
+
+[data-theme="express"] *::-webkit-scrollbar-corner {
+  background: var(--xp-face);
+}

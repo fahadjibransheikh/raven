@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -15,7 +16,7 @@ import (
 	"github.com/cristianadrielbraun/gofer/internal/storage"
 )
 
-const gmailAPIMessageFetchMaxBytes int64 = 64 << 20
+const gmailAPIMessageFetchMaxBytes = message.MaxDownloadBytes
 
 type gmailAPIMessageResponse struct {
 	ID       string `json:"id"`
@@ -140,16 +141,23 @@ func (h *Handler) fetchGmailAPIMessageMIMEByID(ctx context.Context, token, provi
 	values := url.Values{}
 	values.Set("format", "raw")
 	endpoint := gmailAPIBaseURL + "/users/me/messages/" + url.PathEscape(strings.TrimSpace(providerMessageID)) + "?" + values.Encode()
+	// Gmail doesn't say how large the message is before sending it, so a
+	// message over the limit is noticed once the limit has been read.
+	limit := message.DownloadLimit(ctx, gmailAPIMessageFetchMaxBytes)
+	encodedLimit := (limit+2)/3*4 + 4096
 	var response gmailAPIMessageResponse
-	if err := doGoogleJSON(ctx, http.MethodGet, endpoint, token, nil, &response); err != nil {
+	if err := doGoogleJSONWithLimit(ctx, http.MethodGet, endpoint, token, nil, &response, encodedLimit); err != nil {
+		if errors.Is(err, errGoogleResponseTooLarge) {
+			return nil, &message.TooLargeError{Limit: limit}
+		}
 		return nil, err
 	}
 	raw, err := decodeGmailRaw(response.Raw)
 	if err != nil {
 		return nil, err
 	}
-	if int64(len(raw)) > gmailAPIMessageFetchMaxBytes {
-		return nil, fmt.Errorf("gmail message MIME exceeds %d bytes", gmailAPIMessageFetchMaxBytes)
+	if int64(len(raw)) > limit {
+		return nil, &message.TooLargeError{Size: int64(len(raw)), Limit: limit}
 	}
 	return raw, nil
 }

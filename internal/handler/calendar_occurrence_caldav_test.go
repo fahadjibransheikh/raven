@@ -169,9 +169,9 @@ func TestCalendarCalDAVOccurrencePreservesResource(t *testing.T) {
 					}
 				}))
 				defer server.Close()
-				old := calDAVHTTPTransport
-				calDAVHTTPTransport = server.Client().Transport
-				defer func() { calDAVHTTPTransport = old }()
+				old := davHTTPTransport
+				davHTTPTransport = server.Client().Transport
+				defer func() { davHTTPTransport = old }()
 				source := storage.CalendarSource{RemoteID: server.URL + "/cal/", TimeZone: "Europe/Prague"}
 				events, err := parseCalDAVEvents(server.URL+"/cal/series.ics", `"v1"`, expanded, time.UTC)
 				if err != nil {
@@ -256,9 +256,9 @@ func TestCalendarCalDAVSeriesDeletionAfterOneOffChanges(t *testing.T) {
 		w.WriteHeader(204)
 	}))
 	defer server.Close()
-	old := calDAVHTTPTransport
-	calDAVHTTPTransport = server.Client().Transport
-	defer func() { calDAVHTTPTransport = old }()
+	old := davHTTPTransport
+	davHTTPTransport = server.Client().Transport
+	defer func() { davHTTPTransport = old }()
 	endpoint := server.URL + "/cal/series.ics"
 	headers := http.Header{"Etag": []string{`"v1"`}}
 	remote, err := calendarCalDAVDeleteSeriesEvent(cal, headers, endpoint, time.UTC)

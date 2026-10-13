@@ -154,16 +154,17 @@ func (h *Handler) handleTranslatedEmailBody(w http.ResponseWriter, r *http.Reque
 
 func (h *Handler) writeTranslatedBody(w http.ResponseWriter, r *http.Request, result translation.Result, translatedHTML string, loadRemote bool) {
 	emailID := r.PathValue("id")
-	msgID, _ := strconv.ParseInt(emailID, 10, 64)
 	var body []byte
 	if translatedHTML != "" {
 		body = []byte(translatedHTML)
 	} else {
 		body = []byte(`<pre style="white-space:pre-wrap;word-wrap:break-word;font-family:inherit;margin:0;padding:8px">` + stdhtml.EscapeString(result.Text) + `</pre>`)
 	}
+	id, _ := strconv.ParseInt(emailID, 10, 64)
 	if loadRemote {
-		body = mailmessage.RestoreRemoteImages(body)
+		body = mailmessage.RestoreRemoteContent(body, h.remoteContentLinks(r.Context(), h.userID(r.Context()), id))
 	}
+	body = h.signMessageFileLinks(r.Context(), body, h.userID(r.Context()), id)
 
 	theme := r.URL.Query().Get("theme")
 	bg := r.URL.Query().Get("bg")
@@ -171,19 +172,19 @@ func (h *Handler) writeTranslatedBody(w http.ResponseWriter, r *http.Request, re
 	link := r.URL.Query().Get("link")
 	original := r.URL.Query().Get("mode") == "original"
 
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-store")
-	body = h.withImageGrants(r.Context(), msgID, body)
-	w.Write(emailBodyDocument(w, emailID, body, theme, bg, fg, link, original, loadRemote, !loadRemote))
+	nonce := setEmailBodyDocumentHeaders(w)
+	doc := buildBodyDocument(body, emailResizeScript(emailID), theme, bg, fg, link, original, emailBodyTextSize(r), nonce)
+	if !loadRemote {
+		doc = append(doc, scriptWithNonce(remoteImagesDetectScript(emailID), nonce)...)
+	}
+	w.Write(doc)
 }
 
 func (h *Handler) writeTranslatedEmailError(w http.ResponseWriter, emailID, message string, status int) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-store")
-	body := []byte(`<div style="font:14px -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.5;padding:8px;color:inherit">` + stdhtml.EscapeString(message) + `</div>`)
-	doc := emailBodyDocument(w, emailID, body, "light", "", "", "", false, false, false)
+	nonce := setEmailBodyDocumentHeaders(w)
 	w.WriteHeader(status)
-	w.Write(doc)
+	body := []byte(`<div style="font:14px -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.5;padding:8px;color:inherit">` + stdhtml.EscapeString(message) + `</div>`)
+	w.Write(buildBodyDocument(body, emailResizeScript(emailID), "light", "", "", "", false, 14, nonce))
 }
 
 func (h *Handler) translationProvider(providerName string) (translation.Provider, bool) {
@@ -355,7 +356,7 @@ func (h *Handler) messageTranslationSource(ctx context.Context, emailID string, 
 	userID := h.userID(ctx)
 	if !h.db.IsBodyFetchedInternal(ctx, msgID) {
 		if info, err := h.db.GetMessageFetchInfoForUser(ctx, msgID, userID); err == nil && info != nil {
-			if parsed, err := h.fetchParsedBody(ctx, msgID, info.AccountID); err == nil && parsed != nil {
+			if parsed, err := h.fetchParsedBody(mailmessage.WithDownloadLimit(ctx, mailmessage.AutoDownloadMaxBytes), msgID, info.AccountID); err == nil && parsed != nil {
 				h.persistParsedBodyAsync(msgID, info.AccountID, parsed)
 				htmlSource := ""
 				if len(parsed.HTMLBody) > 0 {

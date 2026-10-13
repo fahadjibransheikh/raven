@@ -18,6 +18,7 @@ import (
 	"github.com/cristianadrielbraun/gofer/internal/mail/imap"
 	"github.com/cristianadrielbraun/gofer/internal/mail/message"
 	"github.com/cristianadrielbraun/gofer/internal/models"
+	"github.com/cristianadrielbraun/gofer/internal/providerquota"
 	"github.com/cristianadrielbraun/gofer/internal/providers"
 	"github.com/cristianadrielbraun/gofer/internal/storage"
 )
@@ -219,6 +220,7 @@ func (o *SyncOrchestrator) syncGmailAPIAccount(ctx context.Context, accountID st
 }
 
 func (o *SyncOrchestrator) repairGmailAPIAccount(ctx context.Context, accountID string) error {
+	ctx = providerquota.Background(ctx)
 	if o.imapScope == nil && !o.db.IsEmailSyncEnabled(ctx, accountID) {
 		return nil
 	}
@@ -1423,6 +1425,7 @@ func gmailAPIMessageToProviderSyncs(accountID string, msg gmailAPIMessage, label
 		IsFlagged:         isStarred,
 		IsDraft:           isDraft,
 		HasAttachments:    len(gmailAPIAttachmentRows(msg)) > 0,
+		SizeBytes:         msg.SizeEstimate,
 		Labels:            gmailLabelInputs(accountID, msg.LabelIDs, gmailLabelsForInputs(labelsByID)),
 		LabelsKnown:       true,
 		LabelProvider:     storage.LabelProviderGmail,

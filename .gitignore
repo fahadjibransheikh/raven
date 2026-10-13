@@ -1,11 +1,10 @@
-tmp/*
-!tmp/go.mod
 dist/
 .env
 internal_notes/
 raven-server
 *.png
 !assets/logo.png
+!assets/icons/express/*.png
 !screenshots/
 !screenshots/*.png
 !branding/**/*.png

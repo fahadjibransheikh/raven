@@ -112,8 +112,8 @@ func startRecordedIMAPServer(t *testing.T, caps goimap.CapSet, hidden ...goimap.
 		t.Fatalf("parse proxy port: %v", err)
 	}
 	return &models.AccountConfig{
-		AccountID:          "acc",
-		IMAPHost:           host,
+		AccountID: "acc",
+		IMAPHost:  host, IMAPAllowPrivate: true,
 		IMAPPort:           port,
 		IMAPTLSMode:        "plaintext",
 		IMAPAllowPlaintext: true,

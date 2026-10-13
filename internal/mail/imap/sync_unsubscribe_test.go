@@ -38,7 +38,7 @@ func TestSyncCapturesListUnsubscribeHeaders(t *testing.T) {
 	host, portString, _ := net.SplitHostPort(listener.Addr().String())
 	port, _ := strconv.Atoi(portString)
 	client, err := NewClient(context.Background(), &models.AccountConfig{
-		AccountID: "acc", IMAPHost: host, IMAPPort: port, IMAPTLSMode: "plaintext",
+		AccountID: "acc", IMAPHost: host, IMAPAllowPrivate: true, IMAPPort: port, IMAPTLSMode: "plaintext",
 		IMAPAllowPlaintext: true, AuthMethod: "plain", Username: "user@example.com",
 	}, "secret")
 	if err != nil {

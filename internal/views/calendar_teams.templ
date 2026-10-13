@@ -28,7 +28,7 @@ templ CalendarTeamsOption(data CalendarTeamsData) {
 			}
 			<div class="flex items-center gap-2">
 				if data.State == "error" || data.State == "checking" {
-					@button.Button(button.Props{Variant: button.VariantGhost, Size: button.SizeIcon, Class: "size-7", Attributes: templ.Attributes{"data-calendar-teams-retry": "", "hidden": data.State != "error", "aria-label": retryLabel, "title": retryLabel, "onclick": "retryCalendarTeams(this.closest('[data-calendar-create-form]'))"}}) {
+					@button.Button(button.Props{Variant: button.VariantGhost, Size: button.SizeIcon, Class: "size-7", Attributes: templ.Attributes{"data-calendar-teams-retry": "", "hidden": data.State != "error", "aria-label": retryLabel, "title": retryLabel, "data-on-click": onAction("retryCalendarTeams", actionClosest("[data-calendar-create-form]"))}}) {
 						@icon.RefreshCw(icon.Props{Class: "size-3.5"})
 					}
 				}
@@ -36,20 +36,20 @@ templ CalendarTeamsOption(data CalendarTeamsData) {
 			</div>
 		</div>
 		if available && (data.Provider == "gmail" || data.EventID == "") {
-   {{ draftName, retryAction := "google_meet_draft_id", "retryCalendarMeetPreview(this.closest('[data-calendar-create-form]'))" }}
+   {{ draftName, retryAction := "google_meet_draft_id", onAction("retryCalendarMeetPreview", actionClosest("[data-calendar-create-form]")) }}
    if data.Provider != "gmail" {
-    {{ draftName, retryAction = "teams_draft_id", "retryCalendarTeamsPreview(this.closest('[data-calendar-create-form]'))" }}
+    {{ draftName, retryAction = "teams_draft_id", onAction("retryCalendarTeamsPreview", actionClosest("[data-calendar-create-form]")) }}
    }
 			<div data-calendar-meet-preview data-calendar-meeting-provider={ name } hidden class="mt-2 space-y-2">
 				<input type="hidden" name={ draftName } value=""/>
 				<p data-calendar-meet-status role="status" aria-live="polite" class="text-xs text-muted-foreground"></p>
 				<div data-calendar-meet-link hidden class="flex min-w-0 items-center gap-2">
 					<a data-calendar-meet-url target="_blank" rel="noopener noreferrer" class="min-w-0 break-all text-sm underline underline-offset-4"></a>
-					@button.Button(button.Props{Variant: button.VariantGhost, Size: button.SizeSm, Attributes: templ.Attributes{"data-calendar-meet-copy": "", "onclick": "copyCalendarMeetLink(this)"}}) {
+					@button.Button(button.Props{Variant: button.VariantGhost, Size: button.SizeSm, Attributes: templ.Attributes{"data-calendar-meet-copy": "", "data-on-click": onAction("copyCalendarMeetLink", actionElement)}}) {
 						Copy link
 					}
 				</div>
-				@button.Button(button.Props{Variant: button.VariantGhost, Size: button.SizeSm, Attributes: templ.Attributes{"data-calendar-meet-prepare-retry": "", "hidden": true, "onclick": retryAction}}) {
+				@button.Button(button.Props{Variant: button.VariantGhost, Size: button.SizeSm, Attributes: templ.Attributes{"data-calendar-meet-prepare-retry": "", "hidden": true, "data-on-click": retryAction}}) {
 					Retry
 				}
 			</div>

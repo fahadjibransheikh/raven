@@ -199,7 +199,7 @@ func (h *Handler) finishCalendarReply(parent context.Context, job storage.Calend
 			if endpointErr != nil || decodeErr != nil {
 				state = "conflict"
 			} else {
-				current, headers, readErr := calendarUpdateCalDAVGet(ctx, calendarDeleteClient(calDAVHTTPTransport), endpoint, credentials.username, credentials.password)
+				current, headers, readErr := calendarUpdateCalDAVGet(ctx, calendarDeleteClient(davHTTPTransport), endpoint, credentials.username, credentials.password)
 				if readErr != nil {
 					if errors.Is(readErr, errCalendarUpdateConflict) || !calendarCreateUncertain(readErr) {
 						state = "conflict"

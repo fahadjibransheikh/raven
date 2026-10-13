@@ -19,9 +19,11 @@ import (
 // elements and attributes, and neutralises every remote reference: <img> URLs,
 // background= attributes and CSS background url()s become markers
 // (data-remote-src, data-remote-bg, url("raven-remote:...")) that
-// RestoreRemoteImages undoes once the user allows remote content; everything
+// RestoreRemoteContent undoes once the user allows remote content; everything
 // else (srcset, other CSS url()s, @import, @font-face, ...) is dropped. Mail without an
-// <html> tag stays a fragment because buildBodyDocument keys off that.
+// <html> tag stays a fragment because buildBodyDocument keys off that. The
+// reader's Content-Security-Policy enforces the same limits in the browser, so
+// this is the first of two layers rather than the only one.
 func SanitizeHTML(input []byte) []byte {
 	return sanitizeHTML(input)
 }
@@ -260,14 +262,35 @@ func remoteHTTPURL(v string) (string, bool) {
 }
 
 var localImagePrefixes = []string{
-	"cid:", "/api/inline-content/", "/api/remote-assets/",
+	"cid:",
 	"data:image/png", "data:image/jpeg", "data:image/jpg", "data:image/gif", "data:image/webp",
 	"data:image/bmp", "data:image/svg+xml", "data:image/x-icon",
+}
+
+// Gofer rewrites inline parts and saved remote images to these paths, and some
+// bodies are sanitized again after that, as when they are translated.
+var goferContentPaths = []string{"/api/inline-content/", "/api/remote-assets/", "/api/attachments/", "/compose/attachments/"}
+
+// isGoferContentPath accepts one of Gofer's own content paths, but never one
+// that climbs out of it or carries a query or fragment.
+func isGoferContentPath(v string) bool {
+	if strings.Contains(v, "..") || strings.Contains(strings.ToLower(v), "%2e") || strings.ContainsAny(v, `\?#`) {
+		return false
+	}
+	for _, p := range goferContentPaths {
+		if strings.HasPrefix(v, p) {
+			return true
+		}
+	}
+	return false
 }
 
 // isLocalImageURL reports whether v can be fetched without leaving the app or
 // the message: an inline part, a stored remote asset, or an embedded image.
 func isLocalImageURL(v string) bool {
+	if isGoferContentPath(v) {
+		return true
+	}
 	lower := strings.ToLower(v)
 	for _, p := range localImagePrefixes {
 		if strings.HasPrefix(lower, p) {
@@ -427,20 +450,111 @@ func sanitizeCSSPass(s string) string {
 	return b.String()
 }
 
+// reCSSMarkerText matches a blocked CSS url() as it reads once parsed: plain
+// quotes, whether it came from a <style> element or a style attribute.
+var reCSSMarkerText = regexp.MustCompile(`url\("raven-remote:([^"]*)"\)`)
+
+// RestoreRemoteImages turns blocked remote content back into the original
+// addresses.
 func RestoreRemoteImages(html []byte) []byte {
-	s := string(html)
+	return RestoreRemoteContent(html, func(u string) string { return u })
+}
 
-	reImgDouble := regexp.MustCompile(`(?i)(<img\b[^>]*?\s)src\s*=\s*""\s+data-remote-src="([^"]*)"`)
-	s = reImgDouble.ReplaceAllString(s, `${1}src="$2"`)
+// RestoreRemoteContent turns the blocked remote content of a sanitized body
+// (images, backgrounds, CSS backgrounds) back on, with every web address passed
+// through load, which returns the address the reader's browser should fetch
+// instead. Gofer uses it to send remote content through its own server, so the
+// sender never sees the reader's address. Markers that do not hold a plain
+// http(s) address are dropped rather than restored.
+func RestoreRemoteContent(input []byte, load func(remoteURL string) string) []byte {
+	if len(input) == 0 {
+		return input
+	}
+	restoreCSS := func(css string) string {
+		css = reCSSMarkerText.ReplaceAllStringFunc(css, func(m string) string {
+			if remote, ok := remoteCSSURL(reCSSMarkerText.FindStringSubmatch(m)[1]); ok {
+				if l := load(remote); !strings.ContainsAny(l, "\"\\<>\r\n\f") {
+					return `url("` + l + `")`
+				}
+			}
+			return `url("")`
+		})
+		return strings.ReplaceAll(css, `url("")`, ``)
+	}
+	restore := func(n *html.Node) {
+		switch n.Type {
+		case html.TextNode:
+			if n.Parent != nil && n.Parent.Type == html.ElementNode && n.Parent.Data == "style" && n.Parent.Namespace == "" {
+				n.Data = restoreCSS(n.Data)
+			}
+			return
+		case html.ElementNode:
+		default:
+			return
+		}
+		blockedImage := n.Data == "img" && hasAttr(n, "data-remote-src")
+		var attrs []html.Attribute
+		for _, a := range n.Attr {
+			switch {
+			case a.Key == "data-remote-src":
+				if remote, ok := remoteHTTPURL(a.Val); ok && n.Data == "img" {
+					attrs = append(attrs, html.Attribute{Key: "src", Val: load(remote)})
+				}
+				continue
+			case a.Key == "src" && blockedImage:
+				continue
+			case a.Key == "data-remote-bg":
+				if remote, ok := remoteHTTPURL(a.Val); ok && backgroundElements[n.Data] {
+					attrs = append(attrs, html.Attribute{Key: "background", Val: load(remote)})
+				}
+				continue
+			case a.Key == "style":
+				a.Val = restoreCSS(a.Val)
+			}
+			attrs = append(attrs, a)
+		}
+		n.Attr = attrs
+	}
+	var out bytes.Buffer
+	if bytes.Contains(bytes.ToLower(input), []byte("<html")) {
+		doc, err := html.Parse(bytes.NewReader(input))
+		if err != nil {
+			return input
+		}
+		for n := range doc.Descendants() {
+			restore(n)
+		}
+		if err := html.Render(&out, doc); err != nil {
+			return input
+		}
+		return out.Bytes()
+	}
+	body := &html.Node{Type: html.ElementNode, Data: "body", DataAtom: atom.Body}
+	nodes, err := html.ParseFragment(bytes.NewReader(input), body)
+	if err != nil {
+		return input
+	}
+	for _, n := range nodes {
+		body.AppendChild(n)
+	}
+	for n := range body.Descendants() {
+		restore(n)
+	}
+	for c := body.FirstChild; c != nil; c = c.NextSibling {
+		if err := html.Render(&out, c); err != nil {
+			return input
+		}
+	}
+	return out.Bytes()
+}
 
-	reImgSingle := regexp.MustCompile(`(?i)(<img\b[^>]*?\s)src\s*=\s*''\s+data-remote-src='([^']*)'`)
-	s = reImgSingle.ReplaceAllString(s, `${1}src='$2'`)
-
-	s = rewriteCSSMarkers(s, func(u string) string { return u })
-	s = strings.ReplaceAll(s, `data-remote-bg="`, `background="`)
-	s = strings.ReplaceAll(s, `url("")`, ``)
-
-	return []byte(s)
+func hasAttr(n *html.Node, key string) bool {
+	for _, a := range n.Attr {
+		if a.Key == key {
+			return true
+		}
+	}
+	return false
 }
 
 func IsRemoteImagesBlocked(html string) bool {

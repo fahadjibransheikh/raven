@@ -348,9 +348,25 @@
     })
   }
 
+  // A page that is left closes its event stream at once, instead of keeping
+  // one of the browser's six connections to Gofer while the browser holds the
+  // page for going back. Going back opens a new one.
+  function closeOnPageHide(source, reopen) {
+    function hide() {
+      source.close()
+      window.removeEventListener("pagehide", hide)
+      window.addEventListener("pageshow", function show(event) {
+        window.removeEventListener("pageshow", show)
+        if (event.persisted) reopen()
+      })
+    }
+    window.addEventListener("pagehide", hide)
+  }
+
   function setupContactSSE() {
     if (!window.EventSource) return
     var source = new EventSource("/api/admin/events")
+    closeOnPageHide(source, setupContactSSE)
     source.addEventListener("contact-backfill", function (event) {
       var data = parseEventData(event)
       if (data.backfill) renderContactBackfill(data.backfill)
@@ -1034,6 +1050,7 @@
   function setupSSE() {
     if (!window.EventSource) return
     var source = new EventSource("/api/admin/events")
+    closeOnPageHide(source, setupSSE)
     source.addEventListener("avatar-backfill", function (event) {
       var transition = renderBackfillEvent(event) || {}
       if (transition.wasRunning !== transition.running || transition.status === "canceling") {

@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -302,5 +303,38 @@ func TestOwnedProviderAvatarCentralProfileAndStaleResponse(t *testing.T) {
 				t.Fatal("stale provider photo exposed", r.Code, r.Body.String())
 			}
 		})
+	}
+}
+
+// Opening a contact's picture asks for the large version of the saved photo.
+// Only the saved photo is checked, and only its large version is fetched.
+func TestOwnedProviderAvatarLargeVersionOfSavedPhoto(t *testing.T) {
+	f := newOwnedMessageContentFixture(t)
+	f.h.userStorageContext = t.Context()
+	saved := "https://lh3.googleusercontent.com/a-/ALV-UjV=s96-c"
+	if err := f.h.withUserDB(t.Context(), "alice", func(db *storage.DB) error {
+		_, err := db.SaveContact(t.Context(), "alice", models.Contact{ID: "photo-contact", Email: "photo@example.com", AvatarURL: saved})
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	var fetched []string
+	f.h.providerAvatarHTTPClient = &http.Client{Transport: calendarActionTransportFunc(func(r *http.Request) (*http.Response, error) {
+		fetched = append(fetched, r.URL.String())
+		return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": []string{"image/png"}}, Body: io.NopCloser(strings.NewReader("large-photo")), Request: r}, nil
+	})}
+	get := func(target string) int {
+		r := httptest.NewRecorder()
+		f.h.handleProviderAvatarImage(r, ownedContentRequest("alice", target, ""))
+		return r.Code
+	}
+	if code := get("/api/provider-avatar?url=" + url.QueryEscape(saved) + "&size=large"); code != 200 {
+		t.Fatalf("large version of a saved photo = %d", code)
+	}
+	if len(fetched) != 1 || !strings.Contains(fetched[0], "=s1024-c") || !strings.Contains(fetched[0], "sz=1024") {
+		t.Fatalf("fetched %v, want the 1024 pixel version", fetched)
+	}
+	if code := get("/api/provider-avatar?url=" + url.QueryEscape("https://lh3.googleusercontent.com/a-/someone-else=s96-c") + "&size=large"); code != 404 {
+		t.Fatalf("large version of an unsaved photo = %d", code)
 	}
 }

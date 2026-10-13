@@ -2,7 +2,10 @@ package authoperator
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/cristianadrielbraun/gofer/internal/auth"
@@ -36,12 +39,44 @@ func NewService(db *storage.DB) *Service {
 	return &Service{db: db, manager: auth.NewManager(&auth.Config{}, db)}
 }
 
-func (service *Service) Recover(ctx context.Context, userID string) (*auth.LocalRecoveryResult, error) {
+// UserTarget names the user an operator command acts on. Exactly one field is
+// set, matching the flag the operator typed.
+type UserTarget struct {
+	ID       string
+	Username string
+}
+
+func (service *Service) Recover(ctx context.Context, target UserTarget) (*auth.LocalRecoveryResult, error) {
+	userID, err := service.resolveUserID(ctx, target)
+	if err != nil {
+		return nil, err
+	}
 	return service.manager.RecoverUserLocally(ctx, userID)
 }
 
-func (service *Service) RevokeSessions(ctx context.Context, userID string) (*auth.LocalSessionRevocationResult, error) {
+func (service *Service) RevokeSessions(ctx context.Context, target UserTarget) (*auth.LocalSessionRevocationResult, error) {
+	userID, err := service.resolveUserID(ctx, target)
+	if err != nil {
+		return nil, err
+	}
 	return service.manager.RevokeUserSessionsLocally(ctx, userID)
+}
+
+func (service *Service) resolveUserID(ctx context.Context, target UserTarget) (string, error) {
+	query, value, label := `SELECT id FROM users WHERE id = ?`, target.ID, "ID"
+	if target.Username != "" {
+		query, value, label = `SELECT id FROM users WHERE username_normalized = ?`,
+			strings.ToLower(strings.TrimSpace(target.Username)), "username"
+	}
+	var userID string
+	err := service.db.Read().QueryRowContext(ctx, query, value).Scan(&userID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", fmt.Errorf("no user has %s %q", label, target.ID+target.Username)
+	}
+	if err != nil {
+		return "", fmt.Errorf("look up user %s: %w", label, err)
+	}
+	return userID, nil
 }
 
 func (service *Service) RotateSetupToken(ctx context.Context) (*auth.SetupTokenProvision, error) {

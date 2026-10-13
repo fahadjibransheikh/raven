@@ -23,6 +23,7 @@ func newOwnedMessageContentFixture(t *testing.T) *userContactPushFixture {
 	f := newUserContactPushFixture(t, "carddav", http.NotFoundHandler())
 	f.h.blobStore = f.h.userIMAP.Blobs()
 	f.h.db = f.system
+	f.h.messageFileKey = newMessageFileKey()
 	for _, owner := range []string{"alice", "bob"} {
 		candidate, err := f.h.blobStore.NewMessageVersion()
 		if err != nil {
@@ -108,7 +109,7 @@ func TestOwnedMessageTranslationResultsAndConsent(t *testing.T) {
 	for _, owner := range []string{"alice", "bob"} {
 		r := httptest.NewRecorder()
 		f.h.handleUserTranslatedEmailBody(r, ownedContentRequest(owner, "/email/1/body/translated", ""))
-		if r.Code != 200 || !strings.Contains(r.Body.String(), owner+" private body") || (strings.Contains(r.Body.String(), ` src="https://images.example/private.png"`) != (owner == "alice")) {
+		if r.Code != 200 || !strings.Contains(r.Body.String(), owner+" private body") || (strings.Contains(r.Body.String(), ` src="/api/message-file/web/1/`) != (owner == "alice")) || strings.Contains(r.Body.String(), ` src="https://`) {
 			t.Fatal("translated document", owner, r.Code, r.Body.String())
 		}
 	}

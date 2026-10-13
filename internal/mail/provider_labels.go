@@ -16,6 +16,7 @@ import (
 	"time"
 
 	mailimap "github.com/cristianadrielbraun/gofer/internal/mail/imap"
+	"github.com/cristianadrielbraun/gofer/internal/providerquota"
 	"github.com/cristianadrielbraun/gofer/internal/providers"
 	"github.com/cristianadrielbraun/gofer/internal/retry"
 	"github.com/cristianadrielbraun/gofer/internal/storage"
@@ -1599,7 +1600,7 @@ func providerJSON(ctx context.Context, method, endpoint, token string, headers m
 		req.Header.Set("Content-Type", "application/json")
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := providerquota.Do(req)
 	if err != nil {
 		return err
 	}

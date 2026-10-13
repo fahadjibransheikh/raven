@@ -183,11 +183,14 @@ func ownedReplyDeliveryFixture(t *testing.T, smtpHost string, smtpPort int, befo
 		_, _ = fmt.Fprintf(w, "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Gofer//Fixture//EN\r\nBEGIN:VEVENT\r\nUID:private-uid\r\nDTSTART:20261003T100000Z\r\nDTEND:20261003T110000Z\r\nSUMMARY:Private invitation\r\nORGANIZER:mailto:organizer@example.com\r\nATTENDEE;PARTSTAT=NEEDS-ACTION:mailto:%s@example.com\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n", owner)
 	}))
 	t.Cleanup(dav.Close)
-	previous := calDAVHTTPTransport
-	calDAVHTTPTransport = dav.Client().Transport
-	t.Cleanup(func() { calDAVHTTPTransport = previous })
+	previous := davHTTPTransport
+	davHTTPTransport = dav.Client().Transport
+	t.Cleanup(func() { davHTTPTransport = previous })
 	f = newUserContactPushFixture(t, "carddav", http.HandlerFunc(func(http.ResponseWriter, *http.Request) { t.Error("shared/provider fallback") }))
 	if err := f.system.AddPlaintextTransportException(t.Context(), "smtp", smtpHost, smtpPort, "fixture"); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.system.AddPrivateTargetException(t.Context(), "smtp", smtpHost, smtpPort, "fixture"); err != nil {
 		t.Fatal(err)
 	}
 	for _, owner := range []string{"alice", "bob"} {

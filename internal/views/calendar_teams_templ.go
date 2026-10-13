@@ -115,7 +115,7 @@ func CalendarTeamsOption(data CalendarTeamsData) templ.Component {
 					}
 					return nil
 				})
-				templ_7745c5c3_Err = button.Button(button.Props{Variant: button.VariantGhost, Size: button.SizeIcon, Class: "size-7", Attributes: templ.Attributes{"data-calendar-teams-retry": "", "hidden": data.State != "error", "aria-label": retryLabel, "title": retryLabel, "onclick": "retryCalendarTeams(this.closest('[data-calendar-create-form]'))"}}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var5), templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = button.Button(button.Props{Variant: button.VariantGhost, Size: button.SizeIcon, Class: "size-7", Attributes: templ.Attributes{"data-calendar-teams-retry": "", "hidden": data.State != "error", "aria-label": retryLabel, "title": retryLabel, "data-on-click": onAction("retryCalendarTeams", actionClosest("[data-calendar-create-form]"))}}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var5), templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -129,9 +129,9 @@ func CalendarTeamsOption(data CalendarTeamsData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if available && (data.Provider == "gmail" || data.EventID == "") {
-				draftName, retryAction := "google_meet_draft_id", "retryCalendarMeetPreview(this.closest('[data-calendar-create-form]'))"
+				draftName, retryAction := "google_meet_draft_id", onAction("retryCalendarMeetPreview", actionClosest("[data-calendar-create-form]"))
 				if data.Provider != "gmail" {
-					draftName, retryAction = "teams_draft_id", "retryCalendarTeamsPreview(this.closest('[data-calendar-create-form]'))"
+					draftName, retryAction = "teams_draft_id", onAction("retryCalendarTeamsPreview", actionClosest("[data-calendar-create-form]"))
 				}
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, " <div data-calendar-meet-preview data-calendar-meeting-provider=\"")
 				if templ_7745c5c3_Err != nil {
@@ -181,7 +181,7 @@ func CalendarTeamsOption(data CalendarTeamsData) templ.Component {
 					}
 					return nil
 				})
-				templ_7745c5c3_Err = button.Button(button.Props{Variant: button.VariantGhost, Size: button.SizeSm, Attributes: templ.Attributes{"data-calendar-meet-copy": "", "onclick": "copyCalendarMeetLink(this)"}}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var8), templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = button.Button(button.Props{Variant: button.VariantGhost, Size: button.SizeSm, Attributes: templ.Attributes{"data-calendar-meet-copy": "", "data-on-click": onAction("copyCalendarMeetLink", actionElement)}}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var8), templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -207,7 +207,7 @@ func CalendarTeamsOption(data CalendarTeamsData) templ.Component {
 					}
 					return nil
 				})
-				templ_7745c5c3_Err = button.Button(button.Props{Variant: button.VariantGhost, Size: button.SizeSm, Attributes: templ.Attributes{"data-calendar-meet-prepare-retry": "", "hidden": true, "onclick": retryAction}}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var9), templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = button.Button(button.Props{Variant: button.VariantGhost, Size: button.SizeSm, Attributes: templ.Attributes{"data-calendar-meet-prepare-retry": "", "hidden": true, "data-on-click": retryAction}}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var9), templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

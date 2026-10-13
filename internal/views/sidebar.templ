@@ -327,7 +327,7 @@ templ SidebarHeader(accounts []models.Account, activeApp string) {
 				<span class="truncate text-base font-semibold tracking-tight text-sidebar-accent-foreground">Raven</span>
 				@tooltip.Tooltip() {
 					@tooltip.Trigger(tooltip.TriggerProps{Class: "inline-flex shrink-0"}) {
-						<button id="sidebar-compose-btn" type="button" onclick="openNewCompose()" aria-label="Compose (C)" class="inline-flex size-8 items-center justify-center rounded-md bg-sidebar-accent text-sidebar-accent-foreground transition-colors hover:bg-sidebar-accent/70 disabled:cursor-not-allowed disabled:opacity-60">
+						<button id="sidebar-compose-btn" type="button" data-on-click='["openNewCompose"]' aria-label="Compose (C)" class="inline-flex size-8 items-center justify-center rounded-md bg-sidebar-accent text-sidebar-accent-foreground transition-colors hover:bg-sidebar-accent/70 disabled:cursor-not-allowed disabled:opacity-60">
 							@icon.SquarePen(icon.Props{Class: "size-4"})
 						</button>
 					}
@@ -356,10 +356,10 @@ templ SidebarSyncControls(accounts []models.Account, activeApp string) {
 								hx-target="#main-content"
 								hx-swap="outerHTML"
 								hx-sync="#main-content:drop"
-								hx-on::config-request="configureCalendarSyncRequest(event)"
-								hx-on::before-request="handleCalendarSyncStart(event)"
-								hx-on::after-request="handleCalendarSyncResult(event)"
-								hx-on::send-abort="handleCalendarSyncAbort(event)"
+								data-on-htmx-config-request='["configureCalendarSyncRequest","$event"]'
+								data-on-htmx-before-request='["handleCalendarSyncStart","$event"]'
+								data-on-htmx-after-request='["handleCalendarSyncResult","$event"]'
+								data-on-htmx-send-abort='["handleCalendarSyncAbort","$event"]'
 								data-calendar-sync-button
 								class="inline-flex h-8 w-8 items-center justify-center text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:cursor-wait"
 								aria-label="Refresh calendars"
@@ -402,10 +402,10 @@ templ SidebarSyncControls(accounts []models.Account, activeApp string) {
 									hx-target="#main-content"
 									hx-swap="outerHTML"
 									hx-sync="#main-content:drop"
-									hx-on::config-request="configureCalendarSyncRequest(event)"
-									hx-on::before-request="handleCalendarSyncStart(event)"
-									hx-on::after-request="handleCalendarSyncResult(event)"
-									hx-on::send-abort="handleCalendarSyncAbort(event)"
+									data-on-htmx-config-request='["configureCalendarSyncRequest","$event"]'
+									data-on-htmx-before-request='["handleCalendarSyncStart","$event"]'
+									data-on-htmx-after-request='["handleCalendarSyncResult","$event"]'
+									data-on-htmx-send-abort='["handleCalendarSyncAbort","$event"]'
 									data-calendar-sync-button
 									data-calendar-account-sync-button={ account.ID }
 									class="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:cursor-wait"
@@ -434,8 +434,8 @@ templ SidebarSyncControls(accounts []models.Account, activeApp string) {
 								type="button"
 								hx-post="/api/settings/contacts/accounts/sync"
 								hx-swap="none"
-								hx-on::before-request="handleContactSidebarSyncStart(event)"
-								hx-on::after-request="handleContactSidebarSyncResult(event)"
+								data-on-htmx-before-request='["handleContactSidebarSyncStart","$event"]'
+								data-on-htmx-after-request='["handleContactSidebarSyncResult","$event"]'
 								data-contact-sidebar-sync-button
 								class="inline-flex h-8 w-8 items-center justify-center text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[syncing=true]:text-sidebar-accent-foreground"
 								aria-label="Sync all contacts"
@@ -447,8 +447,8 @@ templ SidebarSyncControls(accounts []models.Account, activeApp string) {
 								type="button"
 								hx-post="/api/mail/sync"
 								hx-swap="none"
-								hx-on::before-request="handleMailSidebarSyncStart(event)"
-								hx-on::after-request="handleMailSidebarSyncResult(event)"
+								data-on-htmx-before-request='["handleMailSidebarSyncStart","$event"]'
+								data-on-htmx-after-request='["handleMailSidebarSyncResult","$event"]'
 								data-mail-sidebar-sync-button
 								class="inline-flex h-8 w-8 items-center justify-center text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[syncing=true]:text-sidebar-accent-foreground"
 								aria-label="Force sync all mail, including IDLE folders"
@@ -486,8 +486,8 @@ templ SidebarSyncControls(accounts []models.Account, activeApp string) {
 											hx-post="/api/settings/contacts/accounts/sync"
 											hx-vals={ sidebarContactSyncValues(account.ID) }
 											hx-swap="none"
-											hx-on::before-request="handleContactSidebarSyncStart(event)"
-											hx-on::after-request="handleContactSidebarSyncResult(event)"
+											data-on-htmx-before-request='["handleContactSidebarSyncStart","$event"]'
+											data-on-htmx-after-request='["handleContactSidebarSyncResult","$event"]'
 											data-contact-account-sync-button={ account.ID }
 											class="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
 											aria-label={ "Sync contacts for " + contactSidebarAccountName(account) }
@@ -510,8 +510,8 @@ templ SidebarSyncControls(accounts []models.Account, activeApp string) {
 											type="button"
 											hx-post={ "/api/mail/sync/accounts/" + account.ID }
 											hx-swap="none"
-											hx-on::before-request="handleMailSidebarSyncStart(event)"
-											hx-on::after-request="handleMailSidebarSyncResult(event)"
+											data-on-htmx-before-request='["handleMailSidebarSyncStart","$event"]'
+											data-on-htmx-after-request='["handleMailSidebarSyncResult","$event"]'
 											data-mail-account-sync-button={ account.ID }
 											class="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
 											aria-label={ "Force sync " + account.DisplayLabel() + ", including IDLE folders" }
@@ -566,7 +566,7 @@ templ SidebarMailSyncErrorSummaryTooltip(accounts []models.Account) {
 				tabindex="-1"
 				data-mail-sync-error-indicator
 				hidden?={ mailSyncErrorCount(accounts) == 0 }
-				onclick="document.querySelector('[data-mail-sidebar-sync-button]')?.click()"
+				data-on-click='["goferClickElement","[data-mail-sidebar-sync-button]"]'
 				class="pointer-events-auto relative inline-flex h-8 w-8 items-center justify-center"
 				aria-label={ fmt.Sprintf("%d mail sync issue(s)", mailSyncErrorCount(accounts)) }
 			>

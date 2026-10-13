@@ -93,9 +93,9 @@ func ownedIncomingCalendarFixture(t *testing.T) *ownedIncomingFixture {
 		w.WriteHeader(500)
 	}))
 	f.h.blobStore = f.h.userIMAP.Blobs()
-	prior := calDAVHTTPTransport
-	calDAVHTTPTransport = server.Client().Transport
-	t.Cleanup(func() { calDAVHTTPTransport = prior })
+	prior := davHTTPTransport
+	davHTTPTransport = server.Client().Transport
+	t.Cleanup(func() { davHTTPTransport = prior })
 	draft := calendarProviderDraft(t, false)
 	draft.Guests = []calendar.GuestDraft{{Email: "guest@example.com"}, {Email: "other@example.com"}}
 	draft.OrganizerEmail = "alice@example.com"

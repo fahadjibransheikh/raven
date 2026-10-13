@@ -320,9 +320,19 @@ func userAccountError(w http.ResponseWriter, r *http.Request, err error) {
 		return
 	}
 	if errors.Is(err, config.ErrMailboxExists) {
-		http.Error(w, "mailbox already exists for this user", http.StatusConflict)
+		http.Error(w, "This mailbox is already connected to Gofer.", http.StatusConflict)
+		return
+	}
+	if isPermanentOAuthError(err) {
+		// Retrying cannot help until the user grants access again.
+		log.Printf("routed account needs reconnect: %v", err)
+		w.Header().Set(accountReconnectHeader, "true")
+		http.Error(w, "Reconnect account: "+oauthReconnectReason(err), http.StatusConflict)
 		return
 	}
 	log.Printf("routed account operation failed: %v", err)
 	http.Error(w, "account operation unavailable", http.StatusServiceUnavailable)
 }
+
+// accountReconnectHeader marks responses whose account must be reconnected.
+const accountReconnectHeader = "X-Gofer-Account-Reconnect"

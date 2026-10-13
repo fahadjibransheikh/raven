@@ -257,6 +257,9 @@ func newManagedMailFixtureOptions(t *testing.T, options managedMailOptions, conf
 		if err := source.AddPrivateTargetException(t.Context(), protocol, "127.0.0.1", port, "owner"); err != nil {
 			t.Fatal(err)
 		}
+		if err := source.AddPrivateTargetException(t.Context(), protocol, "127.0.0.1", port, "owner"); err != nil {
+			t.Fatal(err)
+		}
 	}
 	accounts, err := config.NewAccountStore(source, key)
 	if err != nil {

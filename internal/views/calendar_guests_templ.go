@@ -81,7 +81,7 @@ func CalendarGuestSuggestions(contacts []models.Contact) templ.Component {
 					}
 					return nil
 				})
-				templ_7745c5c3_Err = button.Button(button.Props{ID: "calendar-guest-" + contact.ID, Type: button.TypeButton, Variant: button.VariantGhost, Class: "h-auto w-full justify-start gap-2 rounded-sm px-2 py-1.5 text-left font-normal data-[calendar-guest-active=true]:bg-accent data-[calendar-guest-active=true]:text-accent-foreground", Attributes: templ.Attributes{"role": "option", "tabindex": "-1", "aria-selected": "false", "data-calendar-guest-value": (&mail.Address{Name: contact.Name, Address: contact.Email}).String(), "onclick": "selectCalendarGuest(this)"}}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = button.Button(button.Props{ID: "calendar-guest-" + contact.ID, Type: button.TypeButton, Variant: button.VariantGhost, Class: "h-auto w-full justify-start gap-2 rounded-sm px-2 py-1.5 text-left font-normal data-[calendar-guest-active=true]:bg-accent data-[calendar-guest-active=true]:text-accent-foreground", Attributes: templ.Attributes{"role": "option", "tabindex": "-1", "aria-selected": "false", "data-calendar-guest-value": (&mail.Address{Name: contact.Name, Address: contact.Email}).String(), "data-on-click": onAction("selectCalendarGuest", actionElement)}}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

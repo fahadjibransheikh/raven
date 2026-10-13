@@ -211,9 +211,9 @@ func TestCalDAVCreationIsConditionalEscapedAndRetryable(t *testing.T) {
 				w.WriteHeader(201)
 			}))
 			defer server.Close()
-			prior := calDAVHTTPTransport
-			calDAVHTTPTransport = server.Client().Transport
-			defer func() { calDAVHTTPTransport = prior }()
+			prior := davHTTPTransport
+			davHTTPTransport = server.Client().Transport
+			defer func() { davHTTPTransport = prior }()
 			source := storage.CalendarSource{RemoteID: server.URL + "/calendar/"}
 			for range 2 {
 				remote, err := createCalDAVCalendarEvent(t.Context(), source, "calendar-user", "calendar-password", draft)

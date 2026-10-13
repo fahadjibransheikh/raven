@@ -79,7 +79,7 @@ func (h *Handler) finishUserCalendarReply(parent context.Context, owner, account
 				if decodeErr != nil || endpointErr != nil {
 					state = "conflict"
 				} else {
-					current, headers, readErr := calendarUpdateCalDAVGet(operation, calendarDeleteClient(calDAVHTTPTransport), endpoint, credentials.username, credentials.password)
+					current, headers, readErr := calendarUpdateCalDAVGet(operation, calendarDeleteClient(davHTTPTransport), endpoint, credentials.username, credentials.password)
 					switch {
 					case readErr != nil:
 						if replySaveDefinitivelyRejected(readErr) {

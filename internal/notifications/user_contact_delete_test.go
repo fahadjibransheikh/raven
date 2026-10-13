@@ -13,6 +13,7 @@ import (
 
 	"github.com/cristianadrielbraun/gofer/internal/config"
 	"github.com/cristianadrielbraun/gofer/internal/models"
+	"github.com/cristianadrielbraun/gofer/internal/netguard"
 	"github.com/cristianadrielbraun/gofer/internal/storage"
 )
 
@@ -132,6 +133,7 @@ func newOwnedContactDeleteFixture(t *testing.T, provider string) (*userStorageFi
 		previous := http.DefaultTransport
 		target, _ := url.Parse(server.URL)
 		http.DefaultTransport = ownedContactPullTransport{base: previous, target: target}
+		t.Cleanup(netguard.UseTransportForTests(http.DefaultTransport))
 		t.Cleanup(func() { http.DefaultTransport = previous })
 	}
 	for _, owner := range []string{"alice", "bob"} {

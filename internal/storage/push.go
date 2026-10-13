@@ -15,6 +15,10 @@ const maxWebPushSubscriptionsPerUser = 20
 
 var ErrTooManyPushSubscriptions = errors.New("too many push subscriptions for this user")
 
+// ErrNoWebPushSubscription reports that Web Push is not configured, or that a browser's
+// subscription is not registered for the user.
+var ErrNoWebPushSubscription = errors.New("web push is not set up for this browser")
+
 type WebPushSubscription struct {
 	Endpoint  string
 	UserID    string

@@ -28,6 +28,10 @@ type imapSyncRepository interface {
 	ReconcileDiscoveredFolders(ctx context.Context, accountID, providerKind string, seenIdentities []string, completedAt time.Time) (storage.FolderDiscoveryResult, error)
 	GetFoldersForAccount(ctx context.Context, accountID string) ([]storage.FolderSyncInfo, error)
 	UpdateFolderSyncState(ctx context.Context, folderID string, highestUID uint32, uidValidity uint32, totalCount int) error
+	ListFolderUIDsMissingSize(ctx context.Context, folderID string, limit int) ([]uint32, error)
+	SetFolderMessageSizes(ctx context.Context, folderID string, sizes map[uint32]int64) error
+	ListProviderMessagesMissingSize(ctx context.Context, accountID string, limit int) ([]string, error)
+	SetProviderMessageSizes(ctx context.Context, accountID string, sizes map[string]int64) error
 }
 
 func (o *SyncOrchestrator) imapRepository() imapSyncRepository {
@@ -179,4 +183,28 @@ func (o *SyncOrchestrator) newIMAPSyncClient(ctx context.Context, cfg *models.Ac
 		return imap.NewContextClient(ctx, cfg, password)
 	}
 	return imap.NewClient(ctx, cfg, password)
+}
+func (r *userIMAPScope) ListFolderUIDsMissingSize(ctx context.Context, folderID string, limit int) ([]uint32, error) {
+	var result []uint32
+	err := r.call(ctx, func(db *storage.DB) error {
+		var err error
+		result, err = db.ListFolderUIDsMissingSize(ctx, folderID, limit)
+		return err
+	})
+	return result, err
+}
+func (r *userIMAPScope) SetFolderMessageSizes(ctx context.Context, folderID string, sizes map[uint32]int64) error {
+	return r.call(ctx, func(db *storage.DB) error { return db.SetFolderMessageSizes(ctx, folderID, sizes) })
+}
+func (r *userIMAPScope) ListProviderMessagesMissingSize(ctx context.Context, accountID string, limit int) ([]string, error) {
+	var result []string
+	err := r.call(ctx, func(db *storage.DB) error {
+		var err error
+		result, err = db.ListProviderMessagesMissingSize(ctx, accountID, limit)
+		return err
+	})
+	return result, err
+}
+func (r *userIMAPScope) SetProviderMessageSizes(ctx context.Context, accountID string, sizes map[string]int64) error {
+	return r.call(ctx, func(db *storage.DB) error { return db.SetProviderMessageSizes(ctx, accountID, sizes) })
 }

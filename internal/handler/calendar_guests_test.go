@@ -254,9 +254,9 @@ func TestCalendarGuestCalDAVSchedulingAndDurableFallback(t *testing.T) {
 				}
 			}))
 			defer server.Close()
-			prior := calDAVHTTPTransport
-			calDAVHTTPTransport = server.Client().Transport
-			defer func() { calDAVHTTPTransport = prior }()
+			prior := davHTTPTransport
+			davHTTPTransport = server.Client().Transport
+			defer func() { davHTTPTransport = prior }()
 			source := storage.CalendarSource{ID: "one-source", UserID: "one", AccountID: "one-account", Provider: "caldav", RemoteID: server.URL + "/cal/", AccessRole: "owner", IsSelected: true}
 			if _, err := h.db.Write().Exec(`UPDATE accounts SET provider='imap',smtp_host='smtp.example.com',smtp_port=587 WHERE id='one-account'; UPDATE calendar_sources SET provider='caldav',remote_id=?,access_role='owner' WHERE id='one-source'`, source.RemoteID); err != nil {
 				t.Fatal(err)

@@ -733,7 +733,7 @@ func updateCalDAVCalendarEventScope(ctx context.Context, source storage.Calendar
 	if err != nil {
 		return calendar.RemoteEvent{}, err
 	}
-	client := &http.Client{Transport: calDAVHTTPTransport, Timeout: 30 * time.Second,
+	client := &http.Client{Transport: davHTTPTransport, Timeout: 30 * time.Second,
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	current, headers, err := calendarUpdateCalDAVGet(ctx, client, endpoint, username, password)
 	if err != nil {

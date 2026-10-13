@@ -54,24 +54,38 @@ func contactEditAvatarRemoveClass(hasAvatar bool) string {
 	return "hidden"
 }
 
+// contactAvatarPreviewURL is the address of the larger photo shown when a
+// contact's picture is opened. Google photos are fetched through Gofer, which
+// only fetches photos saved for one of the person's contacts, so the address
+// names the saved photo and asks Gofer for its large version.
 func contactAvatarPreviewURL(rawURL string) string {
 	rawURL = strings.TrimSpace(rawURL)
+	if _, ok := GoogleAvatarLargeURL(rawURL); ok {
+		return "/api/provider-avatar?url=" + url.QueryEscape(rawURL) + "&size=large"
+	}
+	return rawURL
+}
+
+// GoogleAvatarLargeURL returns the 1024 pixel version of a Google profile
+// photo address, or false when the address isn't a Google photo.
+func GoogleAvatarLargeURL(rawURL string) (string, bool) {
+	rawURL = strings.TrimSpace(rawURL)
 	if rawURL == "" || strings.HasPrefix(strings.ToLower(rawURL), "data:") {
-		return rawURL
+		return "", false
 	}
 	parsed, err := url.Parse(rawURL)
 	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
-		return rawURL
+		return "", false
 	}
 	host := strings.ToLower(parsed.Hostname())
-	if host == "googleusercontent.com" || strings.HasSuffix(host, ".googleusercontent.com") || host == "ggpht.com" || strings.HasSuffix(host, ".ggpht.com") {
-		parsed.Path = contactGoogleAvatarPreviewPath(parsed.Path)
-		values := parsed.Query()
-		values.Set("sz", "1024")
-		parsed.RawQuery = values.Encode()
-		return parsed.String()
+	if host != "googleusercontent.com" && !strings.HasSuffix(host, ".googleusercontent.com") && host != "ggpht.com" && !strings.HasSuffix(host, ".ggpht.com") {
+		return "", false
 	}
-	return rawURL
+	parsed.Path = contactGoogleAvatarPreviewPath(parsed.Path)
+	values := parsed.Query()
+	values.Set("sz", "1024")
+	parsed.RawQuery = values.Encode()
+	return parsed.String(), true
 }
 
 func contactGoogleAvatarPreviewPath(path string) string {
@@ -1332,6 +1346,7 @@ templ ContactsListPane(contacts []models.Contact, selected *models.Contact, filt
 				<button
 					type="button"
 					data-contact-list-view-button="cards"
+					aria-pressed={ fmt.Sprintf("%t", contactViewMode(filters.View) == "cards") }
 					aria-label="Cards view"
 					class={
 						"relative z-10 inline-flex h-6 items-center gap-1 px-2 rounded-md text-xs font-medium transition-colors duration-200",
@@ -1345,6 +1360,7 @@ templ ContactsListPane(contacts []models.Contact, selected *models.Contact, filt
 				<button
 					type="button"
 					data-contact-list-view-button="table"
+					aria-pressed={ fmt.Sprintf("%t", contactViewMode(filters.View) == "table") }
 					aria-label="Table view"
 					class={
 						"relative z-10 inline-flex h-6 items-center gap-1 px-2 rounded-md text-xs font-medium transition-colors duration-200",
@@ -1869,6 +1885,15 @@ templ ContactEmailFields(contact *models.Contact) {
 				Add
 			</button>
 		</div>
+		<template data-contact-value-template="additional_emails">
+			<div class="flex items-center gap-2" data-contact-value-row>
+				<input type="email" name="additional_emails" placeholder="jane@work.example" class="h-10 min-w-0 flex-1 rounded-lg border border-ink/10 bg-ink/[0.04] px-3 text-sm text-ink placeholder:text-ink/35 focus:outline-none focus:ring-2 focus:ring-ink/10"/>
+				@ContactLabelSelect("additional_email_labels", "other", contactEmailLabelOptions("other"), "Email label")
+				<button type="button" class="size-8 shrink-0 rounded-md border border-ink/10 bg-ink/[0.025] text-ink/40 hover:bg-ink/[0.06] hover:text-ink" data-contact-remove-value aria-label="Remove email">
+					@icon.X(icon.Props{Class: "mx-auto size-4"})
+				</button>
+			</div>
+		</template>
 		<div class="space-y-2" data-contact-value-list="additional_emails">
 			<div class="flex items-center gap-2">
 				<input type="email" name="email" value={ contactFormEmail(contact) } placeholder="jane@example.com" required class="h-10 min-w-0 flex-1 rounded-lg border border-ink/10 bg-ink/[0.04] px-3 text-sm text-ink placeholder:text-ink/35 focus:outline-none focus:ring-2 focus:ring-ink/10"/>
@@ -1884,15 +1909,6 @@ templ ContactEmailFields(contact *models.Contact) {
 				</div>
 			}
 		</div>
-		<template data-contact-value-template="additional_emails">
-			<div class="flex items-center gap-2" data-contact-value-row>
-				<input type="email" name="additional_emails" placeholder="jane@work.example" class="h-10 min-w-0 flex-1 rounded-lg border border-ink/10 bg-ink/[0.04] px-3 text-sm text-ink placeholder:text-ink/35 focus:outline-none focus:ring-2 focus:ring-ink/10"/>
-				@ContactLabelSelect("additional_email_labels", "other", contactEmailLabelOptions("other"), "Email label")
-				<button type="button" class="size-8 shrink-0 rounded-md border border-ink/10 bg-ink/[0.025] text-ink/40 hover:bg-ink/[0.06] hover:text-ink" data-contact-remove-value aria-label="Remove email">
-					@icon.X(icon.Props{Class: "mx-auto size-4"})
-				</button>
-			</div>
-		</template>
 	</div>
 }
 
@@ -1905,6 +1921,15 @@ templ ContactPhoneFields(contact *models.Contact) {
 				Add
 			</button>
 		</div>
+		<template data-contact-value-template="additional_phones">
+			<div class="flex items-center gap-2" data-contact-value-row>
+				<input type="tel" name="additional_phones" placeholder="+1 555 0101" class="h-10 min-w-0 flex-1 rounded-lg border border-ink/10 bg-ink/[0.04] px-3 text-sm text-ink placeholder:text-ink/35 focus:outline-none focus:ring-2 focus:ring-ink/10"/>
+				@ContactLabelSelect("additional_phone_labels", "other", contactPhoneLabelOptions("other"), "Phone label")
+				<button type="button" class="size-8 shrink-0 rounded-md border border-ink/10 bg-ink/[0.025] text-ink/40 hover:bg-ink/[0.06] hover:text-ink" data-contact-remove-value aria-label="Remove phone">
+					@icon.X(icon.Props{Class: "mx-auto size-4"})
+				</button>
+			</div>
+		</template>
 		<div class="space-y-2" data-contact-value-list="additional_phones">
 			<div class="flex items-center gap-2">
 				<input type="tel" name="phone" value={ contactFormPhone(contact) } placeholder="+1 555 0100" class="h-10 min-w-0 flex-1 rounded-lg border border-ink/10 bg-ink/[0.04] px-3 text-sm text-ink placeholder:text-ink/35 focus:outline-none focus:ring-2 focus:ring-ink/10"/>
@@ -1920,15 +1945,6 @@ templ ContactPhoneFields(contact *models.Contact) {
 				</div>
 			}
 		</div>
-		<template data-contact-value-template="additional_phones">
-			<div class="flex items-center gap-2" data-contact-value-row>
-				<input type="tel" name="additional_phones" placeholder="+1 555 0101" class="h-10 min-w-0 flex-1 rounded-lg border border-ink/10 bg-ink/[0.04] px-3 text-sm text-ink placeholder:text-ink/35 focus:outline-none focus:ring-2 focus:ring-ink/10"/>
-				@ContactLabelSelect("additional_phone_labels", "other", contactPhoneLabelOptions("other"), "Phone label")
-				<button type="button" class="size-8 shrink-0 rounded-md border border-ink/10 bg-ink/[0.025] text-ink/40 hover:bg-ink/[0.06] hover:text-ink" data-contact-remove-value aria-label="Remove phone">
-					@icon.X(icon.Props{Class: "mx-auto size-4"})
-				</button>
-			</div>
-		</template>
 	</div>
 }
 

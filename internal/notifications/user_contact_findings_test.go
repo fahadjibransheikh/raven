@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/cristianadrielbraun/gofer/internal/config"
+	"github.com/cristianadrielbraun/gofer/internal/netguard"
 	"github.com/cristianadrielbraun/gofer/internal/storage"
 )
 
@@ -138,6 +139,7 @@ func newOwnedContactSetupFixture(t *testing.T, provider string) (*userStorageFix
 	previous := http.DefaultTransport
 	target, _ := url.Parse(server.URL)
 	http.DefaultTransport = ownedContactPullTransport{base: previous, target: target}
+	t.Cleanup(netguard.UseTransportForTests(http.DefaultTransport))
 	t.Cleanup(func() { http.DefaultTransport = previous })
 	return f, api, tokens
 }

@@ -928,7 +928,7 @@ func (h *Handler) saveSentMessageSnapshot(ctx context.Context, accountID string,
 	if len(parsed.HTMLBody) > 0 {
 		htmlPath, _ = h.blobStore.StoreBodyHTML(ctx, accountID, localID, message.SanitizeHTML(parsed.HTMLBody))
 	}
-	_ = h.db.UpdateMessageBodyInternal(ctx, localID, textPath, htmlPath, parsed.RawPath, parsed.Snippet)
+	_ = h.db.UpdateMessageBodyInternal(ctx, localID, textPath, htmlPath, parsed.RawPath, parsed.Snippet, parsed.Size)
 	attachments := make([]storage.AttachmentRow, 0, len(parsed.Attachments))
 	for _, attachment := range parsed.Attachments {
 		attachments = append(attachments, storage.AttachmentRow{

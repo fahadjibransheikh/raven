@@ -175,9 +175,9 @@ func newReplyDAVFixture(t *testing.T, mode, scope, dates string) *replyDAVFixtur
 		}
 	}))
 	t.Cleanup(f.server.Close)
-	previous := calDAVHTTPTransport
-	calDAVHTTPTransport = f.server.Client().Transport
-	t.Cleanup(func() { calDAVHTTPTransport = previous })
+	previous := davHTTPTransport
+	davHTTPTransport = f.server.Client().Transport
+	t.Cleanup(func() { davHTTPTransport = previous })
 	f.source = storage.CalendarSource{UserID: "one", ID: "one-source", AccountID: "one-account", Provider: "caldav", RemoteID: f.server.URL + "/cal/", AccessRole: "owner", IsSelected: true}
 	cal, _ := calendarUpdateDecodeICS([]byte(f.body))
 	remote, err := calDAVResponseEvent(cal.Events()[0].Component, f.server.URL+"/cal/event.ics", `"v1"`)

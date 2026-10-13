@@ -567,7 +567,7 @@ func TestSidebarHeaderHasQuietComposeAndNoAppTabs(t *testing.T) {
 		t.Fatalf("SidebarHeader.Render() error = %v", err)
 	}
 	html := buf.String()
-	if !strings.Contains(html, `id="sidebar-compose-btn"`) || !strings.Contains(html, `aria-label="Compose (C)"`) || !strings.Contains(html, `onclick="openNewCompose()"`) {
+	if !strings.Contains(html, `id="sidebar-compose-btn"`) || !strings.Contains(html, `aria-label="Compose (C)"`) || !strings.Contains(html, `data-on-click='["openNewCompose"]'`) {
 		t.Fatalf("header missing compose icon button: %s", html)
 	}
 	if strings.Contains(html, "bg-primary") || strings.Contains(html, "data-sidebar-app-nav") {

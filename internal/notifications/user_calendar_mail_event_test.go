@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/cristianadrielbraun/gofer/internal/config"
+	"github.com/cristianadrielbraun/gofer/internal/netguard"
 	"github.com/cristianadrielbraun/gofer/internal/storage"
 )
 
@@ -86,6 +87,7 @@ func newOwnedMailCalendarFixture(t *testing.T, provider string, cached bool, bef
 	previous := http.DefaultTransport
 	target, _ := url.Parse(server.URL)
 	http.DefaultTransport = ownedMailCalendarTransport{base: previous, provider: server.Client().Transport, target: target}
+	t.Cleanup(netguard.UseTransportForTests(http.DefaultTransport))
 	t.Cleanup(func() { http.DefaultTransport = previous })
 	for _, owner := range []string{"alice", "bob"} {
 		if err := f.accountStore.SetCalendarServiceEnabled(t.Context(), owner, f.accounts[owner].ID, true); err != nil {

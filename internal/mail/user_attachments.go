@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/cristianadrielbraun/gofer/internal/mail/message"
+	"github.com/cristianadrielbraun/gofer/internal/providerquota"
 	"github.com/cristianadrielbraun/gofer/internal/retry"
 	"github.com/cristianadrielbraun/gofer/internal/storage"
 	"github.com/cristianadrielbraun/gofer/internal/store"
@@ -291,7 +292,7 @@ func (s *UserIMAP) fetchUserAttachment(ctx context.Context, scope *userIMAPScope
 		if scope.config.Provider == "outlook" {
 			req.Header.Set("Prefer", `IdType="ImmutableId"`)
 		}
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := providerquota.Do(req)
 		if err != nil {
 			return nil, err
 		}

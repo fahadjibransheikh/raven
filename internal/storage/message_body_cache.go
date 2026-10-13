@@ -67,7 +67,7 @@ func (db *DB) SaveMessageBodyCache(ctx context.Context, id int64, accountID stri
 	if snippet == "" {
 		snippet = p.Subject
 	}
-	_, err = tx.ExecContext(ctx, `UPDATE messages SET body_text_path=?,body_html_path=?,body_html_original_path=?,raw_path=?,subject=?,from_name=?,from_email=?,snippet=?,preview_text=?,has_attachments=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND account_id=?`, c.TextPath, c.HTMLPath, c.OriginalHTMLPath, p.RawPath, p.Subject, p.FromName, p.FromEmail, snippet, snippet, len(p.Attachments) > 0, id, accountID)
+	_, err = tx.ExecContext(ctx, `UPDATE messages SET body_text_path=?,body_html_path=?,body_html_original_path=?,raw_path=?,subject=?,from_name=?,from_email=?,snippet=?,preview_text=?,has_attachments=?,size_bytes=CASE WHEN ?>0 THEN ? ELSE size_bytes END,updated_at=CURRENT_TIMESTAMP WHERE id=? AND account_id=?`, c.TextPath, c.HTMLPath, c.OriginalHTMLPath, p.RawPath, p.Subject, p.FromName, p.FromEmail, snippet, snippet, len(p.Attachments) > 0, p.Size, p.Size, id, accountID)
 	if err != nil {
 		return err
 	}

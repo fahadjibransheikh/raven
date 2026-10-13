@@ -20,6 +20,7 @@ import (
 	"time"
 
 	mailtransport "github.com/cristianadrielbraun/gofer/internal/mail/transport"
+	"github.com/cristianadrielbraun/gofer/internal/netguard"
 	"golang.org/x/net/publicsuffix"
 )
 
@@ -554,8 +555,7 @@ func isForbiddenTargetIP(ip net.IP) bool {
 	if !ok {
 		return true
 	}
-	address = address.Unmap()
-	return address.IsLoopback() || address.IsPrivate() || address.IsLinkLocalUnicast() || address.IsUnspecified() || address.IsMulticast()
+	return netguard.IsPrivate(address)
 }
 
 func dialValidatedTarget(ctx context.Context, host string, port int, timeout time.Duration, policy securityPolicy, protocol string) (net.Conn, error) {

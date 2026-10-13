@@ -31,3 +31,14 @@ func TestClientNextRejectsChallenge(t *testing.T) {
 		t.Fatalf("Next error = %v, want ErrUnexpectedServerChallenge", err)
 	}
 }
+
+func TestClientRejectsSeparatorInCredentials(t *testing.T) {
+	for _, c := range []struct{ username, token string }{
+		{"person@example.com\x01auth=Bearer other", "token"},
+		{"person@example.com", "token\x01\x01extra"},
+	} {
+		if _, ir, err := NewClient(c.username, c.token).Start(); !errors.Is(err, ErrInvalidCredentials) || ir != nil {
+			t.Fatalf("Start(%q, %q) = %q, %v; want ErrInvalidCredentials", c.username, c.token, ir, err)
+		}
+	}
+}

@@ -33,6 +33,7 @@ templ CalendarLayout(accounts []models.Account, month CalendarMonthData, uiSetti
 			@tooltip.Script()
 			@toast.Script()
 			@AppSidebarResponsiveStyle()
+			<script src={ AssetURL("/assets/js/actions.js") }></script>
 		</head>
 		<body class="bg-background text-foreground antialiased" data-ui-settings={ uiSettingsJSON(uiSettings) }>
 			@CalendarShell(accounts, month, uiSettings)
@@ -49,6 +50,7 @@ templ CalendarLayout(accounts []models.Account, month CalendarMonthData, uiSetti
 			<script src={ AssetURL("/assets/js/virtual-scroll.js") }></script>
 			<script src={ AssetURL("/assets/js/app.js") }></script>
 			<script src={ AssetURL("/assets/js/settings.js") }></script>
+			<script src={ AssetURL("/assets/js/settings-page.js") }></script>
 			<script src={ AssetURL("/assets/js/ui-settings.js") }></script>
 			<script src={ AssetURL("/assets/js/raven.js") }></script>
 			<script src={ AssetURL("/assets/js/whats-new.js") }></script>
@@ -181,14 +183,14 @@ templ CalendarMainContent(month CalendarMonthData) {
 				hx-target="#main-content"
 				hx-swap="outerHTML"
 				hx-sync="#main-content:drop"
-				hx-on::before-request="handleCalendarSyncStart(event)"
-				hx-on::after-request="handleCalendarSyncResult(event)"
-				hx-on::send-abort="handleCalendarSyncAbort(event)"
+				data-on-htmx-before-request='["handleCalendarSyncStart","$event"]'
+				data-on-htmx-after-request='["handleCalendarSyncResult","$event"]'
+				data-on-htmx-send-abort='["handleCalendarSyncAbort","$event"]'
 				data-calendar-auto-sync
 			></div>
 		}
 		if !month.Loading {
-			<div class="hidden" data-calendar-cache-refresh hx-get={ calendarViewURL(month.View, month.DateKey) + "&cache=1" } hx-trigger="calendar-cache-refresh" hx-target="#main-content" hx-select="#main-content" hx-swap="outerHTML" hx-sync="#main-content:drop" hx-on::before-request="configureCalendarCacheRequest(event)"></div>
+			<div class="hidden" data-calendar-cache-refresh hx-get={ calendarViewURL(month.View, month.DateKey) + "&cache=1" } hx-trigger="calendar-cache-refresh" hx-target="#main-content" hx-select="#main-content" hx-swap="outerHTML" hx-sync="#main-content:drop" data-on-htmx-before-request='["configureCalendarCacheRequest","$event"]'></div>
 		}
 		<header class="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-4" inert?={ month.Loading }>
 			<h1 class="min-w-0 truncate text-lg font-bold tracking-tight">{ month.MonthLabel }</h1>
@@ -302,17 +304,11 @@ templ CalendarAgendaPane(month CalendarMonthData) {
 					<p class="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Agenda</p>
 					<button type="button" data-calendar-agenda-clear hidden class="items-center gap-1 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
 						@icon.ChevronLeft(icon.Props{Class: "inline size-3"})
-						<span class="lg:hidden">
-							if month.View == "week" {
-								Back to week
-							} else {
-								Back to month
-							}
-						</span><span class="hidden lg:inline">Upcoming</span>
+						<span>All events</span>
 					</button>
 				</div>
 				<div class="mt-1 flex items-center justify-between gap-3">
-					<h2 id="calendar-agenda-heading" tabindex="-1" class="text-lg font-bold tracking-tight outline-none">Upcoming</h2>
+					<h2 id="calendar-agenda-heading" tabindex="-1" class="text-lg font-bold tracking-tight outline-none">All events</h2>
 					<span data-calendar-agenda-context class="shrink-0 rounded-full border border-border bg-muted/50 px-2 py-1 text-[10px] font-semibold text-muted-foreground" aria-live="polite">{ month.MonthLabel }</span>
 				</div>
 			</header>
@@ -320,48 +316,31 @@ templ CalendarAgendaPane(month CalendarMonthData) {
 			if month.Loading {
 				<div id="calendar-agenda-list" class="min-h-0 flex-1 overflow-y-auto p-5" aria-hidden="true"></div>
 			} else {
-				<div data-calendar-agenda-empty hidden?={ len(agendaEvents) > 0 } class="flex min-h-0 flex-1 items-center justify-center overflow-y-auto p-5">
-					<div class="w-full max-w-sm rounded-2xl border border-dashed border-border bg-card/70 px-6 py-8 text-center shadow-sm">
-						<div class="mx-auto flex size-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
-							@icon.CalendarPlus(icon.Props{Class: "size-6"})
-						</div>
-						<h3 data-calendar-agenda-empty-title class="mt-4 text-base font-bold tracking-tight">
-							if month.AllSourcesHidden {
-								All calendars are hidden
-							} else {
-								No upcoming events
-							}
-						</h3>
-						<p data-calendar-agenda-empty-detail class="mt-2 text-sm leading-relaxed text-muted-foreground">
-							if month.AllSourcesHidden {
-								Show a calendar in the sidebar to see its events. Hidden calendars continue syncing.
-							} else {
-								Events from Google, Microsoft, or CalDAV will appear here after your selected calendars are synchronized.
-							}
-						</p>
-						<div data-calendar-agenda-providers hidden?={ month.AllSourcesHidden } class="mt-5 grid gap-2 text-left">
-							<div class="flex items-center gap-2 rounded-lg border border-border/70 bg-background px-3 py-2 text-xs">
-								<span class="size-2 rounded-full bg-[#4285f4]"></span>
-								<span class="font-semibold">Google Calendar</span>
-								<span class="ml-auto text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Available</span>
-							</div>
-							<div class="flex items-center gap-2 rounded-lg border border-border/70 bg-background px-3 py-2 text-xs">
-								<span class="size-2 rounded-full bg-[#2563eb]"></span>
-								<span class="font-semibold">Microsoft Calendar</span>
-								<span class="ml-auto text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Available</span>
-							</div>
-							<div class="flex items-center gap-2 rounded-lg border border-border/70 bg-background px-3 py-2 text-xs">
-								<span class="size-2 rounded-full bg-primary"></span>
-								<span class="font-semibold">CalDAV</span>
-								<span class="ml-auto text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Available</span>
-							</div>
-						</div>
+				<div data-calendar-agenda-empty hidden?={ len(agendaEvents) > 0 } class="min-h-0 flex-1 overflow-y-auto px-5 py-10 text-center">
+					<div class="mx-auto flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+						@icon.CalendarDays(icon.Props{Class: "size-5"})
 					</div>
+					<h3 data-calendar-agenda-empty-title class="mt-3 text-sm font-semibold text-foreground">
+						if month.AllSourcesHidden {
+							All calendars are hidden
+						} else {
+							No events
+						}
+					</h3>
+					<p data-calendar-agenda-empty-detail class="mx-auto mt-1 max-w-xs text-xs leading-relaxed text-muted-foreground">
+						if month.AllSourcesHidden {
+							Show a calendar in the sidebar to see its events.
+						} else if month.View == "week" {
+							Nothing is scheduled this week.
+						} else {
+							Nothing is scheduled this month.
+						}
+					</p>
 				</div>
 				<div id="calendar-agenda-list" hidden?={ len(agendaEvents) == 0 } class="min-h-0 flex-1 overflow-y-auto p-5">
 					<div class="space-y-2">
 						for _, event := range month.Events {
-							<button type="button" hidden?={ event.SourceHidden || !calendarAgendaEventIsUpcoming(event, time.Now().In(month.Month.Location())) } data-calendar-source-id={ event.SourceID } data-calendar-source-hidden={ strconv.FormatBool(event.SourceHidden) } data-calendar-response-state={ calendarEventResponseState(event) } data-calendar-agenda-event data-calendar-event-all-day={ strconv.FormatBool(event.AllDay) } data-calendar-event-start-date={ event.StartDate } data-calendar-event-end-date={ event.EndDate } data-calendar-event-start={ calendarEventTimestamp(event.StartAt) } data-calendar-event-end={ calendarEventTimestamp(event.EndAt) } class="group relative w-full rounded-xl border border-border bg-card px-3.5 py-3 text-left shadow-sm transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={ "Open event: " + calendarEventResponseSummary(event) } aria-haspopup="dialog" aria-controls="calendar-event-details-content" hx-get={ calendarEventDetailsURL(event.ID) } hx-target="#app-pane-dialogs" hx-swap="innerHTML" hx-sync="#app-pane-dialogs:replace" hx-disabled-elt="this" data-calendar-event-trigger>
+							<button type="button" hidden?={ event.SourceHidden } data-calendar-source-id={ event.SourceID } data-calendar-source-hidden={ strconv.FormatBool(event.SourceHidden) } data-calendar-response-state={ calendarEventResponseState(event) } data-calendar-agenda-event data-calendar-event-all-day={ strconv.FormatBool(event.AllDay) } data-calendar-event-start-date={ event.StartDate } data-calendar-event-end-date={ event.EndDate } data-calendar-event-start={ calendarEventTimestamp(event.StartAt) } data-calendar-event-end={ calendarEventTimestamp(event.EndAt) } class="group relative w-full rounded-xl border border-border bg-card px-3.5 py-3 text-left shadow-sm transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={ "Open event: " + calendarEventResponseSummary(event) } aria-haspopup="dialog" aria-controls="calendar-event-details-content" hx-get={ calendarEventDetailsURL(event.ID) } hx-target="#app-pane-dialogs" hx-swap="innerHTML" hx-sync="#app-pane-dialogs:replace" hx-disabled-elt="this" data-calendar-event-trigger>
 								<div class="flex items-start gap-3">
 									<div class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
 										if event.AllDay {

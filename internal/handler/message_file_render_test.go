@@ -11,7 +11,7 @@ import (
 	"github.com/cristianadrielbraun/gofer/internal/auth"
 )
 
-func TestEmailBodyGetsImageGrantsAtRenderTimeOnly(t *testing.T) {
+func TestEmailBodyGetsSignedImageLinksAtRenderTimeOnly(t *testing.T) {
 	h, db := newAccountOwnershipTestHandler(t)
 	fx := insertVictimReadableMessage(t, h, db)
 	h.auth = auth.NewManager(&auth.Config{Enabled: true}, db, auth.Dependencies{BucketHashKey: []byte("0123456789abcdef0123456789abcdef")})
@@ -37,25 +37,15 @@ func TestEmailBodyGetsImageGrantsAtRenderTimeOnly(t *testing.T) {
 		t.Fatalf("status = %d", rec.Code)
 	}
 	out := rec.Body.String()
-	for _, want := range []string{"/api/inline-content/" + id + "/victim-inline?k=sess.", "/api/remote-assets/" + id + "/" + fx.assetName + "?k=sess."} {
+	for _, want := range []string{"/api/message-file/inline/" + id + "/victim-inline?", "/api/message-file/remote/" + id + "/" + fx.assetName + "?"} {
 		if !strings.Contains(out, want) {
-			t.Errorf("rendered body missing %q", want)
+			t.Errorf("rendered body missing signed link %q", want)
 		}
 	}
-	if strings.Contains(out, "/api/inline-content/999/other?k=") {
-		t.Error("another message's image URL got a grant")
+	if strings.Contains(out, "/api/message-file/inline/999/") || !strings.Contains(out, "/api/inline-content/999/other") {
+		t.Error("another message's image URL was signed")
 	}
-	if got, _ := os.ReadFile(bodyPath); string(got) != stored || strings.Contains(string(got), "k=") {
+	if got, _ := os.ReadFile(bodyPath); string(got) != stored || strings.Contains(string(got), "message-file") {
 		t.Errorf("stored body changed: %q", got)
-	}
-
-	// No session (no-login mode) or no manager: body is untouched.
-	plain := []byte(stored)
-	if got := h.withImageGrants(t.Context(), fx.messageID, plain); string(got) != stored {
-		t.Errorf("no session: body = %q", got)
-	}
-	h.auth = nil
-	if got := h.withImageGrants(t.Context(), fx.messageID, plain); string(got) != stored {
-		t.Errorf("no manager: body = %q", got)
 	}
 }

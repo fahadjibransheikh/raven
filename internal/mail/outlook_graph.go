@@ -1286,7 +1286,7 @@ func (o *SyncOrchestrator) storeOutlookGraphBodies(ctx context.Context, accountI
 				return fmt.Errorf("outlook graph body original html update message=%d: %w", localID, err)
 			}
 		}
-		if err := o.db.UpdateMessageBodyInternal(ctx, localID, textPath, htmlPath, "", snippet); err != nil {
+		if err := o.db.UpdateMessageBodyInternal(ctx, localID, textPath, htmlPath, "", snippet, 0); err != nil {
 			return fmt.Errorf("outlook graph body update message=%d: %w", localID, err)
 		}
 	}

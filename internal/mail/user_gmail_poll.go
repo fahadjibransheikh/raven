@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cristianadrielbraun/gofer/internal/providerquota"
 	"github.com/cristianadrielbraun/gofer/internal/providers"
 	"github.com/cristianadrielbraun/gofer/internal/storage"
 )
@@ -254,6 +255,7 @@ func (s *UserIMAP) pollActiveGmailAccount(job userActivePollJob) error {
 }
 
 func (s *UserIMAP) checkUserGmailProfile(ctx context.Context, scope *userIMAPScope) (bool, error) {
+	ctx = providerquota.Background(ctx)
 	o := NewSyncOrchestrator(nil, nil, nil, scope.tokens)
 	o.imapScope = scope
 	token, err := scope.tokens.GetOAuthTokenForAccount(ctx, scope.id)

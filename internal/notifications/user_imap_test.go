@@ -422,6 +422,9 @@ func (f *userStorageFixture) useIMAPServer(t *testing.T, s *routedIMAPServer) {
 	if err := f.system.AddPlaintextTransportException(t.Context(), "imap", host, port, "alice"); err != nil {
 		t.Fatal(err)
 	}
+	if err := f.system.AddPrivateTargetException(t.Context(), "imap", host, port, "alice"); err != nil {
+		t.Fatal(err)
+	}
 	for _, owner := range []string{"alice", "bob"} {
 		if err := f.accountStore.UpdateAccount(t.Context(), owner, f.accounts[owner].ID, &models.CreateAccountRequest{Provider: "imap", EmailAddress: owner + "@example.com", DisplayName: owner, IMAPHost: host, IMAPPort: port, IMAPTLSMode: "plaintext", SMTPHost: "smtp.example.com", Username: owner, AuthMethod: "plain"}); err != nil {
 			t.Fatal(err)
@@ -926,5 +929,42 @@ func TestUserIMAPEmptyBodyIsCachedWithoutRepeatedFetch(t *testing.T) {
 	}
 	if count := server.bodyRequests("alice"); count != 1 {
 		t.Fatalf("empty message was fetched %d times", count)
+	}
+}
+
+// A message over the automatic limit isn't downloaded while browsing. The
+// reader explains why, and downloads it when asked.
+func TestUserIMAPLargeMessageWaitsUntilTheReaderAsks(t *testing.T) {
+	f := newUserStorageFixtureMode(t, true)
+	server := newRoutedIMAPServer(t)
+	f.useIMAPServer(t, server)
+	if err := f.imap.Sync(t.Context(), "alice", f.accounts["alice"].ID); err != nil {
+		t.Fatal(err)
+	}
+	photos := strings.Repeat(strings.Repeat("A", 76)+"\r\n", 26<<20/78)
+	server.mu.Lock()
+	server.bodyOverride = "From: Rosa Vidal <rosa@example.com>\r\nSubject: Site photos\r\nMIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary=b\r\n\r\n" +
+		"--b\r\nContent-Type: text/plain\r\n\r\nPhotos from the site visit attached.\r\n" +
+		"--b\r\nContent-Type: image/jpeg; name=site.jpg\r\nContent-Disposition: attachment; filename=site.jpg\r\nContent-Transfer-Encoding: base64\r\n\r\n" + photos + "--b--\r\n"
+	size := len(server.bodyOverride)
+	server.mu.Unlock()
+
+	body := f.request("alice", http.MethodGet, "/email/1/body", "")
+	want := `This message is ` + strconv.Itoa((size+(1<<20)-1)>>20) + ` MB, so it wasn't downloaded automatically.`
+	if body.Code != http.StatusRequestEntityTooLarge || !strings.Contains(body.Body.String(), `"kind":"large"`) || !strings.Contains(body.Body.String(), want) {
+		t.Fatalf("large message body = %d %s", body.Code, body.Body.String())
+	}
+	if r := f.request("alice", http.MethodPost, "/api/messages/1/prefetch-body", ""); r.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("prefetch of a large message = %d %s", r.Code, r.Body.String())
+	}
+	if r := f.request("bob", http.MethodPost, "/api/messages/1/download-full", ""); r.Code == http.StatusNoContent {
+		t.Fatal("another person downloaded the message")
+	}
+	if r := f.request("alice", http.MethodPost, "/api/messages/1/download-full", ""); r.Code != http.StatusNoContent {
+		t.Fatalf("full download = %d %s", r.Code, r.Body.String())
+	}
+	shown := f.request("alice", http.MethodGet, "/email/1/body", "")
+	if shown.Code != 200 || !strings.Contains(shown.Body.String(), "Photos from the site visit attached.") {
+		t.Fatalf("downloaded message body = %d %s", shown.Code, shown.Body.String())
 	}
 }

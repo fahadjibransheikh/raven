@@ -164,10 +164,12 @@ func TestRecoverRequiresExactConfirmationBeforeOpeningDatabase(t *testing.T) {
 	missingDirectory := filepath.Join(t.TempDir(), "missing")
 	databasePath := filepath.Join(missingDirectory, "gofer.db")
 	tests := [][]string{
-		{"recover", "--user", "target", "--confirm", "other"},
-		{"recover", "--user", "target", "--user", "target"},
-		{"recover", "--user", "target", "--unknown", "target"},
-		{"recover", "--user", "target"},
+		{"recover", "--user-id", "target", "--confirm", "other"},
+		{"recover", "--user-id", "target", "--username", "target"},
+		{"recover", "--user-id", "target", "--unknown", "target"},
+		{"recover", "--user-id", "target"},
+		{"recover", "--user", "target", "--confirm", "target"},
+		{"recover", "--username", "target", "--confirm", "Target"},
 	}
 	for _, args := range tests {
 		var stdout, stderr bytes.Buffer
@@ -207,7 +209,7 @@ func TestRecoverCommitsResetAndPrintsRawTokenExactlyOnce(t *testing.T) {
 	}
 
 	var stdout, stderr bytes.Buffer
-	if code := Run(t.Context(), []string{"recover", "--user", "disabled-user", "--confirm", "disabled-user"}, databasePath, &stdout, &stderr); code != 0 {
+	if code := Run(t.Context(), []string{"recover", "--user-id", "disabled-user", "--confirm", "disabled-user"}, databasePath, &stdout, &stderr); code != 0 {
 		t.Fatalf("Run(recover) code = %d stderr=%q", code, stderr.String())
 	}
 	if stderr.Len() != 0 {
@@ -273,7 +275,7 @@ func TestRecoverRefusesToRunWhileRuntimeLockIsHeld(t *testing.T) {
 	defer lock.Close()
 
 	var stdout, stderr bytes.Buffer
-	if code := Run(t.Context(), []string{"recover", "--user", "disabled-user", "--confirm", "disabled-user"}, databasePath, &stdout, &stderr); code != 1 {
+	if code := Run(t.Context(), []string{"recover", "--user-id", "disabled-user", "--confirm", "disabled-user"}, databasePath, &stdout, &stderr); code != 1 {
 		t.Fatalf("Run(recover while locked) code = %d", code)
 	}
 	if stdout.Len() != 0 || !strings.Contains(stderr.String(), "stop the server") {
@@ -294,10 +296,10 @@ func TestSessionRevocationRequiresExactConfirmationBeforeOpeningDatabase(t *test
 	missingDirectory := filepath.Join(t.TempDir(), "missing")
 	databasePath := filepath.Join(missingDirectory, "gofer.db")
 	tests := [][]string{
-		{"sessions", "revoke", "--user", "target", "--confirm", "other"},
-		{"sessions", "revoke", "--user", "target", "--user", "target"},
+		{"sessions", "revoke", "--user-id", "target", "--confirm", "other"},
+		{"sessions", "revoke", "--user-id", "target", "--username", "target"},
 		{"sessions", "revoke", "--unknown", "target", "--confirm", "target"},
-		{"sessions", "revoke", "--user", "target"},
+		{"sessions", "revoke", "--user-id", "target"},
 	}
 	for _, args := range tests {
 		var stdout, stderr bytes.Buffer
@@ -337,7 +339,7 @@ func TestSessionRevocationCommitsExactTargetAndPrintsSecretFreeCount(t *testing.
 	}
 
 	var stdout, stderr bytes.Buffer
-	args := []string{"sessions", "revoke", "--user", "disabled-user", "--confirm", "disabled-user"}
+	args := []string{"sessions", "revoke", "--user-id", "disabled-user", "--confirm", "disabled-user"}
 	if code := Run(t.Context(), args, databasePath, &stdout, &stderr); code != 0 {
 		t.Fatalf("Run(sessions revoke) code = %d stderr=%q", code, stderr.String())
 	}
@@ -386,7 +388,7 @@ func TestSessionRevocationRefusesToRunWhileRuntimeLockIsHeld(t *testing.T) {
 	defer lock.Close()
 
 	var stdout, stderr bytes.Buffer
-	args := []string{"sessions", "revoke", "--user", "disabled-user", "--confirm", "disabled-user"}
+	args := []string{"sessions", "revoke", "--user-id", "disabled-user", "--confirm", "disabled-user"}
 	if code := Run(t.Context(), args, databasePath, &stdout, &stderr); code != 1 {
 		t.Fatalf("Run(sessions revoke while locked) code = %d", code)
 	}
@@ -504,5 +506,54 @@ func TestSetupTokenRotationRefusesToRunWhileRuntimeLockIsHeld(t *testing.T) {
 	}
 	if stdout.Len() != 0 || !strings.Contains(stderr.String(), "stop the server") {
 		t.Fatalf("locked setup rotation output = stdout:%q stderr:%q", stdout.String(), stderr.String())
+	}
+}
+
+func TestRecoverAcceptsUsernameCaseInsensitively(t *testing.T) {
+	databasePath := createOperatorTestDatabase(t)
+
+	var stdout, stderr bytes.Buffer
+	if code := Run(t.Context(), []string{"recover", "--username", "Disabled-User", "--confirm", "Disabled-User"}, databasePath, &stdout, &stderr); code != 0 {
+		t.Fatalf("Run(recover by username) code = %d stderr=%q", code, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), `user_id: "disabled-user"`) {
+		t.Fatalf("recovery by username output = %q", stdout.String())
+	}
+}
+
+func TestSessionRevocationAcceptsUsername(t *testing.T) {
+	databasePath := createOperatorTestDatabase(t)
+
+	var stdout, stderr bytes.Buffer
+	args := []string{"sessions", "revoke", "--username", "owner", "--confirm", "owner"}
+	if code := Run(t.Context(), args, databasePath, &stdout, &stderr); code != 0 {
+		t.Fatalf("Run(sessions revoke by username) code = %d stderr=%q", code, stderr.String())
+	}
+	if !strings.HasPrefix(stdout.String(), `user_id: "owner\x1b[31m"`) {
+		t.Fatalf("session revocation by username output = %q", stdout.String())
+	}
+}
+
+func TestRecoverReportsUnknownUser(t *testing.T) {
+	databasePath := createOperatorTestDatabase(t)
+
+	var stdout, stderr bytes.Buffer
+	if code := Run(t.Context(), []string{"recover", "--username", "nobody", "--confirm", "nobody"}, databasePath, &stdout, &stderr); code != 1 {
+		t.Fatalf("Run(recover unknown) code = %d", code)
+	}
+	if stdout.Len() != 0 || !strings.Contains(stderr.String(), `no user has username "nobody"`) {
+		t.Fatalf("unknown user output = stdout:%q stderr:%q", stdout.String(), stderr.String())
+	}
+}
+
+func TestRecoverReportsUnknownUserID(t *testing.T) {
+	databasePath := createOperatorTestDatabase(t)
+
+	var stdout, stderr bytes.Buffer
+	if code := Run(t.Context(), []string{"recover", "--user-id", "Disabled-User", "--confirm", "Disabled-User"}, databasePath, &stdout, &stderr); code != 1 {
+		t.Fatalf("Run(recover unknown ID) code = %d", code)
+	}
+	if stdout.Len() != 0 || !strings.Contains(stderr.String(), `no user has ID "Disabled-User"`) {
+		t.Fatalf("unknown user ID output = stdout:%q stderr:%q", stdout.String(), stderr.String())
 	}
 }

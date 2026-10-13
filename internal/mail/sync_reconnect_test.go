@@ -52,7 +52,7 @@ func startDroppingIMAPServer(t *testing.T, folders []string, dropAtSelect int) (
 	serverPort, _ := strconv.Atoi(serverPortString)
 	seed, err := imap.NewClient(context.Background(), &models.AccountConfig{
 		AccountID: "seed", IMAPHost: serverHost, IMAPPort: serverPort,
-		IMAPTLSMode: "plaintext", IMAPAllowPlaintext: true,
+		IMAPTLSMode: "plaintext", IMAPAllowPlaintext: true, IMAPAllowPrivate: true,
 		AuthMethod: "plain", Username: "user@example.com",
 	}, "secret")
 	if err != nil {
@@ -122,6 +122,9 @@ func TestSyncAccountReconnectsWhenServerDropsConnectionMidSync(t *testing.T) {
 	db := newLabelSyncTestDB(t)
 	if err := db.AddPlaintextTransportException(ctx, "imap", host, port, "default"); err != nil {
 		t.Fatalf("AddPlaintextTransportException() error = %v", err)
+	}
+	if err := db.AddPrivateTargetException(ctx, "imap", host, port, "default"); err != nil {
+		t.Fatalf("AddPrivateTargetException() error = %v", err)
 	}
 	accountStore, err := config.NewAccountStore(db, []byte("0123456789abcdef0123456789abcdef"))
 	if err != nil {

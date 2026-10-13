@@ -57,11 +57,11 @@ func TestThreadUnsubscribeTargetsNewestMessageWithUsableData(t *testing.T) {
 
 func TestHeaderMoreMenuItemsAreWired(t *testing.T) {
 	var b bytes.Buffer
-	if err := MailViewHeader(&models.Email{ID: "9"}).Render(context.Background(), &b); err != nil {
+	if err := MailViewHeader(&models.Email{ID: "9"}, nil).Render(context.Background(), &b); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()
-	for _, want := range []string{`handleReply(null, &#39;reply&#39;)`, `handleReply(null, &#39;forward&#39;)`, `data-refetch-email="9"`, `downloadMessageRaw(&#39;9&#39;)`, `printMessage(&#39;9&#39;)`} {
+	for _, want := range []string{`[&#34;handleReply&#34;,null,&#34;reply&#34;]`, `[&#34;handleReply&#34;,null,&#34;forward&#34;]`, `data-refetch-email="9"`, `[&#34;downloadMessageRaw&#34;,&#34;9&#34;]`, `[&#34;printMessage&#34;,&#34;9&#34;]`} {
 		if !strings.Contains(out, want) {
 			t.Errorf("More menu missing %s", want)
 		}

@@ -181,6 +181,26 @@ func TestDesktopImageGrantServesCookielessIframe(t *testing.T) {
 	}
 }
 
+// The message frame loads its images through signed /api/message-file/ links,
+// which their handler verifies; the gate lets only those GETs through cookieless.
+func TestDesktopGateLetsSignedMessageFileLinksThrough(t *testing.T) {
+	_, h, calls := newDesktopTestHandler(t, &Config{DesktopToken: testDesktopToken})
+	if rec := serve(h, httptest.NewRequest(http.MethodGet, "/api/message-file/inline/7/logo?s=x", nil)); rec.Code != http.StatusNoContent {
+		t.Fatalf("message file link = %d, want 204", rec.Code)
+	}
+	for name, req := range map[string]*http.Request{
+		"POST":        httptest.NewRequest(http.MethodPost, "/api/message-file/inline/7/logo", nil),
+		"other route": httptest.NewRequest(http.MethodGet, "/api/message-files/7", nil),
+	} {
+		if rec := serve(h, req); rec.Code != http.StatusForbidden {
+			t.Errorf("%s = %d, want 403", name, rec.Code)
+		}
+	}
+	if *calls != 1 {
+		t.Fatalf("handler calls = %d, want 1", *calls)
+	}
+}
+
 func TestDesktopImageGrantNotIssuedWithoutGate(t *testing.T) {
 	manager, _, _ := newDesktopTestHandler(t, &Config{})
 	if got := manager.SignImageGrant(nil, 7); got != "" {

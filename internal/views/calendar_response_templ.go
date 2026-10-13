@@ -529,7 +529,7 @@ func CalendarReplyStatus(data CalendarReplyData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, " The email may have been sent. Check your mail provider before replying again; Gofer will not resend automatically. Your calendar has not been updated.")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, " The email may have been sent. Check your mail provider before replying again; Raven will not resend automatically. Your calendar has not been updated.")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

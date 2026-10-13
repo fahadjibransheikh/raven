@@ -15,7 +15,7 @@ var chipRE = regexp.MustCompile(`<kbd class="kbd" data-shortcut="([^"]+)">([^<]*
 func TestReaderToolbarShowsKeyChipsAndKeyedTooltips(t *testing.T) {
 	var b bytes.Buffer
 	email := &models.Email{ID: "m1", FolderRole: "inbox"}
-	if err := MailViewHeader(email).Render(context.Background(), &b); err != nil {
+	if err := MailViewHeader(email, nil).Render(context.Background(), &b); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()

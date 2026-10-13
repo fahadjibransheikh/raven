@@ -157,13 +157,13 @@ templ CalendarCreateDialog(data CalendarCreateData) {
 													"hx-get": "/api/calendar/guest-suggestions", "hx-trigger": "input changed delay:200ms",
 													"hx-params": "guests", "hx-target": "#calendar-guest-suggestions", "hx-sync": "this:replace",
 													"role": "combobox", "aria-autocomplete": "list", "aria-expanded": "false", "aria-controls": "calendar-guest-suggestions",
-													"onfocus":   "updateCalendarGuestDropdown(this.closest('[data-calendar-create-form]'))",
-													"onclick":   "updateCalendarGuestDropdown(this.closest('[data-calendar-create-form]'))",
-													"onkeydown": "handleCalendarGuestKeydown(event, this)",
+													"data-on-focus": onAction("updateCalendarGuestDropdown", actionClosest("[data-calendar-create-form]")),
+													"data-on-click": onAction("updateCalendarGuestDropdown", actionClosest("[data-calendar-create-form]")),
+													"data-on-keydown": onAction("handleCalendarGuestKeydown", actionEvent, actionElement),
 												},
 											})
 										}
-										@popover.Content(popover.ContentProps{Placement: popover.PlacementBottomStart, Exclusive: true, Class: "z-50 max-w-[calc(100vw-2rem)] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md", Attributes: templ.Attributes{"data-calendar-guests-dropdown-content": "", "ontoggle": "syncCalendarGuestDropdownState(this, event)"}}) {
+										@popover.Content(popover.ContentProps{Placement: popover.PlacementBottomStart, Exclusive: true, Class: "z-50 max-w-[calc(100vw-2rem)] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md", Attributes: templ.Attributes{"data-calendar-guests-dropdown-content": "", "data-on-toggle": onAction("syncCalendarGuestDropdownState", actionElement, actionEvent)}}) {
 											<div id="calendar-guest-suggestions" class="max-h-60 overflow-y-auto" role="listbox" aria-label="Matching contacts"></div>
 										}
 									}
@@ -192,7 +192,7 @@ templ CalendarCreateDialog(data CalendarCreateData) {
 					@button.Button(button.Props{Variant: button.VariantGhost, Class: "font-semibold", Attributes: templ.Attributes{"data-tui-dialog-close": ""}}) {
 						Cancel
 					}
-					@button.Button(button.Props{Type: button.TypeSubmit, Class: "btn-skeuo font-semibold disabled:cursor-not-allowed", Attributes: templ.Attributes{"data-calendar-create-submit": "", "onclick": "prepareCalendarDescriptionSubmit(event, this)"}}) {
+					@button.Button(button.Props{Type: button.TypeSubmit, Class: "btn-skeuo font-semibold disabled:cursor-not-allowed", Attributes: templ.Attributes{"data-calendar-create-submit": "", "data-on-click": onAction("prepareCalendarDescriptionSubmit", actionEvent, actionElement)}}) {
 						<span data-calendar-create-spinner hidden>
 							@icon.LoaderCircle(icon.Props{Class: "size-4 animate-spin"})
 						</span><span data-calendar-create-submit-label>{ submitLabel }</span>

@@ -881,6 +881,7 @@ type SyncMessage struct {
 	ListUnsubscribePost string
 	// Comma-joined Delivered-To / X-Original-To; empty never clears stored values.
 	DeliveredTo string
+	SizeBytes   int64
 }
 
 type ProviderSyncMessage struct {
@@ -913,6 +914,7 @@ type ProviderSyncMessage struct {
 	ListUnsubscribePost string
 	// Comma-joined Delivered-To / X-Original-To; empty never clears stored values.
 	DeliveredTo string
+	SizeBytes   int64
 }
 
 const (
@@ -1445,8 +1447,8 @@ func (db *DB) UpsertSyncMessages(ctx context.Context, msgs []SyncMessage) error 
 
 	msgStmt, err := tx.PrepareContext(ctx, `
 		INSERT INTO messages (account_id, internet_message_id, message_id_normalized, in_reply_to, "references", normalized_subject, subject, from_name, from_email,
-			date_sent, date_received, snippet, preview_text, list_unsubscribe, list_unsubscribe_post, delivered_to)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			date_sent, date_received, snippet, preview_text, size_bytes, list_unsubscribe, list_unsubscribe_post, delivered_to)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(account_id, internet_message_id) DO UPDATE SET
 			message_id_normalized = excluded.message_id_normalized,
 			subject = excluded.subject,
@@ -1456,6 +1458,7 @@ func (db *DB) UpsertSyncMessages(ctx context.Context, msgs []SyncMessage) error 
 			list_unsubscribe_post = CASE WHEN excluded.list_unsubscribe != '' THEN excluded.list_unsubscribe_post ELSE list_unsubscribe_post END,
 			list_unsubscribe = CASE WHEN excluded.list_unsubscribe != '' THEN excluded.list_unsubscribe ELSE list_unsubscribe END,
 			delivered_to = CASE WHEN excluded.delivered_to != '' THEN excluded.delivered_to ELSE delivered_to END,
+			size_bytes = CASE WHEN excluded.size_bytes > 0 THEN excluded.size_bytes ELSE size_bytes END,
 			date_sent = CASE WHEN ? = 1 AND COALESCE(date_sent, '') != '' THEN date_sent ELSE excluded.date_sent END,
 			date_received = CASE WHEN ? = 1 AND COALESCE(date_received, '') != '' THEN date_received ELSE excluded.date_received END,
 			in_reply_to = excluded.in_reply_to,
@@ -1538,7 +1541,7 @@ func (db *DB) UpsertSyncMessages(ctx context.Context, msgs []SyncMessage) error 
 		}
 		if !preserveLocalDraft {
 			if _, err := msgStmt.ExecContext(ctx, m.AccountID, m.MessageID, messageIDNorm, inReplyTo, m.References, normalizedSubject, m.Subject,
-				m.FromName, m.FromEmail, messageDBDate, messageDBDate, m.Snippet, m.Snippet,
+				m.FromName, m.FromEmail, messageDBDate, messageDBDate, m.Snippet, m.Snippet, m.SizeBytes,
 				m.ListUnsubscribe, m.ListUnsubscribePost, m.DeliveredTo,
 				boolInt(m.DateSentFallback), boolInt(m.DateSentFallback)); err != nil {
 				return fmt.Errorf("upsert message: %w", err)
@@ -1642,8 +1645,8 @@ func (db *DB) UpsertProviderSyncMessages(ctx context.Context, msgs []ProviderSyn
 
 	insertStmt, err := tx.PrepareContext(ctx, `
 		INSERT INTO messages (account_id, remote_message_id, internet_message_id, message_id_normalized, in_reply_to, "references", normalized_subject, subject, from_name, from_email,
-			date_sent, date_received, snippet, preview_text, provider_thread_id, has_attachments, list_unsubscribe, list_unsubscribe_post, delivered_to)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+			date_sent, date_received, snippet, preview_text, provider_thread_id, has_attachments, size_bytes, list_unsubscribe, list_unsubscribe_post, delivered_to)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		return nil, fmt.Errorf("prepare provider msg insert: %w", err)
 	}
@@ -1690,6 +1693,7 @@ func (db *DB) UpsertProviderSyncMessages(ctx context.Context, msgs []ProviderSyn
 			list_unsubscribe_post = CASE WHEN ? != '' THEN ? ELSE list_unsubscribe_post END,
 			list_unsubscribe = CASE WHEN ? != '' THEN ? ELSE list_unsubscribe END,
 			delivered_to = CASE WHEN ? != '' THEN ? ELSE delivered_to END,
+			size_bytes = CASE WHEN ? > 0 THEN ? ELSE size_bytes END,
 			updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?`)
 	if err != nil {
@@ -1817,7 +1821,7 @@ func (db *DB) UpsertProviderSyncMessages(ctx context.Context, msgs []ProviderSyn
 		if wasNew {
 			result, err := insertStmt.ExecContext(ctx,
 				m.AccountID, m.ProviderMessageID, m.InternetMessageID, messageIDNorm, inReplyTo, m.References, normalizedSubject, m.Subject,
-				m.FromName, m.FromEmail, dateSentDB, dateReceivedDB, snippet, snippet, m.ProviderThreadID, boolInt(m.HasAttachments), m.ListUnsubscribe, m.ListUnsubscribePost, m.DeliveredTo)
+				m.FromName, m.FromEmail, dateSentDB, dateReceivedDB, snippet, snippet, m.ProviderThreadID, boolInt(m.HasAttachments), m.SizeBytes, m.ListUnsubscribe, m.ListUnsubscribePost, m.DeliveredTo)
 			if err != nil {
 				return nil, fmt.Errorf("insert provider message: %w", err)
 			}
@@ -1837,7 +1841,7 @@ func (db *DB) UpsertProviderSyncMessages(ctx context.Context, msgs []ProviderSyn
 				boolInt(hasDateReceived), dateReceivedDB, dateReceivedDB,
 				inReplyTo, m.References, snippet, snippet,
 				m.ProviderThreadID, m.ProviderThreadID, boolInt(m.HasAttachments),
-				m.ListUnsubscribe, m.ListUnsubscribePost, m.ListUnsubscribe, m.ListUnsubscribe, m.DeliveredTo, m.DeliveredTo, msgID); err != nil {
+				m.ListUnsubscribe, m.ListUnsubscribePost, m.ListUnsubscribe, m.ListUnsubscribe, m.DeliveredTo, m.DeliveredTo, m.SizeBytes, m.SizeBytes, msgID); err != nil {
 				return nil, fmt.Errorf("update provider message: %w", err)
 			}
 		}
@@ -5488,7 +5492,7 @@ func emailFilterSQL(filters models.EmailFilters) emailFilterParts {
 		args = append(args, filters.MinSizeBytes)
 	}
 	if filters.MaxSizeBytes > 0 {
-		cteParts = append(cteParts, "m.size_bytes <= ?")
+		cteParts = append(cteParts, "m.size_bytes > 0 AND m.size_bytes <= ?")
 		args = append(args, filters.MaxSizeBytes)
 	}
 	if filters.Tag != "" {
@@ -5586,6 +5590,7 @@ func (db *DB) getThreadMessages(ctx context.Context, accountID, threadID, userID
 		        m.date_received, m.has_attachments,
 		        COALESCE((SELECT is_read FROM message_folder_state WHERE message_id = m.id LIMIT 1), 1),
 		        COALESCE((SELECT is_starred FROM message_folder_state WHERE message_id = m.id LIMIT 1), 0),
+		        COALESCE((SELECT MAX(is_draft) FROM message_folder_state WHERE message_id = m.id AND is_deleted = 0), 0),
 		        COALESCE((SELECT f.name FROM message_folder_state mfs JOIN folders f ON mfs.folder_id = f.id WHERE mfs.message_id = m.id AND mfs.is_deleted = 0 LIMIT 1), ''),
 		        COALESCE((SELECT mfs.folder_id FROM message_folder_state mfs WHERE mfs.message_id = m.id AND mfs.is_deleted = 0 LIMIT 1), ''),
 		        COALESCE((SELECT f.role FROM message_folder_state mfs JOIN folders f ON mfs.folder_id = f.id WHERE mfs.message_id = m.id AND mfs.is_deleted = 0 LIMIT 1), ''),
@@ -5616,12 +5621,13 @@ func (db *DB) getThreadMessages(ctx context.Context, accountID, threadID, userID
 			hasAttach     int
 			isRead        int
 			isStarred     int
+			isDraft       int
 			internetMsgID sql.NullString
 			refs          sql.NullString
 			bodyTextPath  sql.NullString
 		)
 		if err := rows.Scan(&item.ID, &item.AccountID, &item.AccountColor, &item.Subject, &fromName, &fromEmail, &item.Preview,
-			&dateReceived, &hasAttach, &isRead, &isStarred, &item.FolderName, &item.FolderID, &item.FolderRole,
+			&dateReceived, &hasAttach, &isRead, &isStarred, &isDraft, &item.FolderName, &item.FolderID, &item.FolderRole,
 			&internetMsgID, &refs, &bodyTextPath); err != nil {
 			return nil, err
 		}
@@ -5629,6 +5635,7 @@ func (db *DB) getThreadMessages(ctx context.Context, accountID, threadID, userID
 		item.From = contactFromSender(fromName, fromEmail)
 		item.IsRead = isRead == 1
 		item.IsStarred = isStarred == 1
+		item.IsDraft = isDraft == 1
 		item.HasAttachment = hasAttach == 1
 		if internetMsgID.Valid {
 			item.InternetMessageID = internetMsgID.String
@@ -6488,7 +6495,7 @@ func (db *DB) findEmailPositionForUser(ctx context.Context, userID, folderID, em
 
 func (db *DB) getRecipients(ctx context.Context, messageID int64, kind string) ([]models.Contact, error) {
 	rows, err := db.Read().QueryContext(ctx,
-		`SELECT name, email FROM message_recipients WHERE message_id = ? AND kind = ?`, messageID, kind)
+		`SELECT name, email FROM message_recipients WHERE message_id = ? AND kind = ? ORDER BY id`, messageID, kind)
 	if err != nil {
 		return nil, err
 	}
@@ -6502,7 +6509,7 @@ func (db *DB) getRecipients(ctx context.Context, messageID int64, kind string) (
 		}
 		c.Initials = initials(c.Name)
 		c.AvatarHash = avatarresolver.GravatarHash(c.Email)
-		contacts = append(contacts, c)
+		contacts = appendUniqueRecipient(contacts, c)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -6514,6 +6521,21 @@ func (db *DB) getRecipients(ctx context.Context, messageID int64, kind string) (
 		db.hydrateContactAvatar(ctx, &contacts[i])
 	}
 	return contacts, nil
+}
+
+// appendUniqueRecipient skips an address the list already has. Older versions
+// could save a message's recipients twice.
+func appendUniqueRecipient(contacts []models.Contact, c models.Contact) []models.Contact {
+	email := strings.ToLower(strings.TrimSpace(c.Email))
+	for i, existing := range contacts {
+		if email != "" && strings.ToLower(strings.TrimSpace(existing.Email)) == email {
+			if strings.TrimSpace(existing.Name) == "" && strings.TrimSpace(c.Name) != "" {
+				contacts[i] = c
+			}
+			return contacts
+		}
+	}
+	return append(contacts, c)
 }
 
 func (db *DB) getMessageLabels(ctx context.Context, messageID int64) ([]models.Label, error) {
@@ -6561,6 +6583,10 @@ func (db *DB) batchGetRecipients(ctx context.Context, msgIDs []int64, kind strin
 
 	var owners []int64
 	var contacts []models.Contact
+	seen := make(map[struct {
+		msg   int64
+		email string
+	}]int)
 	for rows.Next() {
 		var msgID int64
 		var c models.Contact
@@ -6569,6 +6595,19 @@ func (db *DB) batchGetRecipients(ctx context.Context, msgIDs []int64, kind strin
 		}
 		c.Initials = initials(c.Name)
 		c.AvatarHash = avatarresolver.GravatarHash(c.Email)
+		// An address the message already has is skipped (older versions could
+		// save recipients twice), keeping the entry that has a name.
+		key := struct {
+			msg   int64
+			email string
+		}{msgID, strings.ToLower(strings.TrimSpace(c.Email))}
+		if i, dup := seen[key]; dup && key.email != "" {
+			if strings.TrimSpace(contacts[i].Name) == "" && strings.TrimSpace(c.Name) != "" {
+				contacts[i] = c
+			}
+			continue
+		}
+		seen[key] = len(contacts)
 		owners = append(owners, msgID)
 		contacts = append(contacts, c)
 	}
@@ -6920,7 +6959,7 @@ func (db *DB) getEmailOriginalHTMLBody(ctx context.Context, id, userID string) (
 	return data, nil
 }
 
-func (db *DB) UpdateMessageBodyInternal(ctx context.Context, messageID int64, textPath, htmlPath, rawPath string, snippet string) error {
+func (db *DB) UpdateMessageBodyInternal(ctx context.Context, messageID int64, textPath, htmlPath, rawPath string, snippet string, sizeBytes int64) error {
 	tx, err := db.Write().BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -6928,8 +6967,9 @@ func (db *DB) UpdateMessageBodyInternal(ctx context.Context, messageID int64, te
 	defer tx.Rollback()
 
 	_, err = tx.ExecContext(ctx,
-		`UPDATE messages SET body_text_path = ?, body_html_path = ?, raw_path = ?, snippet = ?, preview_text = ?, updated_at = CURRENT_TIMESTAMP
-		 WHERE id = ?`, textPath, htmlPath, rawPath, snippet, snippet, messageID)
+		`UPDATE messages SET body_text_path = ?, body_html_path = ?, raw_path = ?, snippet = ?, preview_text = ?,
+		 size_bytes = CASE WHEN ? > 0 THEN ? ELSE size_bytes END, updated_at = CURRENT_TIMESTAMP
+		 WHERE id = ?`, textPath, htmlPath, rawPath, snippet, snippet, sizeBytes, sizeBytes, messageID)
 	if err != nil {
 		return err
 	}
@@ -7084,12 +7124,17 @@ func (db *DB) UpdateMessageThreadHeadersInternal(ctx context.Context, messageID 
 	return tx.Commit()
 }
 
+// UpsertRecipientsInternal replaces the To and Cc recipients of a message.
 func (db *DB) UpsertRecipientsInternal(ctx context.Context, messageID int64, to, cc []Recipient) error {
 	tx, err := db.Write().BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
+
+	if _, err := tx.ExecContext(ctx, `DELETE FROM message_recipients WHERE message_id = ? AND kind IN ('to', 'cc')`, messageID); err != nil {
+		return fmt.Errorf("delete recipients: %w", err)
+	}
 
 	stmt, err := tx.PrepareContext(ctx,
 		`INSERT INTO message_recipients (message_id, kind, name, email) VALUES (?, ?, ?, ?)`)

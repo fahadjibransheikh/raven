@@ -61,16 +61,32 @@ func (db *DB) NextAccountCalendarMeetingCleanup(ctx context.Context, owner, acco
 	if len(raw) <= 4096 {
 		_ = json.Unmarshal([]byte(raw), &cursor)
 	}
-	rows, err := calendarMeetingCleanupCandidatesTx(ctx, tx, owner, account, 1, &cursor)
-	if err != nil {
-		return nil, err
+	var candidate *CalendarMeetingCleanupCandidate
+	for range 64 {
+		rows, err := calendarMeetingCleanupCandidatesTx(ctx, tx, owner, account, 1, &cursor)
+		if err != nil {
+			return nil, err
+		}
+		if len(rows) == 0 {
+			break
+		}
+		pruned, err := pruneUnreservedCalendarMeetingDraftTx(ctx, tx, owner, rows[0])
+		if err != nil {
+			return nil, err
+		}
+		if !pruned {
+			candidate = &rows[0]
+			break
+		}
+		cursor = rows[0]
 	}
-	if len(rows) == 0 {
+	if candidate == nil {
 		if err := calendarControlOwnerTx(ctx, tx, owner, account, guard); err != nil {
 			return nil, err
 		}
 		return nil, tx.Commit()
 	}
+	rows := []CalendarMeetingCleanupCandidate{*candidate}
 	wire, err := json.Marshal(rows[0])
 	if err != nil {
 		return nil, err
@@ -91,6 +107,27 @@ func (db *DB) NextAccountCalendarMeetingCleanup(ctx context.Context, owner, acco
 		return nil, err
 	}
 	return &rows[0], nil
+}
+
+// Shared-storage drafts migrate without a meeting reservation, so no principal
+// proof can ever admit them to cleanup. A terminal one past retention is only
+// a local record: drop it here. Pending ones stay for offline migration.
+func pruneUnreservedCalendarMeetingDraftTx(ctx context.Context, tx *sql.Tx, owner string, c CalendarMeetingCleanupCandidate) (bool, error) {
+	if !c.Prune {
+		return false, nil
+	}
+	var reserved bool
+	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM calendar_create_requests WHERE user_id=? AND request_id=?)`, owner, calendarMeetingDraftRequest(c.SourceID, c.Provider, c.DraftID)).Scan(&reserved); err != nil || reserved {
+		return false, err
+	}
+	query := `DELETE FROM calendar_meet_drafts WHERE user_id=? AND source_id=? AND draft_id=? AND cleanup_pending=0 AND created_at<datetime('now','-7 days')`
+	if c.Provider == "outlook" {
+		query = `DELETE FROM calendar_teams_drafts WHERE user_id=? AND source_id=? AND draft_id=? AND state IN ('saved','cleaned') AND updated_at<datetime('now','-7 days')`
+	}
+	if err := teamsDraftChanged(tx.ExecContext(ctx, query, owner, c.SourceID, c.DraftID)); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func calendarMeetingCleanupSourceTx(ctx context.Context, tx *sql.Tx, owner, account, id string, guard func(*sql.Tx, string) error) (CalendarSource, [32]byte, error) {

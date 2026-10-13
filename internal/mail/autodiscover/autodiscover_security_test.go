@@ -49,7 +49,7 @@ func TestDiscoveryRedirectRejectsPrivateTarget(t *testing.T) {
 		if host == "private.example.test" {
 			return []net.IPAddr{{IP: net.ParseIP("127.0.0.1")}}, nil
 		}
-		return []net.IPAddr{{IP: net.ParseIP("203.0.113.10")}}, nil
+		return []net.IPAddr{{IP: net.ParseIP("8.8.8.10")}}, nil
 	})
 	client := newDiscoveryHTTPClientWithPolicy(securityPolicy{resolveIP: resolver.LookupIPAddr})
 	initial, err := http.NewRequest(http.MethodGet, "https://public.example.test/config.xml", nil)
@@ -70,7 +70,7 @@ func TestValidateDiscoveredCandidatesRejectsPrivateMailHost(t *testing.T) {
 		if host == "imap.private.test" {
 			return []net.IPAddr{{IP: net.ParseIP("10.0.0.20")}}, nil
 		}
-		return []net.IPAddr{{IP: net.ParseIP("203.0.113.20")}}, nil
+		return []net.IPAddr{{IP: net.ParseIP("8.8.8.20")}}, nil
 	})
 	policy := securityPolicy{resolveIP: resolver.LookupIPAddr}
 	candidates := []Candidate{{
@@ -97,7 +97,7 @@ func TestDiscoverFiltersPrivateXMLMailTargets(t *testing.T) {
 	ipResolver := fakeIPResolverFunc(func(_ context.Context, host string) ([]net.IPAddr, error) {
 		switch host {
 		case "autoconfig.example.test", "smtp.public.test":
-			return []net.IPAddr{{IP: net.ParseIP("203.0.113.40")}}, nil
+			return []net.IPAddr{{IP: net.ParseIP("8.8.8.40")}}, nil
 		case "imap.private.test":
 			return []net.IPAddr{{IP: net.ParseIP("10.0.0.40")}}, nil
 		default:

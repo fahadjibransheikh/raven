@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -84,7 +83,7 @@ func (h *Handler) handleUserAllowRemoteContent(w http.ResponseWriter, r *http.Re
 			local := make(map[string]string)
 			download := h.remoteResourceDownloader
 			if download == nil {
-				download = downloadRemoteResource
+				download = newRemoteResourceDownloader(privateTargetAllowed(h.db))
 			}
 			for _, url := range urls {
 				if err := ctx.Err(); err != nil {
@@ -176,5 +175,6 @@ func (h *Handler) handleUserRemoteAsset(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	defer file.Close()
-	serveUntrusted(w, r, filename, mime.TypeByExtension(filepath.Ext(filename)), file, "private, no-store", true)
+	w.Header().Set("Cache-Control", "private, no-store")
+	serveMailFile(w, r, file, filename, remoteAssetContentType(filename), true)
 }

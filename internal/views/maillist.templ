@@ -82,9 +82,9 @@ templ MailListHeader(accounts []models.Account, activeFolder string, totalCount 
 templ MailFilterTriState(name string, leftValue string, leftLabel string, rightValue string, rightLabel string) {
 	<div class="mail-filter-tristate relative inline-grid h-7 w-full grid-cols-3 overflow-hidden border border-border bg-background p-0.5 text-xs" data-mail-tristate={ name } data-mail-tristate-value="">
 		<div class="mail-filter-tristate-indicator" data-mail-tristate-indicator></div>
-		<button type="button" data-mail-tristate-option={ leftValue } class="relative z-10 px-1.5 text-muted-foreground hover:text-foreground">{ leftLabel }</button>
-		<button type="button" data-mail-tristate-option="" class="relative z-10 px-1.5 text-foreground">Any</button>
-		<button type="button" data-mail-tristate-option={ rightValue } class="relative z-10 px-1.5 text-muted-foreground hover:text-foreground">{ rightLabel }</button>
+		<button type="button" data-mail-tristate-option={ leftValue } aria-pressed="false" class="relative z-10 px-1.5 text-muted-foreground hover:text-foreground">{ leftLabel }</button>
+		<button type="button" data-mail-tristate-option="" aria-pressed="true" class="relative z-10 px-1.5 text-foreground">Any</button>
+		<button type="button" data-mail-tristate-option={ rightValue } aria-pressed="false" class="relative z-10 px-1.5 text-muted-foreground hover:text-foreground">{ rightLabel }</button>
 	</div>
 }
 
@@ -111,6 +111,7 @@ templ MailListToolbar(accounts []models.Account, activeFolder string, viewMode s
 			<button
 				type="button"
 				data-mail-list-view-button="cards"
+				aria-pressed={ fmt.Sprintf("%t", viewMode == "cards") }
 				aria-label="Cards view" title="Comfortable (cards)"
 				class={
 					"relative z-10 inline-flex h-6 w-7 items-center justify-center rounded text-xs font-medium transition-colors duration-100",
@@ -123,6 +124,7 @@ templ MailListToolbar(accounts []models.Account, activeFolder string, viewMode s
 			<button
 				type="button"
 				data-mail-list-view-button="table"
+				aria-pressed={ fmt.Sprintf("%t", viewMode == "table") }
 				aria-label="Table view" title="Compact (table)"
 				class={
 					"relative z-10 inline-flex h-6 w-7 items-center justify-center rounded text-xs font-medium transition-colors duration-100",
@@ -991,9 +993,9 @@ templ MailListCardItem(accounts []models.Account, email models.Email, position i
 					<span data-mail-card-field="thread" class="mail-list-card-empty-icon-slot" aria-hidden="true"></span>
 				}
 				if email.IsStarred {
-					<span data-mail-card-field="starred">
+					<button class="star-btn shrink-0" data-email-id={ email.ID } data-mail-card-field="starred" aria-label="Unstar">
 						@icon.Star(icon.Props{Class: "size-3.5 text-warning fill-warning shrink-0"})
-					</span>
+					</button>
 				} else {
 					<button class="opacity-0 group-hover:opacity-100 transition-opacity star-btn shrink-0" data-email-id={ email.ID } data-mail-card-field="starred">
 						@icon.Star(icon.Props{Class: "size-3.5 text-muted-foreground/30"})
@@ -1028,7 +1030,9 @@ templ MailListTableItem(email models.Email, position int, selectedEmail *models.
 			</div>
 			<div class="flex items-center justify-center text-muted-foreground" data-mail-table-cell="starred">
 				if email.IsStarred {
-					@icon.Star(icon.Props{Class: "size-3.5 text-warning fill-warning"})
+					<button class="star-btn" data-email-id={ email.ID } aria-label="Unstar">
+						@icon.Star(icon.Props{Class: "size-3.5 text-warning fill-warning"})
+					</button>
 				} else {
 					<button class="opacity-0 group-hover:opacity-100 transition-opacity star-btn" data-email-id={ email.ID }>
 						@icon.Star(icon.Props{Class: "size-3.5 text-muted-foreground/30"})
@@ -1163,7 +1167,9 @@ templ MailListThreadSubItems(items []models.ThreadItem, senderDisplayMode string
 							</div>
 							<div class="flex items-center justify-center shrink-0" data-mail-table-cell="starred">
 								if item.IsStarred {
-									@icon.Star(icon.Props{Class: "size-3 text-warning fill-warning"})
+									<button class="star-btn" data-email-id={ item.ID } aria-label="Unstar">
+										@icon.Star(icon.Props{Class: "size-3 text-warning fill-warning"})
+									</button>
 								} else {
 									<button class="opacity-0 group-hover:opacity-100 transition-opacity star-btn" data-email-id={ item.ID }>
 										@icon.Star(icon.Props{Class: "size-3 text-muted-foreground/30"})

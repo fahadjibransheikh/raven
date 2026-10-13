@@ -52,7 +52,7 @@ func startInboxServer(t *testing.T, count int, emptySearch bool) (*models.Accoun
 		host, portString, _ := net.SplitHostPort(addr)
 		port, _ := strconv.Atoi(portString)
 		return &models.AccountConfig{
-			AccountID: "acc", IMAPHost: host, IMAPPort: port,
+			AccountID: "acc", IMAPHost: host, IMAPAllowPrivate: true, IMAPPort: port,
 			IMAPTLSMode: "plaintext", IMAPAllowPlaintext: true,
 			AuthMethod: "plain", Username: "user@example.com",
 		}

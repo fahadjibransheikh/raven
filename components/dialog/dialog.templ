@@ -245,6 +245,7 @@ templ Title(props ...TitleProps) {
 			id={ p.ID }
 		}
 		class={ utils.TwMerge("text-lg leading-none font-semibold", p.Class) }
+		data-tui-dialog-title
 		{ p.Attributes... }
 	>
 		{ children... }

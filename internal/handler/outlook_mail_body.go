@@ -7,9 +7,11 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/cristianadrielbraun/gofer/internal/mail/message"
 )
 
-const outlookGraphMIMEFetchMaxBytes int64 = 64 << 20
+const outlookGraphMIMEFetchMaxBytes = message.MaxDownloadBytes
 
 func (h *Handler) fetchOutlookGraphMessageMIME(ctx context.Context, messageID int64) ([]byte, bool, error) {
 	info, err := h.db.GetMessageMutationInfoInternal(ctx, messageID)
@@ -39,9 +41,17 @@ func (h *Handler) fetchOutlookGraphMessageMIMEByID(ctx context.Context, token, p
 	}
 	defer resp.Body.Close()
 
-	raw, readErr := io.ReadAll(io.LimitReader(resp.Body, outlookGraphMIMEFetchMaxBytes+1))
-	if int64(len(raw)) > outlookGraphMIMEFetchMaxBytes {
-		return nil, fmt.Errorf("outlook message MIME exceeds %d bytes", outlookGraphMIMEFetchMaxBytes)
+	limit := message.DownloadLimit(ctx, outlookGraphMIMEFetchMaxBytes)
+	success := resp.StatusCode >= 200 && resp.StatusCode < 300
+	if success && resp.ContentLength > limit {
+		return nil, &message.TooLargeError{Size: resp.ContentLength, Limit: limit}
+	}
+	raw, readErr := io.ReadAll(io.LimitReader(resp.Body, limit+1))
+	if int64(len(raw)) > limit {
+		if success {
+			return nil, &message.TooLargeError{Limit: limit}
+		}
+		return nil, fmt.Errorf("outlook message MIME exceeds %d bytes", limit)
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		if readErr != nil {

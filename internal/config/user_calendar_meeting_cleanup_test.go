@@ -479,3 +479,53 @@ func TestUserCalendarMeetingCleanupCursorFairnessSurvivesEvictionAndRefusesMutat
 		})
 	}
 }
+
+func TestUserCalendarMeetingCleanupDropsUnreservedRetainedDrafts(t *testing.T) {
+	for _, provider := range []string{"gmail", "outlook"} {
+		t.Run(provider, func(t *testing.T) {
+			_, accounts, sources := ownedMeetingFixture(t, provider)
+			account := sources["alice"].Service().AccountID()
+			// Shared-storage drafts migrate without a meeting reservation.
+			if err := accounts.WithUser(t.Context(), "alice", func(_ *AccountStore, db *storage.DB) error {
+				query := `INSERT INTO calendar_meet_drafts(user_id,source_id,draft_id,remote_id,cleanup_pending,created_at) VALUES
+ ('alice','same-source','retained-a','private-a',0,datetime('now','-8 days')),
+ ('alice','same-source','retained-b','private-b',0,datetime('now','-9 days')),
+ ('alice','same-source','pending-c','private-c',1,datetime('now','-8 days'))`
+				if provider == "outlook" {
+					query = `INSERT INTO calendar_teams_drafts(user_id,source_id,draft_id,state,updated_at) VALUES
+ ('alice','same-source','retained-a','cleaned',datetime('now','-8 days')),
+ ('alice','same-source','retained-b','saved',datetime('now','-9 days')),
+ ('alice','same-source','pending-c','abandoned',datetime('now','-8 days'))`
+				}
+				_, err := db.Write().Exec(query)
+				return err
+			}); err != nil {
+				t.Fatal(err)
+			}
+			// The cursor visits pending-c first, then sweeps past both retained
+			// drafts and wraps back to the pending one.
+			for range 2 {
+				c, err := accounts.NextCalendarMeetingCleanup(t.Context(), "alice", account)
+				if err != nil || c == nil || c.DraftID != "pending-c" {
+					t.Fatal("unreserved pending draft must stay visible", c, err)
+				}
+			}
+			if err := accounts.WithUser(t.Context(), "alice", func(_ *AccountStore, db *storage.DB) error {
+				table := "calendar_meet_drafts"
+				if provider == "outlook" {
+					table = "calendar_teams_drafts"
+				}
+				var ids string
+				if err := db.Read().QueryRow(`SELECT group_concat(draft_id) FROM ` + table).Scan(&ids); err != nil {
+					return err
+				}
+				if ids != "pending-c" {
+					return fmt.Errorf("retained unreserved drafts not dropped: %s", ids)
+				}
+				return nil
+			}); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}

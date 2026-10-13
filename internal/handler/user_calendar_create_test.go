@@ -16,6 +16,7 @@ import (
 	"github.com/cristianadrielbraun/gofer/internal/calendar"
 	"github.com/cristianadrielbraun/gofer/internal/config"
 	"github.com/cristianadrielbraun/gofer/internal/mailauth"
+	"github.com/cristianadrielbraun/gofer/internal/netguard"
 	"github.com/cristianadrielbraun/gofer/internal/storage"
 )
 
@@ -163,15 +164,16 @@ func TestUserCalendarCreateNativeProviderReservationPublicationAndRecovery(t *te
 				previousDefault := http.DefaultTransport
 				target, _ := url.Parse(f.server.URL)
 				http.DefaultTransport = userCalendarCreateTestTransport{base: previousDefault, target: target}
+				t.Cleanup(netguard.UseTransportForTests(http.DefaultTransport))
 				t.Cleanup(func() { http.DefaultTransport = previousDefault })
 
 				remote, base := "primary", ""
 				if provider == "caldav" {
 					server := httptest.NewTLSServer(native)
 					t.Cleanup(server.Close)
-					previous := calDAVHTTPTransport
-					calDAVHTTPTransport = server.Client().Transport
-					t.Cleanup(func() { calDAVHTTPTransport = previous })
+					previous := davHTTPTransport
+					davHTTPTransport = server.Client().Transport
+					t.Cleanup(func() { davHTTPTransport = previous })
 					base = server.URL + "/"
 					remote = base + "alice/primary/"
 				} else {
@@ -351,9 +353,9 @@ func TestUserCalendarMeetingOwnedOrganizerAndSchedulingAgent(t *testing.T) {
 				}
 			}))
 			t.Cleanup(server.Close)
-			previous := calDAVHTTPTransport
-			calDAVHTTPTransport = server.Client().Transport
-			t.Cleanup(func() { calDAVHTTPTransport = previous })
+			previous := davHTTPTransport
+			davHTTPTransport = server.Client().Transport
+			t.Cleanup(func() { davHTTPTransport = previous })
 			f := newUserContactPushFixture(t, "carddav", http.HandlerFunc(func(http.ResponseWriter, *http.Request) { t.Error("shared provider fallback") }))
 			if err := f.h.userAccounts.WithUser(t.Context(), "alice", func(local *config.AccountStore, db *storage.DB) error {
 				if err := local.SaveCalDAVConfig(t.Context(), "alice", f.accounts["alice"].ID, server.URL+"/", "alice", "alice-calendar-secret", false); err != nil {

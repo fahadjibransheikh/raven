@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"log"
 	"net/url"
-	"os"
 	"strconv"
 	"sync"
 	"time"
@@ -549,6 +548,13 @@ func (s *UserIMAP) EnsureBody(ctx context.Context, owner string, msgID int64) er
 	return err
 }
 
+// EnsureFullBody is EnsureBody for a message the reader asked to see although
+// it is larger than Gofer downloads on its own.
+func (s *UserIMAP) EnsureFullBody(ctx context.Context, owner string, msgID int64) error {
+	_, err := s.ensureBody(ctx, owner, msgID, bodyEnsureFull)
+	return err
+}
+
 // RefetchBody bypasses saved MIME and replaces the cache only after a complete,
 // verified fetch. Failed refreshes leave the readable body and attachments intact.
 func (s *UserIMAP) RefetchBody(ctx context.Context, owner string, msgID int64) error {
@@ -568,12 +574,16 @@ type bodyMode int
 
 const (
 	bodyEnsure bodyMode = iota
+	bodyEnsureFull
 	bodyRefetch
 	bodyRepairCalendar
 )
 
 func (s *UserIMAP) ensureBody(ctx context.Context, owner string, msgID int64, mode bodyMode) (repaired bool, err error) {
 	force := mode == bodyRefetch
+	if mode == bodyEnsure {
+		ctx = message.WithDownloadLimit(ctx, message.AutoDownloadMaxBytes)
+	}
 	release, err := s.blobs.PinUserFiles(ctx, owner)
 	if err != nil {
 		return false, err
@@ -655,7 +665,10 @@ func (s *UserIMAP) ensureBody(ctx context.Context, owner string, msgID int64, mo
 		}
 		var raw []byte
 		if rawPath != "" && !force {
-			raw, _ = os.ReadFile(rawPath)
+			raw, err = message.ReadSavedMessage(ctx, rawPath)
+			if err != nil {
+				return err
+			}
 		}
 		if len(raw) == 0 && mode == bodyRepairCalendar {
 			return nil // Repair only uses the saved original.

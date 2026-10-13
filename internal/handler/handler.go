@@ -22,6 +22,7 @@ import (
 	"github.com/cristianadrielbraun/gofer/internal/mailauth"
 	"github.com/cristianadrielbraun/gofer/internal/models"
 	"github.com/cristianadrielbraun/gofer/internal/netguard"
+	"github.com/cristianadrielbraun/gofer/internal/providerquota"
 	"github.com/cristianadrielbraun/gofer/internal/providers"
 	"github.com/cristianadrielbraun/gofer/internal/storage"
 	"github.com/cristianadrielbraun/gofer/internal/store"
@@ -126,6 +127,7 @@ type Handler struct {
 	calendarSendResponse       func(context.Context, storage.CalendarSource, storage.CalendarEvent, calendarResponseTarget, string) (calendarResponseResult, error)
 	googleTranslator           *translation.GoogleWebConnector
 	vapidPublicKey             string
+	testPush                   func(ctx context.Context, userID, endpoint string) error
 	outgoingWake               chan struct{}
 	outgoingNow                func() time.Time
 	outgoingRandom             func() float64
@@ -134,15 +136,18 @@ type Handler struct {
 	messageMutationIMAPFactory messageMutationIMAPClientFactory
 	folderReadIMAPFactory      func(context.Context, *models.AccountConfig, string) (folderReadIMAPClient, error)
 	remoteResourceDownloader   func(context.Context, string) ([]byte, error)
-	unsubscribeClient          *http.Client // nil = SSRF-guarded production client; tests inject
-	providerAvatarHTTPClient   *http.Client
-	retentionMu                sync.RWMutex
-	retentionState             models.MailRetentionDiagnostics
-	userRetention              *userRetentionWorker
-	authEventRetentionWake     chan struct{}
-	authEventRetentionWorkers  sync.WaitGroup
-	smtpProfileMu              sync.RWMutex
-	smtpProfile                smtpDeliveryProfileState
+	// messageFileKey signs the image addresses in message pages; see
+	// message_file_links.go.
+	messageFileKey            []byte
+	unsubscribeClient         *http.Client // nil = SSRF-guarded production client; tests inject
+	providerAvatarHTTPClient  *http.Client
+	retentionMu               sync.RWMutex
+	retentionState            models.MailRetentionDiagnostics
+	userRetention             *userRetentionWorker
+	authEventRetentionWake    chan struct{}
+	authEventRetentionWorkers sync.WaitGroup
+	smtpProfileMu             sync.RWMutex
+	smtpProfile               smtpDeliveryProfileState
 }
 
 const (
@@ -195,10 +200,13 @@ func New(db *storage.DB, accountStore *config.AccountStore, syncer *mail.SyncOrc
 		messageMutationIMAPFactory: func(ctx context.Context, cfg *models.AccountConfig, password string) (messageMutationIMAPClient, error) {
 			return imap.NewClient(ctx, cfg, password)
 		},
-		remoteResourceDownloader: downloadRemoteResource,
-		providerAvatarHTTPClient: netguard.NewClient(15 * time.Second),
+		remoteResourceDownloader: newRemoteResourceDownloader(privateTargetAllowed(db)),
+		messageFileKey:           newMessageFileKey(),
+		// Provider avatar addresses come from provider responses; they never
+		// need a private address.
+		providerAvatarHTTPClient: &http.Client{Timeout: 15 * time.Second, Transport: netguard.NewHTTPTransport(nil), CheckRedirect: netguard.CheckRedirect},
 	}
-	davPrivateAllowed = h.davPrivateTargetAllowed
+	setDAVPrivateTargetPolicy(privateTargetAllowed(db))
 	db.SetContactActivityHook(func(event storage.ContactActivityNotification) {
 		if h.syncer == nil {
 			return
@@ -231,6 +239,12 @@ func (h *Handler) mailCredentials() *mailauth.Service {
 		return h.mailboxAuth
 	}
 	return nil
+}
+
+// SetTestPushSender sets how a test notification is pushed to a user's browser. Call
+// it before registering routes.
+func (h *Handler) SetTestPushSender(send func(ctx context.Context, userID, endpoint string) error) {
+	h.testPush = send
 }
 
 func (h *Handler) StartAccountDeletionCleanup(ctx context.Context) {
@@ -412,6 +426,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /folder/{id}/full", h.handleFolderFull)
 	mux.HandleFunc("GET /folder/{id}/{email}", h.handleFolderWithEmail)
 	mux.HandleFunc("GET /mail/folder/{id}/items", h.handleMailItems)
+	mux.HandleFunc("GET /mail/folder/{id}/ids", h.handleMailItemIDs)
 	mux.HandleFunc("GET /mail/thread/{threadId}/subitems", h.handleThreadSubItems)
 	mux.HandleFunc("GET /contacts", h.handleContacts)
 	mux.HandleFunc("GET /contacts/items", h.handleContactItems)
@@ -452,6 +467,9 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/contacts/{id}/unify", h.handleUnifyContact)
 	mux.HandleFunc("POST /api/contacts/{id}/delete", h.handleDeleteContact)
 	mux.HandleFunc("POST /api/accounts/discover", h.handleDiscoverAccount)
+	mux.HandleFunc("GET /api/accounts/server-check", h.handleAccountServerCheck)
+	mux.HandleFunc("POST /api/accounts/test", h.handleTestNewAccount)
+	mux.HandleFunc("POST /api/accounts/{id}/test-changes", h.handleTestAccountChanges)
 	mux.HandleFunc("POST /api/accounts", h.handleCreateAccount)
 	mux.HandleFunc("GET /api/accounts/{id}/edit", h.handleGetEditAccount)
 	mux.HandleFunc("POST /api/accounts/{id}/edit", h.handleUpdateAccount)
@@ -491,6 +509,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/push/vapid-public-key", h.handlePushVAPIDPublicKey)
 	mux.HandleFunc("POST /api/push/subscription", h.handleSavePushSubscription)
 	mux.HandleFunc("DELETE /api/push/subscription", h.handleDeletePushSubscription)
+	mux.HandleFunc("POST /api/push/test", h.handleTestPush)
 	mux.HandleFunc("GET /api/settings/contacts/suppressed", h.handleSuppressedContactsSettings)
 	mux.HandleFunc("POST /api/settings/contacts/accounts/sync", h.handleSyncAccountContacts)
 	mux.HandleFunc("POST /api/settings/contacts/providers/gmail/sync", h.handleSyncGmailContacts)
@@ -500,6 +519,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/attachments/{id}/download", h.handleAttachmentDownload)
 	mux.HandleFunc("GET /api/attachments/{id}/preview", h.handleAttachmentPreview)
 	mux.HandleFunc("GET /api/inline-content/{messageID}/{contentID}", h.handleInlineContent)
+	mux.HandleFunc("GET "+messageFileRoute+"{kind}/{messageID}/{name}", h.handleSignedMessageFile)
 	mux.HandleFunc("POST /compose/attachments", h.handleComposeAttachmentUpload)
 	mux.HandleFunc("GET /compose/attachments/{id}/preview", h.handleComposeAttachmentPreview)
 	mux.HandleFunc("DELETE /compose/attachments/{id}", h.handleComposeAttachmentDelete)
@@ -526,6 +546,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/folders/{id}/read-all", h.handleMarkFolderRead)
 	mux.HandleFunc("POST /api/folders/{id}/empty", h.handleEmptyFolder)
 	mux.HandleFunc("POST /api/messages/{id}/prefetch-body", h.handlePrefetchBody)
+	mux.HandleFunc("POST /api/messages/{id}/download-full", h.handleDownloadFullBody)
 	mux.HandleFunc("GET /api/compose/source", h.handleComposeSource)
 	mux.HandleFunc("GET /compose/pane", h.handleComposePane)
 	mux.HandleFunc("POST /compose", h.handleCompose)
@@ -546,6 +567,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/messages/{id}/read", h.handleToggleRead)
 	mux.HandleFunc("POST /api/messages/{id}/star", h.handleToggleStar)
 	mux.HandleFunc("POST /api/messages/{id}/thread/read", h.handleToggleThreadRead)
+	mux.HandleFunc("POST /api/messages/{id}/thread/star", h.handleToggleThreadStar)
 	mux.HandleFunc("POST /api/messages/{id}/thread/archive", h.handleArchiveThread)
 	mux.HandleFunc("DELETE /api/messages/{id}/thread", h.handleDeleteThread)
 	mux.HandleFunc("DELETE /api/messages/{id}", h.handleDeleteMessage)
@@ -572,10 +594,14 @@ func setupAssetsRoutes(mux *http.ServeMux) {
 		// Content hash of every embedded asset: a changed file yields new ?v= URLs.
 		utils.ScriptVersion = assetContentVersion()
 	}
+	compressedAssets := newCompressedAssetCache(assetFileSystem())
 
 	assetHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasSuffix(r.URL.Path, ".webmanifest") {
 			w.Header().Set("Content-Type", "application/manifest+json; charset=utf-8")
+		}
+		if strings.HasSuffix(r.URL.Path, ".woff2") {
+			w.Header().Set("Content-Type", "font/woff2")
 		}
 		switch {
 		case isDevelopment:
@@ -589,6 +615,9 @@ func setupAssetsRoutes(mux *http.ServeMux) {
 			if etag := assetETag(r.URL.Path); etag != "" {
 				w.Header().Set("ETag", etag)
 			}
+		}
+		if compressedAssets.serve(w, r, r.URL.Path) {
+			return
 		}
 		assetServer.ServeHTTP(w, r)
 	})
@@ -814,7 +843,7 @@ func (h *Handler) handleContacts(w http.ResponseWriter, r *http.Request) {
 		settings := local.db.GetUISettings(ctx, userID)
 		filters := applyContactSortDefaults(local.parseContactFilters(r), r, settings)
 		if filters.View == "" {
-			filters.View = contactViewMode(settings["contacts_list_view"])
+			filters.View = contactViewMode(views.ListViewSetting(ctx, settings, "contacts_list_view"))
 		}
 		if filters.View == "" {
 			filters.View = "cards"
@@ -1235,8 +1264,9 @@ func serveVCard(w http.ResponseWriter, filename string, contacts []models.Contac
 
 func (h *Handler) handleImportContacts(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	// Cap the whole body: ParseMultipartForm spills oversized parts to temp files.
-	r.Body = http.MaxBytesReader(w, r.Body, contactImportMaxBytes+multipartOverheadBytes)
+	// ParseMultipartForm only caps what it keeps in memory; the rest of an
+	// unbounded body would go to temporary files.
+	r.Body = http.MaxBytesReader(w, r.Body, contactImportMaxBytes+(128<<10))
 	if err := r.ParseMultipartForm(contactImportMaxBytes); err != nil {
 		http.Error(w, "invalid vCard import", http.StatusBadRequest)
 		return
@@ -1376,8 +1406,14 @@ func (h *Handler) handleContactSearch(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]any{"results": items})
 }
 
+// emailResizeScript reports the body's content height to the parent. It
+// measures the content itself rather than the document, whose scroll height
+// never drops below the iframe's current height: once a narrow layout made the
+// frame tall, it could never shrink back and left a long blank gap. It measures
+// again whenever the page or its content changes size, including when a
+// collapsed thread message opens and its body is laid out for the first time.
 func emailResizeScript(emailID string) []byte {
-	return []byte(fmt.Sprintf(`<script>(function(){var id=%q;function r(){var b=document.body,d=document.documentElement;if(!b||!d)return;var rect=b.getBoundingClientRect();var h=Math.max(b.scrollHeight,b.offsetHeight,d.scrollHeight,d.offsetHeight,Math.ceil(rect.bottom-rect.top))+16;parent.postMessage({type:'emailBodyResize',emailId:id,height:h},'*')}requestAnimationFrame(function(){requestAnimationFrame(r)});window.addEventListener('load',r);document.querySelectorAll('img').forEach(function(i){i.onload=r});if(document.fonts&&document.fonts.ready)document.fonts.ready.then(r);if(typeof MutationObserver!=='undefined'){new MutationObserver(function(){setTimeout(r,0)}).observe(document.body,{childList:true,subtree:true,attributes:true})}setTimeout(r,300)})();</script>`, emailID))
+	return []byte(fmt.Sprintf(`<script>(function(){var id=%q,last=-1;function r(){var b=document.body;if(!b)return;var rg=document.createRange();rg.selectNodeContents(b);var cs=getComputedStyle(b);var h=Math.ceil(rg.getBoundingClientRect().bottom+(window.scrollY||0)+(parseFloat(cs.paddingBottom)||0)+(parseFloat(cs.borderBottomWidth)||0)+(parseFloat(cs.marginBottom)||0))+16;if(h===last)return;last=h;parent.postMessage({type:'emailBodyResize',emailId:id,height:h},'*')}requestAnimationFrame(function(){requestAnimationFrame(r)});window.addEventListener('load',r);document.querySelectorAll('img').forEach(function(i){i.onload=r});if(document.fonts&&document.fonts.ready)document.fonts.ready.then(r);if(typeof MutationObserver!=='undefined'){new MutationObserver(function(){setTimeout(r,0)}).observe(document.body,{childList:true,subtree:true,attributes:true})}if(typeof ResizeObserver!=='undefined'){var ro=new ResizeObserver(function(){r()});ro.observe(document.documentElement);ro.observe(document.body)}setTimeout(r,300)})();</script>`, emailID))
 }
 
 func remoteImagesDetectScript(emailID string) []byte {
@@ -1402,54 +1438,6 @@ func newCSPNonce() string {
 	}
 	return base64.RawURLEncoding.EncodeToString(b)
 }
-
-// withScriptNonce adds the nonce to the <script> tags of trusted, server
-// generated script. It must only be given our own markup, never mail content.
-func withScriptNonce(script, nonce string) string {
-	return strings.ReplaceAll(script, "<script>", `<script nonce="`+nonce+`">`)
-}
-
-// emailBodyDocument sets the response CSP and returns the iframe document.
-// The CSP is what contains a sanitizer miss: only our nonced scripts run, and
-// sandbox applies even if the URL is opened top-level (no app origin).
-func emailBodyDocument(w http.ResponseWriter, emailID string, body []byte, theme, bg, fg, link string, original, loadRemote, reportBlocked bool) []byte {
-	nonce := newCSPNonce()
-	img := "img-src 'self' data:"
-	if loadRemote {
-		// Images and CSS backgrounds only. The sanitizer drops @font-face and
-		// @import, and default-src 'none' keeps remote fonts blocked even if one slipped through.
-		img += " https: http:"
-	}
-	// Add, not Set: keep the global frame-ancestors policy.
-	w.Header().Add("Content-Security-Policy", "sandbox allow-scripts; default-src 'none'; script-src 'nonce-"+nonce+"'; style-src 'unsafe-inline'; "+img+"; form-action 'none'; base-uri 'none'")
-	doc := buildBodyDocument(body, emailResizeScript(emailID), nonce, theme, bg, fg, link, original)
-	if reportBlocked {
-		doc = append(doc, withScriptNonce(string(remoteImagesDetectScript(emailID)), nonce)...)
-	}
-	return doc
-}
-
-// withImageGrants adds a signed grant to this message's inline-content and
-// remote-assets URLs so the sandboxed, cookieless email iframe can load them.
-// Render time only: stored bodies and compose/reply sources keep bare URLs.
-func (h *Handler) withImageGrants(ctx context.Context, msgID int64, body []byte) []byte {
-	if h.auth == nil {
-		return body
-	}
-	grant := h.auth.SignImageGrant(auth.GetCurrentSession(ctx), msgID)
-	if grant == "" {
-		return body
-	}
-	prefix := strconv.FormatInt(msgID, 10) + "/"
-	return emailImageURLPattern.ReplaceAllFunc(body, func(u []byte) []byte {
-		if !strings.HasPrefix(strings.SplitN(string(u), "/", 4)[3], prefix) {
-			return u
-		}
-		return append(append(u[:len(u):len(u)], "?"+auth.ImageGrantQuery+"="...), grant...)
-	})
-}
-
-var emailImageURLPattern = regexp.MustCompile(`/api/(?:inline-content|remote-assets)/[0-9]+/(?:[A-Za-z0-9._~%@:+=$-]|&amp;)+`)
 
 func (h *Handler) handleEmailBody(w http.ResponseWriter, r *http.Request) {
 	emailID := r.PathValue("id")
@@ -1478,7 +1466,11 @@ func (h *Handler) handleEmailBody(w http.ResponseWriter, r *http.Request) {
 	link := r.URL.Query().Get("link")
 	original := r.URL.Query().Get("mode") == "original"
 	loadRemote := r.URL.Query().Get("remote") == "true"
-	body, ok := h.emailBodyHTML(ctx, emailID, msgID, userID, original)
+	body, ok, fetchErr := h.emailBodyHTML(ctx, emailID, msgID, userID, original)
+	if fetchErr != nil {
+		h.writeEmailBodyError(w, ctx, userID, emailID, "", fetchErr)
+		return
+	}
 	if !ok {
 		http.NotFound(w, r)
 		return
@@ -1489,22 +1481,32 @@ func (h *Handler) handleEmailBody(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if loadRemote {
-		body = message.RestoreRemoteImages(body)
+		body = message.RestoreRemoteContent(body, h.remoteContentLinks(ctx, userID, msgID))
 	}
+	body = message.MarkThreadQuote(body, threadQuoteSources(ctx, h.db, emailID, userID))
+	body = h.signMessageFileLinks(ctx, body, userID, msgID)
 
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-store")
-	body = h.withImageGrants(ctx, msgID, body)
-	w.Write(emailBodyDocument(w, emailID, body, theme, bg, fg, link, original, loadRemote, !loadRemote))
+	nonce := setEmailBodyDocumentHeaders(w)
+	doc := buildBodyDocument(body, emailResizeScript(emailID), theme, bg, fg, link, original, emailBodyTextSize(r), nonce)
+	if !loadRemote {
+		doc = append(doc, scriptWithNonce(remoteImagesDetectScript(emailID), nonce)...)
+	}
+	w.Write(doc)
 }
 
 // emailBodyHTML returns the sanitized body of an owned message (fetching and storing it first if
-// needed): what the body iframe route and the print page both render. ok is false when there is none.
-func (h *Handler) emailBodyHTML(ctx context.Context, emailID string, msgID int64, userID string, original bool) (body []byte, ok bool) {
+// needed): what the body iframe route and the print page both render. ok is false when there is none;
+// err is set when the message is too large to download automatically.
+func (h *Handler) emailBodyHTML(ctx context.Context, emailID string, msgID int64, userID string, original bool) (body []byte, ok bool, err error) {
 	if msgID > 0 && !h.db.IsBodyFetchedInternal(ctx, msgID) {
 		info, err := h.db.GetMessageFetchInfoForUser(ctx, msgID, userID)
 		if err == nil && info != nil {
-			if parsed, err := h.fetchParsedBody(ctx, msgID, info.AccountID); err == nil {
+			parsed, err := h.fetchParsedBody(message.WithDownloadLimit(ctx, message.AutoDownloadMaxBytes), msgID, info.AccountID)
+			var tooLarge *message.TooLargeError
+			if errors.As(err, &tooLarge) {
+				return nil, false, err
+			}
+			if err == nil {
 				if original {
 					body = originalBodyFromParsedMessage(parsed, msgID)
 				} else {
@@ -1537,10 +1539,10 @@ func (h *Handler) emailBodyHTML(ctx context.Context, emailID string, msgID int64
 			}
 		}
 		if err != nil || body == nil {
-			return nil, false
+			return nil, false, nil
 		}
 	}
-	return body, true
+	return body, true, nil
 }
 
 // remoteImagesAllowed reports whether a message body should load its remote
@@ -1560,34 +1562,50 @@ func (h *Handler) remoteImagesAllowed(ctx context.Context, userID string, msgID 
 	return senderEmail != "" && h.db.IsRemoteContentAllowedForSenderForUser(ctx, senderEmail, userID)
 }
 
+// emailCSSColorPattern matches the theme colors the reader sends: hex, or
+// rgb()/rgba() with plain numbers. The value is written into the body
+// document's <style> and <script>, so nothing else may pass.
+var emailCSSColorPattern = regexp.MustCompile(`^(?:#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})|rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*(?:,\s*(?:\d*\.)?\d+\s*)?\))$`)
+
 func safeEmailCSSColor(value, fallback string) string {
 	value = strings.TrimSpace(value)
-	if value == "" {
+	if !emailCSSColorPattern.MatchString(value) {
 		return fallback
 	}
+	return value
+}
 
-	lower := strings.ToLower(value)
-	if strings.HasPrefix(lower, "#") {
-		hex := lower[1:]
-		if len(hex) != 3 && len(hex) != 6 {
-			return fallback
-		}
-		for _, c := range hex {
-			if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
-				return fallback
-			}
-		}
-		return value
-	}
+// emailBodyDocumentPolicy sandboxes a message body document the same way as
+// the reader's iframe, also when it is opened directly in a tab, so neither
+// the sender's HTML nor anything in the request runs with the reader's session.
+// Only the reader's own scripts carry the response's nonce, so nothing the
+// sender wrote runs at all. The sandbox grants scripts only: no popups (the
+// reader's page opens links, see emailExternalLinksScript), no same-origin,
+// no forms. Content loads only from Gofer and embedded data: remote content
+// the reader allows comes through Gofer too, so the page never contacts the
+// sender's servers, and fonts and media never load.
+func emailBodyDocumentPolicy(nonce string) string {
+	return "sandbox allow-scripts; default-src 'none'" +
+		"; script-src 'nonce-" + nonce + "'" +
+		"; style-src 'unsafe-inline'" +
+		"; img-src 'self' data:" +
+		"; form-action 'none'; base-uri 'none'; frame-ancestors 'self'"
+}
 
-	if (strings.HasPrefix(lower, "rgb(") || strings.HasPrefix(lower, "rgba(")) && strings.HasSuffix(lower, ")") {
-		if strings.ContainsAny(lower, ";{}") {
-			return fallback
-		}
-		return value
-	}
+// setEmailBodyDocumentHeaders starts a body document response and returns the
+// nonce its own scripts must carry.
+func setEmailBodyDocumentHeaders(w http.ResponseWriter) string {
+	nonce := cryptorand.Text()
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Security-Policy", emailBodyDocumentPolicy(nonce))
+	return nonce
+}
 
-	return fallback
+// scriptWithNonce lets one of the reader's own scripts run under the body
+// document's policy. It is never applied to message content.
+func scriptWithNonce(script []byte, nonce string) []byte {
+	return bytes.ReplaceAll(script, []byte("<script>"), []byte(`<script nonce="`+nonce+`">`))
 }
 
 func buildDarkModeScript(bgColor, fgColor string) []byte {
@@ -1689,11 +1707,22 @@ var oc=p(cs.outlineColor);if(oc&&bw(cs.outlineWidth)>0&&(!nbg||cr(oc,nbg)<2.2||d
 })();</script>`, bgColor, fgColor, linkColor))
 }
 
-func buildBodyDocument(body []byte, resizeScript []byte, nonce, theme string, bgColor string, fgColor string, linkColor string, original bool) []byte {
+// emailBodyTextSize returns the base text size, in pixels, for a message body document.
+// Small screens ask for larger text with text=large; message HTML that sets its own
+// sizes keeps them.
+func emailBodyTextSize(r *http.Request) int {
+	if r.URL.Query().Get("text") == "large" {
+		return 16
+	}
+	return 15
+}
+
+func buildBodyDocument(body []byte, resizeScript []byte, theme string, bgColor string, fgColor string, linkColor string, original bool, textSize int, nonce string) []byte {
+	nonced := func(script []byte) string { return string(scriptWithNonce(script, nonce)) }
 	s := string(body)
 	lower := strings.ToLower(s)
 	isDark := theme == "dark"
-	injection := withScriptNonce(string(emailExternalLinksScript())+string(resizeScript), nonce)
+	injection := nonced(emailExternalLinksScript()) + nonced(emailQuoteScript()) + nonced(resizeScript)
 
 	if original {
 		if strings.Contains(lower, "<html") {
@@ -1742,28 +1771,28 @@ func buildBodyDocument(body []byte, resizeScript []byte, nonce, theme string, bg
 		lowerAfter := strings.ToLower(s)
 		if idx := strings.LastIndex(lowerAfter, "</body>"); idx != -1 {
 			if isDark {
-				injection = withScriptNonce(string(buildDarkModeScript(bgColor, fgColor)), nonce) + injection
+				injection = nonced(buildDarkModeScript(bgColor, fgColor)) + injection
 			} else {
-				injection = withScriptNonce(string(buildLightModeScript(bgColor, fgColor, linkColor)), nonce) + injection
+				injection = nonced(buildLightModeScript(bgColor, fgColor, linkColor)) + injection
 			}
 			return []byte(s[:idx] + injection + s[idx:])
 		}
 		if isDark {
-			injection = withScriptNonce(string(buildDarkModeScript(bgColor, fgColor)), nonce) + injection
+			injection = nonced(buildDarkModeScript(bgColor, fgColor)) + injection
 		} else {
-			injection = withScriptNonce(string(buildLightModeScript(bgColor, fgColor, linkColor)), nonce) + injection
+			injection = nonced(buildLightModeScript(bgColor, fgColor, linkColor)) + injection
 		}
 		return []byte(s + injection)
 	}
 
 	if isDark {
-		injection = withScriptNonce(string(buildDarkModeScript(bgColor, fgColor)), nonce) + injection
+		injection = nonced(buildDarkModeScript(bgColor, fgColor)) + injection
 	} else {
-		injection = withScriptNonce(string(buildLightModeScript(bgColor, fgColor, linkColor)), nonce) + injection
+		injection = nonced(buildLightModeScript(bgColor, fgColor, linkColor)) + injection
 	}
 	doc := "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><style>" +
 		"html{margin:0;overflow:hidden;color-scheme:" + scheme + ";background:" + bgColor + ";color:" + fgColor + "}" +
-		"body{margin:0;padding:8px;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:15px;line-height:1.6;background:" + bgColor + ";color:" + fgColor + ";word-wrap:break-word}" +
+		"body{margin:0;padding:8px;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:" + strconv.Itoa(textSize) + "px;line-height:1.6;background:" + bgColor + ";color:" + fgColor + ";word-wrap:break-word}" +
 		"img{max-width:100%;height:auto}" +
 		"a{color:" + linkColor + "}" +
 		"</style></head><body>" +
@@ -1897,7 +1926,7 @@ func (h *Handler) storeParsedBody(ctx context.Context, parsed *message.ParsedMes
 		snippet = parsed.Subject
 	}
 
-	if err := h.db.UpdateMessageBodyInternal(ctx, msgID, textPath, htmlPath, parsed.RawPath, snippet); err != nil {
+	if err := h.db.UpdateMessageBodyInternal(ctx, msgID, textPath, htmlPath, parsed.RawPath, snippet, parsed.Size); err != nil {
 		return
 	}
 	if originalHTMLPath != "" {
@@ -2007,7 +2036,11 @@ func (h *Handler) fetchParsedBody(ctx context.Context, msgID int64, accountID st
 	).Scan(&rawPath)
 
 	if rawPath != "" {
-		if data, err := os.ReadFile(rawPath); err == nil && len(data) > 0 {
+		data, err := message.ReadSavedMessage(ctx, rawPath)
+		if err != nil {
+			return nil, err
+		}
+		if len(data) > 0 {
 			bodyData = data
 		}
 	}
@@ -2037,16 +2070,17 @@ func (h *Handler) fetchBodyRemote(ctx context.Context, msgID int64, info *storag
 	}
 	var graphErr error
 	var gmailErr error
+	var tooLarge *message.TooLargeError
 	if bodyData, attempted, err := h.fetchOutlookGraphMessageMIME(ctx, msgID); attempted {
-		if err == nil {
-			return bodyData, nil
+		if err == nil || errors.As(err, &tooLarge) {
+			return bodyData, err
 		}
 		graphErr = err
 		log.Printf("outlook fetch body account=%s message=%d: %v", info.AccountID, msgID, err)
 	}
 	if bodyData, attempted, err := h.fetchGmailAPIMessageMIME(ctx, msgID); attempted {
-		if err == nil {
-			return bodyData, nil
+		if err == nil || errors.As(err, &tooLarge) {
+			return bodyData, err
 		}
 		gmailErr = err
 		log.Printf("gmail fetch body account=%s message=%d: %v", info.AccountID, msgID, err)
@@ -2066,6 +2100,9 @@ func (h *Handler) fetchBodyRemote(ctx context.Context, msgID int64, info *storag
 		return bodyData, nil
 	}
 	h.closeBodyClient(info.AccountID)
+	if errors.As(err, &tooLarge) {
+		return nil, err
+	}
 	bodyData, err = h.fetchBodyRemoteWithCachedClient(ctx, info.AccountID, info.FolderRemoteID, info.RemoteUID)
 	if err != nil {
 		if gmailErr != nil {
@@ -2305,10 +2342,81 @@ func (h *Handler) handleMailItems(w http.ResponseWriter, r *http.Request) {
 		}
 		view := r.URL.Query().Get("view")
 		if view == "" {
-			view = settings["mail_list_view"]
+			view = views.ListViewSetting(ctx, settings, "mail_list_view")
 		}
 		return views.MailListItemsFragment(accounts, page.Emails, folderID, page.WindowStart, page.WindowEnd, page.TotalCount, page.DisplayTotalCount, page.NextCursor, page.HasMore, r.URL.Query().Get("selected"), settings["sender_display"], view), nil
 	})
+}
+
+// mailItemIDsLimit caps how many messages "select all" can gather at once.
+const mailItemIDsLimit = 10000
+
+type mailItemID struct {
+	ID     string `json:"id"`
+	Thread bool   `json:"thread"`
+}
+
+type mailItemIDsResponse struct {
+	IDs       []mailItemID `json:"ids"`
+	Total     int          `json:"total"`
+	Truncated bool         `json:"truncated"`
+}
+
+// handleMailItemIDs lists every row the folder shows under the given filters, in
+// list order, so the list can select all of them and not just the loaded ones.
+// A row standing for a thread is marked, as bulk actions treat it as the thread.
+func (h *Handler) handleMailItemIDs(w http.ResponseWriter, r *http.Request) {
+	const pageSize = 500
+	ctx := r.Context()
+	result := mailItemIDsResponse{IDs: []mailItemID{}}
+	err := h.withUserDB(ctx, h.userID(ctx), func(db *storage.DB) error {
+		local := h
+		if h.userStorage != nil {
+			local = &Handler{db: db, auth: h.auth}
+		}
+		userID := local.userID(ctx)
+		folderID, err := local.resolveFolderID(ctx, userID, r.PathValue("id"))
+		if err != nil {
+			return err
+		}
+		settings := db.GetUISettings(ctx, userID)
+		listCtx := storage.WithTimezone(ctx, settings["timezone"])
+		filters := applyEmailSortDefaults(parseEmailFilters(r), r, settings)
+		total := -1
+		for start := 0; ; start += pageSize {
+			page, err := db.GetEmailsRangeFilteredForUserWithTotal(listCtx, userID, folderID, start, pageSize, filters, total)
+			if err != nil {
+				return err
+			}
+			if page == nil {
+				break
+			}
+			total = page.TotalCount
+			for _, email := range page.Emails {
+				if len(result.IDs) == mailItemIDsLimit {
+					result.Truncated = true
+					break
+				}
+				result.IDs = append(result.IDs, mailItemID{ID: email.ID, Thread: email.ThreadCount > 1})
+			}
+			if result.Truncated || len(page.Emails) < pageSize || start+len(page.Emails) >= total {
+				break
+			}
+		}
+		result.Total = max(total, len(result.IDs))
+		return nil
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, storage.ErrAccountRoute) {
+			http.NotFound(w, r)
+			return
+		}
+		log.Printf("mail item ids unavailable: %v", err)
+		http.Error(w, "mailbox unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
 }
 
 func parseEmailFilters(r *http.Request) models.EmailFilters {
@@ -2499,7 +2607,7 @@ func (h *Handler) handleSearch(w http.ResponseWriter, r *http.Request) {
 				return nil, err
 			}
 		}
-		return views.MailListEmails(accounts, emails, "", nil, len(emails), len(emails), 0, settings["sender_display"], settings["mail_list_view"], settings["mail_list_navigation"]), nil
+		return views.MailListEmails(accounts, emails, "", nil, len(emails), len(emails), 0, settings["sender_display"], views.ListViewSetting(ctx, settings, "mail_list_view"), settings["mail_list_navigation"]), nil
 	})
 }
 
@@ -2584,7 +2692,11 @@ func (h *Handler) handleCreateAccount(w http.ResponseWriter, r *http.Request) {
 	account, err := h.accountStore.CreateAccount(r.Context(), h.userID(r.Context()), &req)
 	if err != nil {
 		w.Header().Set("Content-Type", "text/html")
-		views.AccountFormError(fmt.Sprintf("Failed to create account: %v", err)).Render(r.Context(), w)
+		message := fmt.Sprintf("Failed to create account: %v", err)
+		if errors.Is(err, config.ErrMailboxExists) {
+			message = "This mailbox is already connected to Gofer."
+		}
+		views.AccountFormError(message).Render(r.Context(), w)
 		return
 	}
 
@@ -3176,6 +3288,12 @@ func (h *Handler) handleTestAccount(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) writeConnectionTestResults(w http.ResponseWriter, r *http.Request, results []models.ConnectionTestResult, accountID string) {
 	w.Header().Set("Content-Type", "text/html")
 	wizardType := r.URL.Query().Get("wizard")
+	if wizardType == "check" {
+		// The edit wizard's test step for accounts whose mail settings can't be
+		// typed in, such as Gmail or Outlook: it tests the saved connection.
+		writeAccountTestResults(w, r, results)
+		return
+	}
 	if wizardType != "" {
 		views.ConnectionTestResults(results, accountID, wizardType).Render(r.Context(), w)
 		return
@@ -3216,7 +3334,11 @@ func (h *Handler) handleSettingsTab(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	if tab == "security" && h.auth != nil && h.auth.IsEnabled() {
+	if tab == "security" {
+		if h.auth == nil || !h.auth.IsEnabled() {
+			h.renderOpenSecurityTab(w, r)
+			return
+		}
 		h.renderPasswordSecurityTab(w, r, http.StatusOK, nil)
 		return
 	}
@@ -3387,6 +3509,12 @@ func (h *Handler) renderPasswordSecurityTab(w http.ResponseWriter, r *http.Reque
 		MicrosoftLoginAvailable: !managementSurface && h.auth.HasMicrosoftLogin(),
 		OIDCLoginAvailable:      !managementSurface && h.auth.HasOIDCLogin(),
 		OIDCLoginName:           h.auth.OIDCLoginName(),
+	}
+	data.MailSecurity, err = h.ownerMailSecurityData(r)
+	if err != nil {
+		log.Printf("load personal mail security exceptions: %v", err)
+		http.Error(w, "failed to load security settings", http.StatusInternalServerError)
+		return
 	}
 	data.Passkeys = passkeySecurityViewData(summary.Passkeys)
 	data.FederatedIdentities = federatedIdentityViewData(identities)
@@ -3854,7 +3982,7 @@ func (h *Handler) handleSavePushSubscription(w http.ResponseWriter, r *http.Requ
 	req.Endpoint = strings.TrimSpace(req.Endpoint)
 	req.Keys.P256DH = strings.TrimSpace(req.Keys.P256DH)
 	req.Keys.Auth = strings.TrimSpace(req.Keys.Auth)
-	if !netguard.ValidEndpoint(req.Endpoint) || req.Keys.P256DH == "" || req.Keys.Auth == "" ||
+	if !netguard.ValidEndpoint(req.Endpoint) || !validPushEndpoint(req.Endpoint) || req.Keys.P256DH == "" || req.Keys.Auth == "" ||
 		len(req.Endpoint) > 2048 || len(req.Keys.P256DH) > 256 || len(req.Keys.Auth) > 256 {
 		http.Error(w, "invalid subscription", http.StatusBadRequest)
 		return
@@ -3901,6 +4029,28 @@ func (h *Handler) handleDeletePushSubscription(w http.ResponseWriter, r *http.Re
 		}
 	}
 
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]bool{"ok": true})
+}
+
+func (h *Handler) handleTestPush(w http.ResponseWriter, r *http.Request) {
+	var req pushSubscriptionDeleteRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+	if h.testPush == nil {
+		http.Error(w, "Web Push is not set up for this browser.", http.StatusConflict)
+		return
+	}
+	if err := h.testPush(r.Context(), h.userID(r.Context()), req.Endpoint); err != nil {
+		if errors.Is(err, storage.ErrNoWebPushSubscription) {
+			http.Error(w, "Web Push is not set up for this browser. Turn notifications off and on again to register it.", http.StatusConflict)
+			return
+		}
+		http.Error(w, "Could not send the test notification: "+err.Error(), http.StatusBadGateway)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]bool{"ok": true})
 }
@@ -4002,7 +4152,7 @@ func (h *Handler) handleAttachmentDownload(w http.ResponseWriter, r *http.Reques
 	}
 	defer f.Close()
 
-	serveUntrusted(w, r, info.Filename, info.ContentType, f, "", false)
+	serveMailFile(w, r, f, info.Filename, info.ContentType, false)
 }
 
 func (h *Handler) handleAttachmentPreview(w http.ResponseWriter, r *http.Request) {
@@ -4180,52 +4330,10 @@ func attachmentPreviewURL(id int64, contentType, filename string) string {
 }
 
 // isPreviewableImage reports whether the declared type is a raster image that
-// serveUntrusted will render inline. The filename is deliberately ignored: a
+// serveMailFile will render inline. The filename is deliberately ignored: a
 // sender controls it as freely as the content type.
 func isPreviewableImage(contentType, _ string) bool {
-	return inlineImageTypes[strings.ToLower(strings.TrimSpace(strings.Split(contentType, ";")[0]))]
-}
-
-var inlineImageTypes = map[string]bool{"image/png": true, "image/jpeg": true, "image/gif": true, "image/webp": true}
-
-// serveUntrusted serves email-derived bytes (attachments, inline parts, remote
-// assets). The sender controls the bytes, the declared type and the filename,
-// so: the response is sandboxed (opaque origin, no scripts), nosniff stops type
-// guessing, and only content that really is a safe raster image, judged by its
-// bytes, is shown inline. Everything else is a download. SVG/BMP/ICO keep their
-// image type (so <img> in an email still renders) but are never shown inline.
-func serveUntrusted(w http.ResponseWriter, r *http.Request, filename, declaredType string, f *os.File, cacheControl string, allowInline bool) {
-	buf := make([]byte, 512)
-	n, _ := f.Read(buf)
-	_, _ = f.Seek(0, io.SeekStart)
-	sniffed := strings.ToLower(strings.Split(http.DetectContentType(buf[:n]), ";")[0])
-	declared := strings.ToLower(strings.TrimSpace(strings.Split(declaredType, ";")[0]))
-
-	contentType, disposition := "application/octet-stream", "attachment"
-	switch {
-	case inlineImageTypes[sniffed]:
-		contentType = sniffed
-		if allowInline {
-			disposition = "inline"
-		}
-	case sniffed == "image/bmp" || sniffed == "image/x-icon":
-		contentType = sniffed
-	case declared == "image/svg+xml":
-		contentType = declared
-	}
-	h := w.Header()
-	h.Add("Content-Security-Policy", "sandbox; default-src 'none'") // Add: keep the global frame-ancestors policy
-	h.Set("X-Content-Type-Options", "nosniff")
-	h.Set("Content-Type", contentType)
-	if cd := mime.FormatMediaType(disposition, map[string]string{"filename": filename}); cd != "" {
-		h.Set("Content-Disposition", cd)
-	} else {
-		h.Set("Content-Disposition", disposition)
-	}
-	if cacheControl != "" {
-		h.Set("Cache-Control", cacheControl)
-	}
-	http.ServeContent(w, r, filename, time.Time{}, f)
+	return mailFileInlineTypes[mailFileMediaType(contentType)]
 }
 
 func serveAttachmentPreview(w http.ResponseWriter, r *http.Request, filename, contentType, storagePath string) {
@@ -4235,7 +4343,8 @@ func serveAttachmentPreview(w http.ResponseWriter, r *http.Request, filename, co
 		return
 	}
 	defer f.Close()
-	serveUntrusted(w, r, filename, contentType, f, "private, max-age=300", true)
+	w.Header().Set("Cache-Control", "private, max-age=300")
+	serveMailFile(w, r, f, filename, contentType, true)
 }
 
 func (h *Handler) handleInlineContent(w http.ResponseWriter, r *http.Request) {
@@ -4271,7 +4380,8 @@ func (h *Handler) handleInlineContent(w http.ResponseWriter, r *http.Request) {
 	}
 	defer f.Close()
 
-	serveUntrusted(w, r, info.Filename, info.ContentType, f, "private, max-age=31536000", true)
+	w.Header().Set("Cache-Control", "private, max-age=31536000")
+	serveMailFile(w, r, f, info.Filename, info.ContentType, true)
 }
 
 func (h *Handler) handleAllowRemoteContent(w http.ResponseWriter, r *http.Request) {
@@ -4336,7 +4446,7 @@ func (h *Handler) handleAllowRemoteContent(w http.ResponseWriter, r *http.Reques
 	for _, remoteURL := range remoteURLs {
 		download := h.remoteResourceDownloader
 		if download == nil {
-			download = downloadRemoteResource
+			download = newRemoteResourceDownloader(privateTargetAllowed(h.db))
 		}
 		data, err := download(ctx, remoteURL)
 		if err != nil || len(data) == 0 {
@@ -4390,21 +4500,64 @@ func (h *Handler) handleAllowRemoteContent(w http.ResponseWriter, r *http.Reques
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }
 
-// remoteFetch is the SSRF-guarded fetcher behind downloadRemoteResource.
-var remoteFetch = netguard.FetchContext
-
-// SetRemoteFetchForTest swaps the fetcher so other packages' tests can serve
-// remote content from loopback fixtures, which the guard refuses by design.
-// It returns a function that restores the previous fetcher.
-func SetRemoteFetchForTest(fetch func(ctx context.Context, rawURL string, maxBytes int64) ([]byte, error)) (restore func()) {
-	previous := remoteFetch
-	remoteFetch = fetch
-	return func() { remoteFetch = previous }
+// newRemoteResourceDownloader fetches the remote images a reader chose to
+// load. Their addresses come from the sender, so every connection goes
+// through netguard: private addresses only when an administrator approved
+// them, no proxy from the environment, and each redirect is checked again
+// when it connects.
+func newRemoteResourceDownloader(allowPrivate netguard.PrivatePolicy) func(context.Context, string) ([]byte, error) {
+	client := &http.Client{
+		Timeout:   10 * time.Second,
+		Transport: netguard.NewHTTPTransport(allowPrivate),
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= 5 {
+				return errors.New("remote resource redirected too many times")
+			}
+			if req.URL.Scheme != "http" && req.URL.Scheme != "https" {
+				return fmt.Errorf("remote resource redirected to unsupported scheme %q", req.URL.Scheme)
+			}
+			return nil
+		},
+	}
+	return func(ctx context.Context, url string) ([]byte, error) {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+		if err != nil {
+			return nil, err
+		}
+		if req.URL.Scheme != "http" && req.URL.Scheme != "https" {
+			return nil, fmt.Errorf("remote resource has unsupported scheme %q", req.URL.Scheme)
+		}
+		resp, err := client.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
+		}
+		data, err := io.ReadAll(io.LimitReader(resp.Body, 5*1024*1024+1))
+		if err == nil && len(data) > 5*1024*1024 {
+			return nil, errors.New("remote resource is too large")
+		}
+		return data, err
+	}
 }
 
-func downloadRemoteResource(ctx context.Context, url string) ([]byte, error) {
-	return remoteFetch(ctx, url, 5*1024*1024)
+// privateTargetAllowed reads the administrator's private-target exceptions.
+func privateTargetAllowed(db *storage.DB) netguard.PrivatePolicy {
+	return func(ctx context.Context, protocol, host string, port int) bool {
+		allowed, err := db.IsPrivateTargetAllowed(ctx, protocol, host, port)
+		if err != nil {
+			log.Printf("check private target exception for %s %s:%d: %v", protocol, host, port, err)
+			return false
+		}
+		return allowed
+	}
 }
+
+// downloadRemoteResource downloads a remote image through the guarded client
+// with no private-target exception.
+var downloadRemoteResource = newRemoteResourceDownloader(nil)
 
 func validRemoteAssetFilename(filename string) bool {
 	filename = strings.TrimSpace(filename)
@@ -4460,7 +4613,8 @@ func (h *Handler) handleRemoteAsset(w http.ResponseWriter, r *http.Request) {
 	}
 	defer f.Close()
 
-	serveUntrusted(w, r, filename, mime.TypeByExtension(filepath.Ext(filename)), f, "private, max-age=31536000", true)
+	w.Header().Set("Cache-Control", "private, max-age=31536000")
+	serveMailFile(w, r, f, filename, remoteAssetContentType(filename), true)
 }
 
 // sseRecheckInterval is a variable so tests can shorten it.
@@ -4960,7 +5114,7 @@ func (h *Handler) saveComposeDraftFromForm(ctx context.Context, r *http.Request)
 		}
 		htmlPath = p
 	}
-	if err := h.db.UpdateMessageBodyInternal(ctx, msgID, textPath, htmlPath, "", snippet); err != nil {
+	if err := h.db.UpdateMessageBodyInternal(ctx, msgID, textPath, htmlPath, "", snippet, 0); err != nil {
 		return persistFailed("update body", err)
 	}
 	if err := h.db.ReplaceAttachmentsInternal(ctx, msgID, attachmentRows); err != nil {
@@ -5280,6 +5434,15 @@ func (h *Handler) handleGetDraft(w http.ResponseWriter, r *http.Request) {
 	if err != nil || email == nil || !email.IsDraft {
 		http.NotFound(w, r)
 		return
+	}
+	// A draft picked up from a thread may not have been opened yet, so its
+	// body may not be downloaded. Without it the editor would open with only
+	// the preview text.
+	if msgID, err := strconv.ParseInt(email.ID, 10, 64); err == nil && !h.db.IsBodyFetchedInternal(r.Context(), msgID) {
+		h.ensureBodyFetched(r.Context(), msgID, email.AccountID)
+		if fetched, err := h.db.GetEmailByIDForUser(r.Context(), email.ID, h.userID(r.Context())); err == nil && fetched != nil && fetched.IsDraft {
+			email = fetched
+		}
 	}
 	type draftAttachment struct {
 		ID          int64  `json:"id"`
@@ -6277,6 +6440,44 @@ func (h *Handler) handleToggleThreadRead(w http.ResponseWriter, r *http.Request)
 	json.NewEncoder(w).Encode(map[string]bool{"is_read": targetRead})
 }
 
+// handleToggleThreadStar unstars every message in the thread when any of them is starred,
+// and otherwise stars them all.
+func (h *Handler) handleToggleThreadStar(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	ctx := r.Context()
+
+	targets, err := h.resolveOwnedMessageTargets(ctx, []messageBulkTarget{{ID: idStr, Thread: true}}, "", true)
+	if err != nil {
+		writeMessageTargetError(w, r, err)
+		return
+	}
+	infos := targets[0].Infos
+
+	targetStarred := true
+	for _, info := range infos {
+		if info.IsStarred {
+			targetStarred = false
+			break
+		}
+	}
+	messageIDs := make([]int64, 0, len(infos))
+	for _, info := range infos {
+		messageIDs = append(messageIDs, info.MessageID)
+	}
+	if err := h.db.SetMessagesStarredAndQueueForUser(ctx, messageIDs, targetStarred, h.userID(ctx)); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	h.signalMessageMutationWorker()
+
+	h.publishThreadMutation(infos)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]bool{"is_starred": targetStarred})
+}
+
 func (h *Handler) handleArchiveThread(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	ctx := r.Context()
@@ -6466,7 +6667,7 @@ func (h *Handler) handleRefetchBody(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) handlePrefetchBody(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
-	ctx := r.Context()
+	ctx := providerquota.Background(r.Context())
 
 	msgID, info, err := h.getMessageInfo(ctx, idStr)
 	if err != nil {
@@ -6475,9 +6676,32 @@ func (h *Handler) handlePrefetchBody(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !h.db.IsBodyFetchedInternal(ctx, msgID) {
-		h.ensureBodyFetched(ctx, msgID, info.AccountID)
+		h.ensureBodyFetched(message.WithDownloadLimit(ctx, message.AutoDownloadMaxBytes), msgID, info.AccountID)
 	}
 
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// handleDownloadFullBody downloads a message the reader asked to see although
+// it is larger than Gofer downloads on its own.
+func (h *Handler) handleDownloadFullBody(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	msgID, info, err := h.getMessageInfo(ctx, r.PathValue("id"))
+	if err != nil {
+		writeMessageTargetError(w, r, err)
+		return
+	}
+	if !h.db.IsBodyFetchedInternal(ctx, msgID) {
+		parsed, err := h.fetchParsedBody(ctx, msgID, info.AccountID)
+		if err != nil {
+			if !writeMessageTooLarge(w, err) {
+				log.Printf("download full message %d: %v", msgID, err)
+				http.Error(w, "This message couldn't be downloaded from the mail server.", http.StatusServiceUnavailable)
+			}
+			return
+		}
+		h.storeParsedBody(ctx, parsed, msgID, info.AccountID)
+	}
 	w.WriteHeader(http.StatusNoContent)
 }
 

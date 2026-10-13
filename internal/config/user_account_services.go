@@ -67,12 +67,16 @@ func (s *AccountServiceSnapshot) SMTPConfig(ctx context.Context) (*models.Accoun
 	if cfg.SMTPTLSMode == mailtransport.TLSModePlaintext && !strings.EqualFold(strings.TrimSpace(cfg.AuthMethod), "plain") {
 		return nil, errors.New("SMTP OAuth authentication is not allowed over a plaintext connection")
 	}
+	cfg.SMTPAllowPrivate, err = s.repository.routing.System().IsPrivateTargetAllowed(ctx, "smtp", cfg.SMTPHost, cfg.SMTPPort)
+	if err != nil {
+		return nil, err
+	}
 	return cfg, nil
 }
 
 func (s *AccountServiceSnapshot) SMTPPassword() (string, error) {
 	if s.data.SmtpUsername != "" && len(s.smtpPassword) > 0 {
-		password, err := s.repository.base.decrypt(s.smtpPassword)
+		password, err := s.repository.base.decryptPassword(s.owner, s.id, passwordKindSMTP, s.smtpPassword)
 		if err != nil {
 			return "", err
 		}
@@ -100,7 +104,7 @@ func (s *AccountServiceSnapshot) ContactSyncPassword(submitted string) (string, 
 		return submitted, nil
 	}
 	if len(s.contactPassword) > 0 {
-		password, err := s.repository.base.decrypt(s.contactPassword)
+		password, err := s.repository.base.decryptPassword(s.owner, s.id, passwordKindCardDAV, s.contactPassword)
 		if err == nil && password != "" {
 			return password, nil
 		}
@@ -111,7 +115,7 @@ func (s *AccountServiceSnapshot) MailboxPassword() (string, error) {
 	if len(s.password) == 0 {
 		return "", nil
 	}
-	return s.repository.base.decrypt(s.password)
+	return s.repository.base.decryptPassword(s.owner, s.id, passwordKindIMAP, s.password)
 }
 func (s *AccountServiceSnapshot) CalDAVPassword(submitted string, useAccountCredentials bool) (string, error) {
 	if useAccountCredentials {
@@ -123,7 +127,7 @@ func (s *AccountServiceSnapshot) CalDAVPassword(submitted string, useAccountCred
 	if len(s.calendarPassword) == 0 {
 		return "", nil
 	}
-	return s.repository.base.decrypt(s.calendarPassword)
+	return s.repository.base.decryptPassword(s.owner, s.id, passwordKindCalDAV, s.calendarPassword)
 }
 
 func (s *UserAccountStore) SnapshotServices(ctx context.Context, owner, id string) (snapshot *AccountServiceSnapshot, err error) {

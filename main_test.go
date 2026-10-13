@@ -84,7 +84,7 @@ func TestRunApplicationDispatchesAuthBeforeServerStartup(t *testing.T) {
 	stdout.Reset()
 	stderr.Reset()
 	serverStarted = false
-	exitCode = runApplication(t.Context(), []string{"auth", "sessions", "revoke", "--user", "owner", "--confirm", "owner"}, &stdout, &stderr, func() {
+	exitCode = runApplication(t.Context(), []string{"auth", "sessions", "revoke", "--user-id", "owner", "--confirm", "owner"}, &stdout, &stderr, func() {
 		serverStarted = true
 	})
 	if exitCode != 0 || serverStarted || stdout.String() != "user_id: \"owner\"\nrevoked_sessions: 1\n" || stderr.Len() != 0 {
@@ -92,14 +92,29 @@ func TestRunApplicationDispatchesAuthBeforeServerStartup(t *testing.T) {
 	}
 }
 
-func TestRunApplicationUsesServerPathForNonAuthArguments(t *testing.T) {
+func TestRunApplicationStartsServerOnlyWithoutArguments(t *testing.T) {
 	serverStarts := 0
 	if code := runApplication(t.Context(), nil, &bytes.Buffer{}, &bytes.Buffer{}, func() { serverStarts++ }); code != 0 || serverStarts != 1 {
 		t.Fatalf("server dispatch = code:%d starts:%d", code, serverStarts)
 	}
-	serverStarts = 0
-	if code := runApplication(t.Context(), []string{"unexpected"}, &bytes.Buffer{}, &bytes.Buffer{}, func() { serverStarts++ }); code != 0 || serverStarts != 1 {
-		t.Fatalf("non-auth dispatch = code:%d starts:%d", code, serverStarts)
+	for _, args := range [][]string{{"unexpected"}, {"test", "invalid"}, {"help", "extra"}} {
+		var stdout, stderr bytes.Buffer
+		serverStarts = 0
+		code := runApplication(t.Context(), args, &stdout, &stderr, func() { serverStarts++ })
+		if code != 2 || serverStarts != 0 || stdout.Len() != 0 || !strings.Contains(stderr.String(), "unknown command") || !strings.Contains(stderr.String(), "gofer help") {
+			t.Fatalf("Run(%v) = code:%d starts:%d stdout:%q stderr:%q", args, code, serverStarts, stdout.String(), stderr.String())
+		}
+	}
+}
+
+func TestRunApplicationPrintsHelpWithoutStartingServer(t *testing.T) {
+	for _, arg := range []string{"help", "-h", "--help"} {
+		var stdout, stderr bytes.Buffer
+		started := false
+		code := runApplication(t.Context(), []string{arg}, &stdout, &stderr, func() { started = true })
+		if code != 0 || started || stderr.Len() != 0 || !strings.Contains(stdout.String(), "gofer auth recover") || !strings.Contains(stdout.String(), "gofer storage inspect") {
+			t.Fatalf("Run(%s) = code:%d started:%t stdout:%q stderr:%q", arg, code, started, stdout.String(), stderr.String())
+		}
 	}
 }
 

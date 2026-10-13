@@ -89,7 +89,26 @@ Each stage ends with: `templ generate`, `tailwindcss` build, `go build ./...`, `
   succeeds (iCloud via CalDAV autodiscovery with the mailbox login).
   **Not yet verified against real providers** - check on the desktop app with
   real accounts before release.
-- [ ] Stage 3
+- [x] Stage 3 (2026-10-13). Notes:
+  - Security merged to the stricter of both sides on every axis: one
+    `netguard` with upstream's API and admin-approval exceptions plus Raven's
+    blanket NAT64/6to4 block and redirect checks; Raven's allow-list sanitizer
+    with upstream's API and attack tests; upstream's signed message-file
+    links and image relay (iframe CSP `img-src 'self' data:`); one
+    `serveMailFile` that judges type by bytes; iframe sandbox without popups.
+  - Page-wide CSP is now `script-src 'self'`: ~120 inline handlers became
+    `data-on-*` hooks (actions.js), inline scripts moved to settings-page.js,
+    saved-panel-size.js; htmx `allowEval=false`.
+  - Behaviour change: a private (LAN) CardDAV/CalDAV server now needs a
+    "Mail security" exception even in personal/open mode.
+  - Deferred upstream UI (needs design): select-all banner, wizard
+    "test before saving", settings card structure, collapsed-message reply
+    buttons, thread sheets, quote-collapse toggle UI. Express theme assets
+    are in the tree but unused.
+  - Pre-existing (not merge-caused): the edit-account wizard's step sidebar is
+    cramped and the next step's panel peeks at the right edge.
+  - **Verify on the desktop app**: Tauri-injected scripts under the new
+    `script-src 'self'` policy (dock badge, notifications, updater).
 - [ ] Stage 4
 - [ ] Stage 5
 

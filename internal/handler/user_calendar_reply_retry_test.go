@@ -112,6 +112,9 @@ func TestUserCalendarReplyRetryConfirmedResendAfterRealLostSMTPAcknowledgement(t
 	if err := f.system.AddPlaintextTransportException(t.Context(), "smtp", host, port, "repaired fixture"); err != nil {
 		t.Fatal(err)
 	}
+	if err := f.system.AddPrivateTargetException(t.Context(), "smtp", host, port, "repaired fixture"); err != nil {
+		t.Fatal(err)
+	}
 	if err := f.h.userAccounts.WithUser(t.Context(), "alice", func(_ *config.AccountStore, db *storage.DB) error {
 		_, err := db.Write().Exec(`UPDATE accounts SET smtp_host=?,smtp_port=? WHERE id=?`, host, port, f.accounts["alice"].ID)
 		return err

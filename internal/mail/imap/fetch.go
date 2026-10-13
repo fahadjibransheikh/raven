@@ -7,6 +7,8 @@ import (
 
 	"github.com/emersion/go-imap/v2"
 	"github.com/emersion/go-imap/v2/imapclient"
+
+	"github.com/cristianadrielbraun/gofer/internal/mail/message"
 )
 
 func (c *Client) FetchBody(ctx context.Context, folderRemoteName string, uid uint32) ([]byte, error) {
@@ -41,6 +43,7 @@ func (c *Client) FetchBodyWithValidity(ctx context.Context, folderRemoteName str
 	}
 
 	cmd := c.client.Fetch(uidSet, fetchOpts)
+	limit := message.DownloadLimit(ctx, message.MaxDownloadBytes)
 
 	var bodyData []byte
 
@@ -61,6 +64,25 @@ func (c *Client) FetchBodyWithValidity(ctx context.Context, folderRemoteName str
 				continue
 			}
 
+			// The server announces the size before sending the message, so a
+			// message over the limit is refused without reading it. The rest
+			// of it is still on its way, so the connection is closed. Closing
+			// waits for the message to be consumed, which fails at once when
+			// the connection is gone.
+			if size := section.Literal.Size(); size > limit {
+				c.closed = true
+				if c.stopContext != nil {
+					c.stopContext()
+				}
+				closed := make(chan struct{})
+				go func() {
+					_ = c.client.Close()
+					close(closed)
+				}()
+				_, _ = io.Copy(io.Discard, section.Literal)
+				<-closed
+				return nil, &message.TooLargeError{Size: size, Limit: limit}
+			}
 			body, err := io.ReadAll(section.Literal)
 			if err != nil {
 				return nil, fmt.Errorf("read body literal: %w", err)

@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/joho/godotenv"
@@ -39,12 +40,37 @@ func main() {
 	}
 }
 
+const usage = `Usage:
+  gofer                 start the server
+  gofer help            show this help
+
+Authentication:
+  gofer auth status
+  gofer auth users list
+  gofer auth setup-token rotate
+  gofer auth recover (--user-id <id> | --username <name>) --confirm <same value>
+  gofer auth sessions revoke (--user-id <id> | --username <name>) --confirm <same value>
+
+Storage:
+  gofer storage inspect [--db PATH]
+  gofer storage migrate [--db PATH] --to PATH [--working-dir PATH] [--retry]
+`
+
 func runApplication(ctx context.Context, args []string, stdout, stderr io.Writer, serve func()) int {
+	if len(args) == 1 && (args[0] == "help" || args[0] == "-h" || args[0] == "--help") {
+		_, _ = io.WriteString(stdout, usage)
+		return 0
+	}
 	if handled, exitCode := runAuthCommand(ctx, args, stdout, stderr); handled {
 		return exitCode
 	}
 	if handled, exitCode := server.RunStorageCommand(ctx, args, stdout, stderr); handled {
 		return exitCode
+	}
+	if len(args) != 0 {
+		_, _ = fmt.Fprintf(stderr, "gofer: unknown command %q\n\n", strings.Join(args, " "))
+		_, _ = io.WriteString(stderr, usage)
+		return 2
 	}
 	serve()
 	return 0

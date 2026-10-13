@@ -66,9 +66,10 @@ func (h *Handler) RegisterUserStorageRoutes(ctx context.Context, mux *http.Serve
 	routed := &Handler{db: h.db, auth: h.auth, syncer: h.syncer, userStorage: routing,
 		blobStore: h.blobStore,
 		userIMAP:  option.IMAP, userCredentials: option.Credentials, userAccounts: option.Accounts, userAccountHooks: option.Hooks, userStorageContext: ctx, userDeletions: make(map[string]*userAccountDeletionJob),
-		vapidPublicKey: h.vapidPublicKey, userBackfillQueue: make(chan userContactBackfillJob, 32),
+		vapidPublicKey: h.vapidPublicKey, testPush: h.testPush, userBackfillQueue: make(chan userContactBackfillJob, 32),
 		googleTranslator:         h.googleTranslator,
 		remoteResourceDownloader: h.remoteResourceDownloader,
+		messageFileKey:           h.messageFileKey,
 		providerAvatarHTTPClient: h.providerAvatarHTTPClient,
 		avatarWarmupOwner:        h,
 		userBackfills:            make(map[string]struct{}), contactSyncRunning: make(map[string]struct{})}
@@ -126,6 +127,9 @@ func (h *Handler) RegisterUserStorageRoutes(ctx context.Context, mux *http.Serve
 			needsFiles := !strings.HasPrefix(r.URL.Path, "/settings/security") && pattern != "GET /api/events" &&
 				pattern != "GET /api/avatars/{hash}" && pattern != "GET /api/provider-avatar" && pattern != "POST /api/avatars/warmup" &&
 				pattern != "POST /api/accounts/discover" &&
+				pattern != "GET /api/accounts/server-check" &&
+				pattern != "POST /api/accounts/test" &&
+				pattern != "POST /api/accounts/{id}/test-changes" &&
 				pattern != "POST /api/accounts/{id}/test" &&
 				pattern != "POST /api/mail/sync/accounts/{id}/repair" &&
 				pattern != "GET /api/mail-operations" &&
@@ -190,6 +194,7 @@ func (h *Handler) RegisterUserStorageRoutes(ctx context.Context, mux *http.Serve
 	// registration stays central; notification preferences are stored per user.
 	private("POST /api/push/subscription", routed.handleSavePushSubscription)
 	private("DELETE /api/push/subscription", routed.handleDeletePushSubscription)
+	private("POST /api/push/test", routed.handleTestPush)
 	private("GET /api/contacts/search", routed.handleContactSearch)
 	private("GET /api/contacts/export", routed.handleExportContacts)
 	private("GET /api/contacts/{id}/export", routed.handleExportContact)
@@ -202,10 +207,47 @@ func (h *Handler) RegisterUserStorageRoutes(ctx context.Context, mux *http.Serve
 	private("GET /folder/{id}/full", routed.handleFolderFull)
 	private("GET /folder/{id}/{email}", routed.handleFolderWithEmail)
 	private("GET /mail/folder/{id}/items", routed.handleMailItems)
+	private("GET /mail/folder/{id}/ids", routed.handleMailItemIDs)
 	private("GET /mail/thread/{threadId}/subitems", routed.handleThreadSubItems)
 	private("GET /email/{id}", routed.handleEmailPartial)
 	private("GET /email/{id}/body", routed.handleUserEmailBody)
 	private("GET /api/inline-content/{messageID}/{contentID}", routed.handleUserInlineContent)
+	// Signed message-file links carry their owner instead of a session. The
+	// owner gets the same user and file checks as a private route; anything
+	// that fails them looks like a missing file.
+	mux.HandleFunc("GET "+messageFileRoute+"{kind}/{messageID}/{name}", func(w http.ResponseWriter, r *http.Request) {
+		ownerRequest, kind, ok := routed.verifiedMessageFileRequest(r)
+		if !ok || (kind == messageFileRemote && routed.userIMAP == nil) {
+			http.NotFound(w, r)
+			return
+		}
+		owner := routed.userID(ownerRequest.Context())
+		if err := routing.ValidateUser(r.Context(), owner); err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		if routed.blobStore != nil {
+			release, err := routed.blobStore.PinUserFiles(r.Context(), owner)
+			if err != nil {
+				http.Error(w, "user files unavailable", http.StatusServiceUnavailable)
+				return
+			}
+			defer release()
+			if err := routing.ValidateUser(r.Context(), owner); err != nil {
+				http.NotFound(w, r)
+				return
+			}
+		}
+		allowMessageFileEmbedding(w)
+		switch kind {
+		case messageFileWeb:
+			routed.relayRemoteContent(w, ownerRequest)
+		case messageFileRemote:
+			routed.handleUserRemoteAsset(w, ownerRequest)
+		default:
+			routed.handleUserInlineContent(w, ownerRequest)
+		}
+	})
 	private("GET /api/attachments/{id}/download", routed.handleUserAttachmentDownload)
 	private("GET /api/attachments/{id}/preview", routed.handleUserAttachmentPreview)
 	private("GET /search", routed.handleSearch)
@@ -218,6 +260,9 @@ func (h *Handler) RegisterUserStorageRoutes(ctx context.Context, mux *http.Serve
 	private("GET /api/sidebar/accounts/{id}", routed.handleSidebarAccount)
 	private("GET /api/accounts", routed.handleUserAccounts)
 	private("POST /api/accounts/discover", routed.handleDiscoverAccount)
+	private("GET /api/accounts/server-check", routed.handleAccountServerCheck)
+	private("POST /api/accounts/test", routed.handleTestNewAccount)
+	private("POST /api/accounts/{id}/test-changes", routed.handleTestAccountChanges)
 	private("GET /api/mail-operations", routed.handleMailOperations)
 	private("GET /settings/operations/content", routed.handleSettingsMailOperationsContent)
 	private("GET /settings", routed.handleSettings)
@@ -243,6 +288,7 @@ func (h *Handler) RegisterUserStorageRoutes(ctx context.Context, mux *http.Serve
 	}
 	if option.IMAP != nil {
 		private("POST /api/messages/{id}/prefetch-body", routed.handleUserPrefetchBody)
+		private("POST /api/messages/{id}/download-full", routed.handleUserDownloadFullBody)
 		private("POST /api/messages/{id}/translate", routed.handleUserTranslateMessage)
 		private("GET /email/{id}/body/translated", routed.handleUserTranslatedEmailBody)
 		private("POST /api/remote-content/{id}/allow", routed.handleUserAllowRemoteContent)

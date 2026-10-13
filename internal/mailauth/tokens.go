@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cristianadrielbraun/gofer/internal/providerquota"
 	"github.com/cristianadrielbraun/gofer/internal/providers"
 	"github.com/cristianadrielbraun/gofer/internal/retry"
 	"golang.org/x/oauth2"
@@ -103,7 +104,10 @@ func (m *Manager) GetOAuthTokenForAccount(ctx context.Context, accountID string)
 	if accountProvider == providers.ProviderOutlook {
 		return m.GetMicrosoftGraphMailTokenForAccount(ctx, accountID)
 	}
-	return m.getOAuthTokenForAccount(ctx, accountID, oauthProvider)
+	token, err := m.getOAuthTokenForAccount(ctx, accountID, oauthProvider)
+	// All of this mailbox's Gmail requests share one quota budget.
+	providerquota.BindGmailToken(token, accountID)
+	return token, err
 }
 
 // GetGoogleCalendarTokenForAccount returns a Google mailbox token only when
@@ -176,7 +180,9 @@ func (m *Manager) RefreshOAuthTokenForAccount(ctx context.Context, accountID str
 	if record.RefreshToken == "" {
 		return "", fmt.Errorf("no refresh token available for account %s", accountID)
 	}
-	return m.refreshToken(ctx, oauthProvider, record.ID, record.RefreshToken)
+	token, err := m.refreshToken(ctx, oauthProvider, record.ID, record.RefreshToken)
+	providerquota.BindGmailToken(token, accountID)
+	return token, err
 }
 
 func (m *Manager) GetMicrosoftGraphContactsTokenForAccount(ctx context.Context, accountID string) (string, error) {

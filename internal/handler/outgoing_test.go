@@ -314,7 +314,7 @@ func TestEditingRetryingDraftRefreshesPayloadWithoutResettingDeliveryIdentity(t 
 	if err != nil {
 		t.Fatalf("StoreBodyText() error = %v", err)
 	}
-	if err := db.UpdateMessageBodyInternal(ctx, localID, originalBody, "", "", "Original body"); err != nil {
+	if err := db.UpdateMessageBodyInternal(ctx, localID, originalBody, "", "", "Original body", 0); err != nil {
 		t.Fatalf("UpdateMessageBodyInternal() error = %v", err)
 	}
 
@@ -347,7 +347,7 @@ func TestEditingRetryingDraftRefreshesPayloadWithoutResettingDeliveryIdentity(t 
 	if err != nil {
 		t.Fatalf("StoreBodyText(edited) error = %v", err)
 	}
-	if err := db.UpdateMessageBodyInternal(ctx, localID, editedBody, "", "", "Edited body"); err != nil {
+	if err := db.UpdateMessageBodyInternal(ctx, localID, editedBody, "", "", "Edited body", 0); err != nil {
 		t.Fatalf("UpdateMessageBodyInternal(edited) error = %v", err)
 	}
 	retrying, err := db.GetOutgoingSend(ctx, queued.ID)

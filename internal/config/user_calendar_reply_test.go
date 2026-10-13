@@ -374,7 +374,7 @@ func TestUserCalendarReplySMTPPasswordUsesCopiedState(t *testing.T) {
 		t.Fatal("mailbox fallback failed")
 	}
 	if err := f.accounts.WithUser(t.Context(), "alice", func(local *AccountStore, db *storage.DB) error {
-		cipher, err := local.encrypt("separate-smtp-secret")
+		cipher, err := local.encryptPassword("alice", account, passwordKindSMTP, "separate-smtp-secret")
 		if err != nil {
 			return err
 		}

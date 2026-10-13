@@ -18,6 +18,7 @@ import (
 	"github.com/cristianadrielbraun/gofer/internal/mail/oauth2sasl"
 	mailtransport "github.com/cristianadrielbraun/gofer/internal/mail/transport"
 	"github.com/cristianadrielbraun/gofer/internal/models"
+	"github.com/cristianadrielbraun/gofer/internal/netguard"
 )
 
 // testRootCAs lets package tests trust a self-signed fake server. It is nil in
@@ -133,22 +134,26 @@ func NewClient(ctx context.Context, cfg *models.AccountConfig, password string) 
 
 	switch tlsMode {
 	case mailtransport.TLSModeImplicit:
-		tlsConfig := &tls.Config{
+		conn, err = dialSMTP(setupCtx, dialer, cfg, addr)
+		if err != nil {
+			return nil, err
+		}
+		tlsConn := tls.Client(conn, &tls.Config{
 			ServerName: cfg.SMTPHost,
 			MinVersion: tls.VersionTLS12,
 			RootCAs:    testRootCAs,
-		}
-		tlsDialer := &tls.Dialer{NetDialer: dialer, Config: tlsConfig}
-		conn, err = tlsDialer.DialContext(setupCtx, "tcp", addr)
-		if err != nil {
+		})
+		if err := tlsConn.HandshakeContext(setupCtx); err != nil {
+			_ = conn.Close()
 			return nil, markDeliveryError(fmt.Errorf("connect to %s: %w", addr, contextError(setupCtx, err)), true)
 		}
+		conn = tlsConn
 		client = smtp.NewClient(conn)
 
 	case mailtransport.TLSModeStartTLS:
-		conn, err = dialer.DialContext(setupCtx, "tcp", addr)
+		conn, err = dialSMTP(setupCtx, dialer, cfg, addr)
 		if err != nil {
-			return nil, markDeliveryError(fmt.Errorf("connect to %s: %w", addr, contextError(setupCtx, err)), true)
+			return nil, err
 		}
 		stopCancellation := context.AfterFunc(setupCtx, func() { _ = conn.Close() })
 		defer stopCancellation()
@@ -164,9 +169,9 @@ func NewClient(ctx context.Context, cfg *models.AccountConfig, password string) 
 		}
 
 	case mailtransport.TLSModePlaintext:
-		conn, err = dialer.DialContext(setupCtx, "tcp", addr)
+		conn, err = dialSMTP(setupCtx, dialer, cfg, addr)
 		if err != nil {
-			return nil, markDeliveryError(fmt.Errorf("connect to %s: %w", addr, contextError(setupCtx, err)), true)
+			return nil, err
 		}
 		client = smtp.NewClient(conn)
 
@@ -209,6 +214,16 @@ func NewClient(ctx context.Context, cfg *models.AccountConfig, password string) 
 		conn:   conn,
 		client: client,
 	}, nil
+}
+
+// dialSMTP opens the connection through netguard. A refused private server
+// won't start working on a retry, so that failure is final.
+func dialSMTP(ctx context.Context, dialer *net.Dialer, cfg *models.AccountConfig, addr string) (net.Conn, error) {
+	conn, err := netguard.Dial(ctx, dialer, "smtp", cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPAllowPrivate)
+	if err != nil {
+		return nil, markDeliveryError(fmt.Errorf("connect to %s: %w", addr, contextError(ctx, err)), !netguard.IsBlocked(err))
+	}
+	return conn, nil
 }
 
 func (c *Client) Send(ctx context.Context, msg *message.OutgoingMessage) (models.SendResult, error) {

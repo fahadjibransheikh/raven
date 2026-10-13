@@ -69,8 +69,9 @@ func TestEmailBodyCSPAllowsOnlyOurNoncedScripts(t *testing.T) {
 		t.Error("nonce is reused across responses")
 	}
 
-	if got := cspDirectives(t, getEmailBody(t, h, fx.messageID, "?remote=true"))["img-src"]; got != "'self' data: https: http:" {
-		t.Errorf("img-src with remote allowed = %q", got)
+	// Allowed remote content is relayed through Gofer, so the policy stays closed.
+	if got := cspDirectives(t, getEmailBody(t, h, fx.messageID, "?remote=true"))["img-src"]; got != "'self' data:" {
+		t.Errorf("img-src with remote allowed = %q, want no direct web loads", got)
 	}
 }
 
@@ -102,12 +103,14 @@ func TestStoredLegacyBodyIsResanitizedOnServe(t *testing.T) {
 		t.Fatal(err)
 	}
 	body := getEmailBody(t, h, fx.messageID, "").Body.String()
+	// The reader's own scripts are part of the document; only the message is checked.
+	content := regexp.MustCompile(`(?s)<script.*?</script>`).ReplaceAllString(body, "")
 	for _, bad := range []string{"onerror", "onload=alert", "javascript", "srcset", `url("https://t.example`, "formaction", "<base", "<svg"} {
-		if strings.Contains(body, bad) {
+		if strings.Contains(content, bad) {
 			t.Errorf("legacy body still contains %q: %s", bad, body)
 		}
 	}
-	if !strings.Contains(body, "keep me") || !strings.Contains(body, "/api/inline-content/101/victim-inline") {
+	if !strings.Contains(body, "keep me") || !strings.Contains(body, "/api/message-file/inline/101/victim-inline") {
 		t.Errorf("sanitizing dropped legitimate content: %s", body)
 	}
 }

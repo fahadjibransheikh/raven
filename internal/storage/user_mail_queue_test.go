@@ -18,7 +18,7 @@ func TestDraftPublicationRollbackPreservesDraftAndWaitingDelivery(t *testing.T) 
 	if err := os.WriteFile(newPath, []byte("new body"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := db.UpdateMessageBodyInternal(t.Context(), id, oldPath, "", "", "old snippet"); err != nil {
+	if err := db.UpdateMessageBodyInternal(t.Context(), id, oldPath, "", "", "old snippet", 0); err != nil {
 		t.Fatal(err)
 	}
 	oldOp := queueDraftRevision(t, db, state, "old-revision", []byte("old remote body"))

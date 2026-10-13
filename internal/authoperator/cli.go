@@ -17,8 +17,8 @@ const usage = `Usage:
   raven-server auth status
   raven-server auth users list
   raven-server auth setup-token rotate
-  raven-server auth recover --user <user-id> --confirm <user-id>
-  raven-server auth sessions revoke --user <user-id> --confirm <user-id>
+  raven-server auth recover (--user-id <id> | --username <name>) --confirm <same value>
+  raven-server auth sessions revoke (--user-id <id> | --username <name>) --confirm <same value>
 `
 
 func Run(ctx context.Context, args []string, databasePath string, stdout, stderr io.Writer) int {
@@ -33,13 +33,13 @@ func Run(ctx context.Context, args []string, databasePath string, stdout, stderr
 		return 2
 	}
 	if command.name == "recover" {
-		return runRecovery(ctx, command.userID, databasePath, stdout, stderr)
+		return runRecovery(ctx, command.target, databasePath, stdout, stderr)
 	}
 	if command.name == "setup-token rotate" {
 		return runSetupTokenRotation(ctx, databasePath, stdout, stderr)
 	}
 	if command.name == "sessions revoke" {
-		return runSessionRevocation(ctx, command.userID, databasePath, stdout, stderr)
+		return runSessionRevocation(ctx, command.target, databasePath, stdout, stderr)
 	}
 
 	db, err := storage.OpenReadOnly(databasePath)
@@ -67,7 +67,7 @@ func Run(ctx context.Context, args []string, databasePath string, stdout, stderr
 
 type parsedCommand struct {
 	name   string
-	userID string
+	target UserTarget
 }
 
 func parseCommand(args []string) (command parsedCommand, help bool, err error) {
@@ -84,52 +84,64 @@ func parseCommand(args []string) (command parsedCommand, help bool, err error) {
 		return parsedCommand{name: "setup-token rotate"}, false, nil
 	}
 	if len(args) == 5 && args[0] == "recover" {
-		userID, err := parseConfirmedUserOptions(args[1:], "recovery")
+		target, err := parseConfirmedUserOptions(args[1:], "recovery")
 		if err != nil {
 			return parsedCommand{}, false, err
 		}
-		return parsedCommand{name: "recover", userID: userID}, false, nil
+		return parsedCommand{name: "recover", target: target}, false, nil
 	}
 	if len(args) == 6 && args[0] == "sessions" && args[1] == "revoke" {
-		userID, err := parseConfirmedUserOptions(args[2:], "session revocation")
+		target, err := parseConfirmedUserOptions(args[2:], "session revocation")
 		if err != nil {
 			return parsedCommand{}, false, err
 		}
-		return parsedCommand{name: "sessions revoke", userID: userID}, false, nil
+		return parsedCommand{name: "sessions revoke", target: target}, false, nil
 	}
 	return parsedCommand{}, false, fmt.Errorf("invalid command")
 }
 
-func parseConfirmedUserOptions(args []string, action string) (string, error) {
+func parseConfirmedUserOptions(args []string, action string) (UserTarget, error) {
 	if len(args) != 4 {
-		return "", fmt.Errorf("%s requires both --user and --confirm", action)
+		return UserTarget{}, fmt.Errorf("%s requires --user-id or --username, and --confirm", action)
 	}
 	values := make(map[string]string, 2)
 	for index := 0; index < len(args); index += 2 {
 		flag := args[index]
-		if flag != "--user" && flag != "--confirm" {
-			return "", fmt.Errorf("unknown %s option %q", action, flag)
+		if flag != "--user-id" && flag != "--username" && flag != "--confirm" {
+			return UserTarget{}, fmt.Errorf("unknown %s option %q", action, flag)
 		}
 		if _, duplicate := values[flag]; duplicate {
-			return "", fmt.Errorf("%s option %s was provided more than once", action, flag)
+			return UserTarget{}, fmt.Errorf("%s option %s was provided more than once", action, flag)
 		}
 		if args[index+1] == "" {
-			return "", fmt.Errorf("%s option %s requires a value", action, flag)
+			return UserTarget{}, fmt.Errorf("%s option %s requires a value", action, flag)
 		}
 		values[flag] = args[index+1]
 	}
-	if values["--user"] == "" || values["--confirm"] == "" {
-		return "", fmt.Errorf("%s requires both --user and --confirm", action)
+	if values["--confirm"] == "" {
+		return UserTarget{}, fmt.Errorf("%s requires --confirm", action)
 	}
-	if values["--user"] != values["--confirm"] {
-		return "", fmt.Errorf("--confirm must exactly match --user")
+	var target UserTarget
+	switch {
+	case values["--user-id"] != "":
+		target = UserTarget{ID: values["--user-id"]}
+	case values["--username"] != "":
+		target = UserTarget{Username: values["--username"]}
+	default:
+		return UserTarget{}, fmt.Errorf("%s requires --user-id or --username", action)
 	}
-	return values["--user"], nil
+	if values["--user-id"] != "" && values["--username"] != "" {
+		return UserTarget{}, fmt.Errorf("%s accepts only one of --user-id and --username", action)
+	}
+	if values["--confirm"] != target.ID+target.Username {
+		return UserTarget{}, fmt.Errorf("--confirm must exactly match the --user-id or --username value")
+	}
+	return target, nil
 }
 
-func runRecovery(ctx context.Context, userID, databasePath string, stdout, stderr io.Writer) int {
+func runRecovery(ctx context.Context, target UserTarget, databasePath string, stdout, stderr io.Writer) int {
 	err := runMutatingCommand(ctx, databasePath, func(service *Service) error {
-		result, err := service.Recover(ctx, userID)
+		result, err := service.Recover(ctx, target)
 		if err != nil {
 			return err
 		}
@@ -151,9 +163,9 @@ func runRecovery(ctx context.Context, userID, databasePath string, stdout, stder
 	return 0
 }
 
-func runSessionRevocation(ctx context.Context, userID, databasePath string, stdout, stderr io.Writer) int {
+func runSessionRevocation(ctx context.Context, target UserTarget, databasePath string, stdout, stderr io.Writer) int {
 	err := runMutatingCommand(ctx, databasePath, func(service *Service) error {
-		result, err := service.RevokeSessions(ctx, userID)
+		result, err := service.RevokeSessions(ctx, target)
 		if err != nil {
 			return err
 		}

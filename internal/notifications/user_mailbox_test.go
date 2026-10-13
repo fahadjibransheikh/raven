@@ -291,7 +291,7 @@ func seedUserMailbox(t *testing.T, f *userStorageFixture) {
 			if err := os.WriteFile(path, []byte("<p>"+owner+" private body</p>"), 0600); err != nil {
 				return err
 			}
-			if err := db.UpdateMessageBodyInternal(t.Context(), 1, "", path, "", owner+" private preview"); err != nil {
+			if err := db.UpdateMessageBodyInternal(t.Context(), 1, "", path, "", owner+" private preview", 0); err != nil {
 				return err
 			}
 			return db.UpdateMessageOriginalHTMLPathInternal(t.Context(), 1, path)

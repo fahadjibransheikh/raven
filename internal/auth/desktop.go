@@ -21,11 +21,12 @@ import (
 // an HttpOnly cookie. It is inert unless the variable is set and the instance
 // is in open mode, so web/server deployments are unaffected.
 const (
-	DesktopAuthPath    = "/desktop-auth"
-	desktopCookieName  = "raven_desktop"
-	desktopMarkerKey   = "X-Raven-Desktop"
-	desktopGrantPrefix = "d."
-	desktopGrantLabel  = "gofer-desktop-image-grant-v1"
+	DesktopAuthPath     = "/desktop-auth"
+	desktopCookieName   = "raven_desktop"
+	desktopMarkerKey    = "X-Raven-Desktop"
+	desktopGrantPrefix  = "d."
+	desktopGrantLabel   = "gofer-desktop-image-grant-v1"
+	messageFileGatePath = "/api/message-file/"
 )
 
 // minimumDesktopTokenBytes rejects a guessable token rather than running with it.
@@ -97,6 +98,12 @@ func (m *Manager) desktopGate(w http.ResponseWriter, r *http.Request) bool {
 	// The sandboxed email iframe is cookieless; a per-message grant stands in on
 	// the two image routes only.
 	if m.desktopImageGrantValid(r) {
+		return false
+	}
+	// Signed message-file links carry their own proof (a signature over the
+	// owner, message and file, checked by their handler), so the cookieless
+	// message frame can load its images through them.
+	if (r.Method == http.MethodGet || r.Method == http.MethodHead) && strings.HasPrefix(r.URL.Path, messageFileGatePath) {
 		return false
 	}
 	w.Header().Set("Cache-Control", "no-store")

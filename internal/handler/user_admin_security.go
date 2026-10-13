@@ -28,25 +28,25 @@ func (h *Handler) mailSecurityExceptions(ctx context.Context) ([]models.MailSecu
 	if err != nil {
 		return nil, err
 	}
-	plaintext := false
+	usedByAccounts := false
 	for _, item := range items {
-		if item.Kind == models.MailSecurityExceptionPlaintextTransport {
-			plaintext = true
+		if item.Kind == models.MailSecurityExceptionPlaintextTransport || item.Kind == models.MailSecurityExceptionPrivateTarget {
+			usedByAccounts = true
 		}
 	}
-	if plaintext {
+	if usedByAccounts {
 		_, err = h.eachUserDiagnostic(ctx, "", storage.UserDiagnosticsTransports, func(_ context.Context, _ models.AdminWebmailUserOption, data storage.UserDiagnostics, _ storage.DiagnosticsActor) error {
 			for _, account := range data.Transports {
 				for i := range items {
 					item := &items[i]
-					if item.Kind != models.MailSecurityExceptionPlaintextTransport {
+					if item.Kind != models.MailSecurityExceptionPlaintextTransport && item.Kind != models.MailSecurityExceptionPrivateTarget {
 						continue
 					}
 					host, port, mode := account.IMAPHost, account.IMAPPort, account.IMAPTLSMode
 					if item.Protocol == "smtp" {
 						host, port, mode = account.SMTPHost, account.SMTPPort, account.SMTPTLSMode
 					}
-					if host == item.Host && port == item.Port && mode == "plaintext" {
+					if host == item.Host && port == item.Port && (mode == "plaintext" || item.Kind == models.MailSecurityExceptionPrivateTarget) {
 						item.Accounts = append(item.Accounts, models.MailSecurityExceptionAccount{ID: account.ID, Email: account.Email})
 					}
 				}

@@ -15,6 +15,7 @@ import (
 	"github.com/cristianadrielbraun/gofer/internal/config"
 	"github.com/cristianadrielbraun/gofer/internal/mail/imap"
 	"github.com/cristianadrielbraun/gofer/internal/models"
+	"github.com/cristianadrielbraun/gofer/internal/providerquota"
 	"github.com/cristianadrielbraun/gofer/internal/providers"
 	"github.com/cristianadrielbraun/gofer/internal/storage"
 	"github.com/cristianadrielbraun/gofer/internal/store"
@@ -131,6 +132,7 @@ type SyncOrchestrator struct {
 	imapScope           *userIMAPScope
 	userGraphToken      string
 	userGraphRetryErr   error
+	outlookRetryUntil   sync.Map // shared mode: account ID -> time.Time
 	db                  *storage.DB
 	accountStore        *config.AccountStore
 	blobStore           *store.BlobStore
@@ -1368,21 +1370,24 @@ func (o *SyncOrchestrator) fullFolderSync(ctx context.Context, client *imap.Clie
 		Payload:    startPayload,
 	})
 	defer func() {
-		if syncErr != nil {
-			o.recordFolderSyncError(ctx, folder.ID, syncErr)
-			return
-		}
-		if ctx.Err() != nil {
-			return
-		}
 		completePayload := map[string]any{
 			"account_folders_total": folderTotal,
 			"account_folders_done":  folderIndex,
+			"status":                "complete",
+		}
+		if syncErr != nil {
+			o.recordFolderSyncError(ctx, folder.ID, syncErr)
+			completePayload["status"] = "error"
+			completePayload["error"] = syncErr.Error()
+		}
+		if ctx.Err() != nil {
+			completePayload["status"] = "cancelled"
 		}
 		if idleExcluded > 0 {
 			completePayload["idle_folders_excluded"] = idleExcluded
 		}
-		completePayload = o.folderSyncProgressPayload(ctx, accountID, folderName, accountProvider, completePayload)
+		// Failed and cancelled folders still complete so open lists stop showing them as syncing.
+		completePayload = o.folderSyncProgressPayload(context.WithoutCancel(ctx), accountID, folderName, accountProvider, completePayload)
 		o.publishEvent(Event{
 			Type:       EventSyncComplete,
 			AccountID:  accountID,
@@ -1452,6 +1457,10 @@ func (o *SyncOrchestrator) fullFolderSync(ctx context.Context, client *imap.Clie
 	if changed {
 		return o.resetFolderUIDStateAndSync(ctx, client, accountID, accountProvider, folder, expectedUIDValidity, currentValidity)
 	}
+	if currentValidity > 0 {
+		expectedUIDValidity = currentValidity
+	}
+	o.backfillIMAPFolderSizes(ctx, client, folder, expectedUIDValidity)
 
 	if upserted {
 		if _, err := o.imapRepository().RefreshFolderUnreadCount(ctx, folder.ID); err != nil {
@@ -2080,6 +2089,8 @@ func (o *SyncOrchestrator) SyncAccount(ctx context.Context, accountID string) bo
 }
 
 func (o *SyncOrchestrator) syncAccount(ctx context.Context, accountID string, includeIDLEFolders bool) error {
+	// Syncing yields to what the reader is doing on the same mailbox.
+	ctx = providerquota.Background(ctx)
 	if o.imapScope == nil && !o.db.IsEmailSyncEnabled(ctx, accountID) {
 		return nil
 	}
@@ -2089,11 +2100,23 @@ func (o *SyncOrchestrator) syncAccount(ctx context.Context, accountID string, in
 	}
 
 	if o.shouldUseOutlookGraphMail(cfg) {
-		return o.syncOutlookGraphAccount(ctx, accountID, includeIDLEFolders)
+		if err := o.sharedOutlookRetryDeferred(accountID); err != nil {
+			return err
+		}
+		if err := o.syncOutlookGraphAccount(ctx, accountID, includeIDLEFolders); err != nil {
+			o.deferSharedOutlookRetry(accountID, err)
+			return err
+		}
+		o.backfillOutlookMessageSizes(ctx, accountID)
+		return nil
 	}
 	if o.shouldUseGmailAPIMail(cfg) {
 		o.refreshGmailIdentitiesIfDue(ctx, accountID)
-		return o.syncGmailAPIAccount(ctx, accountID, includeIDLEFolders)
+		if err := o.syncGmailAPIAccount(ctx, accountID, includeIDLEFolders); err != nil {
+			return err
+		}
+		o.backfillGmailMessageSizes(ctx, accountID)
+		return nil
 	}
 
 	var idleFolderIDs map[string]bool

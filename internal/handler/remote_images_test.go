@@ -38,21 +38,21 @@ func TestEmailBodyBlocksRemoteImagesUnlessSettingIsOnOrAllowed(t *testing.T) {
 
 	// New users have no stored choice: remote content is blocked and the banner
 	// script reports it so "Show content" / "Always allow" are offered.
-	if body := fetchBody(); !strings.Contains(body, `data-remote-src="https://img.example/logo.png"`) || strings.Contains(body, `<img src="https://img.example/logo.png"`) || !strings.Contains(body, "remoteContentBlocked") {
+	if body := fetchBody(); !strings.Contains(body, `data-remote-src="https://img.example/logo.png"`) || strings.Contains(body, `<img src="/api/message-file/web/`) || !strings.Contains(body, "remoteContentBlocked") {
 		t.Fatalf("default settings body = %q, want remote image blocked with banner script", body)
 	}
 
 	if err := db.SetUISettings(ctx, "owner", map[string]string{"load_remote_images": "true"}); err != nil {
 		t.Fatalf("SetUISettings: %v", err)
 	}
-	if body := fetchBody(); !strings.Contains(body, `<img src="https://img.example/logo.png"`) {
+	if body := fetchBody(); !strings.Contains(body, `<img src="/api/message-file/web/`) {
 		t.Fatalf("setting on body = %q, want remote image loaded", body)
 	}
 
 	if err := db.SetUISettings(ctx, "owner", map[string]string{"load_remote_images": "false"}); err != nil {
 		t.Fatalf("SetUISettings: %v", err)
 	}
-	if body := fetchBody(); !strings.Contains(body, `data-remote-src="https://img.example/logo.png"`) || strings.Contains(body, `<img src="https://img.example/logo.png"`) {
+	if body := fetchBody(); !strings.Contains(body, `data-remote-src="https://img.example/logo.png"`) || strings.Contains(body, `<img src="/api/message-file/web/`) {
 		t.Fatalf("setting off body = %q, want remote image still blocked", body)
 	}
 
@@ -60,7 +60,7 @@ func TestEmailBodyBlocksRemoteImagesUnlessSettingIsOnOrAllowed(t *testing.T) {
 	if err := db.AllowRemoteContentForMessageForUser(ctx, fixture.messageID, "owner"); err != nil {
 		t.Fatalf("AllowRemoteContentForMessageForUser: %v", err)
 	}
-	if body := fetchBody(); !strings.Contains(body, `<img src="https://img.example/logo.png"`) {
+	if body := fetchBody(); !strings.Contains(body, `<img src="/api/message-file/web/`) {
 		t.Fatalf("approved message body = %q, want remote image loaded", body)
 	}
 }
@@ -89,11 +89,13 @@ func TestEmailBodyRestoresRemoteBackgroundsOnlyWhenAllowed(t *testing.T) {
 		t.Fatalf("SetUISettings: %v", err)
 	}
 	body, csp := fetch()
-	if !strings.Contains(body, `url("https://img.example/hero.png")`) || !strings.Contains(body, `background="https://img.example/bg.png"`) {
-		t.Errorf("allowed: backgrounds not restored: %s", body)
+	// Allowed remote content is relayed through Gofer's signed message-file
+	// route, so the page never contacts the sender's servers.
+	if !strings.Contains(body, `url("/api/message-file/web/`) || !strings.Contains(body, `background="/api/message-file/web/`) || strings.Contains(body, "img.example/hero.png\")") {
+		t.Errorf("allowed: backgrounds not restored through the relay: %s", body)
 	}
-	if !strings.Contains(csp, "img-src 'self' data: https: http:") || strings.Contains(csp, "font-src") {
-		t.Errorf("allowed: CSP = %s, want remote images but no font-src", csp)
+	if !strings.Contains(csp, "img-src 'self' data:;") || strings.Contains(csp, "http") || strings.Contains(csp, "font-src") {
+		t.Errorf("allowed: CSP = %s, want images from Gofer only and no font-src", csp)
 	}
 
 	if err := db.SetUISettings(ctx, "owner", map[string]string{"load_remote_images": "false"}); err != nil {
@@ -129,7 +131,7 @@ func TestAllowRemoteContentFromSenderWorksWithBlockedDefault(t *testing.T) {
 		h.handleEmailBody(rec, ownerRequest(req))
 		return rec.Body.String()
 	}
-	loaded := `<img src="https://img.example/logo.png"`
+	loaded := `<img src="/api/message-file/web/`
 
 	if body := fetch(""); strings.Contains(body, loaded) {
 		t.Fatalf("default: remote image loaded, want blocked")

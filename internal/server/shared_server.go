@@ -17,13 +17,13 @@ import (
 	"github.com/cristianadrielbraun/gofer/internal/runtimeguard"
 	"github.com/cristianadrielbraun/gofer/internal/storage"
 	"github.com/cristianadrielbraun/gofer/internal/store"
+	"github.com/cristianadrielbraun/gofer/internal/views"
 	"io/fs"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	webpush "github.com/SherClockHolmes/webpush-go"
 )
@@ -55,6 +55,9 @@ func RunShared() {
 	mailboxOAuthConfig := mailauth.LoadConfig(httpConfig.BaseURL, authConfig.Enabled)
 	if err := httpConfig.ValidateExposure(authConfig.Enabled); err != nil {
 		log.Fatalf("unsafe HTTP configuration: %v", err)
+	}
+	if httpConfig.WarnInsecureLAN(authConfig.Enabled) {
+		log.Printf("WARNING: GOFER_ALLOW_INSECURE_LAN is enabled; sign-in cookies for %s travel unencrypted on the local network", httpConfig.BaseURL)
 	}
 	if httpConfig.WarnUnauthenticatedRemote(authConfig.Enabled) {
 		log.Printf("WARNING: unauthenticated remote access is explicitly enabled; anyone who can reach %s can control Raven", httpConfig.BaseURL)
@@ -115,6 +118,9 @@ func RunShared() {
 		log.Fatalf("failed to ensure default user: %v", err)
 	}
 	log.Printf("boot: default user ensured")
+	if err := accountStore.SecurePasswords(context.Background()); err != nil {
+		log.Fatalf("failed to secure stored mailbox passwords: %v", err)
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -141,6 +147,7 @@ func RunShared() {
 
 	mux := http.NewServeMux()
 	h := handler.New(db, accountStore, syncer, blobStore, authManager, vapidPublicKey, mailCredentials)
+	h.SetTestPushSender(notificationService.SendTestPush)
 
 	go func() {
 		log.Printf("boot: background threading worker started")
@@ -167,7 +174,7 @@ func RunShared() {
 	log.Printf("boot: HTTP routes registered")
 	h.StartAccountDeletionCleanup(ctx)
 
-	var handler http.Handler = mux
+	var handler http.Handler = views.WithListViewCookie(mux)
 	handler = authManager.Middleware(handler)
 	handler = httpConfig.Middleware(handler)
 	handler = httpConfig.ClientSourceMiddleware(handler)
@@ -201,14 +208,8 @@ func RunShared() {
 	if _, err := setupNotice.WriteTo(os.Stderr); err != nil {
 		log.Fatalf("failed to display setup notice: %v", err)
 	}
-	// No Read/WriteTimeout: SSE streams and large attachment up/downloads are
-	// long-lived. Header and idle limits stop slowloris-style connection holding.
-	server := &http.Server{
-		Addr:              httpConfig.ListenAddr,
-		Handler:           handler,
-		ReadHeaderTimeout: 10 * time.Second,
-		IdleTimeout:       2 * time.Minute,
-	}
+	server := newHTTPServer(handler)
+	server.Addr = httpConfig.ListenAddr
 	log.Fatal(server.ListenAndServe())
 }
 

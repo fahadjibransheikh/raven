@@ -3,6 +3,7 @@ package config
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -724,5 +725,20 @@ func TestAccountPrimaryIdentityIsCreatedAndFollowsEdits(t *testing.T) {
 	}
 	if ids, _ = db.ListAccountIdentities(ctx, "default", account.ID); len(ids) != 1 {
 		t.Fatalf("identities after label edit = %+v", ids)
+	}
+}
+
+// Connecting a mailbox that is already connected reports it as such, rather
+// than surfacing the database's duplicate-key error.
+func TestCreateAccountReportsAnAlreadyConnectedMailbox(t *testing.T) {
+	ctx := context.Background()
+	db, store := newAccountStoreTestStore(t)
+	seedAccountStoreTestUser(t, ctx, db)
+	if _, err := store.CreateAccount(ctx, "default", secureAccountStoreTestRequest("lena@example.com")); err != nil {
+		t.Fatalf("first CreateAccount() error = %v", err)
+	}
+	_, err := store.CreateAccount(ctx, "default", secureAccountStoreTestRequest("lena@example.com"))
+	if !errors.Is(err, ErrMailboxExists) {
+		t.Fatalf("second CreateAccount() error = %v, want ErrMailboxExists", err)
 	}
 }

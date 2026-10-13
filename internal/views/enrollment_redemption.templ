@@ -20,6 +20,7 @@ templ InvitationEnrollmentPage(data InvitationEnrollmentData) {
 			<title>Raven — Accept Invitation</title>
 			@AppIcon()
 			<link rel="stylesheet" href={ AssetURL("/assets/css/output.css") }/>
+			<script src={ AssetURL("/assets/js/actions.js") }></script>
 		</head>
 		<body class="bg-background text-foreground antialiased">
 			<main class="min-h-screen flex items-center justify-center p-4">
@@ -125,6 +126,7 @@ templ CredentialRedemptionPage(data CredentialRedemptionData) {
 			<title>Raven — Reset Password</title>
 			@AppIcon()
 			<link rel="stylesheet" href={ AssetURL("/assets/css/output.css") }/>
+			<script src={ AssetURL("/assets/js/actions.js") }></script>
 		</head>
 		<body class="bg-background text-foreground antialiased">
 			<main class="min-h-screen flex items-center justify-center p-4">
@@ -219,6 +221,7 @@ templ passwordTokenCompletePage(title string, message string) {
 			<title>Raven — { title }</title>
 			@AppIcon()
 			<link rel="stylesheet" href={ AssetURL("/assets/css/output.css") }/>
+			<script src={ AssetURL("/assets/js/actions.js") }></script>
 		</head>
 		<body class="bg-background text-foreground antialiased">
 			<main class="min-h-screen flex items-center justify-center p-4">

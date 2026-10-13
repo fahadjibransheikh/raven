@@ -238,7 +238,9 @@ func isPublicPath(path string) bool {
 			return true
 		}
 	}
-	return false
+	// Signed message-file links carry their own proof of access: the frame
+	// showing a message can't send the session cookie with its image requests.
+	return strings.HasPrefix(path, "/api/message-file/")
 }
 
 func GetCurrentUser(ctx context.Context) *User {

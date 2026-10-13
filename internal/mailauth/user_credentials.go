@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cristianadrielbraun/gofer/internal/providerquota"
 	"github.com/cristianadrielbraun/gofer/internal/providers"
 	"github.com/cristianadrielbraun/gofer/internal/retry"
 	"github.com/cristianadrielbraun/gofer/internal/storage"
@@ -392,6 +393,8 @@ func (s *UserCredentials) mailboxAuthorizationFrom(ctx context.Context, owner, i
 	if err != nil {
 		return nil, err
 	}
+	// All of this mailbox's Gmail requests share one quota budget.
+	providerquota.BindGmailToken(authorization.Token(), owner+"/"+id)
 	return authorization, nil
 }
 

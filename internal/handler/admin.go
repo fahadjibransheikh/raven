@@ -147,6 +147,7 @@ func (h *Handler) handleAdminSecurity(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	data := models.MailSecurityAdminData{
+		ActionBase:     "/admin/security",
 		Exceptions:     exceptions,
 		Notice:         strings.TrimSpace(r.URL.Query().Get("notice")),
 		Error:          strings.TrimSpace(r.URL.Query().Get("error")),
@@ -239,7 +240,7 @@ func (h *Handler) handleAddPlaintextTransportException(w http.ResponseWriter, r 
 		redirectAdminSecurity(w, r, "", "Could not add the plaintext transport exception.")
 		return
 	}
-	h.restartAccountsUsingPlaintextException(r.Context(), protocol, host, port)
+	h.restartAccountsUsingException(r.Context(), models.MailSecurityExceptionPlaintextTransport, protocol, host, port)
 	redirectAdminSecurity(w, r, strings.ToUpper(protocol)+" plaintext is now allowed for "+host+":"+strconv.Itoa(port)+".", "")
 }
 
@@ -275,10 +276,15 @@ func (h *Handler) handleAddPrivateTargetException(w http.ResponseWriter, r *http
 		redirectAdminSecurity(w, r, "", "Could not add the private target exception.")
 		return
 	}
+	if protocol == "imap" || protocol == "smtp" {
+		h.restartAccountsUsingException(r.Context(), models.MailSecurityExceptionPrivateTarget, protocol, host, port)
+	}
 	redirectAdminSecurity(w, r, strings.ToUpper(protocol)+" private target is now allowed for "+host+":"+strconv.Itoa(port)+".", "")
 }
 
-func (h *Handler) restartAccountsUsingPlaintextException(ctx context.Context, protocol, host string, port int) {
+// restartAccountsUsingException reconnects the accounts an exception just
+// approved, so they don't wait for their next retry.
+func (h *Handler) restartAccountsUsingException(ctx context.Context, kind, protocol, host string, port int) {
 	if h.syncer == nil && h.ownedMailbox == nil {
 		return
 	}
@@ -288,7 +294,7 @@ func (h *Handler) restartAccountsUsingPlaintextException(ctx context.Context, pr
 		return
 	}
 	for _, item := range items {
-		if item.Kind != models.MailSecurityExceptionPlaintextTransport || item.Protocol != protocol || item.Host != host || item.Port != port {
+		if item.Kind != kind || item.Protocol != protocol || item.Host != host || item.Port != port {
 			continue
 		}
 		for _, account := range item.Accounts {
@@ -333,7 +339,7 @@ func (h *Handler) handleDeleteMailSecurityException(w http.ResponseWriter, r *ht
 		return
 	}
 	stopAll := false
-	if h.ownedMailbox != nil && item.Kind == models.MailSecurityExceptionPlaintextTransport {
+	if h.ownedMailbox != nil && (item.Kind == models.MailSecurityExceptionPlaintextTransport || item.Kind == models.MailSecurityExceptionPrivateTarget) {
 		items, readErr := h.mailSecurityExceptions(r.Context())
 		if readErr != nil {
 			if r.Context().Err() != nil || errors.Is(readErr, storage.ErrUserDiagnosticsAccess) {
@@ -374,15 +380,23 @@ func (h *Handler) requireRecentAdminSecurityStepUp(w http.ResponseWriter, r *htt
 	if h.auth == nil || !h.auth.Config().Enabled {
 		return true
 	}
+	personal := mailSecuritySurfaceIsOwner(r.Context())
 	err := h.auth.RequireRecentSecurityStepUp(r.Context(), auth.GetSessionToken(r))
 	switch {
 	case err == nil:
 		return true
+	case errors.Is(err, auth.ErrRecentStepUpRequired) && personal:
+		// The security settings page asks the owner to verify first.
+		http.Redirect(w, r, "/settings/security", http.StatusSeeOther)
 	case errors.Is(err, auth.ErrRecentStepUpRequired):
 		redirectAdminSecurity(w, r, "", "Verify this administrator session before changing mail security exceptions.")
 	case errors.Is(err, auth.ErrSecuritySessionInvalid):
 		auth.ClearSessionCookie(w, h.auth.Config().SecureCookies)
-		http.Redirect(w, r, "/admin/login", http.StatusSeeOther)
+		if personal {
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+		} else {
+			http.Redirect(w, r, "/admin/login", http.StatusSeeOther)
+		}
 	default:
 		log.Printf("admin mail security: verify sensitive action: %v", err)
 		http.Error(w, "failed to verify admin session", http.StatusInternalServerError)
@@ -391,6 +405,17 @@ func (h *Handler) requireRecentAdminSecurityStepUp(w http.ResponseWriter, r *htt
 }
 
 func redirectAdminSecurity(w http.ResponseWriter, r *http.Request, notice, message string) {
+	if mailSecuritySurfaceIsOwner(r.Context()) {
+		values := url.Values{}
+		if notice != "" {
+			values.Set("mail_notice", notice)
+		}
+		if message != "" {
+			values.Set("mail_error", message)
+		}
+		http.Redirect(w, r, "/settings/security?"+values.Encode()+"#mail-security", http.StatusSeeOther)
+		return
+	}
 	values := url.Values{}
 	if notice != "" {
 		values.Set("notice", notice)

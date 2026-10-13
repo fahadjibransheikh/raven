@@ -19,6 +19,12 @@ func (c *Config) Middleware(next http.Handler) http.Handler {
 			http.Error(w, "request host is not trusted", http.StatusMisdirectedRequest)
 			return
 		}
+		// Browsers send policy reports on their own, without the headers the
+		// same-origin check expects. Reports are only logged.
+		if r.URL.Path == ScriptPolicyReportPath {
+			handleScriptPolicyReport(w, r)
+			return
+		}
 		if requiresSameOrigin(r) && !c.isSameOriginRequest(r) {
 			http.Error(w, "cross-origin request blocked", http.StatusForbidden)
 			return
@@ -78,7 +84,7 @@ func (c *Config) isSameOriginRequest(r *http.Request) bool {
 
 func setSecurityHeaders(w http.ResponseWriter) {
 	headers := w.Header()
-	headers.Set("Content-Security-Policy", "frame-ancestors 'self'")
+	setPagePolicy(headers)
 	headers.Set("Cross-Origin-Resource-Policy", "same-origin")
 	headers.Set("Referrer-Policy", "same-origin")
 	headers.Set("X-Content-Type-Options", "nosniff")

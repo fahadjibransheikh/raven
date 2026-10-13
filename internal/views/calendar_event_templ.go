@@ -775,7 +775,7 @@ func CalendarEventGuests(details CalendarEventDetails) templ.Component {
 		ctx = templ.ClearChildren(ctx)
 		attrs := templ.Attributes{}
 		if details.Delivery != nil {
-			attrs = templ.Attributes{"hx-get": calendarEventDetailsURL(details.Event.ID) + "/delivery", "hx-trigger": "every 5s [document.visibilityState === 'visible' && document.getElementById('calendar-event-guests')?.getClientRects().length > 0]", "hx-target": "this", "hx-swap": "outerHTML", "hx-sync": "this:drop", "hx-params": "none"}
+			attrs = templ.Attributes{"hx-get": calendarEventDetailsURL(details.Event.ID) + "/delivery", "hx-trigger": "every 5s", "data-poll-when-visible": "", "hx-target": "this", "hx-swap": "outerHTML", "hx-sync": "this:drop", "hx-params": "none"}
 		}
 		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "<section id=\"calendar-event-guests\" aria-labelledby=\"calendar-event-guests-heading\"")
 		if templ_7745c5c3_Err != nil {
@@ -1310,17 +1310,17 @@ func CalendarEventDeleteConfirmation(details CalendarEventDetails) templ.Compone
 			return templ_7745c5c3_Err
 		}
 		if details.DeleteSeries {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 84, "This deletes all occurrences, including past and future events, from your calendar provider—not just Gofer. You can’t undo this in Gofer. ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 84, "This deletes all occurrences, including past and future events, from your calendar provider—not just Raven. You can’t undo this in Raven. ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else if details.DeleteOccurrence {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 85, "Only this occurrence will be removed from your calendar provider. The rest of the series stays unchanged. You can’t undo this in Gofer. ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 85, "Only this occurrence will be removed from your calendar provider. The rest of the series stays unchanged. You can’t undo this in Raven. ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 86, "This deletes the event from your calendar provider, not just Gofer. You can’t undo this in Gofer. ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 86, "This deletes the event from your calendar provider, not just Raven. You can’t undo this in Raven. ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

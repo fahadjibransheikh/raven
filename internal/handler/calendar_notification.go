@@ -228,7 +228,7 @@ func (h *Handler) beforeCalendarNotificationSend(ctx context.Context, send stora
 	if _, err := resolveCalDAVHref(credentials.baseURL, source.RemoteID); err != nil {
 		return unlock, err
 	}
-	current, _, err := calendarUpdateCalDAVGet(ctx, calendarDeleteClient(calDAVHTTPTransport), endpoint, credentials.username, credentials.password)
+	current, _, err := calendarUpdateCalDAVGet(ctx, calendarDeleteClient(davHTTPTransport), endpoint, credentials.username, credentials.password)
 	if note.Deleted {
 		if calendarNotificationMissing(err) {
 			return unlock, nil

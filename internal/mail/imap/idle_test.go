@@ -230,7 +230,7 @@ func TestIdleWatcherCancellationDuringGreeting(t *testing.T) {
 	}()
 	host, portText, _ := net.SplitHostPort(listener.Addr().String())
 	port, _ := strconv.Atoi(portText)
-	watcher := NewIdleWatcher(&models.AccountConfig{IMAPHost: host, IMAPPort: port, IMAPTLSMode: "plaintext", IMAPAllowPlaintext: true, AuthMethod: "plain"}, "synthetic-only", "INBOX", nil, nil)
+	watcher := NewIdleWatcher(&models.AccountConfig{IMAPHost: host, IMAPAllowPrivate: true, IMAPPort: port, IMAPTLSMode: "plaintext", IMAPAllowPlaintext: true, AuthMethod: "plain"}, "synthetic-only", "INBOX", nil, nil)
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	done := make(chan struct{})

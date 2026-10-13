@@ -17,6 +17,7 @@ import (
 	"github.com/cristianadrielbraun/gofer/internal/config"
 	"github.com/cristianadrielbraun/gofer/internal/handler"
 	"github.com/cristianadrielbraun/gofer/internal/mailauth"
+	"github.com/cristianadrielbraun/gofer/internal/netguard"
 	"github.com/cristianadrielbraun/gofer/internal/providers"
 	"github.com/cristianadrielbraun/gofer/internal/storage"
 	"golang.org/x/oauth2"
@@ -249,6 +250,7 @@ func newOwnedCalendarFixtureServices(t *testing.T, provider string, wrap func(*o
 	previous := http.DefaultTransport
 	address, _ := url.Parse(server.URL)
 	http.DefaultTransport = ownedCalendarDiscoveryTransport{base: server.Client().Transport, target: address}
+	t.Cleanup(netguard.UseTransportForTests(http.DefaultTransport))
 	t.Cleanup(func() { http.DefaultTransport = previous })
 	client := &oauth2.Config{ClientID: "client", ClientSecret: "secret", Endpoint: oauth2.Endpoint{TokenURL: server.URL + "/token", AuthStyle: oauth2.AuthStyleInParams}}
 	f := newUserStorageFixtureServices(t, true, &mailauth.Config{GoogleClient: client, MicrosoftClient: client}, nil, calendarOptions)

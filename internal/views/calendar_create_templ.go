@@ -881,9 +881,9 @@ func CalendarCreateDialog(data CalendarCreateData) templ.Component {
 										"hx-get": "/api/calendar/guest-suggestions", "hx-trigger": "input changed delay:200ms",
 										"hx-params": "guests", "hx-target": "#calendar-guest-suggestions", "hx-sync": "this:replace",
 										"role": "combobox", "aria-autocomplete": "list", "aria-expanded": "false", "aria-controls": "calendar-guest-suggestions",
-										"onfocus":   "updateCalendarGuestDropdown(this.closest('[data-calendar-create-form]'))",
-										"onclick":   "updateCalendarGuestDropdown(this.closest('[data-calendar-create-form]'))",
-										"onkeydown": "handleCalendarGuestKeydown(event, this)",
+										"data-on-focus":   onAction("updateCalendarGuestDropdown", actionClosest("[data-calendar-create-form]")),
+										"data-on-click":   onAction("updateCalendarGuestDropdown", actionClosest("[data-calendar-create-form]")),
+										"data-on-keydown": onAction("handleCalendarGuestKeydown", actionEvent, actionElement),
 									},
 								}).Render(ctx, templ_7745c5c3_Buffer)
 								if templ_7745c5c3_Err != nil {
@@ -917,7 +917,7 @@ func CalendarCreateDialog(data CalendarCreateData) templ.Component {
 								}
 								return nil
 							})
-							templ_7745c5c3_Err = popover.Content(popover.ContentProps{Placement: popover.PlacementBottomStart, Exclusive: true, Class: "z-50 max-w-[calc(100vw-2rem)] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md", Attributes: templ.Attributes{"data-calendar-guests-dropdown-content": "", "ontoggle": "syncCalendarGuestDropdownState(this, event)"}}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var42), templ_7745c5c3_Buffer)
+							templ_7745c5c3_Err = popover.Content(popover.ContentProps{Placement: popover.PlacementBottomStart, Exclusive: true, Class: "z-50 max-w-[calc(100vw-2rem)] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md", Attributes: templ.Attributes{"data-calendar-guests-dropdown-content": "", "data-on-toggle": onAction("syncCalendarGuestDropdownState", actionElement, actionEvent)}}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var42), templ_7745c5c3_Buffer)
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
@@ -1094,7 +1094,7 @@ func CalendarCreateDialog(data CalendarCreateData) templ.Component {
 					}
 					return nil
 				})
-				templ_7745c5c3_Err = button.Button(button.Props{Type: button.TypeSubmit, Class: "btn-skeuo font-semibold disabled:cursor-not-allowed", Attributes: templ.Attributes{"data-calendar-create-submit": "", "onclick": "prepareCalendarDescriptionSubmit(event, this)"}}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var48), templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = button.Button(button.Props{Type: button.TypeSubmit, Class: "btn-skeuo font-semibold disabled:cursor-not-allowed", Attributes: templ.Attributes{"data-calendar-create-submit": "", "data-on-click": onAction("prepareCalendarDescriptionSubmit", actionEvent, actionElement)}}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var48), templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

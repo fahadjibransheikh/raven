@@ -2,23 +2,24 @@ package handler
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
-	"syscall"
+	"sync"
 	"time"
 
-	"github.com/cristianadrielbraun/gofer/internal/auth"
 	"github.com/cristianadrielbraun/gofer/internal/netguard"
 )
 
 // davPrivateAllowed decides whether a CardDAV connection may reach a private
-// address at host:port. Nil means never. New wires it to the deployment mode and
-// the admin private-target exception list.
-var davPrivateAllowed func(ctx context.Context, host string, port int) bool
+// address at host:port. Nil means never. By default only the administrator's
+// private-target exceptions (the policy set by setDAVPrivateTargetPolicy)
+// approve one, in every mode; tests replace it.
+var davPrivateAllowed = func(ctx context.Context, host string, port int) bool {
+	return davPrivateTargetAllowed(ctx, "https", host, port) || davPrivateTargetAllowed(ctx, "http", host, port)
+}
 
 type davAnchorKey struct{}
 
@@ -46,74 +47,30 @@ func davHostPort(u *url.URL) string {
 	return net.JoinHostPort(strings.ToLower(strings.TrimSuffix(u.Hostname(), ".")), port)
 }
 
-// davHTTPClient returns a client whose dialer refuses non-public addresses
-// (checked on the IP actually connected, so DNS rebinding and redirects cannot
-// bypass it) unless the target is the context's anchor and the policy allows it.
+// davHTTPClient returns a client for CardDAV requests. Its connections go
+// through netguard, which checks the address actually connected (so DNS
+// rebinding and redirects cannot bypass it), and refuses private addresses
+// unless the target is the context's anchor and davPrivateAllowed approves it.
 func davHTTPClient(ctx context.Context, timeout time.Duration) *http.Client {
 	anchor, _ := ctx.Value(davAnchorKey{}).(string)
-	dialer := func(ctx context.Context, network, address string) (net.Conn, error) {
-		host, portText, err := net.SplitHostPort(address)
-		if err != nil {
-			return nil, err
-		}
-		allowPrivate := false
-		if port, perr := strconv.Atoi(portText); perr == nil && anchor != "" && davPrivateAllowed != nil &&
-			net.JoinHostPort(strings.ToLower(strings.TrimSuffix(host, ".")), portText) == anchor {
-			allowPrivate = davPrivateAllowed(ctx, strings.ToLower(strings.TrimSuffix(host, ".")), port)
-		}
-		d := &net.Dialer{
-			Timeout: 10 * time.Second,
-			Control: func(_, address string, _ syscall.RawConn) error {
-				if allowPrivate {
-					return nil
-				}
-				h, _, err := net.SplitHostPort(address)
-				if err != nil {
-					return err
-				}
-				if netguard.ForbiddenIP(net.ParseIP(h)) {
-					return fmt.Errorf("refusing to connect to non-public address %s", h)
-				}
-				return nil
-			},
-		}
-		return d.DialContext(ctx, network, address)
-	}
-	// No proxy: it would be dialled instead of the target, defeating the check.
-	transport := &http.Transport{DialContext: dialer, TLSHandshakeTimeout: 10 * time.Second, MaxResponseHeaderBytes: 64 << 10, DisableKeepAlives: true}
-	// Keep the process-wide trust roots (only the TLS settings, never the dialer).
-	if base, ok := http.DefaultTransport.(*http.Transport); ok && base.TLSClientConfig != nil {
-		transport.TLSClientConfig = base.TLSClientConfig.Clone()
-	}
-	return &http.Client{
-		Timeout:   timeout,
-		Transport: transport,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			if len(via) >= 5 {
-				return fmt.Errorf("stopped after 5 redirects")
-			}
-			if req.URL.Scheme != "http" && req.URL.Scheme != "https" {
-				return fmt.Errorf("unsupported redirect scheme %q", req.URL.Scheme)
-			}
-			return nil
-		},
-	}
+	return &http.Client{Timeout: timeout, Transport: davAnchoredTransport(anchor), CheckRedirect: netguard.CheckRedirect}
 }
 
-// davPrivateTargetAllowed is the deployment policy for typed CardDAV endpoints on
-// private addresses. In open and personal mode the single operator owns the
-// server and the LAN (a Nextcloud on 192.168.x.x is the common self-host case),
-// so their own typed endpoint is allowed. In managed (multi-user) mode any user
-// could aim the server at internal services, so only an admin-approved private
-// target exception (the same list autodiscovery uses) opens it.
-func (h *Handler) davPrivateTargetAllowed(ctx context.Context, host string, port int) bool {
-	if h.auth == nil || h.auth.Config().AuthenticationMode() != auth.ModeManaged {
-		return true
+// davAnchoredTransports holds one guarded transport per anchor, so requests
+// to the same server reuse connections. Anchors are typed endpoints, a handful.
+var davAnchoredTransports sync.Map
+
+func davAnchoredTransport(anchor string) http.RoundTripper {
+	if cached, ok := davAnchoredTransports.Load(anchor); ok {
+		return cached.(http.RoundTripper)
 	}
-	for _, protocol := range []string{"https", "http"} {
-		if ok, err := h.db.IsPrivateTargetAllowed(ctx, protocol, host, port); err == nil && ok {
-			return true
+	transport := netguard.NewHTTPTransportNoReuse(func(ctx context.Context, _, host string, port int) bool {
+		if anchor == "" || davPrivateAllowed == nil {
+			return false
 		}
-	}
-	return false
+		host = strings.ToLower(strings.TrimSuffix(host, "."))
+		return net.JoinHostPort(host, strconv.Itoa(port)) == anchor && davPrivateAllowed(ctx, host, port)
+	})
+	actual, _ := davAnchoredTransports.LoadOrStore(anchor, transport)
+	return actual.(http.RoundTripper)
 }

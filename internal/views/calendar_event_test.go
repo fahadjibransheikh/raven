@@ -259,7 +259,7 @@ func TestCalendarEventDeleteConfirmationUsesTemplUIAndHTMX(t *testing.T) {
 			`role="dialog"`, `aria-labelledby="calendar-event-delete-title"`,
 			`hx-delete="/api/calendar/events/event%2Fwith%20space%3F%23"`, `hx-params="version"`, `hx-swap="none"`, `hx-sync="this:drop"`,
 			`name="version"`, `data-calendar-delete-cancel`, `data-calendar-delete-submit`, `data-calendar-delete-error`, `data-calendar-delete-spinner`,
-			`from your calendar provider, not just Gofer`, `Unsafe &lt;script&gt;title&lt;/script&gt;`,
+			`from your calendar provider, not just Raven`, `Unsafe &lt;script&gt;title&lt;/script&gt;`,
 		} {
 			if !strings.Contains(markup, want) {
 				t.Errorf("missing %q", want)

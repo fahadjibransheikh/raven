@@ -64,11 +64,14 @@ func ownedNotificationDeliveryFixture(t *testing.T, host string, port int, kind,
 		_, _ = fmt.Fprint(w, current)
 	}))
 	t.Cleanup(dav.Close)
-	previous := calDAVHTTPTransport
-	calDAVHTTPTransport = dav.Client().Transport
-	t.Cleanup(func() { calDAVHTTPTransport = previous })
+	previous := davHTTPTransport
+	davHTTPTransport = dav.Client().Transport
+	t.Cleanup(func() { davHTTPTransport = previous })
 	f = newUserContactPushFixture(t, "carddav", http.HandlerFunc(func(http.ResponseWriter, *http.Request) { t.Error("shared/provider fallback") }))
 	if err := f.system.AddPlaintextTransportException(t.Context(), "smtp", host, port, "fixture"); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.system.AddPrivateTargetException(t.Context(), "smtp", host, port, "fixture"); err != nil {
 		t.Fatal(err)
 	}
 	for _, owner := range []string{"alice", "bob"} {

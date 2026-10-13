@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -190,6 +191,39 @@ func (o *SyncOrchestrator) recordOutlookRetry(ctx context.Context, err error) er
 		}
 	}
 	return err
+}
+
+// Outlook answers a request it won't serve yet with the time to try again.
+// Managed mode saves that time per account (recordOutlookRetry); shared mode
+// keeps it in memory, so the next syncs of the account wait instead of asking
+// again straight away.
+const outlookThrottleFallback = time.Minute
+
+func (o *SyncOrchestrator) sharedOutlookRetryDeferred(accountID string) error {
+	if o.imapScope != nil {
+		return nil
+	}
+	if until, ok := o.outlookRetryUntil.Load(accountID); ok && time.Now().Before(until.(time.Time)) {
+		return fmt.Errorf("provider retry is deferred until %s", until.(time.Time).Format(time.RFC3339))
+	}
+	return nil
+}
+
+func (o *SyncOrchestrator) deferSharedOutlookRetry(accountID string, err error) {
+	if o.imapScope != nil {
+		return
+	}
+	var api *providerAPIError
+	if !errors.As(err, &api) {
+		return
+	}
+	until := api.RetryAt
+	if until.IsZero() && (api.StatusCode == http.StatusTooManyRequests || api.StatusCode == http.StatusServiceUnavailable) {
+		until = time.Now().Add(outlookThrottleFallback)
+	}
+	if until.After(time.Now()) {
+		o.outlookRetryUntil.Store(accountID, until)
+	}
 }
 
 func (o *SyncOrchestrator) outlookJSON(ctx context.Context, method, endpoint, token string, headers map[string]string, body, out any) error {

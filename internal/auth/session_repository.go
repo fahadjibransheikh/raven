@@ -163,6 +163,38 @@ func (m *Manager) activeSession(ctx context.Context, column, value string, touch
 	return session, nil
 }
 
+// SessionActive reports whether a session is still signed in, by the same
+// rules as GetSessionByToken, without counting as use. Links that act for a
+// session without carrying its cookie stop working once it ends.
+func (m *Manager) SessionActive(ctx context.Context, sessionID, userID string) (bool, error) {
+	if strings.TrimSpace(sessionID) == "" || strings.TrimSpace(userID) == "" {
+		return false, nil
+	}
+	now := m.clock.Now().UTC()
+	session, err := scanSession(m.db.Read().QueryRowContext(ctx, sessionSelect+`
+		WHERE id = ? AND user_id = ? AND revoked_at IS NULL
+		  AND idle_expires_at > ? AND absolute_expires_at > ?
+		  AND EXISTS (
+			SELECT 1 FROM users u
+			WHERE u.id = sessions.user_id AND u.status = 'active'
+			  AND u.auth_version = sessions.auth_version
+		  )`, sessionID, userID, now, now))
+	if err == sql.ErrNoRows {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	policy, err := m.loadAuthenticationPolicy(ctx, m.db.Read(), session.UserID, session.AuthVersion)
+	if errors.Is(err, ErrUserNotActive) || (err == nil && !policy.allowsExistingSession(session.AssuranceLevel)) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 func (m *Manager) touchSession(ctx context.Context, session *Session, now time.Time) error {
 	if session.LastUsedAt.After(now.Add(-sessionLastUsedWriteInterval)) {
 		return nil

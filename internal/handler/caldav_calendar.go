@@ -363,7 +363,8 @@ func calDAVPropfind(ctx context.Context, endpoint, username, password, depth, bo
 	req.Header.Set("Depth", depth)
 	req.Header.Set("Content-Type", `application/xml; charset="utf-8"`)
 	client := &http.Client{
-		Timeout: cardDAVDiscoveryHTTPTimeout,
+		Transport: davHTTPTransport,
+		Timeout:   cardDAVDiscoveryHTTPTimeout,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			if err := calendarDiscoveryDAVGuard(ctx); err != nil {
 				return err

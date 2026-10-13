@@ -34,6 +34,7 @@ templ LoginPage(showGoogle, showMicrosoft bool, oidcName string, errorMessage st
 			<title>Raven — Sign In</title>
 			@AppIcon()
 			<link rel="stylesheet" href={ AssetURL("/assets/css/output.css") }/>
+			<script src={ AssetURL("/assets/js/actions.js") }></script>
 		</head>
 		<body class="bg-background text-foreground antialiased">
 			<div class="min-h-screen flex items-center justify-center p-4">
@@ -186,6 +187,7 @@ templ LoginMFAContinuationPage(errorMessage string, factors LoginMFAFactors) {
 			<title>Raven — Additional verification</title>
 			@AppIcon()
 			<link rel="stylesheet" href={ AssetURL("/assets/css/output.css") }/>
+			<script src={ AssetURL("/assets/js/actions.js") }></script>
 		</head>
 		<body class="bg-background text-foreground antialiased">
 			<main class="min-h-screen flex items-center justify-center p-4">
@@ -269,6 +271,7 @@ templ RecoveryCodeLoginPage(errorMessage string) {
 			<title>Raven — Use a Recovery Code</title>
 			@AppIcon()
 			<link rel="stylesheet" href={ AssetURL("/assets/css/output.css") }/>
+			<script src={ AssetURL("/assets/js/actions.js") }></script>
 		</head>
 		<body class="bg-background text-foreground antialiased">
 			<main class="min-h-screen flex items-center justify-center p-4">
@@ -325,6 +328,7 @@ templ RecoveryRepairMFAPage(data RecoveryRepairMFAData) {
 			<title>Raven — Repair Your Authenticator</title>
 			@AppIcon()
 			<link rel="stylesheet" href={ AssetURL("/assets/css/output.css") }/>
+			<script src={ AssetURL("/assets/js/actions.js") }></script>
 		</head>
 		<body class="bg-background text-foreground antialiased">
 			<main class="min-h-screen flex items-center justify-center p-4 py-10">
@@ -380,6 +384,7 @@ templ MFAEnrollmentPage(data MFAEnrollmentData) {
 			<title>Raven — Set Up MFA</title>
 			@AppIcon()
 			<link rel="stylesheet" href={ AssetURL("/assets/css/output.css") }/>
+			<script src={ AssetURL("/assets/js/actions.js") }></script>
 		</head>
 		<body class="bg-background text-foreground antialiased">
 			<main class="min-h-screen flex items-center justify-center p-4 py-10">
@@ -435,6 +440,7 @@ templ MFAEnrollmentCodesPage(data MFAEnrollmentCodesData) {
 			<title>Raven — Save Recovery Codes</title>
 			@AppIcon()
 			<link rel="stylesheet" href={ AssetURL("/assets/css/output.css") }/>
+			<script src={ AssetURL("/assets/js/actions.js") }></script>
 		</head>
 		<body class="bg-background text-foreground antialiased">
 			<main class="min-h-screen flex items-center justify-center p-4 py-10">
@@ -506,6 +512,7 @@ templ RecoveryRepairCodesPage(data RecoveryRepairCodesData) {
 			<title>Raven — Save New Recovery Codes</title>
 			@AppIcon()
 			<link rel="stylesheet" href={ AssetURL("/assets/css/output.css") }/>
+			<script src={ AssetURL("/assets/js/actions.js") }></script>
 		</head>
 		<body class="bg-background text-foreground antialiased">
 			<main class="min-h-screen flex items-center justify-center p-4 py-10">

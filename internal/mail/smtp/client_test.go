@@ -35,7 +35,7 @@ func TestNewClientRejectsUnencryptedTLSModes(t *testing.T) {
 	for _, mode := range []string{"none", "", "optional", "plaintext"} {
 		t.Run(mode, func(t *testing.T) {
 			client, err := NewClient(context.Background(), &models.AccountConfig{
-				SMTPHost:    "127.0.0.1",
+				SMTPHost: "127.0.0.1", SMTPAllowPrivate: true,
 				SMTPPort:    1,
 				SMTPTLSMode: mode,
 			}, "secret")
@@ -57,7 +57,7 @@ func TestNewClientRejectsUnencryptedTLSModes(t *testing.T) {
 
 func TestNewClientRejectsOAuthOverApprovedPlaintext(t *testing.T) {
 	client, err := NewClient(context.Background(), &models.AccountConfig{
-		SMTPHost:           "127.0.0.1",
+		SMTPHost: "127.0.0.1", SMTPAllowPrivate: true,
 		SMTPPort:           1,
 		SMTPTLSMode:        "plaintext",
 		SMTPAllowPlaintext: true,
@@ -98,7 +98,7 @@ func TestNewClientStopsWhenGreetingContextExpires(t *testing.T) {
 		t.Fatalf("parse listener port: %v", err)
 	}
 	cfg := &models.AccountConfig{
-		SMTPHost:    host,
+		SMTPHost: host, SMTPAllowPrivate: true,
 		SMTPPort:    port,
 		SMTPTLSMode: "starttls",
 		Username:    "user@example.com",

@@ -213,6 +213,9 @@ func TestUserCalendarResponsePostHTTPDAVEmailQueuesOriginalMIMEAndDelivers(t *te
 	if err := f.system.AddPlaintextTransportException(t.Context(), "smtp", host, port, "alice"); err != nil {
 		t.Fatal(err)
 	}
+	if err := f.system.AddPrivateTargetException(t.Context(), "smtp", host, port, "alice"); err != nil {
+		t.Fatal(err)
+	}
 	for _, owner := range []string{"alice", "bob"} {
 		if err := f.accountStore.WithAccountForUser(t.Context(), owner, f.accounts[owner].ID, func(_ *config.AccountStore, db *storage.DB) error {
 			_, err := db.Write().Exec(`UPDATE accounts SET smtp_host=?,smtp_port=?,smtp_tls_mode='plaintext',email_sync_enabled=0 WHERE id=?`, host, port, f.accounts[owner].ID)

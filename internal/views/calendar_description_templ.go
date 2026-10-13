@@ -54,7 +54,7 @@ func calendarDescriptionCommand(command, title string, glyph templ.Component) te
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = button.Button(button.Props{Type: button.TypeButton, Variant: button.VariantGhost, Size: button.SizeIcon, Class: "size-7 shrink-0 text-muted-foreground", Attributes: templ.Attributes{"aria-label": title, "title": title, "data-calendar-description-command": command, "onclick": "calendarDescriptionExec(this, this.dataset.calendarDescriptionCommand)", "onmousedown": "event.preventDefault()"}}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = button.Button(button.Props{Type: button.TypeButton, Variant: button.VariantGhost, Size: button.SizeIcon, Class: "size-7 shrink-0 text-muted-foreground", Attributes: templ.Attributes{"aria-label": title, "title": title, "data-calendar-description-command": command, "data-on-click": onAction("calendarDescriptionExec", actionElement, actionData("calendarDescriptionCommand")), "data-on-mousedown": onAction("goferPreventDefault", actionEvent)}}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -191,7 +191,7 @@ func CalendarDescriptionEditor(data CalendarCreateData) templ.Component {
 					}
 					return nil
 				})
-				templ_7745c5c3_Err = button.Button(button.Props{Type: button.TypeButton, Variant: button.VariantGhost, Size: button.SizeIcon, Class: "size-7 text-muted-foreground", Attributes: templ.Attributes{"aria-label": "More formatting", "onmousedown": "event.preventDefault()"}}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var8), templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = button.Button(button.Props{Type: button.TypeButton, Variant: button.VariantGhost, Size: button.SizeIcon, Class: "size-7 text-muted-foreground", Attributes: templ.Attributes{"aria-label": "More formatting", "data-on-mousedown": onAction("goferPreventDefault", actionEvent)}}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var8), templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -235,7 +235,7 @@ func CalendarDescriptionEditor(data CalendarCreateData) templ.Component {
 					}
 					return nil
 				})
-				templ_7745c5c3_Err = dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"onclick": "calendarDescriptionExec(this, 'formatBlock', 'p')"}}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var10), templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"data-on-click": onAction("calendarDescriptionExec", actionElement, "formatBlock", "p")}}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var10), templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -261,7 +261,7 @@ func CalendarDescriptionEditor(data CalendarCreateData) templ.Component {
 					}
 					return nil
 				})
-				templ_7745c5c3_Err = dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"onclick": "calendarDescriptionExec(this, 'formatBlock', 'h3')"}}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var11), templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"data-on-click": onAction("calendarDescriptionExec", actionElement, "formatBlock", "h3")}}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var11), templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -287,7 +287,7 @@ func CalendarDescriptionEditor(data CalendarCreateData) templ.Component {
 					}
 					return nil
 				})
-				templ_7745c5c3_Err = dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"onclick": "calendarDescriptionExec(this, 'formatBlock', 'blockquote')"}}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var12), templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"data-on-click": onAction("calendarDescriptionExec", actionElement, "formatBlock", "blockquote")}}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var12), templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -313,7 +313,7 @@ func CalendarDescriptionEditor(data CalendarCreateData) templ.Component {
 					}
 					return nil
 				})
-				templ_7745c5c3_Err = dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"onclick": "calendarDescriptionExec(this, 'formatBlock', 'pre')"}}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var13), templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"data-on-click": onAction("calendarDescriptionExec", actionElement, "formatBlock", "pre")}}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var13), templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -347,7 +347,7 @@ func CalendarDescriptionEditor(data CalendarCreateData) templ.Component {
 					}
 					return nil
 				})
-				templ_7745c5c3_Err = dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"onclick": "calendarDescriptionExec(this, 'removeFormat')"}}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var14), templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"data-on-click": onAction("calendarDescriptionExec", actionElement, "removeFormat")}}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var14), templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -397,11 +397,11 @@ func CalendarDescriptionEditor(data CalendarCreateData) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = button.Button(button.Props{Type: button.TypeButton, Variant: button.VariantGhost, Size: button.SizeIcon, Class: "absolute top-1 right-1 size-7 text-muted-foreground", Attributes: templ.Attributes{"data-calendar-description-toggle": "", "aria-label": "Expand description", "title": "Expand description", "aria-controls": "calendar-create-description", "aria-expanded": "false", "onclick": "toggleCalendarDescription(this.closest('[data-calendar-create-form]'))"}}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var15), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = button.Button(button.Props{Type: button.TypeButton, Variant: button.VariantGhost, Size: button.SizeIcon, Class: "absolute top-1 right-1 size-7 text-muted-foreground", Attributes: templ.Attributes{"data-calendar-description-toggle": "", "aria-label": "Expand description", "title": "Expand description", "aria-controls": "calendar-create-description", "aria-expanded": "false", "data-on-click": onAction("toggleCalendarDescription", actionClosest("[data-calendar-create-form]"))}}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var15), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</div><div class=\"relative min-h-0 max-h-56 flex-1 overflow-y-auto overscroll-contain px-3 py-2\" data-calendar-description-scroll><div id=\"calendar-create-description\" class=\"compose-rich-editor calendar-rich-description min-h-24 outline-none\" contenteditable=\"true\" role=\"textbox\" aria-multiline=\"true\" aria-label=\"Description\" data-calendar-rich-editor data-placeholder=\"Add description\" oninput=\"syncCalendarDescription(this)\" onfocus=\"calendarDescriptionSelection(this)\" onkeyup=\"calendarDescriptionSelection(this)\" onmouseup=\"calendarDescriptionSelection(this)\" onpaste=\"pasteCalendarDescription(event)\" ondrop=\"pasteCalendarDescription(event)\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</div><div class=\"relative min-h-0 max-h-56 flex-1 overflow-y-auto overscroll-contain px-3 py-2\" data-calendar-description-scroll><div id=\"calendar-create-description\" class=\"compose-rich-editor calendar-rich-description min-h-24 outline-none\" contenteditable=\"true\" role=\"textbox\" aria-multiline=\"true\" aria-label=\"Description\" data-calendar-rich-editor data-placeholder=\"Add description\" data-on-input='[\"syncCalendarDescription\",\"$this\"]' data-on-focus='[\"calendarDescriptionSelection\",\"$this\"]' data-on-keyup='[\"calendarDescriptionSelection\",\"$this\"]' data-on-mouseup='[\"calendarDescriptionSelection\",\"$this\"]' data-on-paste='[\"pasteCalendarDescription\",\"$event\"]' data-on-drop='[\"pasteCalendarDescription\",\"$event\"]'>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

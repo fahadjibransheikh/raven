@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -426,7 +427,7 @@ func TestSyncGmailLabelsStopsOnContextCancellation(t *testing.T) {
 	seedLabelSyncMessage(t, db, providers.ProviderGmail, "<gmail-cancel-3@example.com>", "gmail-msg-3")
 
 	ctx, cancel := context.WithCancel(context.Background())
-	messageRequests := 0
+	var messageRequests atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/users/me/labels":
@@ -434,9 +435,9 @@ func TestSyncGmailLabelsStopsOnContextCancellation(t *testing.T) {
 				{"id": "Label_1", "name": "Projects", "type": "user"},
 			}})
 		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/users/me/messages/"):
-			messageRequests++
-			// Cancel before replying: cancelling after the reply races the
-			// client, which can finish the request and send the next one first.
+			messageRequests.Add(1)
+			// Cancel before answering, so the sync can't read the answer and
+			// send the next request before the cancellation lands.
 			cancel()
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"id":        "gmail-msg-1",
@@ -458,8 +459,8 @@ func TestSyncGmailLabelsStopsOnContextCancellation(t *testing.T) {
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("syncGmailLabels() error = %v, want context canceled", err)
 	}
-	if messageRequests != 1 {
-		t.Fatalf("message requests = %d, want cancellation after first request", messageRequests)
+	if got := messageRequests.Load(); got != 1 {
+		t.Fatalf("message requests = %d, want cancellation after first request", got)
 	}
 }
 

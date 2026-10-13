@@ -23,6 +23,7 @@ import (
 	"github.com/cristianadrielbraun/gofer/internal/mailauth"
 	"github.com/cristianadrielbraun/gofer/internal/notifications"
 	"github.com/cristianadrielbraun/gofer/internal/store"
+	"github.com/cristianadrielbraun/gofer/internal/views"
 )
 
 type managedApplication struct {
@@ -69,6 +70,9 @@ func newManagedApplication(parent context.Context, path string, maxOpen int) (re
 	if err := app.httpConfig.ValidateExposure(authConfig.Enabled); err != nil {
 		return nil, err
 	}
+	if app.httpConfig.WarnInsecureLAN(authConfig.Enabled) {
+		log.Printf("WARNING: GOFER_ALLOW_INSECURE_LAN is enabled; sign-in cookies for %s travel unencrypted on the local network", app.httpConfig.BaseURL)
+	}
 	app.storage, err = openManagedStorage(ctx, path, maxOpen)
 	if err != nil {
 		return nil, err
@@ -83,6 +87,9 @@ func newManagedApplication(parent context.Context, path string, maxOpen int) (re
 	}
 	centralAccounts, err := config.NewAccountStore(s.central, s.key)
 	if err != nil {
+		return nil, err
+	}
+	if err := centralAccounts.SecurePasswords(ctx); err != nil {
 		return nil, err
 	}
 	app.auth = auth.NewManager(authConfig, s.central, auth.Dependencies{BucketHashKey: s.key})
@@ -128,6 +135,7 @@ func newManagedApplication(parent context.Context, path string, maxOpen int) (re
 		return nil, err
 	}
 	app.mailbox = handler.New(s.central, centralAccounts, syncer, blobs, app.auth, publicKey, app.flows)
+	app.mailbox.SetTestPushSender(app.notifications.SendTestPush)
 	mux := http.NewServeMux()
 	if err := app.mailbox.RegisterUserStorageRoutes(ctx, mux, s.routing, handler.UserStorageOptions{
 		Accounts: accounts, IMAP: app.imap, Credentials: app.credentials,
@@ -153,7 +161,7 @@ func newManagedApplication(parent context.Context, path string, maxOpen int) (re
 	app.auth.StartSessionCleanup(ctx)
 	app.flows.StartCleanup(ctx)
 	app.notifications.Start(ctx)
-	app.handler = httpguard.Gzip(app.httpConfig.ClientNetworkMiddleware(authConfig.Enabled, app.httpConfig.ClientSourceMiddleware(app.httpConfig.Middleware(app.auth.Middleware(mux)))))
+	app.handler = httpguard.Gzip(app.httpConfig.ClientNetworkMiddleware(authConfig.Enabled, app.httpConfig.ClientSourceMiddleware(app.httpConfig.Middleware(app.auth.Middleware(views.WithListViewCookie(mux))))))
 	return app, nil
 }
 
@@ -233,14 +241,8 @@ func RunManaged(ctx context.Context, stdout, stderr io.Writer) (err error) {
 	if err != nil {
 		return err
 	}
-	// No Read/WriteTimeout: SSE streams and large attachment up/downloads are
-	// long-lived. Header and idle limits stop slowloris-style connection holding.
-	server := &http.Server{
-		Handler:           app,
-		BaseContext:       func(net.Listener) context.Context { return app.ctx },
-		ReadHeaderTimeout: 10 * time.Second,
-		IdleTimeout:       2 * time.Minute,
-	}
+	server := newHTTPServer(app)
+	server.BaseContext = func(net.Listener) context.Context { return app.ctx }
 	defer server.Close()
 	if _, err := fmt.Fprintf(stdout, "Raven running on %s\nlistening on %s\ndatabase: %s\nauth: managed\n", app.httpConfig.BaseURL, listener.Addr(), app.storage.central.Path()); err != nil {
 		listener.Close()

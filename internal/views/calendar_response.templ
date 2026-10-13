@@ -120,7 +120,7 @@ templ CalendarReplyStatus(data CalendarReplyData) {
 				Reply stopped. No further email will be sent. If delivery was uncertain, check your mail provider before responding again.
 			} else if data.SendStatus == "ambiguous" {
 				@icon.TriangleAlert(icon.Props{Class:"mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400"})
-				The email may have been sent. Check your mail provider before replying again; Gofer will not resend automatically. Your calendar has not been updated.
+				The email may have been sent. Check your mail provider before replying again; Raven will not resend automatically. Your calendar has not been updated.
 			} else if data.SendStatus == "failed" {
 				@icon.X(icon.Props{Class:"mt-0.5 size-4 shrink-0 text-destructive"})
 				Reply not sent. Check this account’s mail settings, or cancel and refresh if the invitation changed. Your calendar has not been updated.

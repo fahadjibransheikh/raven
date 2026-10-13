@@ -58,7 +58,7 @@ func TestInlineContentIsIsolatedAndNeverServedAsActiveType(t *testing.T) {
 	}{
 		{"html", "text/html", "h", []byte("<script>alert(1)</script>"), "application/octet-stream", "attachment"},
 		{"xhtml", "application/xhtml+xml", "x", []byte("<html xmlns='http://www.w3.org/1999/xhtml'><script>1</script></html>"), "application/octet-stream", "attachment"},
-		{"svg", "image/svg+xml", "s", []byte("<svg xmlns='http://www.w3.org/2000/svg' onload='alert(1)'><script>1</script></svg>"), "image/svg+xml", "attachment"},
+		{"svg", "image/svg+xml", "s", []byte("<svg xmlns='http://www.w3.org/2000/svg' onload='alert(1)'><script>1</script></svg>"), "application/octet-stream", "attachment"}, // opened as a page, not loaded as an image
 		{"png", "image/png", "p", []byte(pngMagic), "image/png", "inline"},
 		{"png-lying", "image/png", "l", []byte("<html><script>1</script></html>"), "application/octet-stream", "attachment"},
 		{"html-lying-as-png", "text/html", "q", []byte(pngMagic), "image/png", "inline"},

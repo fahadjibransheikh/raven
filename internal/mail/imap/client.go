@@ -17,6 +17,7 @@ import (
 	"github.com/cristianadrielbraun/gofer/internal/mail/oauth2sasl"
 	mailtransport "github.com/cristianadrielbraun/gofer/internal/mail/transport"
 	"github.com/cristianadrielbraun/gofer/internal/models"
+	"github.com/cristianadrielbraun/gofer/internal/netguard"
 )
 
 type FolderInfo struct {
@@ -75,19 +76,18 @@ func connectWithContext(ctx context.Context, cfg *models.AccountConfig, password
 
 	addr := net.JoinHostPort(cfg.IMAPHost, strconv.Itoa(cfg.IMAPPort))
 
-	var conn net.Conn
 	switch tlsMode {
-	case mailtransport.TLSModeImplicit:
+	case mailtransport.TLSModeImplicit, mailtransport.TLSModeStartTLS, mailtransport.TLSModePlaintext:
+	default:
+		return nil, fmt.Errorf("unsupported IMAP TLS mode %q", tlsMode)
+	}
+	conn, err := netguard.Dial(ctx, options.Dialer, "imap", cfg.IMAPHost, cfg.IMAPPort, cfg.IMAPAllowPrivate)
+	if err == nil && tlsMode == mailtransport.TLSModeImplicit {
 		tlsOptions := options.TLSConfig.Clone()
 		if tlsOptions.NextProtos == nil {
 			tlsOptions.NextProtos = []string{"imap"}
 		}
-		dialer := &tls.Dialer{NetDialer: options.Dialer, Config: tlsOptions}
-		conn, err = dialer.DialContext(ctx, "tcp", addr)
-	case mailtransport.TLSModeStartTLS, mailtransport.TLSModePlaintext:
-		conn, err = options.Dialer.DialContext(ctx, "tcp", addr)
-	default:
-		return nil, fmt.Errorf("unsupported IMAP TLS mode %q", tlsMode)
+		conn, err = tlsHandshake(ctx, conn, tlsOptions, options.Dialer.Timeout)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("connect to %s: %w", addr, err)
@@ -130,6 +130,22 @@ func connectWithContext(ctx context.Context, cfg *models.AccountConfig, password
 	}
 
 	return c, nil
+}
+
+// tlsHandshake starts TLS on a connection opened by netguard. The timeout
+// bounds the handshake as it did when the TLS dialer also opened the
+// connection, since some callers pass a context without a deadline.
+func tlsHandshake(ctx context.Context, conn net.Conn, config *tls.Config, timeout time.Duration) (net.Conn, error) {
+	if timeout > 0 {
+		_ = conn.SetDeadline(time.Now().Add(timeout))
+	}
+	tlsConn := tls.Client(conn, config)
+	if err := tlsConn.HandshakeContext(ctx); err != nil {
+		_ = conn.Close()
+		return nil, err
+	}
+	_ = conn.SetDeadline(time.Time{})
+	return tlsConn, nil
 }
 
 func secureClientOptions(host string, options *imapclient.Options) *imapclient.Options {
@@ -180,6 +196,9 @@ func (c *Client) ConnectionLost() bool {
 // Servers without it reject the command, and some disconnect after repeated
 // rejections; the next SELECT replaces the selection anyway.
 func (c *Client) unselect() {
+	if c.closed {
+		return
+	}
 	if c.client.Caps().Has(imap.CapUnselect) {
 		c.client.Unselect()
 	}

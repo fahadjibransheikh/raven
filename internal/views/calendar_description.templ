@@ -8,7 +8,7 @@ import (
 )
 
 templ calendarDescriptionCommand(command, title string, glyph templ.Component) {
-	@button.Button(button.Props{Type: button.TypeButton, Variant: button.VariantGhost, Size: button.SizeIcon, Class: "size-7 shrink-0 text-muted-foreground", Attributes: templ.Attributes{"aria-label": title, "title": title, "data-calendar-description-command": command, "onclick": "calendarDescriptionExec(this, this.dataset.calendarDescriptionCommand)", "onmousedown": "event.preventDefault()"}}) {
+	@button.Button(button.Props{Type: button.TypeButton, Variant: button.VariantGhost, Size: button.SizeIcon, Class: "size-7 shrink-0 text-muted-foreground", Attributes: templ.Attributes{"aria-label": title, "title": title, "data-calendar-description-command": command, "data-on-click": onAction("calendarDescriptionExec", actionElement, actionData("calendarDescriptionCommand")), "data-on-mousedown": onAction("goferPreventDefault", actionEvent)}}) {
 		@glyph
 	}
 }
@@ -32,26 +32,26 @@ templ CalendarDescriptionEditor(data CalendarCreateData) {
 					@calendarDescriptionCommand("createLink", "Insert link", icon.Link(icon.Props{Class: "size-3.5"}))
 					@dropdown.Dropdown() {
 						@dropdown.Trigger() {
-							@button.Button(button.Props{Type: button.TypeButton, Variant: button.VariantGhost, Size: button.SizeIcon, Class: "size-7 text-muted-foreground", Attributes: templ.Attributes{"aria-label": "More formatting", "onmousedown": "event.preventDefault()"}}) {
+							@button.Button(button.Props{Type: button.TypeButton, Variant: button.VariantGhost, Size: button.SizeIcon, Class: "size-7 text-muted-foreground", Attributes: templ.Attributes{"aria-label": "More formatting", "data-on-mousedown": onAction("goferPreventDefault", actionEvent)}}) {
 								@icon.Ellipsis(icon.Props{Class: "size-3.5"})
 								}
 						}
 						@dropdown.Content() {
-							@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"onclick": "calendarDescriptionExec(this, 'formatBlock', 'p')"}}) { Paragraph }
-							@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"onclick": "calendarDescriptionExec(this, 'formatBlock', 'h3')"}}) { Heading }
-							@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"onclick": "calendarDescriptionExec(this, 'formatBlock', 'blockquote')"}}) { Quote }
-							@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"onclick": "calendarDescriptionExec(this, 'formatBlock', 'pre')"}}) { Code }
+							@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"data-on-click": onAction("calendarDescriptionExec", actionElement, "formatBlock", "p")}}) { Paragraph }
+							@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"data-on-click": onAction("calendarDescriptionExec", actionElement, "formatBlock", "h3")}}) { Heading }
+							@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"data-on-click": onAction("calendarDescriptionExec", actionElement, "formatBlock", "blockquote")}}) { Quote }
+							@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"data-on-click": onAction("calendarDescriptionExec", actionElement, "formatBlock", "pre")}}) { Code }
 							@dropdown.Separator()
-							@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"onclick": "calendarDescriptionExec(this, 'removeFormat')"}}) { Clear formatting }
+							@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"data-on-click": onAction("calendarDescriptionExec", actionElement, "removeFormat")}}) { Clear formatting }
 						}
 					}
-					@button.Button(button.Props{Type: button.TypeButton, Variant: button.VariantGhost, Size: button.SizeIcon, Class: "absolute top-1 right-1 size-7 text-muted-foreground", Attributes: templ.Attributes{"data-calendar-description-toggle": "", "aria-label": "Expand description", "title": "Expand description", "aria-controls": "calendar-create-description", "aria-expanded": "false", "onclick": "toggleCalendarDescription(this.closest('[data-calendar-create-form]'))"}}) {
+					@button.Button(button.Props{Type: button.TypeButton, Variant: button.VariantGhost, Size: button.SizeIcon, Class: "absolute top-1 right-1 size-7 text-muted-foreground", Attributes: templ.Attributes{"data-calendar-description-toggle": "", "aria-label": "Expand description", "title": "Expand description", "aria-controls": "calendar-create-description", "aria-expanded": "false", "data-on-click": onAction("toggleCalendarDescription", actionClosest("[data-calendar-create-form]"))}}) {
 						<span data-calendar-description-expand>@icon.Maximize2(icon.Props{Class: "size-4"})</span>
 						<span data-calendar-description-collapse hidden>@icon.Minimize2(icon.Props{Class: "size-4"})</span>
 					}
 				</div>
 				<div class="relative min-h-0 max-h-56 flex-1 overflow-y-auto overscroll-contain px-3 py-2" data-calendar-description-scroll>
-					<div id="calendar-create-description" class="compose-rich-editor calendar-rich-description min-h-24 outline-none" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Description" data-calendar-rich-editor data-placeholder="Add description" oninput="syncCalendarDescription(this)" onfocus="calendarDescriptionSelection(this)" onkeyup="calendarDescriptionSelection(this)" onmouseup="calendarDescriptionSelection(this)" onpaste="pasteCalendarDescription(event)" ondrop="pasteCalendarDescription(event)">
+					<div id="calendar-create-description" class="compose-rich-editor calendar-rich-description min-h-24 outline-none" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Description" data-calendar-rich-editor data-placeholder="Add description" data-on-input='["syncCalendarDescription","$this"]' data-on-focus='["calendarDescriptionSelection","$this"]' data-on-keyup='["calendarDescriptionSelection","$this"]' data-on-mouseup='["calendarDescriptionSelection","$this"]' data-on-paste='["pasteCalendarDescription","$event"]' data-on-drop='["pasteCalendarDescription","$event"]'>
 						@templ.Raw(calendar.SanitizeDescriptionHTML(rich))
 					</div>
 				</div>

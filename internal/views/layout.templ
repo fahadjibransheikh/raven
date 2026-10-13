@@ -50,6 +50,7 @@ templ Layout(accounts []models.Account, activeFolder string, emails []models.Ema
 			@copybutton.Script()
 			@toast.Script()
 			@AppSidebarResponsiveStyle()
+			<script src={ AssetURL("/assets/js/actions.js") }></script>
 		</head>
 		<body class="bg-background text-foreground antialiased" data-ui-settings={ uiSettingsJSON(uiSettings) } data-initial-email-id={ initialEmailID }>
 			<div id="app-shell" class="flex h-screen overflow-hidden">
@@ -79,40 +80,13 @@ templ Layout(accounts []models.Account, activeFolder string, emails []models.Ema
 			<script src={ AssetURL("/assets/js/virtual-scroll.js") }></script>
 			<script src={ AssetURL("/assets/js/app.js") }></script>
 			<script src={ AssetURL("/assets/js/settings.js") }></script>
+			<script src={ AssetURL("/assets/js/settings-page.js") }></script>
 			<script src={ AssetURL("/assets/js/ui-settings.js") }></script>
 			<script src={ AssetURL("/assets/js/raven.js") }></script>
 			<script src={ AssetURL("/assets/js/whats-new.js") }></script>
 			<script src={ AssetURL("/assets/js/phone-layout.js") }></script>
 			@MailCardLayoutScript()
 			<script src={ AssetURL("/assets/js/resize.js") }></script>
-			<script>
-				function setupEditAccountDialog() {
-					var dlg = document.querySelector('#edit-account-dialog dialog[data-tui-dialog-content]');
-					if (!dlg) return;
-
-					if (window.tui && window.tui.dialog) {
-						window.tui.dialog.open('edit-account-dialog');
-					}
-
-					requestAnimationFrame(function() {
-						var track = document.getElementById('edit-wizard-track');
-						if (!track || !dlg.open) return;
-
-						track.style.transform = 'translateX(0)';
-						if (typeof _editWizStep !== 'undefined') _editWizStep = 0;
-
-                document.querySelectorAll('#edit-account-dialog [data-account-wizard-step]').forEach(function(item) {
-                    item.dataset.active = String(+item.dataset.accountWizardStep === 0);
-                });
-					});
-				}
-
-				document.addEventListener('htmx:afterSettle', function(e) {
-					if (e.target && e.target.querySelector && e.target.querySelector('#edit-account-dialog')) {
-						setTimeout(setupEditAccountDialog, 20);
-					}
-				});
-			</script>
 		</body>
 	</html>
 }
@@ -157,6 +131,7 @@ templ SettingsLayout(accounts []models.Account, syncSettings models.SyncSettings
 			<link rel="stylesheet" href={ AssetURL("/assets/css/output.css") }/>
 			@SettingsComponentScripts()
 			@AppSidebarResponsiveStyle()
+			<script src={ AssetURL("/assets/js/actions.js") }></script>
 		</head>
 		<body class="bg-background text-foreground antialiased" data-ui-settings={ uiSettingsJSON(uiSettings) }>
 			<div id="app-shell" class="flex h-screen overflow-hidden">
@@ -199,6 +174,7 @@ templ SettingsRuntime(accounts []models.Account) {
 	<script src={ AssetURL("/assets/js/virtual-scroll.js") }></script>
 	<script src={ AssetURL("/assets/js/app.js") }></script>
 	<script src={ AssetURL("/assets/js/settings.js") }></script>
+	<script src={ AssetURL("/assets/js/settings-page.js") }></script>
 	<script src={ AssetURL("/assets/js/ui-settings.js") }></script>
 	<script src={ AssetURL("/assets/js/raven.js") }></script>
 	<script src={ AssetURL("/assets/js/whats-new.js") }></script>
@@ -206,34 +182,6 @@ templ SettingsRuntime(accounts []models.Account) {
 	<script src={ AssetURL("/assets/js/resize.js") }></script>
 	<script src={ AssetURL("/assets/js/passkey-registration.js") }></script>
 	<script src={ AssetURL("/assets/js/passkey-authentication.js") }></script>
-	<script>
-		function setupEditAccountDialog() {
-			var dlg = document.querySelector('#edit-account-dialog dialog[data-tui-dialog-content]');
-			if (!dlg) return;
-
-			if (window.tui && window.tui.dialog) {
-				window.tui.dialog.open('edit-account-dialog');
-			}
-
-			requestAnimationFrame(function() {
-				var track = document.getElementById('edit-wizard-track');
-				if (!track || !dlg.open) return;
-
-				track.style.transform = 'translateX(0)';
-				if (typeof _editWizStep !== 'undefined') _editWizStep = 0;
-
-            document.querySelectorAll('#edit-account-dialog [data-account-wizard-step]').forEach(function(item) {
-                item.dataset.active = String(+item.dataset.accountWizardStep === 0);
-            });
-			});
-		}
-
-		document.addEventListener('htmx:afterSettle', function(e) {
-			if (e.target && e.target.querySelector && e.target.querySelector('#edit-account-dialog')) {
-				setTimeout(setupEditAccountDialog, 20);
-			}
-		});
-	</script>
 }
 
 templ MailShell(accounts []models.Account, activeFolder string, emails []models.Email, selectedEmail *models.Email, totalCount int, scrollCount int, uiSettings map[string]string, selectedThread []models.ThreadItem, initialEmailID string, scheduledCount int, filters models.EmailFilters) {
@@ -304,6 +252,7 @@ templ ContactsLayout(accounts []models.Account, contacts []models.Contact, selec
 			@copybutton.Script()
 			@toast.Script()
 			@AppSidebarResponsiveStyle()
+			<script src={ AssetURL("/assets/js/actions.js") }></script>
 		</head>
 			<body class="bg-background text-foreground antialiased" data-ui-settings={ uiSettingsJSON(uiSettings) }>
 				@ContactsShell(accounts, contacts, selected, selectedProfile, showNew, syncQueued, filters, totalCount, uiSettings)
@@ -322,6 +271,7 @@ templ ContactsLayout(accounts []models.Account, contacts []models.Contact, selec
 			<script src={ AssetURL("/assets/js/virtual-scroll.js") }></script>
 			<script src={ AssetURL("/assets/js/app.js") }></script>
 			<script src={ AssetURL("/assets/js/settings.js") }></script>
+			<script src={ AssetURL("/assets/js/settings-page.js") }></script>
 			<script src={ AssetURL("/assets/js/ui-settings.js") }></script>
 			<script src={ AssetURL("/assets/js/raven.js") }></script>
 			<script src={ AssetURL("/assets/js/whats-new.js") }></script>
@@ -372,6 +322,7 @@ templ AdminLayout(uiSettings map[string]string, userData AdminUsersData, avatarS
 			@popover.Script()
 			@copybutton.Script()
 			@toast.Script()
+			<script src={ AssetURL("/assets/js/actions.js") }></script>
 		</head>
 		<body class="bg-background text-foreground antialiased" data-ui-settings={ uiSettingsJSON(uiSettings) }>
 			<div class="flex h-screen overflow-hidden bg-background">
@@ -410,46 +361,7 @@ templ ResizeHandle(panel string) {
 }
 
 templ SavedPanelSizeStyle() {
-	<script>
-		(function() {
-			document.documentElement.classList.add("js");
-			// Set before first paint so phones never flash the desktop panes; phone-layout.js keeps it in sync.
-			if (window.matchMedia && window.matchMedia("(max-width: 1023.98px)").matches) document.documentElement.setAttribute("data-phone", "");
-
-			var settings = {};
-			try {
-				settings = JSON.parse(localStorage.getItem("gofer:ui_settings") || "{}") || {};
-			} catch (_) {}
-
-			function px(value, min, max) {
-				var n = parseInt(value, 10);
-				if (isNaN(n) || n <= 0) return null;
-				if (max === null || max === undefined) return Math.max(min, n);
-				return Math.max(min, Math.min(max, n));
-			}
-
-			function mailListWidth(value) {
-				var raw = String(value || "").trim();
-				if (raw.slice(-1) === "%") {
-					var percent = parseFloat(raw);
-					if (!isNaN(percent) && percent > 0) return "clamp(300px," + percent + "%,calc(100% - 300px))";
-				}
-				var n = px(raw, 300);
-				return n ? n + "px" : null;
-			}
-
-			var vw = window.innerWidth || 1024;
-			var stacked = settings.mail_pane_layout === "stacked";
-			var sidebar = px(settings.sidebar_width, 180, Math.min(400, vw * 0.25));
-			var mailList = stacked ? px(settings.mail_list_height, 180) : mailListWidth(settings.mail_list_width);
-			if (!sidebar && !mailList && !stacked) return;
-
-			var style = document.createElement("style");
-			style.setAttribute("data-saved-panel-size-style", "");
-			style.textContent = (sidebar ? "aside{width:" + sidebar + "px!important}" : "") + (stacked ? "#main-content{flex-direction:column}#mail-list{width:100%!important" + (mailList ? ";height:" + mailList + "px!important" : "") + "}" : (mailList ? "#mail-list{width:" + mailList + "!important}" : ""));
-			document.head.appendChild(style);
-		})();
-	</script>
+	<script src={ AssetURL("/assets/js/saved-panel-size.js") }></script>
 }
 
 templ FolderPartial(accounts []models.Account, emails []models.Email, activeFolder string, selectedEmail *models.Email, totalCount int, scrollCount int, selectedThread []models.ThreadItem, uiSettings map[string]string, filters models.EmailFilters) {

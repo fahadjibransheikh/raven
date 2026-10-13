@@ -204,6 +204,8 @@ func (c *Client) SyncFolder(ctx context.Context, folderID, remoteName string, op
 							syncMsg.IsDraft = true
 						}
 					}
+				case imapclient.FetchItemDataRFC822Size:
+					syncMsg.SizeBytes = item.Size
 				case imapclient.FetchItemDataInternalDate:
 					if !item.Time.IsZero() {
 						dates.internalDate = item.Time
@@ -366,6 +368,8 @@ func (c *Client) SyncFolderIncremental(ctx context.Context, folderID, remoteName
 						syncMsg.IsDraft = true
 					}
 				}
+			case imapclient.FetchItemDataRFC822Size:
+				syncMsg.SizeBytes = item.Size
 			case imapclient.FetchItemDataInternalDate:
 				if !item.Time.IsZero() {
 					dates.internalDate = item.Time

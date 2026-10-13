@@ -23,11 +23,31 @@ capability and is not an application session. Password-MFA, recovery repair,
 and setup challenges likewise carry no authenticated request user and cannot
 access private repositories before full completion.
 
+## Signed capability routes
+
+- `GET /api/message-file/{kind}/{messageID}/{name}` serves one inline part or
+  saved remote image of a message without a session. A message is shown in a
+  sandboxed frame the browser treats as another site, so its image requests
+  carry no session cookie. When Gofer builds a message page it signs that
+  message's own file addresses with a key that is random for each server
+  start; the signature names the owner, message, kind, and file and expires
+  after twelve hours. The route serves only a file matching a valid
+  signature, as its owner, after the same user and file checks as an owned
+  route; anything else is `404`. Responses stay sandboxed and are never
+  type-sniffed.
+- The `web` kind of the same route relays one remote file of a message the
+  reader chose to load. Its signature also names the remote address, so a
+  link can only fetch what that message's page asked for. The download goes
+  through the same private-network guard and size limit as saved remote
+  images, and the result is served as a message file, typed by its content.
+
 ## Administrator-only operational routes
 
 - Pages under `/admin`, including avatars, contacts, labels, operations, and
   security.
-- Security-exception mutations under `/admin/security/*`.
+- Security-exception mutations under `/admin/security/*`. In personal and open
+  mode, where Gofer has a single owner, the same mutations are served under
+  `/settings/security/mail/*` instead; they return `404` in managed mode.
 - `GET /api/admin/mail-operations/status`.
 - `GET /api/system/processing`.
 - Avatar/contact/label diagnostic endpoints and avatar/contact backfill
@@ -66,6 +86,12 @@ constrain every private lookup or mutation to that user:
   lookups must remain user-scoped.
 - Accounts: account discovery/creation/edit/service/color/test/deletion,
   account contact settings, signatures, and `/api/mail/sync*`.
+  `GET /api/accounts/server-check` and `POST /api/accounts/test` take mail
+  server settings typed into the add-account wizard before any account exists;
+  they read only instance mail-security policy, save nothing, and reach servers
+  only through the private-network guard. `POST /api/accounts/{id}/test-changes`
+  does the same for the edit-account wizard, filling a blank password from the
+  current user's own saved account.
 - Sending addresses: `/api/accounts/{id}/identities*` (list, add, delete,
   set default, refresh from Gmail, dismiss suggestion) require an owned
   account before any write or provider call; storage re-checks ownership in
@@ -73,7 +99,8 @@ constrain every private lookup or mutation to that user:
 - Account OAuth: `/api/accounts/oauth2/authorize`,
   `/auth/google/mailbox/callback`, and `/auth/microsoft/mailbox/callback` use a
   single-use flow bound to the current user, session, and provider.
-- Settings, signatures, UI preferences, and Web Push subscriptions.
+- Settings, signatures, UI preferences, Web Push subscriptions, and test
+  notifications sent to the requesting browser's own subscription.
 - Compose, staged compose attachments, drafts, outgoing sends, and mail
   operations.
 - `GET /api/events`, whose EventBus messages require explicit account, user,

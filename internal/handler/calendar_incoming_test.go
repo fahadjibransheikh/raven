@@ -78,9 +78,9 @@ func calendarIncomingFixture(t *testing.T) (*Handler, *incomingDAVFixture) {
 		}
 	}))
 	t.Cleanup(server.Close)
-	prior := calDAVHTTPTransport
-	calDAVHTTPTransport = server.Client().Transport
-	t.Cleanup(func() { calDAVHTTPTransport = prior })
+	prior := davHTTPTransport
+	davHTTPTransport = server.Client().Transport
+	t.Cleanup(func() { davHTTPTransport = prior })
 	source := storage.CalendarSource{ID: "one-source", UserID: "one", AccountID: "one-account", Provider: "caldav", RemoteID: server.URL + "/cal/", AccessRole: "owner", IsSelected: true}
 	if _, err := h.db.Write().Exec(`UPDATE accounts SET provider='imap',email_sync_enabled=1 WHERE id='one-account'; UPDATE calendar_sources SET provider='caldav',access_role='owner',remote_id=? WHERE id='one-source'; INSERT INTO folders(id,account_id,name,role,remote_id) VALUES('incoming','one-account','Inbox','inbox','INBOX')`, source.RemoteID); err != nil {
 		t.Fatal(err)

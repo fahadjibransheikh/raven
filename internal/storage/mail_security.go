@@ -180,12 +180,18 @@ func (db *DB) listMailSecurityExceptions(ctx context.Context, accounts bool) ([]
 }
 
 func (db *DB) loadMailSecurityExceptionAccounts(ctx context.Context, item *models.MailSecurityException) error {
-	if item == nil || item.Kind != models.MailSecurityExceptionPlaintextTransport {
+	if item == nil || (item.Kind != models.MailSecurityExceptionPlaintextTransport && item.Kind != models.MailSecurityExceptionPrivateTarget) {
 		return nil
 	}
-	columnPrefix := "imap"
-	if item.Protocol == "smtp" {
-		columnPrefix = "smtp"
+	if item.Protocol != "imap" && item.Protocol != "smtp" {
+		return nil
+	}
+	columnPrefix := item.Protocol
+	// A private target is used by every account on that server, whatever its
+	// connection security; a plaintext exception only by unencrypted ones.
+	modeFilter := ""
+	if item.Kind == models.MailSecurityExceptionPlaintextTransport {
+		modeFilter = fmt.Sprintf("AND LOWER(TRIM(%s_tls_mode)) = 'plaintext'", columnPrefix)
 	}
 	query := fmt.Sprintf(`
 		SELECT id, email_address
@@ -193,8 +199,8 @@ func (db *DB) loadMailSecurityExceptionAccounts(ctx context.Context, item *model
 		WHERE COALESCE(is_deleting, 0) = 0
 		  AND LOWER(TRIM(%[1]s_host)) = ?
 		  AND %[1]s_port = ?
-		  AND LOWER(TRIM(%[1]s_tls_mode)) = 'plaintext'
-		ORDER BY email_address COLLATE NOCASE`, columnPrefix)
+		  %[2]s
+		ORDER BY email_address COLLATE NOCASE`, columnPrefix, modeFilter)
 	rows, err := db.read.QueryContext(ctx, query, item.Host, item.Port)
 	if err != nil {
 		return err

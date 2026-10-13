@@ -25,22 +25,14 @@ func ValidateUserStorageMigrationPasswords(ctx context.Context, source *storage.
 		return err
 	}
 	defer tx.Rollback()
-	rows, err := tx.QueryContext(ctx, `SELECT encrypted_password FROM accounts WHERE encrypted_password IS NOT NULL
- UNION ALL SELECT encrypted_smtp_password FROM accounts WHERE encrypted_smtp_password IS NOT NULL
- UNION ALL SELECT encrypted_password FROM account_contact_sync_configs WHERE encrypted_password IS NOT NULL
- UNION ALL SELECT encrypted_password FROM account_caldav_configs WHERE encrypted_password IS NOT NULL`)
+	passwords, err := listStoredPasswords(ctx, tx)
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
-	for rows.Next() {
-		var ciphertext []byte
-		if err := rows.Scan(&ciphertext); err != nil {
-			return err
-		}
-		if _, err := codec.decrypt(ciphertext); err != nil {
+	for _, p := range passwords {
+		if !codec.authenticatesPassword(p.userID, p.accountID, p.kind, p.payload) {
 			return errors.New("application key cannot authenticate a retained mailbox or DAV password")
 		}
 	}
-	return rows.Err()
+	return nil
 }

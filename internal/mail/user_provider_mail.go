@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/cristianadrielbraun/gofer/internal/models"
+	"github.com/cristianadrielbraun/gofer/internal/providerquota"
 	"github.com/cristianadrielbraun/gofer/internal/retry"
 	"github.com/cristianadrielbraun/gofer/internal/storage"
 )
@@ -131,7 +132,7 @@ func providerMailRaw(ctx context.Context, method, endpoint, token, contentType s
 	for key, value := range headers {
 		req.Header.Set(key, value)
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := providerquota.Do(req)
 	if err != nil {
 		return false, err
 	}

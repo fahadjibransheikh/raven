@@ -15,7 +15,7 @@ func TestUserStorageMigrationPasswordsAuthenticatesAllRetainedConfigurations(t *
 		t.Run("damaged-"+damaged, func(t *testing.T) {
 			db, codec := newAccountStoreTestStore(t)
 			seedAccountStoreTestUser(t, t.Context(), db)
-			ciphertext, err := codec.encrypt("private-password")
+			ciphertext, err := legacyEncryptPassword(codec, "private-password")
 			if err != nil {
 				t.Fatal(err)
 			}

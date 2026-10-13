@@ -22,7 +22,7 @@ templ CalendarWeekGrid(data CalendarMonthData) {
 			<div class="grid max-h-36 grid-cols-[56px_repeat(7,minmax(0,1fr))] overflow-y-auto" data-calendar-all-day-row>
 				<div class="px-1 py-3 text-center text-[10px] font-semibold text-muted-foreground">All day</div>
 				for dayIndex, day := range data.Weeks[0].Days {
-					<div class={ calendarWeekColumnClass(day) + " grid grid-cols-1 content-start gap-1 p-1.5" } data-calendar-all-day-column>
+					<div class={ calendarWeekColumnClass(day) + " grid grid-cols-1 content-start gap-1 p-1.5" } data-calendar-all-day-column={ day.ISODate }>
 						if !data.Loading {
 							for _, event := range calendarAllDayEvents(day, data.Events) {
 								{{ continuesBefore := event.StartDate < day.ISODate

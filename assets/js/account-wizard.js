@@ -426,7 +426,7 @@ function renderMailDiscoveryCandidates(candidates) {
 		var title = mailDiscoverySourceLabel(candidate.source);
 		var summary = mailDiscoveryEscape(candidate.imap_host) + ':' + mailDiscoveryEscape(candidate.imap_port) + ' ' + mailDiscoveryEscape(candidate.imap_tls_mode) + ' / ' + mailDiscoveryEscape(candidate.smtp_host) + ':' + mailDiscoveryEscape(candidate.smtp_port) + ' ' + mailDiscoveryEscape(candidate.smtp_tls_mode);
 		var notes = Array.isArray(candidate.notes) ? candidate.notes.filter(Boolean).slice(0, 2) : [];
-		var card = '<button type="button" data-mail-discovery-candidate class="w-full rounded-md border border-border bg-card px-3 py-2 text-left transition-colors hover:bg-accent" onclick="applyMailDiscoveryCandidate(' + index + ')"><span class="flex items-center justify-between gap-3"><span class="font-semibold text-foreground">' + mailDiscoveryEscape(title) + '</span><span class="text-xs text-muted-foreground">' + mailDiscoveryEscape(candidate.confidence) + '%</span></span><span class="mt-1 block truncate text-muted-foreground">' + summary + '</span>';
+		var card = '<button type="button" data-mail-discovery-candidate class="w-full rounded-md border border-border bg-card px-3 py-2 text-left transition-colors hover:bg-accent" data-on-click=\'["applyMailDiscoveryCandidate",' + index + ']\'><span class="flex items-center justify-between gap-3"><span class="font-semibold text-foreground">' + mailDiscoveryEscape(title) + '</span><span class="text-xs text-muted-foreground">' + mailDiscoveryEscape(candidate.confidence) + '%</span></span><span class="mt-1 block truncate text-muted-foreground">' + summary + '</span>';
 		if (notes.length) {
 			card += '<span class="mt-1 block text-xs leading-relaxed text-muted-foreground">' + mailDiscoveryEscape(notes.join(' ')) + '</span>';
 		}
@@ -825,4 +825,9 @@ function openAddAccountDialog() {
 		bindAddWizardObserver();
 		if (window.tui && window.tui.dialog) window.tui.dialog.open('add-account-dialog');
 	});
+}
+
+function syncAddContactStepAfterSwap() {
+	syncAddContactStep();
+	maybeGoAddContacts();
 }

@@ -272,7 +272,7 @@ func readCalendarProviderSeriesWithCredentials(ctx context.Context, source stora
 				return storage.CalendarEvent{}, err
 			}
 		}
-		client := &http.Client{Transport: calDAVHTTPTransport, Timeout: 30 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+		client := &http.Client{Transport: davHTTPTransport, Timeout: 30 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 		cal, headers, getErr := calendarUpdateCalDAVGet(ctx, client, endpoint, credentials.username, credentials.password)
 		err = getErr
 		if err == nil {

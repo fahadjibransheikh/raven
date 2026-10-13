@@ -17,6 +17,7 @@ import (
 	"github.com/cristianadrielbraun/gofer/internal/config"
 	"github.com/cristianadrielbraun/gofer/internal/mailauth"
 	"github.com/cristianadrielbraun/gofer/internal/models"
+	"github.com/cristianadrielbraun/gofer/internal/netguard"
 	"github.com/cristianadrielbraun/gofer/internal/providers"
 	"github.com/cristianadrielbraun/gofer/internal/storage"
 	"golang.org/x/oauth2"
@@ -199,6 +200,7 @@ func newOwnedContactPullFixture(t *testing.T, provider string, oauthOverride ...
 	previous := http.DefaultTransport
 	address, _ := url.Parse(server.URL)
 	http.DefaultTransport = ownedContactPullTransport{base: previous, target: address}
+	t.Cleanup(netguard.UseTransportForTests(http.DefaultTransport))
 	t.Cleanup(func() { http.DefaultTransport = previous })
 	client := &oauth2.Config{ClientID: "client", ClientSecret: "secret", Endpoint: oauth2.Endpoint{TokenURL: server.URL + "/token", AuthStyle: oauth2.AuthStyleInParams}}
 	oauth := &mailauth.Config{GoogleClient: client, MicrosoftClient: client}

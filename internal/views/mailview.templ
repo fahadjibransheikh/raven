@@ -90,9 +90,68 @@ templ MailViewAvatar(contact models.Contact, messageID string, class string, fal
 
 func threadAwareAction(singleFn, threadFn string, email *models.Email) string {
 	if email.ThreadCount > 1 {
-		return fmt.Sprintf("%s('%s')", threadFn, email.ID)
+		return onAction(threadFn, email.ID)
 	}
-	return fmt.Sprintf("%s('%s')", singleFn, email.ID)
+	return onAction(singleFn, email.ID)
+}
+
+// mailViewReadAttributes makes the toolbar read toggle act on the whole thread. Each thread
+// message keeps its own toggle in its action row.
+func mailViewReadAttributes(email *models.Email, thread []models.ThreadItem) templ.Attributes {
+	read := fmt.Sprintf("%t", mailViewRead(email, thread))
+	if email.ThreadCount > 1 {
+		return templ.Attributes{"data-on-click": onAction("toggleThreadRead", email.ID), "data-read-thread": email.ID, "data-read-thread-id": email.ThreadID, "data-is-read": read}
+	}
+	return templ.Attributes{"data-on-click": onAction("toggleRead", email.ID), "data-read-email": email.ID, "data-is-read": read}
+}
+
+// mailViewRead reports whether the toolbar shows the message as read: for a thread, when
+// every message in it is read.
+func mailViewRead(email *models.Email, thread []models.ThreadItem) bool {
+	if email.ThreadCount <= 1 || len(thread) == 0 {
+		return email.IsRead
+	}
+	for _, item := range thread {
+		if !item.IsRead {
+			return false
+		}
+	}
+	return true
+}
+
+// mailViewStarAttributes makes the toolbar star act on the whole thread, like the other
+// toolbar actions. Each thread message keeps its own star in its action row.
+func mailViewStarAttributes(email *models.Email) templ.Attributes {
+	if email.ThreadCount > 1 {
+		return templ.Attributes{"data-on-click": onAction("toggleThreadStar", email.ID), "data-star-thread": email.ID, "data-star-thread-id": email.ThreadID}
+	}
+	return templ.Attributes{"data-on-click": onAction("toggleStar", email.ID), "data-star-email": email.ID}
+}
+
+// mailViewStarred reports whether the toolbar star is filled: for a thread, when any of
+// its messages is starred.
+func mailViewStarred(email *models.Email, thread []models.ThreadItem) bool {
+	if email.ThreadCount <= 1 || len(thread) == 0 {
+		return email.IsStarred
+	}
+	for _, item := range thread {
+		if item.IsStarred {
+			return true
+		}
+	}
+	return false
+}
+
+// mergeAttributes returns base with extra's entries added.
+func mergeAttributes(base, extra templ.Attributes) templ.Attributes {
+	out := templ.Attributes{}
+	for key, value := range base {
+		out[key] = value
+	}
+	for key, value := range extra {
+		out[key] = value
+	}
+	return out
 }
 
 func threadAwareLabel(single, thread string, email *models.Email) string {
@@ -178,7 +237,7 @@ templ MailViewContent(email *models.Email, thread []models.ThreadItem, newestFir
 	{{ unsubID := ThreadUnsubscribeID(thread, newestFirst) }}
 	<div class="mail-view-frame flex flex-col h-full p-2">
 		<div class="bg-paper text-ink rounded-md flex flex-col h-full overflow-hidden">
-			@MailViewHeader(email)
+			@MailViewHeader(email, thread)
 			<div class="h-px bg-border"></div>
 			<div class="flex-1 overflow-y-auto">
 				<div class="mail-view-content mx-auto max-w-[720px] px-8 py-6">
@@ -375,7 +434,7 @@ templ MailViewThreadItemMiniHeader(item *models.ThreadItem) {
 					Variant:    button.VariantGhost,
 					Size:       button.SizeIcon,
 					Class:      "h-7 w-7",
-					Attributes: templ.Attributes{"onclick": fmt.Sprintf("toggleStar('%s')", item.ID), "data-star-email": item.ID},
+					Attributes: templ.Attributes{"data-on-click": onAction("toggleStar", item.ID), "data-star-email": item.ID},
 				}) {
 					if item.IsStarred {
 						@icon.Star(icon.Props{Class: "size-3.5 text-warning fill-warning drop-shadow-[0_1px_1px_rgba(180,120,0,0.3)]"})
@@ -397,7 +456,7 @@ templ MailViewThreadItemMiniHeader(item *models.ThreadItem) {
 					Variant:    button.VariantGhost,
 					Size:       button.SizeIcon,
 					Class:      mailDeleteActionClass("h-7 w-7", "text-subtle-foreground hover:text-foreground hover:bg-row-hover", mailThreadItemIsTrash(item)),
-					Attributes: templ.Attributes{"onclick": fmt.Sprintf("deleteMessage('%s')", item.ID)},
+					Attributes: templ.Attributes{"data-on-click": onAction("deleteMessage", item.ID)},
 				}) {
 					@icon.Trash2(icon.Props{Class: "size-3.5"})
 				}
@@ -419,7 +478,7 @@ templ MailViewThreadItemMiniHeader(item *models.ThreadItem) {
 					Variant:    button.VariantGhost,
 					Size:       button.SizeIcon,
 					Class:      "h-7 w-7 text-subtle-foreground hover:text-foreground hover:bg-row-hover",
-					Attributes: templ.Attributes{"onclick": fmt.Sprintf("toggleRead('%s')", item.ID), "data-read-email": item.ID},
+					Attributes: templ.Attributes{"data-on-click": onAction("toggleRead", item.ID), "data-read-email": item.ID, "data-is-read": fmt.Sprintf("%t", item.IsRead)},
 				}) {
 					if item.IsRead {
 						@icon.Mail(icon.Props{Class: "size-3.5"})
@@ -465,6 +524,33 @@ templ EmailBodyStyleTabs(emailID string, global bool, listHeight string, trigger
 }
 
 templ MailViewThreadItemActions(item *models.ThreadItem, isNewest bool, showUnsubscribe bool) {
+	if item.IsDraft {
+		// A draft in a thread is picked up again here, like a draft opened on its own.
+		<div class="mt-4 pt-3 border-t border-ink/6" data-thread-draft-actions>
+			<div class="mail-view-reply-actions flex items-center gap-2">
+				@button.Button(button.Props{
+					Variant:    button.VariantOutline,
+					Class:      "flex-1 h-8 border-ink/10 text-subtle-foreground hover:text-ink hover:border-ink/20",
+					Attributes: templ.Attributes{"data-on-click": onAction("continueEditingDraft", item.ID)},
+				}) {
+					<span class="flex items-center gap-1.5 text-xs">
+						@icon.Pencil(icon.Props{Class: "size-3.5"})
+						Continue editing
+					</span>
+				}
+				@button.Button(button.Props{
+					Variant:    button.VariantOutline,
+					Class:      "flex-1 h-8 border-ink/10 text-subtle-foreground hover:text-destructive hover:border-destructive/20",
+					Attributes: templ.Attributes{"data-on-click": onAction("discardReadPaneDraft", item.ID)},
+				}) {
+					<span class="flex items-center gap-1.5 text-xs">
+						@icon.Trash2(icon.Props{Class: "size-3.5"})
+						Discard draft
+					</span>
+				}
+			</div>
+		</div>
+	} else {
 	<div class="mt-4 pt-3 border-t border-ink/6"
 		data-thread-reply-data
 		data-thread-newest?={ isNewest }
@@ -482,7 +568,7 @@ templ MailViewThreadItemActions(item *models.ThreadItem, isNewest bool, showUnsu
 			@button.Button(button.Props{
 				Variant:    button.VariantOutline,
 				Class:      "flex-1 h-8 border-ink/10 text-subtle-foreground hover:text-ink hover:border-ink/20",
-				Attributes: templ.Attributes{"onclick": "handleReply(this, 'reply')"},
+				Attributes: templ.Attributes{"data-on-click": onAction("handleReply", actionElement, "reply")},
 			}) {
 				<span class="flex items-center gap-1.5 text-xs">
 					@icon.Reply(icon.Props{Class: "size-3.5"})
@@ -492,7 +578,7 @@ templ MailViewThreadItemActions(item *models.ThreadItem, isNewest bool, showUnsu
 			@button.Button(button.Props{
 				Variant:    button.VariantOutline,
 				Class:      "flex-1 h-8 border-ink/10 text-subtle-foreground hover:text-ink hover:border-ink/20",
-				Attributes: templ.Attributes{"onclick": "handleReply(this, 'reply-all')"},
+				Attributes: templ.Attributes{"data-on-click": onAction("handleReply", actionElement, "reply-all")},
 			}) {
 				<span class="flex items-center gap-1.5 text-xs">
 					@icon.ReplyAll(icon.Props{Class: "size-3.5"})
@@ -506,7 +592,7 @@ templ MailViewThreadItemActions(item *models.ThreadItem, isNewest bool, showUnsu
 						Variant: button.VariantOutline,
 						Class:   threadUnsubscribeButtonClass(method),
 						Attributes: templ.Attributes{
-							"onclick":                 "unsubscribeFromMessage(this)",
+							"data-on-click":           onAction("unsubscribeFromMessage", actionElement),
 							"data-unsubscribe-id":     item.ID,
 							"data-unsubscribe-method": method,
 							"data-unsubscribe-target": target,
@@ -523,7 +609,7 @@ templ MailViewThreadItemActions(item *models.ThreadItem, isNewest bool, showUnsu
 			@button.Button(button.Props{
 				Variant:    button.VariantOutline,
 				Class:      "flex-1 h-8 border-ink/10 text-subtle-foreground hover:text-ink hover:border-ink/20",
-				Attributes: templ.Attributes{"onclick": "handleReply(this, 'forward')"},
+				Attributes: templ.Attributes{"data-on-click": onAction("handleReply", actionElement, "forward")},
 			}) {
 				<span class="flex items-center gap-1.5 text-xs">
 					@icon.Forward(icon.Props{Class: "size-3.5"})
@@ -532,6 +618,7 @@ templ MailViewThreadItemActions(item *models.ThreadItem, isNewest bool, showUnsu
 			}
 		</div>
 	</div>
+	}
 }
 
 templ ShortcutKbd(id string) {
@@ -545,17 +632,17 @@ func deleteLabel(email *models.Email) string {
 	return threadAwareLabel("Delete", "Delete thread", email)
 }
 
-func readLabel(email *models.Email) string {
-	if email.IsRead {
+func readLabel(email *models.Email, thread []models.ThreadItem) string {
+	if mailViewRead(email, thread) {
 		return threadAwareLabel("Mark as unread", "Mark thread as unread", email)
 	}
 	return threadAwareLabel("Mark as read", "Mark thread as read", email)
 }
 
-templ MailViewHeader(email *models.Email) {
+templ MailViewHeader(email *models.Email, thread []models.ThreadItem) {
 	<div class="mail-view-toolbar flex items-center justify-between px-6 py-2.5">
 		<div class="mail-view-actions flex items-center gap-1 min-w-0">
-			<button type="button" class="inline-flex lg:hidden h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-row-hover" aria-label="Back to list" onclick="clearActiveMailSelection()">
+			<button type="button" class="inline-flex lg:hidden h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-row-hover" aria-label="Back to list" data-on-click='["clearActiveMailSelection"]'>
 				@icon.ChevronLeft(icon.Props{Class: "size-5"})
 			</button>
 			@tooltip.Tooltip() {
@@ -563,7 +650,7 @@ templ MailViewHeader(email *models.Email) {
 					@button.Button(button.Props{
 						Variant:    button.VariantGhost,
 						Class:      "h-8 gap-1.5 px-2 text-subtle-foreground hover:text-foreground hover:bg-row-hover",
-						Attributes: templ.Attributes{"onclick": fmt.Sprintf("archiveThread('%s')", email.ID), "aria-label": withShortcut(threadAwareLabel("Archive", "Archive thread", email), "archive"), "aria-keyshortcuts": shortcutKeys["archive"]},
+						Attributes: templ.Attributes{"data-on-click": onAction("archiveThread", email.ID), "aria-label": withShortcut(threadAwareLabel("Archive", "Archive thread", email), "archive"), "aria-keyshortcuts": shortcutKeys["archive"]},
 					}) {
 						@icon.Archive(icon.Props{Class: "size-4"})
 						<span class="mail-view-action-label text-sm">Archive</span>
@@ -583,7 +670,7 @@ templ MailViewHeader(email *models.Email) {
 						Variant:    button.VariantGhost,
 						Size:       button.SizeIcon,
 						Class:      mailDeleteActionClass("h-8 w-8", "text-subtle-foreground hover:text-foreground hover:bg-row-hover", mailEmailIsTrash(email)),
-						Attributes: templ.Attributes{"onclick": threadAwareAction("deleteMessage", "deleteThread", email), "aria-label": withShortcut(deleteLabel(email), "delete"), "aria-keyshortcuts": shortcutKeys["delete"]},
+						Attributes: templ.Attributes{"data-on-click": threadAwareAction("deleteMessage", "deleteThread", email), "aria-label": withShortcut(deleteLabel(email), "delete"), "aria-keyshortcuts": shortcutKeys["delete"]},
 					}) {
 						@icon.Trash2(icon.Props{Class: "size-4"})
 					}
@@ -602,7 +689,7 @@ templ MailViewHeader(email *models.Email) {
 								Variant:    button.VariantGhost,
 								Size:       button.SizeIcon,
 								Class:      "h-8 w-8 border border-amber-500/35 bg-amber-500/12 text-amber-700 shadow-[0_1px_2px_rgba(0,0,0,0.04)] hover:bg-amber-500/20 hover:text-amber-800 dark:border-amber-300/20 dark:bg-amber-300/10 dark:text-amber-300 dark:hover:text-amber-200",
-								Attributes: templ.Attributes{"onclick": threadAwareAction("markNotSpam", "markThreadNotSpam", email)},
+								Attributes: templ.Attributes{"data-on-click": threadAwareAction("markNotSpam", "markThreadNotSpam", email)},
 							}) {
 								@icon.ShieldCheck(icon.Props{Class: "size-4"})
 							}
@@ -611,7 +698,7 @@ templ MailViewHeader(email *models.Email) {
 								Variant:    button.VariantGhost,
 								Size:       button.SizeIcon,
 								Class:      "h-8 w-8 text-subtle-foreground hover:text-foreground hover:bg-row-hover",
-								Attributes: templ.Attributes{"onclick": threadAwareAction("markSpam", "markThreadSpam", email)},
+								Attributes: templ.Attributes{"data-on-click": threadAwareAction("markSpam", "markThreadSpam", email)},
 							}) {
 								@icon.ShieldAlert(icon.Props{Class: "size-4"})
 							}
@@ -634,9 +721,9 @@ templ MailViewHeader(email *models.Email) {
 						Variant:    button.VariantGhost,
 						Size:       button.SizeIcon,
 						Class:      "h-8 w-8",
-						Attributes: templ.Attributes{"onclick": fmt.Sprintf("toggleStar('%s')", email.ID), "data-star-email": email.ID, "aria-label": withShortcut("Star", "star"), "aria-keyshortcuts": shortcutKeys["star"]},
+						Attributes: mergeAttributes(mailViewStarAttributes(email), templ.Attributes{"aria-label": withShortcut("Star", "star"), "aria-keyshortcuts": shortcutKeys["star"]}),
 					}) {
-						if email.IsStarred {
+						if mailViewStarred(email, thread) {
 							@icon.Star(icon.Props{Class: "size-4 text-warning fill-warning drop-shadow-[0_1px_1px_rgba(180,120,0,0.3)]"})
 						} else {
 							@icon.Star(icon.Props{Class: "size-4 text-subtle-foreground"})
@@ -656,9 +743,9 @@ templ MailViewHeader(email *models.Email) {
 						Variant:    button.VariantGhost,
 						Size:       button.SizeIcon,
 						Class:      "h-8 w-8 text-subtle-foreground hover:text-foreground hover:bg-row-hover",
-						Attributes: templ.Attributes{"onclick": threadAwareAction("toggleRead", "toggleThreadRead", email), "data-read-email": email.ID, "aria-label": withShortcut(readLabel(email), "read"), "aria-keyshortcuts": shortcutKeys["read"]},
+						Attributes: mergeAttributes(mailViewReadAttributes(email, thread), templ.Attributes{"aria-label": withShortcut(readLabel(email, thread), "read"), "aria-keyshortcuts": shortcutKeys["read"]}),
 					}) {
-						if email.IsRead {
+						if mailViewRead(email, thread) {
 							@icon.Mail(icon.Props{Class: "size-4"})
 						} else {
 							@icon.MailOpen(icon.Props{Class: "size-4"})
@@ -669,7 +756,7 @@ templ MailViewHeader(email *models.Email) {
 					Position:  tooltip.PositionBottom,
 					ShowArrow: true,
 				}) {
-					{ withShortcut(readLabel(email), "read") }
+					{ withShortcut(readLabel(email, thread), "read") }
 				}
 			}
 		</div>
@@ -682,7 +769,7 @@ templ MailViewHeader(email *models.Email) {
 							type="button"
 							class="inline-flex size-4 items-center justify-center rounded text-current/60 transition-colors hover:bg-background/60 hover:text-current focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
 							aria-label={ "Remove label " + label.Name }
-							{ templ.Attributes{"onclick": fmt.Sprintf("removeLabelMessage(%q, %q, %t)", email.ID, label.Name, email.ThreadCount > 1)}... }
+							{ templ.Attributes{"data-on-click": onAction("removeLabelMessage", email.ID, label.Name, email.ThreadCount > 1)}... }
 						>
 							@icon.X(icon.Props{Class: "size-3"})
 						</button>
@@ -702,13 +789,13 @@ templ MailViewHeader(email *models.Email) {
 				}
 				@dropdown.Content() {
 					if email.IsDraft {
-						@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"onclick": fmt.Sprintf("continueEditingDraft('%s')", email.ID)}}) {
+						@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"data-on-click": onAction("continueEditingDraft", email.ID)}}) {
 							<span class="flex items-center gap-2">
 								@icon.Pencil(icon.Props{Class: "size-4"})
 								Continue editing
 							</span>
 						}
-						@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"onclick": fmt.Sprintf("discardReadPaneDraft('%s')", email.ID)}}) {
+						@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"data-on-click": onAction("discardReadPaneDraft", email.ID)}}) {
 							<span class="flex items-center gap-2 text-destructive">
 								@icon.Trash2(icon.Props{Class: "size-4"})
 								Discard draft
@@ -716,13 +803,13 @@ templ MailViewHeader(email *models.Email) {
 						}
 						@dropdown.Separator()
 					} else {
-						@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"onclick": "handleReply(null, 'reply')"}}) {
+						@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"data-on-click": onAction("handleReply", nil, "reply")}}) {
 							<span class="flex items-center gap-2">
 								@icon.Reply(icon.Props{Class: "size-4"})
 								Reply
 							</span>
 						}
-						@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"onclick": "handleReply(null, 'forward')"}}) {
+						@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"data-on-click": onAction("handleReply", nil, "forward")}}) {
 							<span class="flex items-center gap-2">
 								@icon.Forward(icon.Props{Class: "size-4"})
 								Forward
@@ -730,7 +817,7 @@ templ MailViewHeader(email *models.Email) {
 						}
 						@dropdown.Separator()
 					}
-					@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"onclick": fmt.Sprintf("promptLabelMessage('%s', %t)", email.ID, email.ThreadCount > 1)}}) {
+					@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"data-on-click": onAction("promptLabelMessage", email.ID, email.ThreadCount > 1)}}) {
 						<span class="flex items-center gap-2">
 							@icon.Tag(icon.Props{Class: "size-4"})
 							Add label
@@ -739,7 +826,7 @@ templ MailViewHeader(email *models.Email) {
 							</span>
 						</span>
 					}
-					@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"onclick": fmt.Sprintf("performMailAction('move', ['%s'], { keepSelection: true })", email.ID)}}) {
+					@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"data-on-click": onAction("performMailAction", "move", []string{email.ID}, map[string]bool{"keepSelection": true})}}) {
 						<span class="flex items-center gap-2">
 							@icon.FolderInput(icon.Props{Class: "size-4"})
 							Move to...
@@ -749,13 +836,13 @@ templ MailViewHeader(email *models.Email) {
 						</span>
 					}
 					@dropdown.Separator()
-					@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"onclick": fmt.Sprintf("downloadMessageRaw('%s')", email.ID)}}) {
+					@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"data-on-click": onAction("downloadMessageRaw", email.ID)}}) {
 						<span class="flex items-center gap-2">
 							@icon.Download(icon.Props{Class: "size-4"})
 							Download
 						</span>
 					}
-					@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"onclick": fmt.Sprintf("printMessage('%s')", email.ID)}}) {
+					@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"data-on-click": onAction("printMessage", email.ID)}}) {
 						<span class="flex items-center gap-2">
 							@icon.Printer(icon.Props{Class: "size-4"})
 							Print
@@ -993,7 +1080,7 @@ templ MailViewBodyByID(emailID string) {
 templ MailViewReplyBar(email *models.Email) {
 	<div class="py-3 border-t border-border" id="reply-bar" data-message-id={ email.InternetMessageID } data-references={ email.References } data-subject={ email.Subject } data-from-email={ email.From.Email } data-from-name={ email.From.Name } data-account-id={ email.AccountID } data-date={ email.DateFull } data-to={ formatContacts(email.To) } data-cc={ formatContacts(email.CC) } data-body={ email.TextBody }>
 		<div class="mail-view-reply-form mx-auto flex max-w-[720px] items-center gap-2 px-8">
-			<button type="button" class="mail-view-reply-input" onclick={ templ.JSFuncCall("handleReply", templ.JSExpression("this"), replyBarInputMode(email)) }>
+			<button type="button" class="mail-view-reply-input" data-on-click={ onAction("handleReply", actionElement, replyBarInputMode(email)) }>
 				{ replyBarInputLabel(email) }
 			</button>
 			// Rendered hidden when the headers are not stored yet (message synced before they were
@@ -1003,7 +1090,7 @@ templ MailViewReplyBar(email *models.Email) {
 					Variant: button.VariantOutline,
 					Class:   unsubscribeButtonClass(method),
 					Attributes: templ.Attributes{
-						"onclick":                 "unsubscribeFromMessage(this)",
+						"data-on-click":           onAction("unsubscribeFromMessage", actionElement),
 						"data-unsubscribe-id":     email.ID,
 						"data-unsubscribe-method": method,
 						"data-unsubscribe-target": target,
@@ -1018,7 +1105,7 @@ templ MailViewReplyBar(email *models.Email) {
 			@button.Button(button.Props{
 				Variant:    button.VariantOutline,
 				Class:      "h-9 shrink-0 gap-1.5 px-3 border-input bg-background text-foreground hover:bg-row-hover",
-				Attributes: templ.Attributes{"onclick": "handleReply(this, 'forward')", "aria-keyshortcuts": shortcutKeys["forward"], "aria-label": "Forward"},
+				Attributes: templ.Attributes{"data-on-click": onAction("handleReply", actionElement, "forward"), "aria-keyshortcuts": shortcutKeys["forward"], "aria-label": "Forward"},
 			}) {
 				@icon.Forward(icon.Props{Class: "size-4"})
 				<span class="mail-view-reply-label text-sm">Forward</span>
@@ -1027,7 +1114,7 @@ templ MailViewReplyBar(email *models.Email) {
 				@button.Button(button.Props{
 					Variant:    button.VariantDefault,
 					Class:      "h-9 gap-1.5 rounded-r-none px-3 bg-foreground text-background hover:bg-foreground/90",
-					Attributes: templ.Attributes{"onclick": "handleReply(this, 'reply')", "aria-keyshortcuts": shortcutKeys["reply"], "aria-label": "Reply"},
+					Attributes: templ.Attributes{"data-on-click": onAction("handleReply", actionElement, "reply"), "aria-keyshortcuts": shortcutKeys["reply"], "aria-label": "Reply"},
 				}) {
 					@icon.Reply(icon.Props{Class: "size-4"})
 					<span class="mail-view-reply-label text-sm">Reply</span>
@@ -1043,7 +1130,7 @@ templ MailViewReplyBar(email *models.Email) {
 						}
 					}
 					@dropdown.Content() {
-						@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"onclick": "handleReply(null, 'reply-all')"}}) {
+						@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"data-on-click": onAction("handleReply", nil, "reply-all")}}) {
 							<span class="flex w-full items-center gap-2">
 								@icon.ReplyAll(icon.Props{Class: "size-4"})
 								Reply all
@@ -1156,7 +1243,7 @@ templ MailViewDraftBar(email *models.Email) {
 			@button.Button(button.Props{
 				Variant:    button.VariantOutline,
 				Class:      "h-9 px-3 border-input bg-background text-foreground hover:bg-row-hover",
-				Attributes: templ.Attributes{"onclick": fmt.Sprintf("continueEditingDraft('%s')", email.ID)},
+				Attributes: templ.Attributes{"data-on-click": onAction("continueEditingDraft", email.ID)},
 			}) {
 				<span class="flex items-center gap-2 text-sm">
 					@icon.Pencil(icon.Props{Class: "size-4"})
@@ -1166,7 +1253,7 @@ templ MailViewDraftBar(email *models.Email) {
 			@button.Button(button.Props{
 				Variant:    button.VariantOutline,
 				Class:      "h-9 px-3 border-input bg-background text-foreground hover:text-destructive hover:bg-row-hover",
-				Attributes: templ.Attributes{"onclick": fmt.Sprintf("discardReadPaneDraft('%s')", email.ID)},
+				Attributes: templ.Attributes{"data-on-click": onAction("discardReadPaneDraft", email.ID)},
 			}) {
 				<span class="flex items-center gap-2 text-sm">
 					@icon.Trash2(icon.Props{Class: "size-4"})

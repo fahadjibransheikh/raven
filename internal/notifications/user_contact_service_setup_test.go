@@ -17,6 +17,7 @@ import (
 
 	"github.com/cristianadrielbraun/gofer/internal/config"
 	"github.com/cristianadrielbraun/gofer/internal/models"
+	"github.com/cristianadrielbraun/gofer/internal/netguard"
 	"github.com/cristianadrielbraun/gofer/internal/storage"
 )
 
@@ -67,6 +68,8 @@ func newOwnedDAVSetupFixture(t *testing.T) (*userStorageFixture, *ownedDAVSetupS
 	server := httptest.NewServer(fake)
 	t.Cleanup(server.Close)
 	allowLoopbackDAV(t, f, server.URL)
+	// The fake DAV server is local, which outbound requests would refuse.
+	t.Cleanup(netguard.UseTransportForTests(http.DefaultTransport))
 	t.Cleanup(func() { f.stopIMAP(); f.imap.Wait() })
 	for _, owner := range []string{"alice", "bob"} {
 		err := f.accountStore.WithAccountForUser(t.Context(), owner, f.accounts[owner].ID, func(local *config.AccountStore, _ *storage.DB) error {

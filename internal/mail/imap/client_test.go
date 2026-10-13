@@ -33,7 +33,7 @@ func TestConnectionProbeCancellationInterruptsGreeting(t *testing.T) {
 	defer cancel()
 	result := make(chan error, 1)
 	go func() {
-		result <- TestConnection(ctx, &models.AccountConfig{IMAPHost: host, IMAPPort: port, IMAPTLSMode: "plaintext", IMAPAllowPlaintext: true, AuthMethod: "plain", Username: "test"}, "synthetic-only")
+		result <- TestConnection(ctx, &models.AccountConfig{IMAPHost: host, IMAPAllowPrivate: true, IMAPPort: port, IMAPTLSMode: "plaintext", IMAPAllowPlaintext: true, AuthMethod: "plain", Username: "test"}, "synthetic-only")
 	}()
 	select {
 	case conn := <-accepted:
@@ -56,7 +56,7 @@ func TestConnectWithConfigRejectsUnencryptedTLSModes(t *testing.T) {
 	for _, mode := range []string{"none", "", "optional", "plaintext"} {
 		t.Run(mode, func(t *testing.T) {
 			client, err := ConnectWithConfig(&models.AccountConfig{
-				IMAPHost:    "127.0.0.1",
+				IMAPHost: "127.0.0.1", IMAPAllowPrivate: true,
 				IMAPPort:    1,
 				IMAPTLSMode: mode,
 			}, "secret", nil)
@@ -78,7 +78,7 @@ func TestConnectWithConfigRejectsUnencryptedTLSModes(t *testing.T) {
 
 func TestConnectWithConfigRejectsOAuthOverApprovedPlaintext(t *testing.T) {
 	client, err := ConnectWithConfig(&models.AccountConfig{
-		IMAPHost:           "127.0.0.1",
+		IMAPHost: "127.0.0.1", IMAPAllowPrivate: true,
 		IMAPPort:           1,
 		IMAPTLSMode:        "plaintext",
 		IMAPAllowPlaintext: true,
@@ -146,7 +146,7 @@ func TestContextClientCancellationInterruptsConnectionSetup(t *testing.T) {
 			defer cancel()
 			result := make(chan error, 1)
 			go func() {
-				client, err := NewContextClient(ctx, &models.AccountConfig{IMAPHost: host, IMAPPort: port, IMAPTLSMode: mode, IMAPAllowPlaintext: true, AuthMethod: "plain", Username: "test"}, "synthetic-only")
+				client, err := NewContextClient(ctx, &models.AccountConfig{IMAPHost: host, IMAPAllowPrivate: true, IMAPPort: port, IMAPTLSMode: mode, IMAPAllowPlaintext: true, AuthMethod: "plain", Username: "test"}, "synthetic-only")
 				if client != nil {
 					client.Close()
 				}

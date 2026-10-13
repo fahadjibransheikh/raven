@@ -21,8 +21,6 @@ import (
 
 const calDAVResponseLimit = 16 << 20
 
-var calDAVHTTPTransport http.RoundTripper
-
 func calDAVRequest(ctx context.Context, method, endpoint, username, password, depth, body string, timeout time.Duration) (davMultiStatus, error) {
 	if err := calendarDiscoveryDAVGuard(ctx); err != nil {
 		return davMultiStatus{}, err
@@ -37,7 +35,7 @@ func calDAVRequest(ctx context.Context, method, endpoint, username, password, de
 	req.Header.Set("Depth", depth)
 	req.Header.Set("Content-Type", "application/xml; charset=utf-8")
 	client := &http.Client{
-		Transport: calDAVHTTPTransport,
+		Transport: davHTTPTransport,
 		Timeout:   timeout,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			if err := calendarDiscoveryDAVGuard(ctx); err != nil {

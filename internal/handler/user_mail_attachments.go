@@ -72,8 +72,8 @@ func (h *Handler) userAttachment(w http.ResponseWriter, r *http.Request, inline,
 		return
 	}
 	defer file.Close()
-	// Sender-controlled bytes: sandboxed, sniffed, inline only for safe rasters.
-	serveUntrusted(w, r, info.Filename, info.ContentType, file, "private, no-store", inline || preview)
+	w.Header().Set("Cache-Control", "private, no-store")
+	serveMailFile(w, r, file, info.Filename, info.ContentType, inline || preview)
 }
 func (h *Handler) handleUserInlineContent(w http.ResponseWriter, r *http.Request) {
 	h.userAttachment(w, r, true, false)

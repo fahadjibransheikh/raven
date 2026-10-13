@@ -42,23 +42,27 @@ func NewUserAccountStore(routing *storage.AccountRouting, secretKey []byte) (*Us
 	return &UserAccountStore{routing: routing, base: base}, nil
 }
 
-func (s *UserAccountStore) local(db *storage.DB) *AccountStore {
-	return &AccountStore{db: db, policyDB: s.routing.System(), aes: s.base.aes}
+// local returns the account store of a user's database. Passwords stored there
+// in the old format are upgraded the first time the database is used.
+func (s *UserAccountStore) local(ctx context.Context, db *storage.DB) *AccountStore {
+	store := &AccountStore{db: db, policyDB: s.routing.System(), aes: s.base.aes}
+	store.securePasswordsOnce(ctx, db)
+	return store
 }
 
 // WithUser/WithAccountForUser follow a centrally authenticated request identity.
 // WithAccount resolves trusted worker IDs from the central directory. Callbacks
 // must not retain the AccountStore or invoke network operations while leased.
 func (s *UserAccountStore) WithUser(ctx context.Context, userID string, fn func(*AccountStore, *storage.DB) error) error {
-	return s.routing.WithUser(ctx, userID, func(db *storage.DB) error { return fn(s.local(db), db) })
+	return s.routing.WithUser(ctx, userID, func(db *storage.DB) error { return fn(s.local(ctx, db), db) })
 }
 
 func (s *UserAccountStore) WithAccountForUser(ctx context.Context, userID, accountID string, fn func(*AccountStore, *storage.DB) error) error {
-	return s.routing.WithAccountForUser(ctx, userID, accountID, func(db *storage.DB) error { return fn(s.local(db), db) })
+	return s.routing.WithAccountForUser(ctx, userID, accountID, func(db *storage.DB) error { return fn(s.local(ctx, db), db) })
 }
 
 func (s *UserAccountStore) WithAccount(ctx context.Context, accountID string, fn func(*AccountStore, *storage.DB, string) error) error {
-	return s.routing.WithAccount(ctx, accountID, func(db *storage.DB, userID string) error { return fn(s.local(db), db, userID) })
+	return s.routing.WithAccount(ctx, accountID, func(db *storage.DB, userID string) error { return fn(s.local(ctx, db), db, userID) })
 }
 
 // PendingAccountCreationError carries the durable reservation ID for recovery.
@@ -93,7 +97,7 @@ func (s *UserAccountStore) CreateAccount(ctx context.Context, userID string, req
 	var account *models.Account
 	err = s.routing.CompleteAccountCreation(ctx, userID, entry.AccountID, func(db *storage.DB) error {
 		var err error
-		account, err = s.local(db).createAccountWithID(ctx, userID, entry.AccountID, &copy, false)
+		account, err = s.local(ctx, db).createAccountWithID(ctx, userID, entry.AccountID, &copy, false)
 		return err
 	})
 	if err != nil {
@@ -133,7 +137,7 @@ func (s *UserAccountStore) DeleteAccount(ctx context.Context, userID, accountID 
 		return err
 	}
 	return s.routing.CompleteAccountDeletion(ctx, userID, accountID, func(db *storage.DB) error {
-		local := s.local(db)
+		local := s.local(ctx, db)
 		if err := local.MarkAccountDeleting(ctx, accountID); err != nil {
 			return err
 		}

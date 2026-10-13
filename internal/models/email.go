@@ -305,6 +305,7 @@ type ThreadItem struct {
 	DateFull          string
 	IsRead            bool
 	IsStarred         bool
+	IsDraft           bool
 	HasAttachment     bool
 	FolderName        string
 	FolderID          string

@@ -634,15 +634,15 @@ func TestAccountDialogsIncludeCalendarServiceSection(t *testing.T) {
 		"Discover calendars",
 		`/api/accounts/calendar-account/calendar/discover`,
 		`data-wizard-service-switch="calendar"`,
-		`handleEditAccountSaveStart(event)`,
-		`handleEditAccountSaveResult(event)`,
+		`data-on-htmx-before-request='["handleEditAccountSaveStart","$event"]'`,
+		`data-on-htmx-after-request='["handleEditAccountSaveResult","$event"]'`,
 		`data-account-edit-submit-button`,
 		`data-account-edit-submit-spinner`,
 		`data-wizard-step="4"`,
 		`data-wizard-step="5"`,
 		`edit-step-5-content`,
 		`data-wizard-footer-step="5"`,
-		`onclick="editWizardGo(4)"`,
+		`data-on-click='["editWizardGo",4]'`,
 	} {
 		if !strings.Contains(editOut.String(), want) {
 			t.Fatalf("edit account dialog missing Calendar marker %q: %s", want, editOut.String())
@@ -689,8 +689,8 @@ func TestAccountDialogsIncludeCalendarServiceSection(t *testing.T) {
 		`/api/accounts/gmail-calendar-account/calendar/discover`,
 		`data-calendar-discovery-form`,
 		`data-calendar-discovery-label`,
-		`handleCalendarDiscoveryStart(event)`,
-		`handleCalendarDiscoveryResult(event)`,
+		`["handleCalendarDiscoveryStart","$event"]`,
+		`["handleCalendarDiscoveryResult","$event"]`,
 		`data-wizard-service-always-active="true"`,
 	} {
 		if !strings.Contains(gmailOut.String(), want) {
@@ -831,7 +831,7 @@ func TestChooseAccountTypeDialogOffersICloudPreset(t *testing.T) {
 		t.Fatalf("AddAccountDialogContent.Render() error = %v", err)
 	}
 	add.WriteString(accountWizardScript(t))
-	if !strings.Contains(chooser.String(), "openICloudAccountDialog()") || !strings.Contains(chooser.String(), ">iCloud<") {
+	if !strings.Contains(chooser.String(), "openICloudAccountDialog") || !strings.Contains(chooser.String(), ">iCloud<") {
 		t.Fatal("account chooser does not offer an iCloud option")
 	}
 	for _, want := range []string{

@@ -11,11 +11,13 @@ import (
 
 	"github.com/cristianadrielbraun/gofer/internal/config"
 	"github.com/cristianadrielbraun/gofer/internal/models"
+	"github.com/cristianadrielbraun/gofer/internal/netguard"
 	"github.com/cristianadrielbraun/gofer/internal/providers"
 	"github.com/cristianadrielbraun/gofer/internal/storage"
 )
 
 func TestDiscoverCardDAVAddressBooks(t *testing.T) {
+	allowLocalDAVServers(t)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "PROPFIND" {
 			t.Fatalf("method = %s, want PROPFIND", r.Method)
@@ -95,6 +97,7 @@ func TestNormalizeCardDAVBaseURL(t *testing.T) {
 }
 
 func TestCardDAVSyncCollectionFetchesChangedAndDeleted(t *testing.T) {
+	allowLocalDAVServers(t)
 	var sawSync, sawMultiget bool
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "REPORT" {
@@ -161,6 +164,7 @@ func TestCardDAVSyncCollectionFetchesChangedAndDeleted(t *testing.T) {
 }
 
 func TestCardDAVSyncFallsBackToFullQuery(t *testing.T) {
+	allowLocalDAVServers(t)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		data, _ := io.ReadAll(r.Body)
 		body := string(data)
@@ -242,6 +246,7 @@ func TestPruneMissingCardDAVSourcesRemovesTargetOnly(t *testing.T) {
 }
 
 func TestCardDAVPutUsesPreconditionHeaders(t *testing.T) {
+	allowLocalDAVServers(t)
 	var createChecked, updateChecked bool
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPut {
@@ -289,6 +294,7 @@ func TestCardDAVPutUsesPreconditionHeaders(t *testing.T) {
 }
 
 func TestCardDAVPutConflictReturnsTypedError(t *testing.T) {
+	allowLocalDAVServers(t)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "etag mismatch", http.StatusPreconditionFailed)
 	}))
@@ -301,6 +307,7 @@ func TestCardDAVPutConflictReturnsTypedError(t *testing.T) {
 }
 
 func TestCardDAVDeleteNotFoundIsSuccess(t *testing.T) {
+	allowLocalDAVServers(t)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodDelete {
 			t.Fatalf("method = %s, want DELETE", r.Method)
@@ -315,6 +322,7 @@ func TestCardDAVDeleteNotFoundIsSuccess(t *testing.T) {
 }
 
 func TestDeleteCardDAVContactsByEmailDeletesTrackedSource(t *testing.T) {
+	allowLocalDAVServers(t)
 	ctx := context.Background()
 	var deletedPath, ifMatch string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -379,6 +387,7 @@ func TestDeleteCardDAVContactsByEmailDeletesTrackedSource(t *testing.T) {
 }
 
 func TestDeleteCardDAVContactsByEmailSearchFallbackExactMatch(t *testing.T) {
+	allowLocalDAVServers(t)
 	ctx := context.Background()
 	deleted := make(map[string]bool)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -455,8 +464,9 @@ func newCardDAVDeleteTestStore(t *testing.T) (*storage.DB, *config.AccountStore)
 	return db, store
 }
 
-// The fixtures below serve CardDAV from 127.0.0.1; strictness is covered in
-// dav_client_test.go, which resets this policy per test.
-func init() {
-	davPrivateAllowed = func(context.Context, string, int) bool { return true }
+// allowLocalDAVServers lets a test reach its local fake DAV server, which
+// outbound requests would otherwise refuse as a private address.
+func allowLocalDAVServers(t *testing.T) {
+	t.Helper()
+	t.Cleanup(netguard.UseTransportForTests(http.DefaultTransport))
 }

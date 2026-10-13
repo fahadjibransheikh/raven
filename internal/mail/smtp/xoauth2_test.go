@@ -103,7 +103,7 @@ func outlookSMTPTestConfig(srv *fakeSTARTTLSServer) *models.AccountConfig {
 	host, port, _ := net.SplitHostPort(srv.addr)
 	var p int
 	fmt.Sscanf(port, "%d", &p)
-	return &models.AccountConfig{SMTPHost: host, SMTPPort: p, SMTPTLSMode: "starttls", AuthMethod: "oauth2", SmtpUsername: "person@msn.com"}
+	return &models.AccountConfig{SMTPHost: host, SMTPAllowPrivate: true, SMTPPort: p, SMTPTLSMode: "starttls", AuthMethod: "oauth2", SmtpUsername: "person@msn.com"}
 }
 
 func TestOAuth2SMTPAuthenticatesWithXOAUTH2OverSTARTTLS(t *testing.T) {

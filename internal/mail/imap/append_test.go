@@ -67,8 +67,8 @@ func TestAppendMessageStoresSeenMessageAndReturnsUID(t *testing.T) {
 		t.Fatalf("parse listener port: %v", err)
 	}
 	client, err := NewClient(context.Background(), &models.AccountConfig{
-		AccountID:          "acc",
-		IMAPHost:           host,
+		AccountID: "acc",
+		IMAPHost:  host, IMAPAllowPrivate: true,
 		IMAPPort:           port,
 		IMAPTLSMode:        "plaintext",
 		IMAPAllowPlaintext: true,

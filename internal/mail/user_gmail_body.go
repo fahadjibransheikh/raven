@@ -12,10 +12,12 @@ import (
 	"strings"
 	"time"
 
+	mailmessage "github.com/cristianadrielbraun/gofer/internal/mail/message"
+	"github.com/cristianadrielbraun/gofer/internal/providerquota"
 	"github.com/cristianadrielbraun/gofer/internal/retry"
 )
 
-const userGmailRawMessageMaxBytes = 64 << 20
+const userGmailRawMessageMaxBytes = mailmessage.MaxDownloadBytes
 
 func (s *UserIMAP) fetchGmailRaw(ctx context.Context, scope *userIMAPScope, providerID string) ([]byte, error) {
 	token, err := scope.tokens.GetOAuthTokenForAccount(ctx, scope.id)
@@ -50,7 +52,7 @@ func getUserGmailRaw(ctx context.Context, token, providerID string) ([]byte, err
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Accept", "application/json")
-	response, err := http.DefaultClient.Do(req)
+	response, err := providerquota.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -64,25 +66,38 @@ func getUserGmailRaw(ctx context.Context, token, providerID string) ([]byte, err
 		ID  string `json:"id"`
 		Raw string `json:"raw"`
 	}
-	encodedLimit := int64((userGmailRawMessageMaxBytes+2)/3*4 + 4096)
-	if err := json.NewDecoder(io.LimitReader(response.Body, encodedLimit)).Decode(&message); err != nil {
+	// Gmail doesn't say how large the message is before sending it, so a
+	// message over the limit is noticed once the limit has been read.
+	limit := mailmessage.DownloadLimit(ctx, userGmailRawMessageMaxBytes)
+	encodedLimit := (limit+2)/3*4 + 4096
+	encoded, err := io.ReadAll(io.LimitReader(response.Body, encodedLimit+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(encoded)) > encodedLimit {
+		return nil, &mailmessage.TooLargeError{Limit: limit}
+	}
+	if err := json.Unmarshal(encoded, &message); err != nil {
 		return nil, fmt.Errorf("decode Gmail raw message: %w", err)
 	}
 	if message.ID != providerID {
 		return nil, errors.New("Gmail returned a different message identity")
 	}
-	encoded := strings.TrimSpace(message.Raw)
-	if encoded == "" {
+	rawText := strings.TrimSpace(message.Raw)
+	if rawText == "" {
 		return nil, errors.New("Gmail returned an empty raw message")
 	}
-	raw, err := base64.RawURLEncoding.DecodeString(encoded)
+	raw, err := base64.RawURLEncoding.DecodeString(rawText)
 	if err != nil {
-		raw, err = base64.URLEncoding.DecodeString(encoded)
+		raw, err = base64.URLEncoding.DecodeString(rawText)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("decode Gmail message MIME: %w", err)
 	}
-	if len(raw) == 0 || len(raw) > userGmailRawMessageMaxBytes {
+	if int64(len(raw)) > limit {
+		return nil, &mailmessage.TooLargeError{Size: int64(len(raw)), Limit: limit}
+	}
+	if len(raw) == 0 {
 		return nil, errors.New("Gmail raw message has an invalid size")
 	}
 	return raw, nil

@@ -3,6 +3,7 @@ package views
 import (
 	"bytes"
 	"context"
+	"net/url"
 	"reflect"
 	"strings"
 	"testing"
@@ -296,14 +297,21 @@ func TestContactResolverGroupsEqualValuesAcrossSources(t *testing.T) {
 }
 
 func TestContactAvatarPreviewURLRequestsLargerGooglePhoto(t *testing.T) {
-	got := contactAvatarPreviewURL("https://lh3.googleusercontent.com/-abc/s100/photo.jpg?sz=50")
-	if !strings.Contains(got, "/s1024/photo.jpg") || !strings.Contains(got, "sz=1024") {
-		t.Fatalf("preview URL = %q, want Google size override", got)
+	got, ok := GoogleAvatarLargeURL("https://lh3.googleusercontent.com/-abc/s100/photo.jpg?sz=50")
+	if !ok || !strings.Contains(got, "/s1024/photo.jpg") || !strings.Contains(got, "sz=1024") {
+		t.Fatalf("large URL = %q, want Google size override", got)
 	}
 
-	got = contactAvatarPreviewURL("https://lh3.googleusercontent.com/a-/ALV-UjV=s96-c")
-	if !strings.Contains(got, "=s1024-c") || !strings.Contains(got, "sz=1024") {
-		t.Fatalf("preview URL = %q, want Google path size override", got)
+	got, ok = GoogleAvatarLargeURL("https://lh3.googleusercontent.com/a-/ALV-UjV=s96-c")
+	if !ok || !strings.Contains(got, "=s1024-c") || !strings.Contains(got, "sz=1024") {
+		t.Fatalf("large URL = %q, want Google path size override", got)
+	}
+
+	// The preview asks Gofer for the large version of the saved photo, since
+	// Gofer only fetches photos saved for a contact.
+	saved := "https://lh3.googleusercontent.com/a-/ALV-UjV=s96-c"
+	if got := contactAvatarPreviewURL(saved); got != "/api/provider-avatar?url="+url.QueryEscape(saved)+"&size=large" {
+		t.Fatalf("preview URL = %q", got)
 	}
 
 	dataURL := "data:image/png;base64,abc"

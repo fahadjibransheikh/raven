@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"path"
@@ -21,6 +22,7 @@ import (
 	"github.com/cristianadrielbraun/gofer/internal/models"
 	"github.com/cristianadrielbraun/gofer/internal/netguard"
 	"github.com/cristianadrielbraun/gofer/internal/storage"
+	"github.com/cristianadrielbraun/gofer/internal/views"
 )
 
 const (
@@ -39,8 +41,15 @@ const (
 	avatarWarmupAttemptWindow   = 7 * 24 * time.Hour
 	avatarWarmupAttemptLimit    = 12
 	avatarMissingTTL            = 24 * time.Hour
-	avatarErrorRetryAfter       = 6 * time.Hour
-	providerAvatarMaxBytes      = 5 * 1024 * 1024
+	avatarFoundTTL              = 7 * 24 * time.Hour
+	// A sender that keeps having no picture is looked up less and less often:
+	// each failed lookup doubles the wait, up to this.
+	avatarMaxRetryWait = 30 * 24 * time.Hour
+	// A sender on screen gets an early retry after an error only while its
+	// wait is shorter than this, so for its first few failed lookups.
+	avatarForcedRetryMaxWait = 24 * time.Hour
+	avatarErrorRetryAfter    = 6 * time.Hour
+	providerAvatarMaxBytes   = 5 * 1024 * 1024
 )
 
 type avatarWarmupRequest struct {
@@ -793,6 +802,14 @@ func (h *Handler) fetchAndPersistAvatarGuarded(ctx context.Context, hash, email 
 			if errors.Is(err, context.Canceled) {
 				return avatarresolver.Image{}, false, outcomes, err
 			}
+			// A domain that doesn't exist has no picture to find; it isn't a
+			// failure worth retrying soon.
+			if avatarDomainMissing(err) {
+				providerStatuses[provider.name] = "missing"
+				outcomes = append(outcomes, avatarProviderOutcome{provider: provider.name, status: "missing"})
+				_ = h.db.RecordSenderAvatarAttempt(ctx, hash, email, provider.name, "missing", provider.errorMessage(hash, email, err))
+				continue
+			}
 			providerStatuses[provider.name] = "error"
 			outcomes = append(outcomes, avatarProviderOutcome{provider: provider.name, status: "error"})
 			_ = h.db.RecordSenderAvatarAttempt(ctx, hash, email, provider.name, "error", provider.errorMessage(hash, email, err))
@@ -816,16 +833,34 @@ func (h *Handler) fetchAndPersistAvatarGuarded(ctx context.Context, hash, email 
 	if err := validate(); err != nil {
 		return avatarresolver.Image{}, false, outcomes, err
 	}
+	lastWait, err := h.db.SenderAvatarLastRetryWait(ctx, hash)
+	if err != nil {
+		return avatarresolver.Image{}, false, outcomes, err
+	}
 	if lastProviderErr != nil {
-		if err := h.db.SaveSenderAvatarError(ctx, hash, email, lastErrorProvider, lastProviderErr.Error(), time.Now().Add(avatarErrorRetryAfter), avatarStatus(providerStatuses, "gravatar"), avatarStatus(providerStatuses, "bimi")); err != nil {
+		if err := h.db.SaveSenderAvatarError(ctx, hash, email, lastErrorProvider, lastProviderErr.Error(), time.Now().Add(avatarRetryWait(avatarErrorRetryAfter, lastWait)), avatarStatus(providerStatuses, "gravatar"), avatarStatus(providerStatuses, "bimi")); err != nil {
 			return avatarresolver.Image{}, false, outcomes, err
 		}
 		return avatarresolver.Image{}, false, outcomes, lastProviderErr
 	}
-	if err := h.db.SaveSenderAvatarMissing(ctx, hash, email, "none", time.Now().Add(avatarMissingTTL), avatarStatus(providerStatuses, "gravatar"), avatarStatus(providerStatuses, "bimi")); err != nil {
+	if err := h.db.SaveSenderAvatarMissing(ctx, hash, email, "none", time.Now().Add(avatarRetryWait(avatarMissingTTL, lastWait)), avatarStatus(providerStatuses, "gravatar"), avatarStatus(providerStatuses, "bimi")); err != nil {
 		return avatarresolver.Image{}, false, outcomes, err
 	}
 	return avatarresolver.Image{}, false, outcomes, nil
+}
+
+// avatarRetryWait is how long to wait before looking a sender up again after
+// a lookup found no picture: base the first time, then twice the last wait,
+// up to avatarMaxRetryWait. lastWait is 0 when the last lookup found one.
+func avatarRetryWait(base, lastWait time.Duration) time.Duration {
+	return min(max(base, 2*lastWait), avatarMaxRetryWait)
+}
+
+// avatarDomainMissing reports whether a lookup failed because the sender's
+// domain doesn't exist.
+func avatarDomainMissing(err error) bool {
+	var dnsErr *net.DNSError
+	return errors.As(err, &dnsErr) && dnsErr.IsNotFound
 }
 
 func (h *Handler) reuseStoredDomainIconAvatar(ctx context.Context, hash, email, gravatarStatus, bimiStatus string) (avatarresolver.Image, string, bool, error) {
@@ -840,18 +875,21 @@ func (h *Handler) reuseStoredDomainIconAvatarGuarded(ctx context.Context, hash, 
 	if err := validate(); err != nil {
 		return avatarresolver.Image{}, "", false, err
 	}
+	// The reused icon gets a lifetime of its own. Taking over the other
+	// sender's expiry made it due again within minutes, every time.
+	expiresAt := time.Now().Add(avatarFoundTTL)
 	image := avatarresolver.Image{
 		Data:        rec.ImageData,
 		ContentType: rec.ContentType,
-		ExpiresAt:   rec.ExpiresAt,
+		ExpiresAt:   expiresAt,
 		Source:      "domain_icon",
 		SourceURL:   storage.SenderAvatarURL(rec.EmailHash, rec.ExpiresAt),
 	}
-	if err := h.db.SaveSenderAvatarFound(ctx, hash, email, "domain_icon", rec.ContentType, rec.StoragePath, rec.ImageData, rec.ExpiresAt, gravatarStatus, bimiStatus); err != nil {
+	if err := h.db.SaveSenderAvatarFound(ctx, hash, email, "domain_icon", rec.ContentType, rec.StoragePath, rec.ImageData, expiresAt, gravatarStatus, bimiStatus); err != nil {
 		return avatarresolver.Image{}, "", false, err
 	}
 	if h.syncer != nil {
-		h.publishAvatarUpdated(ctx, hash, email, rec.ExpiresAt)
+		h.publishAvatarUpdated(ctx, hash, email, expiresAt)
 	}
 	return image, reusedDomainIconAttemptMessage(email, rec), true, nil
 }
@@ -1020,7 +1058,7 @@ func avatarSourceFile(rawURL string) string {
 func (h *Handler) persistFoundAvatar(ctx context.Context, hash, email string, image avatarresolver.Image, gravatarStatus, bimiStatus string) (avatarresolver.Image, bool, error) {
 	expiresAt := image.ExpiresAt
 	if expiresAt.IsZero() {
-		expiresAt = time.Now().Add(7 * 24 * time.Hour)
+		expiresAt = time.Now().Add(avatarFoundTTL)
 	}
 	image.ExpiresAt = expiresAt
 	storagePath, err := h.blobStore.StoreAvatar(hash, image.ContentType, image.Data)
@@ -1135,9 +1173,16 @@ func (h *Handler) serveAvatarImage(w http.ResponseWriter, r *http.Request, rec *
 		return
 	}
 
-	contentType := rec.ContentType
-	if contentType == "" {
-		contentType = "image/jpeg"
+	rawType := rec.ContentType
+	if rawType == "" {
+		rawType = "image/jpeg"
+	}
+	// Avatars stored before types were checked may carry whatever the
+	// sender's server sent, so the type is checked again here.
+	contentType, ok := avatarresolver.ImageContentType(rawType)
+	if !ok {
+		http.NotFound(w, r)
+		return
 	}
 	etag := fmt.Sprintf(`"%s-%d-%d"`, rec.EmailHash, rec.ExpiresAt.Unix(), len(data))
 	if r.Header.Get("If-None-Match") == etag {
@@ -1146,9 +1191,7 @@ func (h *Handler) serveAvatarImage(w http.ResponseWriter, r *http.Request, rec *
 	}
 	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("X-Content-Type-Options", "nosniff")
-	if isSVGAvatarContentType(contentType) {
-		w.Header().Set("Content-Security-Policy", "default-src 'none'; img-src 'none'; media-src 'none'; object-src 'none'; script-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'")
-	}
+	w.Header().Set("Content-Security-Policy", avatarContentSecurityPolicy)
 	w.Header().Set("Cache-Control", "private, max-age=604800, immutable")
 	w.Header().Set("ETag", etag)
 	if rec.ExpiresAtValid {
@@ -1179,6 +1222,16 @@ func (h *Handler) handleProviderAvatarImage(w http.ResponseWriter, r *http.Reque
 	if !visible {
 		http.NotFound(w, r)
 		return
+	}
+	// Opening a contact's picture asks for the large version of the saved
+	// photo; the saved address is what was checked above.
+	if r.URL.Query().Get("size") == "large" {
+		if large, ok := views.GoogleAvatarLargeURL(rawURL); ok {
+			if parsed, err = url.Parse(large); err != nil {
+				http.Error(w, "invalid provider avatar", http.StatusBadRequest)
+				return
+			}
+		}
 	}
 
 	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, parsed.String(), nil)
@@ -1233,6 +1286,7 @@ func (h *Handler) handleProviderAvatarImage(w http.ResponseWriter, r *http.Reque
 
 	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Content-Security-Policy", avatarContentSecurityPolicy)
 	w.Header().Set("Cache-Control", "private, max-age=86400")
 	_, _ = w.Write(data)
 }
@@ -1323,7 +1377,7 @@ func (h *Handler) avatarWarmupCandidate(ctx context.Context, email, hash string)
 	if err := h.db.UpsertSenderAvatarCandidate(ctx, email); err != nil {
 		return storage.SenderAvatarCandidate{}, false, false, false, err
 	}
-	attempts, err := h.db.CountSenderAvatarAttemptsSince(ctx, hash, time.Now().Add(-avatarWarmupAttemptWindow))
+	attempts, err := h.db.CountFailedSenderAvatarLookupsSince(ctx, hash, time.Now().Add(-avatarWarmupAttemptWindow))
 	if err != nil {
 		return storage.SenderAvatarCandidate{}, false, false, false, err
 	}
@@ -1335,8 +1389,16 @@ func (h *Handler) avatarWarmupCandidate(ctx context.Context, email, hash string)
 		return storage.SenderAvatarCandidate{}, false, false, false, err
 	}
 	if rec != nil && !senderAvatarRecordDue(*rec) {
-		if rec.Status == "error" && h.allowAvatarWarmupForced(hash) {
-			return storage.SenderAvatarCandidate{EmailHash: hash, Email: email}, true, true, false, nil
+		if rec.Status == "error" {
+			// A sender on screen may be retried early after an error, unless
+			// its lookups keep failing.
+			lastWait, err := h.db.SenderAvatarLastRetryWait(ctx, hash)
+			if err != nil {
+				return storage.SenderAvatarCandidate{}, false, false, false, err
+			}
+			if lastWait < avatarForcedRetryMaxWait && h.allowAvatarWarmupForced(hash) {
+				return storage.SenderAvatarCandidate{EmailHash: hash, Email: email}, true, true, false, nil
+			}
 		}
 		return storage.SenderAvatarCandidate{}, false, false, false, nil
 	}
@@ -1409,10 +1471,9 @@ func (h *Handler) enqueueAvatarWarmupJob(job avatarWarmupJob) bool {
 	}
 }
 
-func isSVGAvatarContentType(contentType string) bool {
-	contentType = strings.ToLower(strings.TrimSpace(strings.Split(contentType, ";")[0]))
-	return contentType == "image/svg+xml" || contentType == "application/svg+xml"
-}
+// Avatars come from senders' servers. Opened on their own they must never run
+// as a page of Gofer, so they are sandboxed and may load nothing.
+const avatarContentSecurityPolicy = "default-src 'none'; script-src 'none'; object-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; sandbox"
 
 func (h *Handler) handleAvatarAttempts(w http.ResponseWriter, r *http.Request) {
 	scope, err := h.adminWebmailScope(r.Context(), r.URL.Query().Get("user_id"))

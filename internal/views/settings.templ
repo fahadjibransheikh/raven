@@ -103,7 +103,7 @@ templ SettingsComposeDisplayTab(uiSettings map[string]string, signatureData []mo
 			</div>
 			<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 				<div class="min-w-0">
-					<label for="compose-autosave-enabled" class="text-sm font-medium text-foreground">Autosave drafts</label>
+					<span id="compose-autosave-enabled-label" class="text-sm font-medium text-foreground">Autosave drafts</span>
 					<p class="text-xs text-muted-foreground mt-1">Save drafts after meaningful compose activity instead of creating drafts for tiny edits.</p>
 				</div>
 				<div class="w-full sm:w-44 shrink-0 space-y-3" data-compose-autosave-controls>
@@ -113,7 +113,7 @@ templ SettingsComposeDisplayTab(uiSettings map[string]string, signatureData []mo
 							ID:      "compose-autosave-enabled",
 							Name:    "compose_autosave_enabled",
 							Checked: uiSettingGet(uiSettings, "compose_autosave_enabled", "true") != "false",
-							Attributes: templ.Attributes{"data-compose-autosave-setting": "enabled"},
+							Attributes: templ.Attributes{"aria-labelledby": "compose-autosave-enabled-label", "data-compose-autosave-setting": "enabled"},
 						})
 					</div>
 					<div data-compose-autosave-dependent>
@@ -269,7 +269,7 @@ templ SettingsComposeDisplayTab(uiSettings map[string]string, signatureData []mo
 			</div>
 			<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 				<div class="min-w-0">
-					<label for="open-next-after-remove" class="text-sm font-medium text-foreground">Open next email after archive, delete, or spam</label>
+					<span id="open-next-after-remove-label" class="text-sm font-medium text-foreground">Open next email after archive, delete, or spam</span>
 					<p class="text-xs text-muted-foreground mt-1">Show the next email in the list when you archive, delete, or mark as spam the one you are reading. Turn off to leave the reading pane empty.</p>
 				</div>
 				<div class="w-full sm:w-44 shrink-0">
@@ -279,14 +279,14 @@ templ SettingsComposeDisplayTab(uiSettings map[string]string, signatureData []mo
 							ID:      "open-next-after-remove",
 							Name:    "open_next_after_remove",
 							Checked: uiSettingGet(uiSettings, "open_next_after_remove", "true") != "false",
-							Attributes: templ.Attributes{"data-open-next-after-remove-setting": ""},
+							Attributes: templ.Attributes{"aria-labelledby": "open-next-after-remove-label", "data-open-next-after-remove-setting": ""},
 						})
 					</div>
 				</div>
 			</div>
 			<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 				<div class="min-w-0">
-					<label for="load-remote-images" class="text-sm font-medium text-foreground">Load remote images automatically</label>
+					<span id="load-remote-images-label" class="text-sm font-medium text-foreground">Load remote images automatically</span>
 					<p class="text-xs text-muted-foreground mt-1">Show images that emails load from the internet. Loading them tells senders when you open an email and shares your IP address. Turn off to choose per email or per sender.</p>
 				</div>
 				<div class="w-full sm:w-44 shrink-0">
@@ -296,7 +296,7 @@ templ SettingsComposeDisplayTab(uiSettings map[string]string, signatureData []mo
 							ID:      "load-remote-images",
 							Name:    "load_remote_images",
 							Checked: uiSettingGet(uiSettings, "load_remote_images", "false") == "true",
-							Attributes: templ.Attributes{"data-load-remote-images-setting": ""},
+							Attributes: templ.Attributes{"aria-labelledby": "load-remote-images-label", "data-load-remote-images-setting": ""},
 						})
 					</div>
 				</div>
@@ -309,7 +309,7 @@ templ SettingsComposeDisplayTab(uiSettings map[string]string, signatureData []mo
 			</div>
 			<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 				<div class="min-w-0">
-					<label for="translation-button-enabled" class="text-sm font-medium text-foreground">Read-pane translate button</label>
+					<span id="translation-button-enabled-label" class="text-sm font-medium text-foreground">Read-pane translate button</span>
 					<p class="text-xs text-muted-foreground mt-1">Show a translate action beside message bodies.</p>
 				</div>
 				<div class="w-full sm:w-44 shrink-0">
@@ -319,7 +319,7 @@ templ SettingsComposeDisplayTab(uiSettings map[string]string, signatureData []mo
 							ID:      "translation-button-enabled",
 							Name:    "translation_button_enabled",
 							Checked: uiSettingGet(uiSettings, "translation_button_enabled", "true") != "false",
-							Attributes: templ.Attributes{"data-translation-setting": "enabled"},
+							Attributes: templ.Attributes{"aria-labelledby": "translation-button-enabled-label", "data-translation-setting": "enabled"},
 						})
 					</div>
 				</div>
@@ -369,120 +369,6 @@ templ SettingsComposeDisplayTab(uiSettings map[string]string, signatureData []mo
 			</div>
 		</div>
 	</div>
-	<script>
-	(function() {
-		function composeAutosaveEnabled() {
-			var toggle = document.querySelector('[data-compose-autosave-setting="enabled"]');
-			return !toggle || toggle.checked;
-		}
-		function selectedComposeAutosaveConditions() {
-			var input = document.querySelector('[data-compose-autosave-conditions-value]');
-			return (input && input.value ? input.value : '').split(',').filter(Boolean);
-		}
-		function saveComposeAutosaveConditions(values) {
-			var input = document.querySelector('[data-compose-autosave-conditions-value]');
-			if (input) input.value = values.join(',');
-			if (typeof GoferSettings !== 'undefined') GoferSettings.set('compose_autosave_conditions', values.join(','));
-		}
-		function composeAutosaveConditionLabel(values) {
-			if (!values.length) return 'No conditions';
-			return values.length === 1 ? '1 condition' : values.length + ' conditions';
-		}
-		function syncComposeAutosaveControls() {
-			var enabled = composeAutosaveEnabled();
-			var selected = selectedComposeAutosaveConditions();
-			document.querySelectorAll('[data-compose-autosave-dependent] .select-trigger, [data-compose-autosave-conditions-button], [data-compose-autosave-min-chars]').forEach(function(el) {
-				el.disabled = !enabled;
-				el.classList.toggle('opacity-50', !enabled);
-			});
-			document.querySelectorAll('[data-compose-autosave-condition-check]').forEach(function(check) {
-				check.classList.toggle('opacity-0', selected.indexOf(check.dataset.composeAutosaveConditionCheck) === -1);
-			});
-			var label = document.querySelector('[data-compose-autosave-conditions-label]');
-			if (label) label.textContent = composeAutosaveConditionLabel(selected);
-			var minChars = document.querySelector('[data-compose-autosave-min-chars]');
-			if (minChars) minChars.disabled = !enabled || selected.indexOf('chars') === -1;
-		}
-		document.addEventListener('click', function(e) {
-			var item = e.target.closest && e.target.closest('[data-compose-autosave-condition-item]');
-			if (!item || e.target.closest('[data-compose-autosave-min-chars]')) return;
-			var selected = selectedComposeAutosaveConditions();
-			var value = item.dataset.composeAutosaveConditionItem;
-			var index = selected.indexOf(value);
-			if (index === -1) selected.push(value);
-			else selected.splice(index, 1);
-			saveComposeAutosaveConditions(selected);
-			syncComposeAutosaveControls();
-		});
-		document.addEventListener('change', function(e) {
-			var defaultComposeView = e.target.closest('input[name="default_new_compose_view"], input[name="default_reply_compose_view"]');
-			if (defaultComposeView && typeof GoferSettings !== 'undefined') {
-				GoferSettings.set(defaultComposeView.name, defaultComposeView.value);
-			}
-			var mailPaneLayout = e.target.closest('input[name="mail_pane_layout"]');
-			if (mailPaneLayout && typeof GoferSettings !== 'undefined') {
-				GoferSettings.set('mail_pane_layout', mailPaneLayout.value);
-			}
-			var autosaveToggle = e.target.closest('[data-compose-autosave-setting="enabled"]');
-			if (autosaveToggle && typeof GoferSettings !== 'undefined') {
-				GoferSettings.set('compose_autosave_enabled', autosaveToggle.checked ? 'true' : 'false');
-				syncComposeAutosaveControls();
-			}
-			var minChars = e.target.closest('[data-compose-autosave-min-chars]');
-			if (minChars && typeof GoferSettings !== 'undefined') {
-				var n = Math.max(1, Math.min(1000, parseInt(minChars.value.replace(/\D/g, '') || '30', 10) || 30));
-				minChars.value = n;
-				GoferSettings.set('compose_autosave_min_chars', String(n));
-			}
-			var autosaveDebounce = e.target.closest('input[name="compose_autosave_debounce"]');
-			if (autosaveDebounce && typeof GoferSettings !== 'undefined') {
-				GoferSettings.set('compose_autosave_debounce', autosaveDebounce.value);
-			}
-			var senderDisplay = e.target.closest('input[name="sender_display"]');
-			if (senderDisplay && typeof GoferSettings !== 'undefined') {
-				GoferSettings.set('sender_display', senderDisplay.value);
-			}
-			var threadOrder = e.target.closest('input[name="thread_order"]');
-			if (threadOrder && typeof GoferSettings !== 'undefined') {
-				GoferSettings.set('thread_order', threadOrder.value);
-			}
-			var mailListNavigation = e.target.closest('input[name="mail_list_navigation"]');
-			if (mailListNavigation && typeof GoferSettings !== 'undefined') {
-				GoferSettings.set('mail_list_navigation', mailListNavigation.value);
-			}
-			var autoMarkRead = e.target.closest('input[name="auto_mark_read_after"]');
-			if (autoMarkRead && typeof GoferSettings !== 'undefined') {
-				GoferSettings.set('auto_mark_read_after', autoMarkRead.value);
-			}
-			var openNextAfterRemove = e.target.closest('[data-open-next-after-remove-setting]');
-			if (openNextAfterRemove && typeof GoferSettings !== 'undefined') {
-				GoferSettings.set('open_next_after_remove', openNextAfterRemove.checked ? 'true' : 'false');
-			}
-			var loadRemoteImages = e.target.closest('[data-load-remote-images-setting]');
-			if (loadRemoteImages && typeof GoferSettings !== 'undefined') {
-				GoferSettings.set('load_remote_images', loadRemoteImages.checked ? 'true' : 'false');
-			}
-			var translationEnabled = e.target.closest('[data-translation-setting="enabled"]');
-			if (translationEnabled && typeof GoferSettings !== 'undefined') {
-				GoferSettings.set('translation_button_enabled', translationEnabled.checked ? 'true' : 'false');
-			}
-			var translationProvider = e.target.closest('input[name="translation_provider"]');
-			if (translationProvider && typeof GoferSettings !== 'undefined') {
-				GoferSettings.set('translation_provider', translationProvider.value);
-			}
-			var translationLanguage = e.target.closest('input[name="translation_target_language"]');
-			if (translationLanguage && typeof GoferSettings !== 'undefined') {
-				GoferSettings.set('translation_target_language', translationLanguage.value);
-			}
-		});
-		document.addEventListener('input', function(e) {
-			var minChars = e.target.closest && e.target.closest('[data-compose-autosave-min-chars]');
-			if (!minChars) return;
-			minChars.value = minChars.value.replace(/\D/g, '').slice(0, 4);
-		});
-		setTimeout(syncComposeAutosaveControls, 0);
-	})();
-	</script>
 }
 
 templ SettingsAppearanceTab(uiSettings map[string]string) {
@@ -573,33 +459,6 @@ templ SettingsAppearanceTab(uiSettings map[string]string) {
 				</div>
 			</div>
 		</div>
-	<script>
-	(function() {
-		document.addEventListener('click', function(e) {
-			var mode = e.target.closest('[data-mode]');
-			if (mode) {
-				if (typeof GoferSettings !== 'undefined') {
-					GoferSettings.set('theme', mode.dataset.mode);
-				}
-				var isDark = mode.dataset.mode === 'dark';
-				document.querySelectorAll('[data-theme-preview]').forEach(function(el) {
-					el.classList.toggle('dark', isDark);
-				});
-				return;
-			}
-		});
-		document.addEventListener('change', function(e) {
-			var themeStyle = e.target.closest('input[name="theme_style"]');
-			if (themeStyle && typeof GoferSettings !== 'undefined') {
-				GoferSettings.set('theme_style', themeStyle.value);
-			}
-			var density = e.target.closest('input[name="mail_list_density"]');
-			if (density && typeof GoferSettings !== 'undefined') {
-				GoferSettings.set('mail_list_density', density.value);
-			}
-		});
-	})();
-	</script>
 }
 
 templ SettingsRegionalTab(uiSettings map[string]string) {
@@ -631,73 +490,6 @@ templ SettingsRegionalTab(uiSettings map[string]string) {
 			</div>
 		</div>
 	</div>
-	<script>
-	(function() {
-		function timezoneLabel(timezone) {
-			if (!timezone || timezone === 'local') return 'Browser timezone';
-			try {
-				var now = new Date();
-				var parts = new Intl.DateTimeFormat('en-US', { timeZone: timezone, timeZoneName: 'shortOffset' }).formatToParts(now);
-				var offset = '';
-				for (var i = 0; i < parts.length; i++) {
-					if (parts[i].type === 'timeZoneName') offset = parts[i].value.replace('GMT', 'UTC');
-				}
-				return timezone.replace(/_/g, ' ') + (offset ? ' (' + offset + ')' : '');
-			} catch (_) {
-				return timezone;
-			}
-		}
-		function browserTimezone() {
-			try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; } catch (_) { return 'UTC'; }
-		}
-		function timezoneOptions() {
-			if (Intl.supportedValuesOf) {
-				try { return Intl.supportedValuesOf('timeZone'); } catch (_) {}
-			}
-			return ['UTC', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Europe/Bucharest', 'Asia/Dubai', 'Asia/Kolkata', 'Asia/Tokyo', 'Australia/Sydney'];
-		}
-		function populateTimezonePicker() {
-			var root = document.querySelector('[data-timezone-picker]');
-			if (!root) return;
-			var content = root.querySelector('[data-timezone-options]');
-			var group = content && content.querySelector('[role="group"]');
-			var input = root.querySelector('[data-timezone-input]');
-			if (!content || !group || !input) return;
-			var current = root.getAttribute('data-current-timezone') || '';
-			if (typeof GoferSettings !== 'undefined') current = GoferSettings.get('timezone') || current;
-			if (!current || current === 'local') current = browserTimezone();
-			var options = timezoneOptions();
-			group.innerHTML = '';
-			if (options.indexOf(current) === -1) options = [current].concat(options);
-			for (var i = 0; i < options.length; i++) {
-				var item = document.createElement('div');
-				item.setAttribute('role', 'option');
-				item.setAttribute('tabindex', '0');
-				item.setAttribute('data-tui-selectbox-value', options[i]);
-				item.setAttribute('data-tui-selectbox-selected', options[i] === current ? 'true' : 'false');
-				item.setAttribute('data-tui-selectbox-disabled', 'false');
-				item.className = 'select-item group relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 px-2 text-sm font-light outline-none hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground data-[tui-selectbox-selected=true]:bg-accent data-[tui-selectbox-selected=true]:text-accent-foreground';
-				var text = document.createElement('span');
-				text.className = 'truncate select-item-text';
-				text.textContent = timezoneLabel(options[i]);
-				item.appendChild(text);
-				group.appendChild(item);
-			}
-			input.value = current;
-			input.dispatchEvent(new Event('input', { bubbles: true }));
-		}
-		populateTimezonePicker();
-		document.addEventListener('DOMContentLoaded', populateTimezonePicker);
-		document.addEventListener('change', function(e) {
-			var timezone = e.target.closest('[data-timezone-input]');
-			if (timezone && typeof GoferSettings !== 'undefined') {
-				var valueEl = timezone.closest('.select-trigger') && timezone.closest('.select-trigger').querySelector('.select-value');
-				if (valueEl) valueEl.textContent = timezoneLabel(timezone.value);
-				GoferSettings.set('timezone', timezone.value);
-			}
-		});
-	})();
-	</script>
 }
 
 // SettingsSecurityOpenTab is the Security tab when Raven runs without a login
@@ -708,7 +500,7 @@ templ SettingsSecurityOpenTab() {
 			<h3 class="text-sm font-semibold text-muted-foreground">Security</h3>
 			<h4 class="text-sm font-medium text-foreground">Login is off</h4>
 			<p class="text-xs text-muted-foreground">Raven is running without a login, so there is no password, authenticator or passkey to manage. Anyone who can reach this Raven can read its mail, so keep it on a device only you use.</p>
-			<p class="text-xs text-muted-foreground">To require a login, run Raven as a server with authentication enabled. Password and two-step verification settings will appear here.</p>
+			<p class="text-xs text-muted-foreground">To require a login, run Raven as a server with authentication enabled. Sign-in settings appear only when Raven runs with sign-in.</p>
 		</div>
 	</div>
 }
@@ -722,19 +514,19 @@ templ SettingsAdvancedTab(uiSettings map[string]string) {
 			</div>
 			<div class="flex items-start justify-between gap-6 rounded-lg border border-border/60 bg-background/40 p-4">
 				<div class="min-w-0">
-					<label for="prefetch-on-hover" class="text-sm font-medium text-foreground">Pre-fetch on hover</label>
+					<span id="prefetch-on-hover-label" class="text-sm font-medium text-foreground">Pre-fetch on hover</span>
 					<p class="text-xs text-muted-foreground mt-1 leading-relaxed">Start loading an email body when you hover or focus a message in the list, so opening it often feels faster. This can significantly increase network usage. Disable it to fetch bodies only when you click an email.</p>
 				</div>
 				@switchcomp.Switch(switchcomp.Props{
 					ID:      "prefetch-on-hover",
 					Name:    "prefetch_on_hover",
 					Checked: uiSettingGet(uiSettings, "prefetch_on_hover", "true") != "false",
-					Attributes: templ.Attributes{"data-ui-setting-switch": "prefetch_on_hover"},
+					Attributes: templ.Attributes{"aria-labelledby": "prefetch-on-hover-label", "data-ui-setting-switch": "prefetch_on_hover"},
 				})
 			</div>
 			<div class="flex items-start justify-between gap-6 rounded-lg border border-border/60 bg-background/40 p-4">
 				<div class="min-w-0">
-					<label for="desktop-notifications" class="text-sm font-medium text-foreground">Desktop notifications</label>
+					<span id="desktop-notifications-label" class="text-sm font-medium text-foreground">Desktop notifications</span>
 					<p class="text-xs text-muted-foreground mt-1 leading-relaxed">Show notifications for new unread mail. Auto uses Web Push when possible, then browser-tab notifications while Raven is open.</p>
 					<p class="text-xs text-muted-foreground mt-2" data-desktop-notifications-status>Browser permission will be requested when enabled.</p>
 					<p class="text-xs font-medium text-muted-foreground mt-1" data-notification-active-method>Active method: Off</p>
@@ -754,7 +546,7 @@ templ SettingsAdvancedTab(uiSettings map[string]string) {
 							ID:      "desktop-notifications",
 							Name:    "desktop_notifications",
 							Checked: uiSettingGet(uiSettings, "desktop_notifications", "false") == "true",
-							Attributes: templ.Attributes{"data-ui-setting-switch": "desktop_notifications", "data-desktop-notifications-switch": ""},
+							Attributes: templ.Attributes{"aria-labelledby": "desktop-notifications-label", "data-ui-setting-switch": "desktop_notifications", "data-desktop-notifications-switch": ""},
 						})
 					</div>
 					@selectbox.SelectBox(selectbox.Props{Class: "settings-select"}) {
@@ -770,6 +562,10 @@ templ SettingsAdvancedTab(uiSettings map[string]string) {
 							@selectbox.Item(selectbox.ItemProps{Value: "off", Selected: uiSettingGet(uiSettings, "notification_mode", "auto") == "off"}) { Off }
 						}
 					}
+					<button type="button" class="inline-flex h-8 w-full shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-input bg-background px-3 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50" data-desktop-notifications-test disabled title="Send a test notification using the active method">
+						@icon.BellRing(icon.Props{Class: "size-3.5"})
+						Send test
+					</button>
 				</div>
 			</div>
 			<div class="flex flex-col gap-4 rounded-lg border border-border/60 bg-background/40 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
@@ -797,15 +593,6 @@ templ SettingsAdvancedTab(uiSettings map[string]string) {
 			</div>
 		</div>
 	</div>
-	<script>
-	(function() {
-		document.addEventListener('change', function(e) {
-			var toggle = e.target.closest('[data-ui-setting-switch]');
-			if (!toggle || typeof GoferSettings === 'undefined') return;
-			GoferSettings.set(toggle.getAttribute('data-ui-setting-switch'), toggle.checked ? 'true' : 'false');
-		});
-	})();
-	</script>
 }
 
 templ SettingsContactsTab(accounts []models.Account, uiSettings map[string]string) {
@@ -818,14 +605,14 @@ templ SettingsContactsTab(accounts []models.Account, uiSettings map[string]strin
 			<div class="rounded-lg border border-border/60 bg-background/40 p-4 space-y-5">
 				<div class="flex items-start justify-between gap-6">
 					<div class="min-w-0">
-						<label for="contacts-auto-create-observed" class="text-sm font-medium text-foreground">Auto-create observed contacts</label>
+						<span id="contacts-auto-create-observed-label" class="text-sm font-medium text-foreground">Auto-create observed contacts</span>
 						<p class="text-xs text-muted-foreground mt-1 leading-relaxed">Create local contacts from selected discovery sources. Disable this if you only want manually saved contacts.</p>
 					</div>
 					@switchcomp.Switch(switchcomp.Props{
 						ID:      "contacts-auto-create-observed",
 						Name:    "contacts_auto_create_observed",
 						Checked: uiSettingGet(uiSettings, "contacts_auto_create_observed", "true") != "false",
-						Attributes: templ.Attributes{"data-ui-setting-switch": "contacts_auto_create_observed", "data-contact-autocreate-switch": ""},
+						Attributes: templ.Attributes{"aria-labelledby": "contacts-auto-create-observed-label", "data-ui-setting-switch": "contacts_auto_create_observed", "data-contact-autocreate-switch": ""},
 					})
 				</div>
 				<fieldset
@@ -844,40 +631,40 @@ templ SettingsContactsTab(accounts []models.Account, uiSettings map[string]strin
 						<div class="space-y-3">
 							<div class="flex items-start justify-between gap-6">
 								<div class="min-w-0">
-									<label for="contacts-observed-senders" class="text-sm font-medium text-foreground">Senders</label>
+									<span id="contacts-observed-senders-label" class="text-sm font-medium text-foreground">Senders</span>
 									<p class="text-xs text-muted-foreground mt-1">Create contacts from message From addresses.</p>
 								</div>
 								@switchcomp.Switch(switchcomp.Props{
 									ID:      "contacts-observed-senders",
 									Name:    "contacts_observed_senders",
 									Checked: uiSettingCSVHas(uiSettings, "contacts_observed_sources", "senders,recipients", "senders"),
-									Attributes: templ.Attributes{"data-contact-source-switch": "senders"},
+									Attributes: templ.Attributes{"aria-labelledby": "contacts-observed-senders-label", "data-contact-source-switch": "senders"},
 								})
 							</div>
 							<div class="flex items-start justify-between gap-6">
 								<div class="min-w-0">
-									<label for="contacts-observed-recipients" class="text-sm font-medium text-foreground">Recipients</label>
+									<span id="contacts-observed-recipients-label" class="text-sm font-medium text-foreground">Recipients</span>
 									<p class="text-xs text-muted-foreground mt-1">Create contacts from To, Cc, and Bcc addresses.</p>
 								</div>
 								@switchcomp.Switch(switchcomp.Props{
 									ID:      "contacts-observed-recipients",
 									Name:    "contacts_observed_recipients",
 									Checked: uiSettingCSVHas(uiSettings, "contacts_observed_sources", "senders,recipients", "recipients"),
-									Attributes: templ.Attributes{"data-contact-source-switch": "recipients"},
+									Attributes: templ.Attributes{"aria-labelledby": "contacts-observed-recipients-label", "data-contact-source-switch": "recipients"},
 								})
 							</div>
 						</div>
 					</div>
 					<div class="flex items-start justify-between gap-6 border-t border-border/60 pt-5">
 						<div class="min-w-0">
-							<label for="contacts-prevent-recreate-deleted" class="text-sm font-medium text-foreground">Do not recreate deleted contacts</label>
+							<span id="contacts-prevent-recreate-deleted-label" class="text-sm font-medium text-foreground">Do not recreate deleted contacts</span>
 							<p class="text-xs text-muted-foreground mt-1 leading-relaxed">When an observed contact is deleted, keep it suppressed so future mail from the same address does not add it back automatically.</p>
 						</div>
 						@switchcomp.Switch(switchcomp.Props{
 							ID:      "contacts-prevent-recreate-deleted",
 							Name:    "contacts_prevent_recreate_deleted",
 							Checked: uiSettingGet(uiSettings, "contacts_prevent_recreate_deleted", "true") != "false",
-							Attributes: templ.Attributes{"data-ui-setting-switch": "contacts_prevent_recreate_deleted"},
+							Attributes: templ.Attributes{"aria-labelledby": "contacts-prevent-recreate-deleted-label", "data-ui-setting-switch": "contacts_prevent_recreate_deleted"},
 						})
 					</div>
 					<div class="flex items-start justify-between gap-6 border-t border-border/60 pt-5">
@@ -980,35 +767,6 @@ templ SettingsContactsTab(accounts []models.Account, uiSettings map[string]strin
 			</div>
 		</div>
 	</div>
-	<script>
-	(function() {
-		function syncContactsAutoCreateDependents() {
-			var master = document.querySelector('[data-contact-autocreate-switch]');
-			var enabled = !master || master.checked;
-			document.querySelectorAll('[data-contact-autocreate-dependent]').forEach(function(section) {
-				section.disabled = !enabled;
-				section.classList.toggle('opacity-45', !enabled);
-				section.classList.toggle('pointer-events-none', !enabled);
-				section.classList.toggle('saturate-50', !enabled);
-			});
-		}
-		syncContactsAutoCreateDependents();
-		document.addEventListener('change', function(e) {
-			var toggle = e.target.closest('[data-ui-setting-switch]');
-			if (toggle && typeof GoferSettings !== 'undefined') {
-				GoferSettings.set(toggle.getAttribute('data-ui-setting-switch'), toggle.checked ? 'true' : 'false');
-				if (toggle.hasAttribute('data-contact-autocreate-switch')) syncContactsAutoCreateDependents();
-			}
-			var source = e.target.closest('[data-contact-source-switch]');
-			if (!source || typeof GoferSettings === 'undefined') return;
-			var selected = [];
-			document.querySelectorAll('[data-contact-source-switch]').forEach(function(el) {
-				if (el.checked) selected.push(el.getAttribute('data-contact-source-switch'));
-			});
-			GoferSettings.set('contacts_observed_sources', selected.join(','));
-		});
-	})();
-	</script>
 }
 
 templ GmailReauthForm(account models.Account) {
@@ -1317,7 +1075,7 @@ templ SettingsSyncTab(settings models.SyncSettings, uiSettings map[string]string
 				<div class="rounded-lg border border-border/60 bg-background/40 p-4">
 					<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 						<div class="min-w-0">
-								<label for="unified-folders-enabled" class="text-sm font-medium text-foreground">Enable unified folders</label>
+								<span id="unified-folders-enabled-label" class="text-sm font-medium text-foreground">Enable unified folders</span>
 							<p class="text-xs text-muted-foreground mt-1 leading-relaxed">Place combined Inbox, Starred, Sent, Drafts, Archive, Spam, and Trash folders above the individual account list.</p>
 						</div>
 						<div class="w-full sm:w-44 shrink-0">
@@ -1327,7 +1085,7 @@ templ SettingsSyncTab(settings models.SyncSettings, uiSettings map[string]string
 									ID:      "unified-folders-enabled",
 									Name:    "unified_folders_enabled",
 									Checked: uiSettingGet(uiSettings, "unified_folders_enabled", "true") != "false",
-									Attributes: templ.Attributes{"data-unified-folders-setting": "enabled"},
+									Attributes: templ.Attributes{"aria-labelledby": "unified-folders-enabled-label", "data-unified-folders-setting": "enabled"},
 								})
 							</div>
 						</div>
@@ -1353,332 +1111,6 @@ templ SettingsSyncTab(settings models.SyncSettings, uiSettings map[string]string
 		.sync-pill-enter { animation: sync-pill-in 220ms ease-out; }
 		.sync-pill-exit { animation: sync-pill-out 160ms ease-in forwards; }
 	</style>
-	<script>
-	(function() {
-		var syncAutoSaveTimer = null;
-		var syncSaveInFlight = false;
-		var syncSaveQueued = false;
-
-		function setPillEffectiveMode(pill, isIDLE) {
-			var label = pill.querySelector('.sync-label');
-			var toggle = pill.querySelector('[data-sync-pill-toggle]');
-			pill.dataset.effectiveIdle = isIDLE ? 'true' : 'false';
-			if (isIDLE) {
-				pill.className = pill.className.replace(/bg-muted\/50 border-border text-muted-foreground/g, 'bg-amber-800/10 border-amber-700/20 text-amber-800 dark:bg-amber-300/10 dark:border-amber-300/20 dark:text-amber-200');
-				if (!label && toggle) {
-					label = document.createElement('span');
-					label.className = 'sync-label text-xs opacity-70';
-					toggle.appendChild(label);
-				}
-				if (label) label.textContent = 'real-time';
-				return;
-			}
-			pill.className = pill.className.replace(/bg-amber-800\/10 border-amber-700\/20 text-amber-800 dark:bg-amber-300\/10 dark:border-amber-300\/20 dark:text-amber-200/g, 'bg-muted/50 border-border text-muted-foreground');
-			if (label) label.remove();
-		}
-
-		function fallbackTooltipText(pill) {
-			var reason = (pill.dataset.idleFallbackReason || '').trim().replace(/\.$/, '');
-			if (!reason) return '';
-			var name = pill.dataset.folderName || 'This folder';
-			var message = name + ' was moved to polling because ' + reason + '.';
-			var retryAt = Date.parse(pill.dataset.idleRetryAt || '');
-			if (!isNaN(retryAt) && retryAt > Date.now()) {
-				var remaining = retryAt - Date.now();
-				var minutes = Math.max(1, Math.ceil(remaining / 60000));
-				return message + ' Raven will try again in ' + minutes + (minutes === 1 ? ' minute.' : ' minutes.');
-			}
-			return message;
-		}
-
-		function setPillFallback(pill, reason, retryAt) {
-			reason = (reason || '').trim();
-			pill.dataset.idleFallbackReason = reason;
-			pill.dataset.idleRetryAt = retryAt || '';
-			var warning = pill.querySelector('[data-idle-fallback-warning]');
-			if (warning) {
-				warning.classList.toggle('hidden', !reason);
-				warning.classList.toggle('inline-flex', !!reason);
-			}
-			var text = pill.querySelector('[data-idle-fallback-tooltip-text]');
-			if (text) text.textContent = fallbackTooltipText(pill);
-		}
-
-		function movePill(pill, toIdle, animate, afterMove) {
-			var container = pill.closest('[data-sync-account-card]');
-			if (!container) return;
-			var target = container.querySelector(toIdle ? '[data-idle-zone]' : '[data-poll-zone]');
-			if (!target) return;
-			var moved = pill.parentElement !== target;
-			var complete = function() {
-				setPillEffectiveMode(pill, toIdle);
-				if (moved) target.appendChild(pill);
-				if (animate && moved) {
-					pill.classList.add('sync-pill-enter');
-					pill.addEventListener('animationend', function onEnter() {
-						pill.removeEventListener('animationend', onEnter);
-						pill.classList.remove('sync-pill-enter');
-					}, { once: true });
-				}
-				updateEmptyStates(container);
-				if (afterMove) afterMove();
-			};
-			if (!animate || !moved) {
-				complete();
-				return;
-			}
-			pill.classList.add('sync-pill-exit');
-			pill.addEventListener('animationend', function onExit() {
-				pill.removeEventListener('animationend', onExit);
-				pill.classList.remove('sync-pill-exit');
-				complete();
-			}, { once: true });
-		}
-
-		function togglePill(pill) {
-			if (pill.classList.contains('sync-pill-exit')) return;
-			var toIdle = pill.dataset.configuredIdle !== 'true';
-			pill.dataset.configuredIdle = toIdle ? 'true' : 'false';
-			setPillFallback(pill, '', '');
-			movePill(pill, toIdle, true, function() {
-				updateHiddenInputs();
-				scheduleAutoSave(80);
-			});
-		}
-
-		function applyIDLEFolderStatus(data) {
-			if (!data || !data.account_id || !data.folder_id) return;
-			var pill = Array.prototype.find.call(document.querySelectorAll('[data-sync-pill]'), function(candidate) {
-				return candidate.dataset.accountId === data.account_id && candidate.dataset.folderId === data.folder_id;
-			});
-			if (!pill || pill.dataset.configuredIdle !== 'true') return;
-			var effectiveIDLE = data.effective_mode === 'idle';
-			setPillFallback(pill, effectiveIDLE ? '' : (data.reason || ''), effectiveIDLE ? '' : (data.retry_at || ''));
-			movePill(pill, effectiveIDLE, true);
-		}
-
-		function updateEmptyStates(container) {
-			var zones = container
-				? container.querySelectorAll('[data-idle-zone],[data-poll-zone]')
-				: document.querySelectorAll('[data-idle-zone],[data-poll-zone]');
-			zones.forEach(updateZoneEmpty);
-		}
-
-		function updateZoneEmpty(zone) {
-			var pills = zone.querySelectorAll('[data-sync-pill]');
-			var existing = zone.querySelector('.sync-empty-state');
-			if (pills.length === 0 && !existing) {
-				var el = document.createElement('span');
-				el.className = 'sync-empty-state inline-flex items-center px-2.5 rounded-md border border-dashed border-border text-xs text-muted-foreground/50';
-				el.style.height = '26px';
-				el.textContent = 'None selected';
-				zone.appendChild(el);
-			} else if (pills.length > 0 && existing) {
-				existing.remove();
-			}
-		}
-
-		function updateHiddenInputs() {
-			var container = document.getElementById('idle-folders-inputs');
-			if (!container) return;
-			container.innerHTML = '';
-			var seenAccounts = {};
-			var seenIdle = {};
-			document.querySelectorAll('[data-sync-pill][data-configured-idle="true"]').forEach(function(pill) {
-				var accountID = pill.dataset.accountId;
-				var folderID = pill.dataset.folderId;
-				var key = accountID + ':' + folderID;
-				if (seenIdle[key]) return;
-				seenIdle[key] = true;
-				var input = document.createElement('input');
-				input.type = 'hidden';
-				input.name = 'idle_folders';
-				input.value = accountID + ':' + folderID;
-				container.appendChild(input);
-				seenAccounts[accountID] = true;
-			});
-			document.querySelectorAll('[data-poll-zone]').forEach(function(zone) {
-				var accountID = zone.getAttribute('data-poll-zone');
-				if (!seenAccounts[accountID]) {
-					seenAccounts[accountID] = true;
-				}
-			});
-			for (var aid in seenAccounts) {
-				var input = document.createElement('input');
-				input.type = 'hidden';
-				input.name = 'account_ids';
-				input.value = aid;
-				container.appendChild(input);
-			}
-		}
-
-		document.addEventListener('click', function(e) {
-			var toggle = e.target.closest('[data-sync-pill-toggle]');
-			var pill = toggle && toggle.closest('[data-sync-pill]');
-			if (pill && toggle) {
-				e.preventDefault();
-				togglePill(pill);
-				return;
-			}
-		});
-
-		document.addEventListener('gofer:idle-folder-status', function(e) {
-			applyIDLEFolderStatus(e.detail || {});
-		});
-		if (window.goferIDLEFallbackTimer) window.clearInterval(window.goferIDLEFallbackTimer);
-		window.goferIDLEFallbackTimer = window.setInterval(function() {
-			document.querySelectorAll('[data-sync-pill][data-idle-fallback-reason]:not([data-idle-fallback-reason=""])').forEach(function(pill) {
-				var text = pill.querySelector('[data-idle-fallback-tooltip-text]');
-				if (text) text.textContent = fallbackTooltipText(pill);
-			});
-		}, 30000);
-
-		function syncPollingIntervalDisplay() {
-			var input = document.querySelector('#sync-settings-form input[name="sync_interval_minutes"]');
-			if (!input || !input.value) return;
-			var interval = input.value;
-			document.querySelectorAll('[data-sync-polling-title]').forEach(function(title) {
-				title.textContent = 'Polling (' + interval + ' min)';
-			});
-			document.querySelectorAll('[data-sync-folders]').forEach(function(container) {
-				container.dataset.syncFolders = interval;
-			});
-			document.querySelectorAll('[data-sync-pill]').forEach(function(pill) {
-				pill.dataset.interval = interval;
-			});
-		}
-
-		function setSaveStatus(message) {
-			var status = document.getElementById('sync-save-status');
-			if (status) status.textContent = message || '';
-		}
-
-		function showSaveError() {
-			if (typeof showGoferToast !== 'function') return;
-			showGoferToast({
-				id: 'sync-settings-toast',
-				title: 'Could not save email sync settings',
-				description: 'Try again in a moment.',
-				variant: 'error',
-				icon: 'error',
-				position: 'bottom-right',
-				duration: 5000,
-				dismissible: true,
-			});
-		}
-
-		function scheduleAutoSave(delay) {
-			if (syncAutoSaveTimer) window.clearTimeout(syncAutoSaveTimer);
-			syncAutoSaveTimer = window.setTimeout(saveSyncSettings, typeof delay === 'number' ? delay : 350);
-		}
-
-		function saveSyncSettings() {
-			var form = document.getElementById('sync-settings-form');
-			if (!form) return;
-			if (syncSaveInFlight) {
-				syncSaveQueued = true;
-				return;
-			}
-
-			syncSaveInFlight = true;
-			syncAutoSaveTimer = null;
-			setSaveStatus('Saving');
-
-			var formData = new FormData(form);
-			var params = new URLSearchParams();
-			formData.forEach(function(value, key) {
-				params.append(key, value);
-			});
-			fetch('/api/settings/sync', {
-				method: 'POST',
-				body: params,
-				headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json' }
-			}).then(function(res) {
-				if (!res.ok) throw new Error(res.statusText);
-				return res.json();
-			}).then(function() {
-				setSaveStatus('Saved');
-			}).catch(function() {
-				setSaveStatus('Save failed');
-				showSaveError();
-			}).finally(function() {
-				syncSaveInFlight = false;
-				if (syncSaveQueued) {
-					syncSaveQueued = false;
-					scheduleAutoSave(0);
-				}
-			});
-		}
-
-		function syncUnifiedFolderControls() {
-			var master = document.querySelector('[data-unified-folders-setting="enabled"]');
-			var enabled = !master || master.checked;
-			document.querySelectorAll('[data-unified-folder-switch]').forEach(function(input) {
-				input.disabled = !enabled;
-			});
-			document.querySelectorAll('[data-unified-folder-account-switch]').forEach(function(input) {
-				input.disabled = !enabled;
-			});
-			document.querySelectorAll('[data-unified-folder-account-button]').forEach(function(button) {
-				button.disabled = !enabled;
-			});
-			document.querySelectorAll('[data-unified-folder-dependent]').forEach(function(row) {
-				row.classList.toggle('opacity-50', !enabled);
-			});
-			document.querySelectorAll('[data-unified-folder-account-dependent]').forEach(function(row) {
-				row.classList.toggle('opacity-50', !enabled);
-			});
-		}
-
-		var form = document.getElementById('sync-settings-form');
-		if (form) {
-			form.addEventListener('submit', function(e) {
-				e.preventDefault();
-				saveSyncSettings();
-			});
-			form.addEventListener('change', function() {
-				syncPollingIntervalDisplay();
-				scheduleAutoSave();
-			});
-			form.addEventListener('input', function(e) {
-				if (e.target && e.target.matches && e.target.matches('input[name="sync_interval_minutes"]')) {
-					syncPollingIntervalDisplay();
-					scheduleAutoSave();
-				}
-			});
-		}
-
-		document.addEventListener('change', function(e) {
-			var unifiedFolders = e.target.closest && e.target.closest('[data-unified-folders-setting="enabled"]');
-			if (unifiedFolders && typeof GoferSettings !== 'undefined') {
-				GoferSettings.set('unified_folders_enabled', unifiedFolders.checked ? 'true' : 'false');
-				syncUnifiedFolderControls();
-				return;
-			}
-			var unifiedFolder = e.target.closest && e.target.closest('[data-unified-folder-switch]');
-			if (unifiedFolder && typeof GoferSettings !== 'undefined') {
-				GoferSettings.set(unifiedFolder.name, unifiedFolder.checked ? 'true' : 'false');
-				syncUnifiedFolderControls();
-				return;
-			}
-			var unifiedFolderAccount = e.target.closest && e.target.closest('[data-unified-folder-account-switch]');
-			if (unifiedFolderAccount && typeof GoferSettings !== 'undefined') {
-				GoferSettings.set(unifiedFolderAccount.name, unifiedFolderAccount.checked ? 'true' : 'false');
-			}
-		});
-
-		document.querySelector('#sync-settings-form [data-tui-selectbox-content]')?.addEventListener('click', function() {
-			setTimeout(function() {
-				syncPollingIntervalDisplay();
-				scheduleAutoSave();
-			}, 50);
-		});
-
-		updateHiddenInputs();
-		updateEmptyStates();
-		syncUnifiedFolderControls();
-	})();
-	</script>
 }
 
 templ UnifiedFolderSettingRow(folder unifiedFolderOption, accounts []models.AccountSyncStatus, uiSettings map[string]string) {
@@ -1697,7 +1129,7 @@ templ UnifiedFolderSettingRow(folder unifiedFolderOption, accounts []models.Acco
 				@SidebarFolderIcon(folder.Icon)
 			</span>
 			<div class="min-w-0">
-				<label for={ "unified-folder-" + folder.ID } class="text-sm font-medium text-foreground">{ folder.Name }</label>
+				<span id={ "unified-folder-" + folder.ID + "-label" } class="text-sm font-medium text-foreground">{ folder.Name }</span>
 			</div>
 		</div>
 		<div class="flex shrink-0 items-center gap-2">
@@ -1709,6 +1141,7 @@ templ UnifiedFolderSettingRow(folder unifiedFolderOption, accounts []models.Acco
 				Disabled: !masterEnabled,
 				Attributes: templ.Attributes{
 					"data-unified-folder-switch": folder.ID,
+					"aria-labelledby":            "unified-folder-" + folder.ID + "-label",
 				},
 			})
 		</div>
@@ -1748,7 +1181,7 @@ templ UnifiedFolderAccountRow(folder unifiedFolderOption, account models.Account
 		<div class="flex min-w-0 items-center gap-2.5">
 			<span class="account-color-marker size-3 shrink-0" style={ accountColorStyle(account.Color) } data-account-marker={ account.AccountID }></span>
 			<div class="min-w-0">
-				<label for={ "unified-folder-" + folder.ID + "-account-" + account.AccountID } class="block truncate text-sm font-medium text-foreground">{ syncAccountDisplayName(account) }</label>
+				<span id={ "unified-folder-" + folder.ID + "-account-" + account.AccountID + "-label" } class="block truncate text-sm font-medium text-foreground">{ syncAccountDisplayName(account) }</span>
 				if account.AccountEmail != "" && account.AccountEmail != syncAccountDisplayName(account) {
 					<p class="truncate text-xs text-muted-foreground">{ account.AccountEmail }</p>
 				}
@@ -1762,6 +1195,7 @@ templ UnifiedFolderAccountRow(folder unifiedFolderOption, account models.Account
 			Attributes: templ.Attributes{
 				"data-unified-folder-account-switch": folder.ID,
 				"data-unified-folder-account-id":     account.AccountID,
+				"aria-labelledby":                    "unified-folder-" + folder.ID + "-account-" + account.AccountID + "-label",
 			},
 		})
 	</div>
@@ -1952,8 +1386,8 @@ templ SettingsAccountCard(account models.Account) {
 							class="inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
 							hx-post={ fmt.Sprintf("/api/mail/sync/accounts/%s/repair", account.ID) }
 							hx-swap="none"
-							hx-on::before-request="handleMailSidebarSyncStart(event, 'repair')"
-							hx-on::after-request="handleMailSidebarSyncResult(event)"
+							data-on-htmx-before-request='["handleMailSidebarSyncStart","$event","repair"]'
+							data-on-htmx-after-request='["handleMailSidebarSyncResult","$event"]'
 							data-mail-account-sync-button={ account.ID }
 							data-repair-account-action="true"
 							data-account-id={ account.ID }
@@ -2134,8 +1568,8 @@ templ SettingsAccountConnectionTestDialog(account models.Account) {
 					class="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50"
 					hx-post={ fmt.Sprintf("/api/accounts/%s/test", account.ID) }
 					hx-swap="none"
-					hx-on::before-request="handleAccountTestStart(event)"
-					hx-on::after-request="handleAccountTestResult(event)"
+					data-on-htmx-before-request='["handleAccountTestStart","$event"]'
+					data-on-htmx-after-request='["handleAccountTestResult","$event"]'
 					data-account-test-dialog={ dialogID }
 					data-account-test-retry
 					disabled
@@ -2179,8 +1613,8 @@ templ SettingsAccountActionsMenu(account models.Account) {
 						"data-account-test-dialog":      testDialogID,
 						"hx-post":                      fmt.Sprintf("/api/accounts/%s/test", account.ID),
 						"hx-swap":                      "none",
-						"hx-on::before-request":         "handleAccountTestStart(event)",
-						"hx-on::after-request":          "handleAccountTestResult(event)",
+						"data-on-htmx-before-request": onAction("handleAccountTestStart", actionEvent),
+						"data-on-htmx-after-request": onAction("handleAccountTestResult", actionEvent),
 					},
 				}) {
 					@icon.Wifi(icon.Props{Class: "size-3.5"})
@@ -2508,7 +1942,7 @@ templ SignatureLibrary(data models.AccountSignatureData) {
 					</div>
 				</div>
 				<textarea name="html_body" class="hidden" data-signature-html></textarea>
-				<div class="min-h-28 max-w-full overflow-x-auto rounded-md border border-border bg-card px-3 py-2 text-sm leading-6 outline-none focus:ring-2 focus:ring-ring" contenteditable="true" role="textbox" data-signature-editor data-placeholder="Write your signature..." oninput="syncSignatureEditor(this)"></div>
+				<div class="min-h-28 max-w-full overflow-x-auto rounded-md border border-border bg-card px-3 py-2 text-sm leading-6 outline-none focus:ring-2 focus:ring-ring" contenteditable="true" role="textbox" data-signature-editor data-placeholder="Write your signature..." data-on-input='["syncSignatureEditor","$this"]'></div>
 				<textarea class="hidden min-h-28 w-full resize-y rounded-md border border-border bg-card px-3 py-2 font-mono text-xs leading-5 text-foreground outline-none focus:ring-2 focus:ring-ring" spellcheck="false" placeholder="Paste full HTML here, then switch back to Rendered to preview it." data-signature-source></textarea>
 				<p class="text-xs text-muted-foreground mt-1">Use Rendered for normal editing or HTML to paste source. Unsafe tags are stripped when rendered and saved.</p>
 			</div>
@@ -2585,7 +2019,7 @@ templ AccountSignaturesDialog(data models.AccountSignatureData) {
 									</div>
 								</div>
 								<textarea name="html_body" class="hidden" data-signature-html></textarea>
-								<div class="min-h-28 max-w-full overflow-x-auto rounded-md border border-border bg-card px-3 py-2 text-sm leading-6 outline-none focus:ring-2 focus:ring-ring" contenteditable="true" role="textbox" data-signature-editor data-placeholder="Write your signature..." oninput="syncSignatureEditor(this)"></div>
+								<div class="min-h-28 max-w-full overflow-x-auto rounded-md border border-border bg-card px-3 py-2 text-sm leading-6 outline-none focus:ring-2 focus:ring-ring" contenteditable="true" role="textbox" data-signature-editor data-placeholder="Write your signature..." data-on-input='["syncSignatureEditor","$this"]'></div>
 								<textarea class="hidden min-h-28 w-full resize-y rounded-md border border-border bg-card px-3 py-2 font-mono text-xs leading-5 text-foreground outline-none focus:ring-2 focus:ring-ring" spellcheck="false" placeholder="Paste full HTML here, then switch back to Rendered to preview it." data-signature-source></textarea>
 								<p class="text-xs text-muted-foreground mt-1">Use Rendered for normal editing or HTML to paste source. Unsafe tags are stripped when rendered and saved.</p>
 							</div>
@@ -2678,7 +2112,7 @@ templ ChooseAccountTypeDialog() {
 				}
 			}
 		<div class="space-y-3 px-1 pt-2 pb-4">
-				<button type="button" onclick="if(window.tui&&window.tui.dialog){window.tui.dialog.close('choose-account-type-dialog')}setTimeout(function(){openAddAccountDialog()},150)" class="w-full group flex items-center gap-4 p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-accent/50 transition-all duration-200 text-left">
+				<button type="button" data-on-click='["goferSwitchDialog","choose-account-type-dialog","openAddAccountDialog"]' class="w-full group flex items-center gap-4 p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-accent/50 transition-all duration-200 text-left">
 					<div class="flex items-center justify-center w-10 h-10 rounded-lg bg-accent text-muted-foreground group-hover:text-foreground transition-colors">
 						@AccountProviderIcon("imap", "size-5")
 					</div>
@@ -2688,7 +2122,7 @@ templ ChooseAccountTypeDialog() {
 					</div>
 					<svg class="size-4 text-muted-foreground group-hover:text-foreground transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
 				</button>
-				<button type="button" data-account-type="icloud" onclick="if(window.tui&&window.tui.dialog){window.tui.dialog.close('choose-account-type-dialog')}setTimeout(function(){openICloudAccountDialog()},150)" class="w-full group flex items-center gap-4 p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-accent/50 transition-all duration-200 text-left">
+				<button type="button" data-account-type="icloud" data-on-click='["goferSwitchDialog","choose-account-type-dialog","openICloudAccountDialog"]' class="w-full group flex items-center gap-4 p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-accent/50 transition-all duration-200 text-left">
 					<div class="flex items-center justify-center w-10 h-10 rounded-lg bg-accent text-muted-foreground group-hover:text-foreground transition-colors">
 						@AccountProviderIcon("imap", "size-5")
 					</div>
@@ -2698,7 +2132,7 @@ templ ChooseAccountTypeDialog() {
 					</div>
 					<svg class="size-4 text-muted-foreground group-hover:text-foreground transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
 				</button>
-				<button type="button" onclick="if(window.tui&&window.tui.dialog){window.tui.dialog.close('choose-account-type-dialog')}setTimeout(function(){if(window.tui&&window.tui.dialog)window.tui.dialog.open('gmail-account-dialog')},150)" class="w-full group flex items-center gap-4 p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-accent/50 transition-all duration-200 text-left">
+				<button type="button" data-on-click='["goferSwitchDialog","choose-account-type-dialog","gmail-account-dialog"]' class="w-full group flex items-center gap-4 p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-accent/50 transition-all duration-200 text-left">
 					<div class="flex items-center justify-center w-10 h-10 rounded-lg bg-accent text-muted-foreground group-hover:text-foreground transition-colors">
 						@AccountProviderIcon("gmail", "size-5")
 					</div>
@@ -2708,7 +2142,7 @@ templ ChooseAccountTypeDialog() {
 					</div>
 					<svg class="size-4 text-muted-foreground group-hover:text-foreground transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
 				</button>
-				<button type="button" onclick="if(window.tui&&window.tui.dialog){window.tui.dialog.close('choose-account-type-dialog')}setTimeout(function(){if(window.tui&&window.tui.dialog)window.tui.dialog.open('outlook-account-dialog')},150)" class="w-full group flex items-center gap-4 p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-accent/50 transition-all duration-200 text-left">
+				<button type="button" data-on-click='["goferSwitchDialog","choose-account-type-dialog","outlook-account-dialog"]' class="w-full group flex items-center gap-4 p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-accent/50 transition-all duration-200 text-left">
 					<div class="flex items-center justify-center w-10 h-10 rounded-lg bg-accent text-muted-foreground group-hover:text-foreground transition-colors">
 						@AccountProviderIcon("outlook", "size-5")
 					</div>
@@ -2775,13 +2209,6 @@ templ GmailAccountDialog() {
 					Continue with Google
 				</button>
 			</form>
-			<script>
-				document.getElementById('gmail-form').addEventListener('submit', function(e) {
-					var email = this.querySelector('input[name="email_address"]');
-					var username = this.querySelector('input[name="username"]');
-					if (email && username) username.value = email.value;
-				});
-			</script>
 		}
 	}
 }
@@ -2928,7 +2355,7 @@ templ AddAccountDialogContent() {
 											<div class="text-xs font-semibold text-foreground">Automatic settings</div>
 											<p class="mt-0.5 text-xs leading-relaxed text-muted-foreground">Fill IMAP and SMTP fields from provider records when available.</p>
 										</div>
-										<button type="button" onclick="discoverMailSettings(this)" class="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md border border-border px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-60">
+										<button type="button" data-on-click='["discoverMailSettings","$this"]' class="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md border border-border px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-60">
 											@icon.Radar(icon.Props{Class: "size-3.5"})
 											<span data-mail-discovery-label>Discover settings</span>
 										</button>
@@ -2938,7 +2365,7 @@ templ AddAccountDialogContent() {
 							</div>
 							</div>
 							<div class="account-wizard-controls flex justify-end">
-								<button type="button" onclick="wizardGo(1)" class="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+								<button type="button" data-on-click='["wizardGo",1]' class="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
 									Next
 									@icon.ChevronRight(icon.Props{Class: "size-4"})
 								</button>
@@ -2963,6 +2390,7 @@ templ AddAccountDialogContent() {
 										Placeholder: "imap.example.com",
 										Required:    true,
 									})
+									<div data-server-check="imap" class="mt-1.5 hidden space-y-1" aria-live="polite"></div>
 								</div>
 								<div>
 									<label class="text-xs font-medium text-muted-foreground mb-1.5 block">Port</label>
@@ -2979,7 +2407,7 @@ templ AddAccountDialogContent() {
 							@UnencryptedTransportWarning("add-imap-unencrypted-warning", false)
 						</label>
 						@selectbox.SelectBox() {
-							@selectbox.Trigger(selectbox.TriggerProps{Name: "imap_tls_mode", DisableClear: true, Attributes: templ.Attributes{"onchange": "toggleUnencryptedTransportWarning(this)"}}) {
+							@selectbox.Trigger(selectbox.TriggerProps{Name: "imap_tls_mode", DisableClear: true, Attributes: templ.Attributes{"data-on-change": onAction("toggleUnencryptedTransportWarning", actionElement)}}) {
 								@selectbox.Value(selectbox.ValueProps{Placeholder: "TLS"}) { TLS }
 							}
 									@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
@@ -3030,11 +2458,11 @@ templ AddAccountDialogContent() {
 							</div>
 							</div>
 							<div class="account-wizard-controls flex justify-between">
-								<button type="button" onclick="wizardGo(0)" class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md border border-border hover:bg-accent">
+								<button type="button" data-on-click='["wizardGo",0]' class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md border border-border hover:bg-accent">
 									@icon.ArrowLeft(icon.Props{Class: "size-4"})
 									Back
 								</button>
-								<button type="button" onclick="wizardGo(2)" class="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+								<button type="button" data-on-click='["wizardGo",2]' class="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
 									Next
 									@icon.ChevronRight(icon.Props{Class: "size-4"})
 								</button>
@@ -3059,6 +2487,7 @@ templ AddAccountDialogContent() {
 										Placeholder: "smtp.example.com",
 										Required:    true,
 									})
+									<div data-server-check="smtp" class="mt-1.5 hidden space-y-1" aria-live="polite"></div>
 								</div>
 								<div>
 									<label class="text-xs font-medium text-muted-foreground mb-1.5 block">Port</label>
@@ -3075,7 +2504,7 @@ templ AddAccountDialogContent() {
 							@UnencryptedTransportWarning("add-smtp-unencrypted-warning", false)
 						</label>
 						@selectbox.SelectBox() {
-							@selectbox.Trigger(selectbox.TriggerProps{Name: "smtp_tls_mode", DisableClear: true, Attributes: templ.Attributes{"onchange": "toggleUnencryptedTransportWarning(this)"}}) {
+							@selectbox.Trigger(selectbox.TriggerProps{Name: "smtp_tls_mode", DisableClear: true, Attributes: templ.Attributes{"data-on-change": onAction("toggleUnencryptedTransportWarning", actionElement)}}) {
 								@selectbox.Value(selectbox.ValueProps{Placeholder: "TLS"}) { TLS }
 							}
 									@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
@@ -3091,7 +2520,7 @@ templ AddAccountDialogContent() {
 								@checkbox.Checkbox(checkbox.Props{
 									ID:         "smtp-same-auth",
 									Checked:    true,
-									Attributes: templ.Attributes{"onchange": "toggleSmtpAuth(this.checked)"},
+									Attributes: templ.Attributes{"data-on-change": onAction("toggleSmtpAuth", actionChecked)},
 								})
 								<span class="text-sm">Use same login as incoming mail</span>
 							</label>
@@ -3119,7 +2548,7 @@ templ AddAccountDialogContent() {
 							</div>
 							</div>
 							<div class="account-wizard-controls flex justify-between">
-								<button type="button" onclick="wizardGo(1)" class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md border border-border hover:bg-accent">
+								<button type="button" data-on-click='["wizardGo",1]' class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md border border-border hover:bg-accent">
 									@icon.ArrowLeft(icon.Props{Class: "size-4"})
 									Back
 								</button>
@@ -3134,7 +2563,7 @@ templ AddAccountDialogContent() {
 
 						<div class="w-1/6 shrink-0 px-1" data-wizard-step="3">
 							<div class="account-wizard-panel">
-								<div id="add-step-3-content" hx-on::after-swap="syncAddContactStep(); maybeGoAddContacts()"></div>
+								<div id="add-step-3-content" data-on-htmx-after-swap='["syncAddContactStepAfterSwap"]'></div>
 							</div>
 						</div>
 						<div class="w-1/6 shrink-0 px-1" data-wizard-step="4">
@@ -3226,7 +2655,7 @@ templ AccountWizardProviderAPIEmailSection(goFn string, accountID string, provid
 }
 
 templ AccountWizardSubStep(goFn string, step int, index string, title string, description string, disabled bool, active bool) {
-	<button type="button" onclick={ templ.JSFuncCall(goFn, step) } data-account-wizard-action={ goFn } data-account-wizard-target-step={ strconv.Itoa(step) } class="account-wizard-step" data-account-wizard-step={ strconv.Itoa(step) } data-active={ strconv.FormatBool(active) } disabled?={ disabled }>
+	<button type="button" data-on-click={ onAction(goFn, step) } data-account-wizard-action={ goFn } data-account-wizard-target-step={ strconv.Itoa(step) } class="account-wizard-step" data-account-wizard-step={ strconv.Itoa(step) } data-active={ strconv.FormatBool(active) } disabled?={ disabled }>
 		<span class="account-wizard-index">{ index }</span>
 		<span class="min-w-0"><span class="block text-xs font-semibold">{ title }</span><span class="block text-xs text-muted-foreground">{ description }</span></span>
 	</button>
@@ -3236,7 +2665,7 @@ templ AccountWizardTopStep(goFn string, step int, index string, title string, de
 	{{ navigationDisabled := disabled && service != "calendar" }}
 	<div id={ fmt.Sprintf("%s-service-section-%s", goFn, service) } class="account-wizard-section" data-wizard-section-steps={ strconv.Itoa(step) } data-active="false" data-disabled={ strconv.FormatBool(navigationDisabled) }>
 		<div class="account-wizard-section-heading">
-			<button type="button" onclick={ templ.JSFuncCall(goFn, step) } data-account-wizard-action={ goFn } data-account-wizard-target-step={ strconv.Itoa(step) } class="account-wizard-section-title" data-account-wizard-step={ strconv.Itoa(step) } data-active="false" disabled?={ navigationDisabled }>
+			<button type="button" data-on-click={ onAction(goFn, step) } data-account-wizard-action={ goFn } data-account-wizard-target-step={ strconv.Itoa(step) } class="account-wizard-section-title" data-account-wizard-step={ strconv.Itoa(step) } data-active="false" disabled?={ navigationDisabled }>
 				<span class="account-wizard-index">{ index }</span>
 				<span class="min-w-0"><span class="block text-sm font-semibold">{ title }</span><span class="block text-xs text-muted-foreground">{ description }</span></span>
 			</button>
@@ -3271,7 +2700,7 @@ templ AccountWizardSectionSwitch(goFn string, accountID string, service string, 
 			Value:      "true",
 			Checked:    enabled,
 			Disabled:   disabled,
-			Attributes: mergeTemplAttrs(attrs, templ.Attributes{"data-wizard-service-switch": service, "data-wizard-service-initial-enabled": strconv.FormatBool(enabled), "onchange": "if (this.form.hasAttribute('hx-post')) this.form.requestSubmit()"}),
+			Attributes: mergeTemplAttrs(attrs, templ.Attributes{"data-wizard-service-switch": service, "data-wizard-service-initial-enabled": strconv.FormatBool(enabled), "data-on-change": onAction("goferSubmitHTMXForm", actionElement)}),
 		})
 	</form>
 }
@@ -3289,23 +2718,23 @@ func mergeTemplAttrs(base templ.Attributes, extra templ.Attributes) templ.Attrib
 templ AddAccountWizardFooter() {
 	<div id="add-wizard-footer" class="account-wizard-card-footer">
 		<div data-wizard-footer-step="0" data-active="true" class="flex justify-end">
-			<button type="button" onclick="wizardGo(1)" class="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+			<button type="button" data-on-click='["wizardGo",1]' class="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
 				Next
 				@icon.ChevronRight(icon.Props{Class: "size-4"})
 			</button>
 		</div>
 		<div data-wizard-footer-step="1" data-active="false" class="hidden flex justify-between">
-			<button type="button" onclick="wizardGo(0)" class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md border border-border hover:bg-accent">
+			<button type="button" data-on-click='["wizardGo",0]' class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md border border-border hover:bg-accent">
 				@icon.ArrowLeft(icon.Props{Class: "size-4"})
 				Back
 			</button>
-			<button type="button" onclick="wizardGo(2)" class="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+			<button type="button" data-on-click='["wizardGo",2]' class="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
 				Next
 				@icon.ChevronRight(icon.Props{Class: "size-4"})
 			</button>
 		</div>
 		<div data-wizard-footer-step="2" data-active="false" class="hidden flex justify-between">
-			<button type="button" onclick="wizardGo(1)" class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md border border-border hover:bg-accent">
+			<button type="button" data-on-click='["wizardGo",1]' class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md border border-border hover:bg-accent">
 				@icon.ArrowLeft(icon.Props{Class: "size-4"})
 				Back
 			</button>
@@ -3363,7 +2792,7 @@ templ UnencryptedTransportWarning(id string, active bool) {
 			@popover.Content(popover.ContentProps{Placement: popover.PlacementBottomStart, Offset: 8, ShowArrow: true, Class: "w-80 p-3"}) {
 				<div class="flex items-start gap-2.5">
 					@icon.TriangleAlert(icon.Props{Class: "mt-0.5 size-4 shrink-0 text-amber-700 dark:text-amber-300"})
-					<p class="text-xs leading-relaxed text-muted-foreground">Unencrypted connections only work while this exact endpoint remains approved under Admin → Mail security.</p>
+					<p class="text-xs leading-relaxed text-muted-foreground">Unencrypted connections only work while this exact endpoint remains approved under Mail security.</p>
 				</div>
 			}
 		}
@@ -3418,85 +2847,11 @@ templ EditAccountDialog(data models.EditAccountData) {
 					Update mail settings and optional contacts and calendar services.
 				}
 			}
-			<script>
-				var _editWizStep = 0;
-				var _editWizPendingStep = null;
-				function editWizardSaveAndGo(step) {
-					var form = document.getElementById('edit-account-form');
-					if (!form) {
-						editWizardGo(step, true);
-						return;
-					}
-					_editWizPendingStep = step;
-					form.requestSubmit();
-				}
-				function editWizardGo(step, immediate) {
-					if (step < 0) step = 0;
-					if (step > 5) step = 5;
-					if (!immediate && step > _editWizStep && step <= 3) {
-						editWizardSaveAndGo(step);
-						return;
-					}
-					var track = document.getElementById('edit-wizard-track');
-					var root = document.getElementById('edit-account-dialog');
-					if (!track || !root) return;
-					_editWizStep = step;
-					track.style.transform = 'translateX(-' + (step * (100 / 6)) + '%)';
-					root.querySelectorAll('[data-account-wizard-step]').forEach(function(item) {
-						item.dataset.active = String(+item.dataset.accountWizardStep === step);
-					});
-					root.querySelectorAll('[data-wizard-section-steps]').forEach(function(section) {
-						var steps = (section.dataset.wizardSectionSteps || '').split(',');
-						section.dataset.active = String(steps.indexOf(String(step)) !== -1);
-					});
-					setWizardFooter(root, step, !!immediate);
-					if (step === 5) startWizardConnectionTest(root); else resetWizardConnectionTest(root);
-				}
-				function resetWizardConnectionTest(root) {
-					var results = root && root.querySelector ? root.querySelector('[data-wizard-test-results]') : null;
-					if (!results) return;
-					if (root._wizardTestTimer) {
-						window.clearTimeout(root._wizardTestTimer);
-						root._wizardTestTimer = null;
-					}
-					delete results.dataset.wizardTestStarted;
-				}
-				function startWizardConnectionTest(root) {
-					var results = root && root.querySelector ? root.querySelector('[data-wizard-test-results]') : null;
-					if (!results || results.dataset.wizardTestStarted === 'true') return;
-					results.dataset.wizardTestStarted = 'true';
-					results.innerHTML = '<div class="flex items-center justify-center py-4 gap-2"><div class="size-4 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin"></div><span class="text-xs text-muted-foreground">Testing connection...</span></div>';
-					root._wizardTestTimer = window.setTimeout(function() {
-						root._wizardTestTimer = null;
-						var activeStep = root.querySelector('[data-account-wizard-step="5"][data-active="true"]');
-						if (!activeStep) {
-							delete results.dataset.wizardTestStarted;
-							return;
-						}
-						if (typeof htmx !== 'undefined') htmx.trigger(results, 'wizard-test');
-					}, 320);
-				}
-				function editToggleSmtpAuth(checked) {
-					var fields = document.getElementById('edit-smtp-auth-fields');
-					var inputs = fields.querySelectorAll('input');
-					fields.classList.toggle('opacity-50', checked);
-					inputs.forEach(function(inp) { inp.disabled = checked; });
-					if (checked) {
-						var form = document.getElementById('edit-account-form');
-						var u = form.querySelector('input[name="username"]');
-						var p = form.querySelector('input[name="password"]');
-						var su = form.querySelector('input[name="smtp_username"]');
-						var sp = form.querySelector('input[name="smtp_password"]');
-						if (su && u) su.value = u.value;
-						if (sp && p) sp.value = p.value;
-					}
-				}
-			</script>
 			<div class="account-wizard-shell grid gap-4 pt-2 md:grid-cols-[14.5rem_minmax(0,1fr)]">
 		@AccountWizardEditSidebar(data)
 				<div id="edit-wizard-viewport" class="account-wizard-viewport">
 					<div id="edit-wizard-track" class="flex items-start transition-transform duration-300 ease-in-out" style="width: 600%">
-						<form id="edit-account-form" hx-post={ fmt.Sprintf("/api/accounts/%s/edit", data.AccountID) } hx-target="#edit-step-5-content" hx-swap="innerHTML" hx-on::before-request="handleEditAccountSaveStart(event)" hx-on::after-request="handleEditAccountSaveResult(event)" class="contents">
+						<form id="edit-account-form" hx-post={ fmt.Sprintf("/api/accounts/%s/edit", data.AccountID) } hx-target="#edit-step-5-content" hx-swap="innerHTML" data-on-htmx-before-request='["handleEditAccountSaveStart","$event"]' data-on-htmx-after-request='["handleEditAccountSaveResult","$event"]' class="contents">
 						<input type="hidden" name="provider" value={ data.Provider }/>
 						<div class="w-1/6 shrink-0 px-1" data-wizard-step="0">
 							<div class="account-wizard-panel">
@@ -3535,7 +2890,7 @@ templ EditAccountDialog(data models.EditAccountData) {
 							</div>
 							</div>
 							<div class="account-wizard-controls flex justify-end">
-								<button type="button" onclick="editWizardGo(1)" class="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+								<button type="button" data-on-click='["editWizardGo",1]' class="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
 									Next
 									@icon.ChevronRight(icon.Props{Class: "size-4"})
 								</button>
@@ -3562,6 +2917,7 @@ templ EditAccountDialog(data models.EditAccountData) {
 											Type:  input.TypeText,
 											Value: data.IMAPHost,
 										})
+										<div data-server-check="imap" class="mt-1.5 hidden space-y-1" aria-live="polite"></div>
 									</div>
 									<div>
 										<label class="text-xs font-medium text-muted-foreground mb-1.5 block">Port</label>
@@ -3577,7 +2933,7 @@ templ EditAccountDialog(data models.EditAccountData) {
 												@UnencryptedTransportWarning("edit-imap-unencrypted-warning", data.IMAPTLSMode == "plaintext")
 											</label>
 											@selectbox.SelectBox() {
-												@selectbox.Trigger(selectbox.TriggerProps{Name: "imap_tls_mode", DisableClear: true, Attributes: templ.Attributes{"onchange": "toggleUnencryptedTransportWarning(this)"}}) {
+												@selectbox.Trigger(selectbox.TriggerProps{Name: "imap_tls_mode", DisableClear: true, Attributes: templ.Attributes{"data-on-change": onAction("toggleUnencryptedTransportWarning", actionElement)}}) {
 												@selectbox.Value(selectbox.ValueProps{Placeholder: "TLS"}) { TLS }
 											}
 										@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
@@ -3626,11 +2982,11 @@ templ EditAccountDialog(data models.EditAccountData) {
 							}
 							</div>
 							<div class="account-wizard-controls flex justify-between">
-								<button type="button" onclick="editWizardGo(0)" class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md border border-border hover:bg-accent">
+								<button type="button" data-on-click='["editWizardGo",0]' class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md border border-border hover:bg-accent">
 									@icon.ArrowLeft(icon.Props{Class: "size-4"})
 									Back
 								</button>
-								<button type="button" onclick="editWizardGo(2)" class="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+								<button type="button" data-on-click='["editWizardGo",2]' class="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
 									Next
 									@icon.ChevronRight(icon.Props{Class: "size-4"})
 								</button>
@@ -3657,6 +3013,7 @@ templ EditAccountDialog(data models.EditAccountData) {
 										Type:  input.TypeText,
 										Value: data.SMTPHost,
 									})
+									<div data-server-check="smtp" class="mt-1.5 hidden space-y-1" aria-live="polite"></div>
 								</div>
 								<div>
 									<label class="text-xs font-medium text-muted-foreground mb-1.5 block">Port</label>
@@ -3672,7 +3029,7 @@ templ EditAccountDialog(data models.EditAccountData) {
 										@UnencryptedTransportWarning("edit-smtp-unencrypted-warning", data.SMTPTLSMode == "plaintext")
 									</label>
 									@selectbox.SelectBox() {
-										@selectbox.Trigger(selectbox.TriggerProps{Name: "smtp_tls_mode", DisableClear: true, Attributes: templ.Attributes{"onchange": "toggleUnencryptedTransportWarning(this)"}}) {
+										@selectbox.Trigger(selectbox.TriggerProps{Name: "smtp_tls_mode", DisableClear: true, Attributes: templ.Attributes{"data-on-change": onAction("toggleUnencryptedTransportWarning", actionElement)}}) {
 											@selectbox.Value(selectbox.ValueProps{Placeholder: "TLS"}) { TLS }
 										}
 									@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
@@ -3688,7 +3045,7 @@ templ EditAccountDialog(data models.EditAccountData) {
 								@checkbox.Checkbox(checkbox.Props{
 									ID:         "edit-smtp-same-auth",
 									Checked:    data.SameSmtpAuth,
-									Attributes: templ.Attributes{"onchange": "editToggleSmtpAuth(this.checked)"},
+									Attributes: templ.Attributes{"data-on-change": onAction("editToggleSmtpAuth", actionChecked)},
 								})
 								<span class="text-sm">Use same login as incoming mail</span>
 							</label>
@@ -3717,11 +3074,11 @@ templ EditAccountDialog(data models.EditAccountData) {
 							}
 							</div>
 							<div class="account-wizard-controls flex justify-between">
-								<button type="button" onclick="editWizardGo(1)" class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md border border-border hover:bg-accent">
+								<button type="button" data-on-click='["editWizardGo",1]' class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md border border-border hover:bg-accent">
 									@icon.ArrowLeft(icon.Props{Class: "size-4"})
 									Back
 								</button>
-								<button type="button" onclick="editWizardGo(3)" class="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+								<button type="button" data-on-click='["editWizardGo",3]' class="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
 									Next
 									@icon.ChevronRight(icon.Props{Class: "size-4"})
 								</button>
@@ -3738,11 +3095,11 @@ templ EditAccountDialog(data models.EditAccountData) {
 								</div>
 							</div>
 							<div class="account-wizard-controls flex justify-between gap-2">
-								<button type="button" onclick="editWizardGo(2)" class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md border border-border hover:bg-accent">
+								<button type="button" data-on-click='["editWizardGo",2]' class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md border border-border hover:bg-accent">
 									@icon.ArrowLeft(icon.Props{Class: "size-4"})
 									Back
 								</button>
-				<button type="button" onclick="wizardServiceNext(this, 'contacts', 4)" class="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+				<button type="button" data-on-click='["wizardServiceNext","$this","contacts",4]' class="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
 					Next
 					@icon.ChevronRight(icon.Props{Class: "size-4"})
 				</button>
@@ -3761,11 +3118,11 @@ templ EditAccountDialog(data models.EditAccountData) {
 								</div>
 							</div>
 							<div class="account-wizard-controls flex justify-between gap-2">
-								<button type="button" onclick="editWizardGo(3)" class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md border border-border hover:bg-accent">
+								<button type="button" data-on-click='["editWizardGo",3]' class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md border border-border hover:bg-accent">
 									@icon.ArrowLeft(icon.Props{Class: "size-4"})
 									Back
 								</button>
-				<button type="button" onclick="wizardServiceNext(this, 'calendar', 5)" class="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+				<button type="button" data-on-click='["wizardServiceNext","$this","calendar",5]' class="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
 					Next
 					@icon.ChevronRight(icon.Props{Class: "size-4"})
 				</button>
@@ -3793,60 +3150,60 @@ templ EditAccountDialog(data models.EditAccountData) {
 templ EditAccountWizardFooter(data models.EditAccountData) {
 	<div id="edit-wizard-footer" class="account-wizard-card-footer">
 		<div data-wizard-footer-step="0" data-active="true" class="flex justify-end">
-			<button type="button" onclick="editWizardGo(1)" data-account-edit-submit-button class="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:pointer-events-none disabled:opacity-70">
+			<button type="button" data-on-click='["editWizardGo",1]' data-account-edit-submit-button class="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:pointer-events-none disabled:opacity-70">
 				<span data-account-edit-submit-label>Next</span>
 				<span data-account-edit-submit-spinner class="hidden" aria-hidden="true">@icon.LoaderCircle(icon.Props{Class: "size-4 animate-spin"})</span>
 				@icon.ChevronRight(icon.Props{Class: "size-4"})
 			</button>
 		</div>
 		<div data-wizard-footer-step="1" data-active="false" class="hidden flex justify-between">
-			<button type="button" onclick="editWizardGo(0)" class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md border border-border hover:bg-accent">
+			<button type="button" data-on-click='["editWizardGo",0]' class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md border border-border hover:bg-accent">
 				@icon.ArrowLeft(icon.Props{Class: "size-4"})
 				Back
 			</button>
-			<button type="button" onclick="editWizardGo(2)" data-account-edit-submit-button class="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:pointer-events-none disabled:opacity-70">
+			<button type="button" data-on-click='["editWizardGo",2]' data-account-edit-submit-button class="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:pointer-events-none disabled:opacity-70">
 				<span data-account-edit-submit-label>Next</span>
 				<span data-account-edit-submit-spinner class="hidden" aria-hidden="true">@icon.LoaderCircle(icon.Props{Class: "size-4 animate-spin"})</span>
 				@icon.ChevronRight(icon.Props{Class: "size-4"})
 			</button>
 		</div>
 		<div data-wizard-footer-step="2" data-active="false" class="hidden flex justify-between">
-			<button type="button" onclick="editWizardGo(1)" class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md border border-border hover:bg-accent">
+			<button type="button" data-on-click='["editWizardGo",1]' class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md border border-border hover:bg-accent">
 				@icon.ArrowLeft(icon.Props{Class: "size-4"})
 				Back
 			</button>
-			<button type="button" onclick="editWizardGo(3)" data-account-edit-submit-button class="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:pointer-events-none disabled:opacity-70">
+			<button type="button" data-on-click='["editWizardGo",3]' data-account-edit-submit-button class="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:pointer-events-none disabled:opacity-70">
 				<span data-account-edit-submit-label>Next</span>
 				<span data-account-edit-submit-spinner class="hidden" aria-hidden="true">@icon.LoaderCircle(icon.Props{Class: "size-4 animate-spin"})</span>
 				@icon.ChevronRight(icon.Props{Class: "size-4"})
 			</button>
 		</div>
 		<div data-wizard-footer-step="3" data-active="false" class="hidden flex justify-between gap-2">
-			<button type="button" onclick="editWizardGo(2)" class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md border border-border hover:bg-accent">
+			<button type="button" data-on-click='["editWizardGo",2]' class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md border border-border hover:bg-accent">
 				@icon.ArrowLeft(icon.Props{Class: "size-4"})
 				Back
 			</button>
 			<div class="flex flex-wrap justify-end gap-2">
-				<button type="button" onclick="wizardServiceNext(this, 'contacts', 4)" class="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+				<button type="button" data-on-click='["wizardServiceNext","$this","contacts",4]' class="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
 					Next
 					@icon.ChevronRight(icon.Props{Class: "size-4"})
 				</button>
 			</div>
 		</div>
 		<div data-wizard-footer-step="4" data-active="false" class="hidden flex justify-between gap-2">
-			<button type="button" onclick="editWizardGo(3)" class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md border border-border hover:bg-accent">
+			<button type="button" data-on-click='["editWizardGo",3]' class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md border border-border hover:bg-accent">
 				@icon.ArrowLeft(icon.Props{Class: "size-4"})
 				Back
 			</button>
 			<div class="flex flex-wrap justify-end gap-2">
-				<button type="button" onclick="wizardServiceNext(this, 'calendar', 5)" class="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+				<button type="button" data-on-click='["wizardServiceNext","$this","calendar",5]' class="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
 					Next
 					@icon.ChevronRight(icon.Props{Class: "size-4"})
 				</button>
 			</div>
 		</div>
 		<div id="edit-wizard-footer-step-5" data-wizard-footer-step="5" data-active="false" class="hidden flex justify-between gap-2">
-			<button type="button" onclick="editWizardGo(4)" class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md border border-border hover:bg-accent">
+			<button type="button" data-on-click='["editWizardGo",4]' class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md border border-border hover:bg-accent">
 				@icon.ArrowLeft(icon.Props{Class: "size-4"})
 				Back
 			</button>
@@ -3886,13 +3243,14 @@ templ ContactSyncSettings(data models.EditAccountData) {
 							@CardDAVAutodiscoverButton(data.AccountID, fmt.Sprintf("account-contact-sync-fields-%s", data.AccountID), fmt.Sprintf("account-contact-sync-status-%s", data.AccountID))
 						</div>
 						@input.Input(input.Props{Name: "base_url", Type: input.TypeURL, Value: data.ContactSync.BaseURL, Placeholder: "https://dav.example.com/"})
+						<div data-server-check-url class="mt-1.5 hidden space-y-1" aria-live="polite"></div>
 					</div>
 					<label class="sm:col-span-2 flex items-center gap-2 cursor-pointer">
 						@checkbox.Checkbox(checkbox.Props{
 							Name:       "use_account_credentials",
 							Value:      "1",
 							Checked:    sameCardDAVAuth,
-							Attributes: templ.Attributes{"onchange": "toggleCardDAVAuth(this)"},
+							Attributes: templ.Attributes{"data-on-change": onAction("toggleCardDAVAuth", actionElement)},
 						})
 						<span class="text-sm">Use same credentials as incoming mail</span>
 					</label>
@@ -3938,11 +3296,13 @@ templ ContactSyncSettings(data models.EditAccountData) {
 						<div class="sm:col-span-2 rounded-md border border-border bg-background/35 px-3 py-2" data-carddav-addressbook-section data-carddav-manual-addressbook>
 							<label class="text-xs font-medium text-muted-foreground mb-1.5 block">Exact address book URL</label>
 							@input.Input(input.Props{Name: "addressbook_url", Type: input.TypeURL, Value: data.ContactSync.AddressBookURL, Placeholder: "https://dav.example.com/addressbooks/user/default/"})
+							<div data-server-check-url class="mt-1.5 hidden space-y-1" aria-live="polite"></div>
 						</div>
 					} else {
 						<div class="hidden sm:col-span-2 rounded-md border border-border bg-background/35 px-3 py-2" data-carddav-addressbook-section data-carddav-manual-addressbook>
 							<label class="text-xs font-medium text-muted-foreground mb-1.5 block">Exact address book URL</label>
 							@input.Input(input.Props{Name: "addressbook_url", Type: input.TypeURL, Placeholder: "https://dav.example.com/addressbooks/user/default/"})
+							<div data-server-check-url class="mt-1.5 hidden space-y-1" aria-live="polite"></div>
 						</div>
 					}
 				</div>
@@ -3992,7 +3352,7 @@ templ CalendarSyncSettingsPanel(data models.EditAccountData, message string, isE
 		<div data-wizard-service-status="calendar" class="min-h-0"></div>
 		if data.Provider == "gmail" {
 			@CalendarProviderAccessNotice("Google Calendar access", "Discovery uses this account's Google authorization. If Calendar access is missing, reconnect the account from its actions menu, then try again.")
-			<form method="POST" action={ fmt.Sprintf("/api/accounts/%s/calendar/discover", data.AccountID) } data-calendar-discovery-form hx-post={ fmt.Sprintf("/api/accounts/%s/calendar/discover", data.AccountID) } hx-target={ fmt.Sprintf("#account-calendar-sync-panel-%s", data.AccountID) } hx-swap="outerHTML" hx-on::before-request="handleCalendarDiscoveryStart(event)" hx-on::after-request="handleCalendarDiscoveryResult(event)" class="flex justify-end">
+			<form method="POST" action={ fmt.Sprintf("/api/accounts/%s/calendar/discover", data.AccountID) } data-calendar-discovery-form hx-post={ fmt.Sprintf("/api/accounts/%s/calendar/discover", data.AccountID) } hx-target={ fmt.Sprintf("#account-calendar-sync-panel-%s", data.AccountID) } hx-swap="outerHTML" data-on-htmx-before-request='["handleCalendarDiscoveryStart","$event"]' data-on-htmx-after-request='["handleCalendarDiscoveryResult","$event"]' class="flex justify-end">
 				<button type="submit" data-calendar-discovery-submit class="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-70">
 					@icon.RefreshCw(icon.Props{Class: "size-3.5"})
 					<span data-calendar-discovery-label>
@@ -4006,7 +3366,7 @@ templ CalendarSyncSettingsPanel(data models.EditAccountData, message string, isE
 			</form>
 		} else if data.Provider == "outlook" {
 			@CalendarProviderAccessNotice("Microsoft Calendar access", "Discovery uses this account's Microsoft authorization. If Calendar access is missing, reconnect the account from its actions menu, then try again.")
-			<form method="POST" action={ fmt.Sprintf("/api/accounts/%s/calendar/discover", data.AccountID) } data-calendar-discovery-form hx-post={ fmt.Sprintf("/api/accounts/%s/calendar/discover", data.AccountID) } hx-target={ fmt.Sprintf("#account-calendar-sync-panel-%s", data.AccountID) } hx-swap="outerHTML" hx-on::before-request="handleCalendarDiscoveryStart(event)" hx-on::after-request="handleCalendarDiscoveryResult(event)" class="flex justify-end">
+			<form method="POST" action={ fmt.Sprintf("/api/accounts/%s/calendar/discover", data.AccountID) } data-calendar-discovery-form hx-post={ fmt.Sprintf("/api/accounts/%s/calendar/discover", data.AccountID) } hx-target={ fmt.Sprintf("#account-calendar-sync-panel-%s", data.AccountID) } hx-swap="outerHTML" data-on-htmx-before-request='["handleCalendarDiscoveryStart","$event"]' data-on-htmx-after-request='["handleCalendarDiscoveryResult","$event"]' class="flex justify-end">
 				<button type="submit" data-calendar-discovery-submit class="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-70">
 					@icon.RefreshCw(icon.Props{Class: "size-3.5"})
 					<span data-calendar-discovery-label>
@@ -4019,7 +3379,7 @@ templ CalendarSyncSettingsPanel(data models.EditAccountData, message string, isE
 				</button>
 			</form>
 		} else if data.Provider == "imap" {
-			<form method="POST" action={ fmt.Sprintf("/api/accounts/%s/calendar/discover", data.AccountID) } data-calendar-discovery-form hx-post={ fmt.Sprintf("/api/accounts/%s/calendar/discover", data.AccountID) } hx-target={ fmt.Sprintf("#account-calendar-sync-panel-%s", data.AccountID) } hx-swap="outerHTML" hx-on::before-request="handleCalendarDiscoveryStart(event)" hx-on::after-request="handleCalendarDiscoveryResult(event)" class="space-y-3">
+			<form method="POST" action={ fmt.Sprintf("/api/accounts/%s/calendar/discover", data.AccountID) } data-calendar-discovery-form hx-post={ fmt.Sprintf("/api/accounts/%s/calendar/discover", data.AccountID) } hx-target={ fmt.Sprintf("#account-calendar-sync-panel-%s", data.AccountID) } hx-swap="outerHTML" data-on-htmx-before-request='["handleCalendarDiscoveryStart","$event"]' data-on-htmx-after-request='["handleCalendarDiscoveryResult","$event"]' class="space-y-3">
 				<div class="grid gap-3 sm:grid-cols-2">
 					<div class="sm:col-span-2">
 						<div class="mb-1.5 flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
@@ -4030,13 +3390,14 @@ templ CalendarSyncSettingsPanel(data models.EditAccountData, message string, isE
 							</button>
 						</div>
 						@input.Input(input.Props{Name: "caldav_url", Type: input.TypeURL, Value: data.CalendarSync.CalDAVBaseURL, Placeholder: "https://cdav.migadu.com"})
+						<div data-server-check-url class="mt-1.5 hidden space-y-1" aria-live="polite"></div>
 					</div>
 					<label class="sm:col-span-2 flex cursor-pointer items-center gap-2">
 						@checkbox.Checkbox(checkbox.Props{
 							Name:       "use_account_credentials",
 							Value:      "1",
 							Checked:    data.CalendarSync.CalDAVUseAccountCredentials,
-							Attributes: templ.Attributes{"onchange": "toggleCalendarAuth(this)"},
+							Attributes: templ.Attributes{"data-on-change": onAction("toggleCalendarAuth", actionElement)},
 						})
 						<span class="text-sm">Use same credentials as incoming mail</span>
 					</label>
@@ -4093,8 +3454,8 @@ templ CalendarSyncSettingsPanel(data models.EditAccountData, message string, isE
 					hx-post={ fmt.Sprintf("/api/accounts/%s/calendar/sources", data.AccountID) }
 					hx-target={ fmt.Sprintf("#account-calendar-sync-panel-%s", data.AccountID) }
 					hx-swap="outerHTML"
-					hx-on::before-request="handleCalendarSourceSaveStart(event)"
-					hx-on::after-request="handleCalendarSourceSaveResult(event)"
+					data-on-htmx-before-request='["handleCalendarSourceSaveStart","$event"]'
+					data-on-htmx-after-request='["handleCalendarSourceSaveResult","$event"]'
 					class="mt-3"
 				>
 					<div class="max-h-56 space-y-2 overflow-y-auto overscroll-contain pr-1">
@@ -4259,7 +3620,7 @@ templ CardDAVManualAddressBookButton(fieldsID string, baseURL string) {
 templ AddAccountPostCreateStep(data models.EditAccountData) {
 	{{ accountID := data.AccountID }}
 	<div id="add-wizard-footer-step-3" data-wizard-footer-step="3" data-active="false" hx-swap-oob="outerHTML" class="hidden flex-wrap justify-between gap-2">
-		<button type="button" onclick="wizardGo(2)" class="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+		<button type="button" data-on-click='["wizardGo",2]' class="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
 			@icon.ArrowLeft(icon.Props{Class: "size-4"})
 			Back
 		</button>
@@ -4269,11 +3630,11 @@ templ AddAccountPostCreateStep(data models.EditAccountData) {
 		</button>
 	</div>
 	<div id="add-wizard-footer-step-4" data-wizard-footer-step="4" data-active="false" hx-swap-oob="outerHTML" class="hidden flex-wrap justify-between gap-2">
-		<button type="button" onclick="wizardGo(3)" class="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+		<button type="button" data-on-click='["wizardGo",3]' class="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
 			@icon.ArrowLeft(icon.Props{Class: "size-4"})
 			Back
 		</button>
-		<button type="button" onclick="wizardServiceNext(this, 'calendar', 5)" class="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+		<button type="button" data-on-click='["wizardServiceNext","$this","calendar",5]' class="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
 			Next
 			@icon.ChevronRight(icon.Props{Class: "size-4"})
 		</button>
@@ -4283,7 +3644,7 @@ templ AddAccountPostCreateStep(data models.EditAccountData) {
 	</div>
 	@AccountWizardSectionSwitch("wizardGo", accountID, "calendar", data.CalendarSync.Enabled, false, false, true, nil)
 	<div id="add-wizard-footer-step-5" data-wizard-footer-step="5" data-active="false" hx-swap-oob="outerHTML" class="hidden flex-wrap justify-between gap-2">
-		<button type="button" onclick="wizardGo(4)" class="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+		<button type="button" data-on-click='["wizardGo",4]' class="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
 			@icon.ArrowLeft(icon.Props{Class: "size-4"})
 			Back
 		</button>
@@ -4318,13 +3679,14 @@ templ AddAccountPostCreateStep(data models.EditAccountData) {
 							@CardDAVAutodiscoverButton(accountID, fmt.Sprintf("add-contact-sync-fields-%s", accountID), fmt.Sprintf("add-contact-sync-status-%s", accountID))
 						</div>
 						@input.Input(input.Props{Name: "base_url", Type: input.TypeURL, Placeholder: "https://dav.example.com/"})
+						<div data-server-check-url class="mt-1.5 hidden space-y-1" aria-live="polite"></div>
 					</div>
 					<label class="flex items-center gap-2 cursor-pointer sm:col-span-2">
 						@checkbox.Checkbox(checkbox.Props{
 							Name:       "use_account_credentials",
 							Value:      "1",
 							Checked:    true,
-							Attributes: templ.Attributes{"onchange": "toggleCardDAVAuth(this)"},
+							Attributes: templ.Attributes{"data-on-change": onAction("toggleCardDAVAuth", actionElement)},
 						})
 						<span class="text-sm">Use same credentials as incoming mail</span>
 					</label>
@@ -4341,6 +3703,7 @@ templ AddAccountPostCreateStep(data models.EditAccountData) {
 					<div class="hidden sm:col-span-2 rounded-md border border-border bg-background/35 px-3 py-2" data-carddav-addressbook-section data-carddav-manual-addressbook>
 						<label class="mb-1.5 block text-xs font-medium text-muted-foreground">Exact address book URL</label>
 						@input.Input(input.Props{Name: "addressbook_url", Type: input.TypeURL, Placeholder: "https://dav.example.com/addressbooks/user/default/"})
+						<div data-server-check-url class="mt-1.5 hidden space-y-1" aria-live="polite"></div>
 					</div>
 				</div>
 			</div>
@@ -4353,7 +3716,7 @@ templ AddAccountPostCreateStep(data models.EditAccountData) {
 		</div>
 		</div>
 		<div class="account-wizard-controls flex flex-wrap justify-between gap-2">
-			<button type="button" onclick="wizardGo(2)" class="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+			<button type="button" data-on-click='["wizardGo",2]' class="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
 				@icon.ArrowLeft(icon.Props{Class: "size-4"})
 				Back
 			</button>
@@ -4507,7 +3870,7 @@ templ ConnectionTestResults(results []models.ConnectionTestResult, accountID str
 		</div>
 		if wizardType == "edit" {
 			<div id="edit-wizard-footer-step-5" data-wizard-footer-step="5" data-active="false" hx-swap-oob="outerHTML" class="hidden justify-between gap-2">
-				<button type="button" onclick="editWizardGo(4)" class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md border border-border hover:bg-accent">
+				<button type="button" data-on-click='["editWizardGo",4]' class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-md border border-border hover:bg-accent">
 					@icon.ArrowLeft(icon.Props{Class: "size-4"})
 					Back
 				</button>

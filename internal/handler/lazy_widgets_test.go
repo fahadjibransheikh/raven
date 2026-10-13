@@ -62,9 +62,9 @@ func TestLazyScheduleAndWizardFragments(t *testing.T) {
 		absent  []string
 	}{
 		{"schedule dialog", h.handleLazyComposeSchedulePanel, "/ui/compose-schedule-panel?pane=0",
-			[]string{`data-compose-schedule-content`, `id="compose-schedule-calendar"`, `onclick="scheduleCompose(false, this)"`}, []string{`compose-pane-schedule`}},
+			[]string{`data-compose-schedule-content`, `id="compose-schedule-calendar"`, `data-on-click='["scheduleCompose",false,"$this"]'`}, []string{`compose-pane-schedule`}},
 		{"schedule pane", h.handleLazyComposeSchedulePanel, "/ui/compose-schedule-panel?pane=1",
-			[]string{`data-compose-schedule-content`, `id="compose-pane-schedule-calendar"`, `onclick="scheduleCompose(true, this)"`}, nil},
+			[]string{`data-compose-schedule-content`, `id="compose-pane-schedule-calendar"`, `data-on-click='["scheduleCompose",true,"$this"]'`}, nil},
 		{"add account wizard", h.handleLazyAddAccountDialog, "/ui/add-account-dialog",
 			[]string{`id="add-account-dialog"`, `id="wizard-track"`}, []string{`<script>`}},
 	} {

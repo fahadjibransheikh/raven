@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cristianadrielbraun/gofer/internal/providerquota"
 	"github.com/cristianadrielbraun/gofer/internal/storage"
 )
 
@@ -252,6 +253,7 @@ func (o *SyncOrchestrator) gmailAPIPollComplete(accountID string, pollErr error)
 }
 
 func (o *SyncOrchestrator) checkGmailAPIProfile(ctx context.Context, accountID string) (bool, string, error) {
+	ctx = providerquota.Background(ctx)
 	accountID = strings.TrimSpace(accountID)
 	if accountID == "" || o == nil || o.db == nil || o.tokenProvider == nil {
 		return false, "", nil

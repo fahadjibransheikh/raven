@@ -10,10 +10,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cristianadrielbraun/gofer/internal/mail/message"
 	"github.com/cristianadrielbraun/gofer/internal/retry"
 )
 
-const userOutlookRawMessageMaxBytes = 64 << 20
+const userOutlookRawMessageMaxBytes = message.MaxDownloadBytes
 
 func (s *UserIMAP) fetchOutlookRaw(ctx context.Context, scope *userIMAPScope, providerID string) ([]byte, error) {
 	graph, ok := scope.tokens.(graphMailTokenProvider)
@@ -60,11 +61,18 @@ func getUserOutlookRaw(ctx context.Context, token, providerID string) ([]byte, e
 		at, _ := retry.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now().UTC())
 		return nil, &providerAPIError{StatusCode: response.StatusCode, Body: strings.TrimSpace(string(body)), RetryAt: at}
 	}
-	raw, err := io.ReadAll(io.LimitReader(response.Body, userOutlookRawMessageMaxBytes+1))
+	limit := message.DownloadLimit(ctx, userOutlookRawMessageMaxBytes)
+	if response.ContentLength > limit {
+		return nil, &message.TooLargeError{Size: response.ContentLength, Limit: limit}
+	}
+	raw, err := io.ReadAll(io.LimitReader(response.Body, limit+1))
 	if err != nil {
 		return nil, err
 	}
-	if len(raw) == 0 || len(raw) > userOutlookRawMessageMaxBytes {
+	if int64(len(raw)) > limit {
+		return nil, &message.TooLargeError{Limit: limit}
+	}
+	if len(raw) == 0 {
 		return nil, fmt.Errorf("Graph message MIME has an invalid size")
 	}
 	return raw, nil
