@@ -7,7 +7,6 @@ raven-server
 !assets/icons/express/*.png
 !screenshots/
 !screenshots/*.png
-!branding/**/*.png
 .air.toml
 data/
 
