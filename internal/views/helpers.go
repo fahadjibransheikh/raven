@@ -681,6 +681,20 @@ func appIconHref(settings map[string]string) string {
 	return appIconSrc(appIconStyle(settings), themeClass(settings) == "dark")
 }
 
+// appleTouchIconHref is the home-screen icon iOS saves on "Add to Home Screen":
+// the same style and variant as the tab icon, as a square 180px PNG (iOS rounds
+// the corners itself and ignores SVG).
+func appleTouchIconHref(settings map[string]string) string {
+	files, ok := appIconStyles[appIconStyle(settings)]
+	if !ok {
+		files = appIconStyles["raven"]
+	}
+	if themeClass(settings) == "dark" {
+		return "/assets/brand/touch-" + files[0] + ".png"
+	}
+	return "/assets/brand/touch-" + files[1] + ".png"
+}
+
 // mailListDensity is the row density of the message list: "calm" (default,
 // two lines) or "airy" (roomier rows). Anything else is calm.
 func mailListDensity(settings map[string]string) string {

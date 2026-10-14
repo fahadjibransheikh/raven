@@ -67,11 +67,16 @@ func TestPageIconFollowsStyleAndRenderedTheme(t *testing.T) {
 		if !strings.Contains(html, `rel="icon"`) || !strings.Contains(html, `href="`+tc.want+`"`) {
 			t.Errorf("AppIconFor(%v) = %s, want icon %s", tc.settings, html, tc.want)
 		}
-		// The home-screen icons are deliberately not themable.
-		for _, keep := range []string{`href="/assets/manifest.webmanifest"`, `rel="apple-touch-icon" href="/assets/apple-touch-icon.png"`} {
-			if !strings.Contains(html, keep) {
-				t.Errorf("AppIconFor(%v) lost %s", tc.settings, keep)
-			}
+		touch := strings.Replace(strings.Replace(tc.want, "/logo-", "/touch-logo-", 1), ".svg", ".png", 1)
+		if !strings.Contains(html, `rel="apple-touch-icon" href="`+touch+`"`) {
+			t.Errorf("AppIconFor(%v) = %s, want apple-touch-icon %s", tc.settings, html, touch)
+		}
+		if _, err := os.Stat(filepath.Join("..", "..", touch)); err != nil {
+			t.Errorf("home-screen icon missing: %v", err)
+		}
+		// The manifest (Android, desktop installs) stays the default.
+		if !strings.Contains(html, `href="/assets/manifest.webmanifest"`) {
+			t.Errorf("AppIconFor(%v) lost the manifest", tc.settings)
 		}
 	}
 }
@@ -103,7 +108,7 @@ func TestSettingsAppearanceOffersThreeAppIcons(t *testing.T) {
 			t.Errorf("checked state wrong for %s", input)
 		}
 	}
-	if !strings.Contains(html, "Dock icon change") || !strings.Contains(html, "Finder and the phone home-screen icon keep the default") {
+	if !strings.Contains(html, "Dock icon change") || !strings.Contains(html, "A phone home-screen icon uses the style chosen when it was added") {
 		t.Error("missing the Dock / home-screen help line")
 	}
 }
