@@ -35,6 +35,37 @@ func TestCalendarWeekBuildsMondayFirstAcrossMonthAndYear(t *testing.T) {
 	}
 }
 
+func TestCalendarDayAndThreeDayStartAtFocusedDate(t *testing.T) {
+	at := time.Date(2026, 12, 31, 15, 0, 0, 0, time.UTC)
+	for _, test := range []struct {
+		view, last, label, next string
+		days                    int
+	}{
+		{"3day", "2027-01-02", "Dec 31, 2026 – Jan 2, 2027", "2027-01-03", 3},
+		{"day", "2026-12-31", "Thursday, Dec 31, 2026", "2027-01-01", 1},
+	} {
+		data := NewCalendarTimelineData(at, test.view)
+		days := data.Weeks[0].Days
+		if len(days) != test.days || days[0].ISODate != "2026-12-31" || days[len(days)-1].ISODate != test.last || data.MonthLabel != test.label {
+			t.Fatalf("%s: %d days %s to %s, label %q", test.view, len(days), days[0].ISODate, days[len(days)-1].ISODate, data.MonthLabel)
+		}
+		if next := calendarNavigationURL(data, 1); next != "/calendar?date="+test.next+"&view="+test.view {
+			t.Fatalf("%s next = %s", test.view, next)
+		}
+		var out bytes.Buffer
+		if err := CalendarMainContent(data).Render(t.Context(), &out); err != nil {
+			t.Fatal(err)
+		}
+		html := out.String()
+		if got := strings.Count(html, "data-calendar-now-line"); got != test.days {
+			t.Errorf("%s: %d now-line slots, want one per day", test.view, got)
+		}
+		if !strings.Contains(html, calendarTimelineGridStyle(test.days)) || !strings.Contains(html, `data-calendar-week-zoom="fit"`) {
+			t.Errorf("%s does not render the hour timeline", test.view)
+		}
+	}
+}
+
 func calendarTestTimedEvent(id string, day time.Time, startMinute, endMinute int) CalendarEvent {
 	start := day.Add(time.Duration(startMinute) * time.Minute)
 	end := day.Add(time.Duration(endMinute) * time.Minute)
@@ -155,7 +186,7 @@ func TestCalendarWeekRendersAllDayRowTimelineAndDetails(t *testing.T) {
 }
 
 func TestCalendarViewSwitchMatchesAppTabStructure(t *testing.T) {
-	for _, view := range []string{"month", "week"} {
+	for _, view := range calendarViews {
 		data := NewCalendarMonthData(time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC))
 		data.View = view
 		var out bytes.Buffer
@@ -173,7 +204,7 @@ func TestCalendarViewSwitchMatchesAppTabStructure(t *testing.T) {
 		}
 		nav := html[start : start+end]
 		for _, want := range []string{
-			`data-calendar-view-nav`, `grid-cols-2 gap-0.5 rounded-lg`, `p-0.5`,
+			`data-calendar-view-nav`, `grid-cols-4 gap-0.5 rounded-lg`, `p-0.5`,
 			`data-calendar-view-indicator`, `top-0.5 bottom-0.5 left-0.5 rounded-md`,
 			`transition-transform duration-200 ease-out`, `relative z-10 inline-flex h-full min-h-0`,
 			`hx-swap="outerHTML"`, `aria-current="page"`, calendarViewIndicatorStyle(view),

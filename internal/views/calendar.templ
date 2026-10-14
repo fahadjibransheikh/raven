@@ -230,10 +230,11 @@ templ CalendarMainContent(month CalendarMonthData) {
 				</button>
 			</div>
 			<div class="flex shrink-0 items-center gap-1.5 max-lg:order-last max-lg:basis-full max-lg:justify-between">
-				<nav aria-label="Calendar view" class="relative grid h-8 w-36 grid-cols-2 gap-0.5 rounded-lg border border-border bg-background p-0.5" data-calendar-view-nav>
+				<nav aria-label="Calendar view" class="relative grid h-8 w-64 grid-cols-4 gap-0.5 rounded-lg border border-border bg-background p-0.5" data-calendar-view-nav>
 					<div data-calendar-view-indicator aria-hidden="true" class="absolute top-0.5 bottom-0.5 left-0.5 rounded-md border border-border bg-card shadow-sm transition-transform duration-200 ease-out motion-reduce:transition-none" style={ calendarViewIndicatorStyle(month.View) }></div>
-					<a href={ calendarViewURL("month", month.DateKey) } hx-get={ calendarViewURL("month", month.DateKey) } hx-target="#main-content" hx-select="#main-content" hx-swap="outerHTML" hx-sync="#main-content:replace" hx-push-url={ calendarViewURL("month", month.DateKey) } class={ calendarViewSwitchClass(month.View != "week") } aria-current={ calendarViewCurrent(month.View != "week") } data-calendar-view-switch="month" data-calendar-key="month">Month</a>
-					<a href={ calendarViewURL("week", month.DateKey) } hx-get={ calendarViewURL("week", month.DateKey) } hx-target="#main-content" hx-select="#main-content" hx-swap="outerHTML" hx-sync="#main-content:replace" hx-push-url={ calendarViewURL("week", month.DateKey) } class={ calendarViewSwitchClass(month.View == "week") } aria-current={ calendarViewCurrent(month.View == "week") } data-calendar-view-switch="week" data-calendar-key="week">Week</a>
+					for _, view := range calendarViews {
+						<a href={ calendarViewURL(view, month.DateKey) } hx-get={ calendarViewURL(view, month.DateKey) } hx-target="#main-content" hx-select="#main-content" hx-swap="outerHTML" hx-sync="#main-content:replace" hx-push-url={ calendarViewURL(view, month.DateKey) } class={ calendarViewSwitchClass(month.View == view) } aria-current={ calendarViewCurrent(month.View == view) } data-calendar-view-switch={ view } data-calendar-key={ view }>{ calendarViewLabel(view) }</a>
+					}
 				</nav>
 				<button type="button" data-calendar-agenda-toggle data-calendar-key="agenda" class="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-background px-2.5 text-xs font-semibold text-foreground shadow-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden">
 					@icon.List(icon.Props{Class: "size-3.5"})
@@ -241,7 +242,7 @@ templ CalendarMainContent(month CalendarMonthData) {
 				</button>
 			</div>
 		</header>
-		if month.View == "week" {
+		if calendarTimelineDays(month.View) > 0 {
 			<div class="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/10 px-4 py-2 sm:px-5" inert?={ month.Loading }>
 				<p data-calendar-week-scale-status class="text-[11px] text-muted-foreground" aria-live="polite">Fit · Empty hours condensed</p>
 				<div class="inline-flex items-center gap-1" role="group" aria-label="Week timeline zoom">
@@ -257,8 +258,8 @@ templ CalendarMainContent(month CalendarMonthData) {
 				</div>
 			</div>
 		}
-		<div class={ "min-h-0 flex-1 overflow-auto", templ.KV("flex flex-col p-3 sm:p-5", month.View != "week") } data-calendar-surface data-calendar-week-scroll?={ month.View == "week" } inert?={ month.Loading }>
-			if month.View == "week" {
+		<div class={ "min-h-0 flex-1 overflow-auto", templ.KV("flex flex-col p-3 sm:p-5", calendarTimelineDays(month.View) == 0) } data-calendar-surface data-calendar-week-scroll?={ calendarTimelineDays(month.View) > 0 } inert?={ month.Loading }>
+			if calendarTimelineDays(month.View) > 0 {
 				@CalendarWeekGrid(month)
 			} else {
 				<div class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-background shadow-[0_1px_2px_rgba(0,0,0,0.04)]" data-calendar-month-grid>
@@ -363,13 +364,11 @@ templ CalendarAgendaPane(month CalendarMonthData) {
 							No events
 						}
 					</h3>
-					<p data-calendar-agenda-empty-detail class="mx-auto mt-1 max-w-xs text-xs leading-relaxed text-muted-foreground">
+					<p data-calendar-agenda-empty-detail data-calendar-agenda-empty-default={ calendarAgendaEmptyDetail(month.View) } class="mx-auto mt-1 max-w-xs text-xs leading-relaxed text-muted-foreground">
 						if month.AllSourcesHidden {
 							Show a calendar in the sidebar to see its events.
-						} else if month.View == "week" {
-							Nothing is scheduled this week.
 						} else {
-							Nothing is scheduled this month.
+							{ calendarAgendaEmptyDetail(month.View) }
 						}
 					</p>
 				</div>

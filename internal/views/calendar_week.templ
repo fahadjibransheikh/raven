@@ -6,9 +6,10 @@ import (
 )
 
 templ CalendarWeekGrid(data CalendarMonthData) {
-	<div class="flex h-full min-w-[560px] flex-col border border-border bg-background" data-calendar-week-grid>
+	{{ days := len(data.Weeks[0].Days) }}
+	<div class="flex h-full flex-col border border-border bg-background" style={ "min-width:" + strconv.Itoa(56+days*72) + "px" } data-calendar-week-grid>
 		<div class="sticky top-0 z-20 shrink-0 border-b border-border bg-card shadow-sm" data-calendar-week-header>
-			<div class="grid grid-cols-[56px_repeat(7,minmax(0,1fr))] border-b border-border bg-muted/35">
+			<div class="grid border-b border-border bg-muted/35" style={ calendarTimelineGridStyle(days) }>
 				<div class="flex items-end justify-center overflow-hidden px-1 pb-3 text-[10px] font-semibold text-muted-foreground" title={ data.Month.Location().String() } data-calendar-week-timezone>{ data.Weeks[0].Days[0].Date.Format("MST") }</div>
 				for _, day := range data.Weeks[0].Days {
 					<div class={ calendarWeekColumnClass(day) } data-calendar-day={ day.ISODate } data-calendar-day-selected="false" data-calendar-day-start={ day.Date.Format(time.RFC3339) } data-calendar-day-end={ day.Date.AddDate(0, 0, 1).Format(time.RFC3339) } data-calendar-day-title={ day.Date.Format("Monday, January 2") }>
@@ -19,7 +20,7 @@ templ CalendarWeekGrid(data CalendarMonthData) {
 					</div>
 				}
 			</div>
-			<div class="grid max-h-36 grid-cols-[56px_repeat(7,minmax(0,1fr))] overflow-y-auto" data-calendar-all-day-row>
+			<div class="grid max-h-36 overflow-y-auto" style={ calendarTimelineGridStyle(days) } data-calendar-all-day-row>
 				<div class="px-1 py-3 text-center text-[10px] font-semibold text-muted-foreground">All day</div>
 				for dayIndex, day := range data.Weeks[0].Days {
 					<div class={ calendarWeekColumnClass(day) + " grid grid-cols-1 content-start gap-1 p-1.5" } data-calendar-all-day-column={ day.ISODate }>
@@ -40,7 +41,7 @@ continuesAfter := event.EndDate > day.Date.AddDate(0, 0, 1).Format("2006-01-02")
 				}
 			</div>
 		</div>
-		<div class="grid min-h-0 flex-1 grid-cols-[56px_repeat(7,minmax(0,1fr))]" data-calendar-week-timeline>
+		<div class="grid min-h-0 flex-1" style={ calendarTimelineGridStyle(days) } data-calendar-week-timeline>
 			<div class="relative text-[10px] font-medium tabular-nums text-muted-foreground" aria-hidden="true">
 				for hour := 0; hour < 24; hour++ {
 					<div class="relative pr-2 text-right" style="height:calc(100% / 24);" data-calendar-week-hour-label={ strconv.Itoa(hour) }><span class="absolute right-2 top-0.5 whitespace-nowrap" data-calendar-week-hour-text>{ calendarHourLabel(hour) }</span></div>
@@ -53,6 +54,7 @@ continuesAfter := event.EndDate > day.Date.AddDate(0, 0, 1).Format("2006-01-02")
 							<div class="border-t border-border/70" style="height:calc(100% / 24);" data-calendar-week-hour={ strconv.Itoa(hour) }><div class="h-1/2 border-b border-dashed border-border/40" data-calendar-half-hour></div></div>
 						}
 					</div>
+					<div hidden class="pointer-events-none absolute inset-x-0 z-20 h-0 border-t-2 border-red-500" data-calendar-now-line aria-hidden="true"><span class="absolute -top-[5px] -left-[5px] size-2 rounded-full bg-red-500"></span></div>
 					if !data.Loading {
 						for _, block := range calendarTimedBlocks(day, data.Events) {
 							<button type="button" hidden?={ block.Event.SourceHidden } data-calendar-source-id={ block.Event.SourceID } data-calendar-source-hidden={ strconv.FormatBool(block.Event.SourceHidden) } data-calendar-response-state={ calendarEventResponseState(block.Event) } data-calendar-event-trigger data-calendar-week-event={ block.Event.ID } data-calendar-week-start={ strconv.FormatFloat(block.StartMinute, 'f', 3, 64) } data-calendar-week-end={ strconv.FormatFloat(block.EndMinute, 'f', 3, 64) } class="group absolute z-10 flex min-w-0 flex-col items-stretch justify-start overflow-hidden rounded border border-border bg-card px-1.5 py-0.5 text-left text-[10px] leading-tight shadow-sm transition-colors hover:bg-accent focus-visible:z-20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" style={ calendarTimedBlockStyle(block) } title={ calendarEventResponseSummary(block.Event) + " · " + block.TimeLabel } aria-label={ "Open event: " + calendarEventResponseSummary(block.Event) + ", " + day.Date.Format("Monday, January 2") + ", " + block.TimeLabel } aria-haspopup="dialog" aria-controls="calendar-event-details-content" hx-get={ calendarEventDetailsURL(block.Event.ID) } hx-target="#app-pane-dialogs" hx-swap="innerHTML" hx-sync="#app-pane-dialogs:replace" hx-disabled-elt="this">

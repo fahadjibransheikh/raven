@@ -22,6 +22,22 @@ func TestCalendarWeekRequestUsesExactLocalSevenDayWindow(t *testing.T) {
 	}
 }
 
+func TestCalendarRequestDefaultsToThreeDaysFromToday(t *testing.T) {
+	settings := map[string]string{"timezone": "Europe/Prague"}
+	today := time.Now().In(viewsCalendarLocation(settings)).Format("2006-01-02")
+	for _, test := range []struct{ query, view, first string }{
+		{"", "3day", today},
+		{"?month=2026-11", "month", "2026-10-26"},
+		{"?view=day&date=2026-10-25", "day", "2026-10-25"},
+		{"?view=3day&date=2026-10-25", "3day", "2026-10-25"},
+	} {
+		data := calendarDataFromRequest(httptest.NewRequest(http.MethodGet, "/calendar"+test.query, nil), settings)
+		if data.View != test.view || data.Weeks[0].Days[0].ISODate != test.first {
+			t.Errorf("%q: view %s starting %s, want %s starting %s", test.query, data.View, data.Weeks[0].Days[0].ISODate, test.view, test.first)
+		}
+	}
+}
+
 func TestHandleCalendarRefreshPreservesWeekView(t *testing.T) {
 	db, err := storage.New(filepath.Join(t.TempDir(), "week.db"))
 	if err != nil {
@@ -37,6 +53,7 @@ func TestHandleCalendarRefreshPreservesWeekView(t *testing.T) {
 		status     int
 	}{
 		{"week", "2026-10-01", http.StatusOK},
+		{"3day", "2026-10-01", http.StatusOK},
 		{"week", "invalid", http.StatusBadRequest},
 		{"other", "2026-10-01", http.StatusBadRequest},
 	} {
@@ -49,7 +66,7 @@ func TestHandleCalendarRefreshPreservesWeekView(t *testing.T) {
 		if w.Code != test.status {
 			t.Fatalf("refresh %s %s: status %d, body %s", test.view, test.date, w.Code, w.Body.String())
 		}
-		if test.status == http.StatusOK && (!strings.Contains(w.Body.String(), `data-calendar-period="week:2026-09-28"`) || !strings.Contains(w.Body.String(), `data-calendar-view="week"`)) {
+		if test.status == http.StatusOK && (!strings.Contains(w.Body.String(), `data-calendar-period="`+map[string]string{"week": "week:2026-09-28", "3day": "3day:2026-10-01"}[test.view]+`"`) || !strings.Contains(w.Body.String(), `data-calendar-view="`+test.view+`"`)) {
 			t.Fatal("refresh switched away from the requested week")
 		}
 	}

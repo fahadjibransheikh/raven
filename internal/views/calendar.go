@@ -55,8 +55,8 @@ func calendarLoadingData(view string, uiSettings map[string]string) CalendarMont
 	}
 	at := time.Now().In(location)
 	data := NewCalendarMonthData(at)
-	if view == "week" {
-		data = NewCalendarWeekData(at)
+	if calendarTimelineDays(view) > 0 {
+		data = NewCalendarTimelineData(at, view)
 	}
 	data.Loading = true
 	return data
