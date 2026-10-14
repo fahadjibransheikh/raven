@@ -6975,10 +6975,8 @@ func (h *Handler) handleAccountOAuthAuthorize(w http.ResponseWriter, r *http.Req
 		"display_name":  r.FormValue("display_name"),
 		"flow_action":   accountOAuthFlowAction(r.FormValue("flow_action")),
 	}
-	if provider == providers.ProviderOutlook {
-		// Kept server-side in the one-time flow record, never sent to the browser.
-		formData["code_verifier"] = oauth2.GenerateVerifier()
-	}
+	// Kept server-side in the one-time flow record, never sent to the browser.
+	formData["code_verifier"] = oauth2.GenerateVerifier()
 
 	user := auth.GetCurrentUser(r.Context())
 	if user == nil || strings.TrimSpace(user.ID) == "" {
@@ -6994,7 +6992,7 @@ func (h *Handler) handleAccountOAuthAuthorize(w http.ResponseWriter, r *http.Req
 
 	switch provider {
 	case providers.ProviderGmail:
-		authorizeURL = h.mailCredentials().GoogleAccountOAuthURL(state)
+		authorizeURL = h.mailCredentials().GoogleAccountOAuthURL(state, formData["code_verifier"])
 	case providers.ProviderOutlook:
 		authorizeURL = h.mailCredentials().MicrosoftAccountOAuthURL(state, formData["code_verifier"])
 	}
@@ -7014,7 +7012,7 @@ func (h *Handler) handleGoogleAccountCallback(w http.ResponseWriter, r *http.Req
 	}
 	formData := flow.FormData
 
-	token, err := h.mailCredentials().ExchangeAccountCode(r.Context(), code)
+	token, err := h.mailCredentials().ExchangeAccountCode(r.Context(), code, formData["code_verifier"])
 	if err != nil {
 		log.Printf("gmail callback: token exchange failed: %v", err)
 		http.Redirect(w, r, "/settings/accounts?error=oauth_exchange_failed", http.StatusSeeOther)

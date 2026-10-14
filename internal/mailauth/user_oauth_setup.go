@@ -58,12 +58,13 @@ func (s *UserCredentials) WithMailboxSetup(ctx context.Context, owner string, fn
 	return fn(work)
 }
 
-// verifier is the PKCE code verifier; Microsoft requires it, Google ignores it.
+// verifier is the PKCE code verifier. Empty means no PKCE, which only the
+// configuration probe and flows started before Gmail used PKCE rely on.
 func (s *UserCredentials) AccountAuthorizationURL(provider, state, verifier string) (string, error) {
 	switch provider {
 	case providers.ProviderGmail:
 		if s.codec.HasGoogleOAuth() {
-			return s.codec.GoogleAccountOAuthURL(state), nil
+			return s.codec.GoogleAccountOAuthURL(state, verifier), nil
 		}
 	case providers.ProviderOutlook:
 		if s.codec.HasMicrosoftOAuth() {
@@ -107,7 +108,7 @@ func (s *UserCredentials) ExchangeMailboxCode(ctx context.Context, provider, cod
 	var err error
 	switch provider {
 	case providers.ProviderGmail:
-		token, err = s.codec.ExchangeAccountCode(ctx, code)
+		token, err = s.codec.ExchangeAccountCode(ctx, code, verifier)
 		if err == nil {
 			var info *GoogleAccountInfo
 			info, err = s.codec.GetGoogleAccountInfo(ctx, token)

@@ -147,6 +147,58 @@ func TestOutlookMailboxAuthorizationSendsPKCEChallengeForStoredVerifier(t *testi
 	}
 }
 
+// Gmail's built-in desktop client has a non-confidential secret, so its
+// authorization carries a PKCE challenge for a verifier kept in the flow record.
+func TestGmailMailboxAuthorizationSendsPKCEChallengeForStoredVerifier(t *testing.T) {
+	h, manager, db := newAccountOAuthFlowTestHandler(t)
+	if _, err := db.Write().Exec(`INSERT INTO users (id, username, username_normalized, name) VALUES ('user', 'user', 'user', 'User')`); err != nil {
+		t.Fatalf("insert user: %v", err)
+	}
+	session, err := h.auth.CreateAuthenticatedSession(
+		t.Context(), "user", "Password Browser", auth.AuthenticationMethodPassword, auth.AssuranceLevelSingleFactor,
+	)
+	if err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+	const authorizePath = "/api/accounts/oauth2/authorize"
+	form := url.Values{
+		"provider":      {providers.ProviderGmail},
+		"email_address": {"user@gmail.com"},
+		"flow_action":   {"add"},
+		auth.CSRFFormFieldName: {
+			csrfProofForSession(t, h.auth, session.Token, authorizePath),
+		},
+	}
+	req := httptest.NewRequest(http.MethodPost, authorizePath, strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(&http.Cookie{Name: "raven_session", Value: session.Token})
+	rec := httptest.NewRecorder()
+
+	h.auth.Middleware(http.HandlerFunc(h.handleAccountOAuthAuthorize)).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d body = %q, want redirect", rec.Code, rec.Body.String())
+	}
+	location, err := url.Parse(rec.Header().Get("Location"))
+	if err != nil {
+		t.Fatalf("parse redirect: %v", err)
+	}
+	flow, err := manager.ConsumeAccountOAuthFlow(req.Context(), location.Query().Get("state"), "user", session.Token, providers.ProviderGmail)
+	if err != nil {
+		t.Fatalf("ConsumeAccountOAuthFlow() error = %v", err)
+	}
+	verifier := flow.FormData["code_verifier"]
+	if verifier == "" {
+		t.Fatal("Gmail flow stored no PKCE verifier")
+	}
+	if location.Query().Get("code_challenge_method") != "S256" || location.Query().Get("code_challenge") != oauth2.S256ChallengeFromVerifier(verifier) {
+		t.Fatalf("redirect %q lacks the S256 challenge for the stored verifier", location.String())
+	}
+	if strings.Contains(location.String(), verifier) {
+		t.Fatal("PKCE verifier leaked into the authorization redirect")
+	}
+}
+
 func TestAccountOAuthSuccessRedirectMatchesFlowAction(t *testing.T) {
 	if got := accountOAuthSuccessRedirect(map[string]string{"flow_action": "add"}); got != "/settings/accounts?account_added=1" {
 		t.Fatalf("add redirect = %q", got)

@@ -2172,6 +2172,7 @@ templ AccountSignatureAssignmentRow(kind string, label string, enabled bool, sel
 }
 
 templ ChooseAccountTypeDialog() {
+	{{ oauth := mailboxOAuthFrom(ctx) }}
 	@dialog.Dialog(dialog.Props{ID: "choose-account-type-dialog"}) {
 		@dialog.Content(dialog.ContentProps{Class: "sm:max-w-md"}) {
 			@dialog.Header() {
@@ -2203,26 +2204,34 @@ templ ChooseAccountTypeDialog() {
 					</div>
 					<svg class="size-4 text-muted-foreground group-hover:text-foreground transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
 				</button>
-				<button type="button" data-on-click='["ravenSwitchDialog","choose-account-type-dialog","gmail-account-dialog"]' class="w-full group flex items-center gap-4 p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-accent/50 transition-all duration-200 text-left">
-					<div class="flex items-center justify-center w-10 h-10 rounded-lg bg-accent text-muted-foreground group-hover:text-foreground transition-colors">
-						@AccountProviderIcon("gmail", "size-5")
-					</div>
-					<div class="flex-1 min-w-0">
-						<div class="text-sm font-medium text-foreground">Gmail</div>
-						<div class="text-xs text-muted-foreground mt-0.5">Sign in with Google for instant setup</div>
-					</div>
-					<svg class="size-4 text-muted-foreground group-hover:text-foreground transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-				</button>
-				<button type="button" data-on-click='["ravenSwitchDialog","choose-account-type-dialog","outlook-account-dialog"]' class="w-full group flex items-center gap-4 p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-accent/50 transition-all duration-200 text-left">
-					<div class="flex items-center justify-center w-10 h-10 rounded-lg bg-accent text-muted-foreground group-hover:text-foreground transition-colors">
-						@AccountProviderIcon("outlook", "size-5")
-					</div>
-					<div class="flex-1 min-w-0">
-						<div class="text-sm font-medium text-foreground">Outlook</div>
-						<div class="text-xs text-muted-foreground mt-0.5">Sign in with Microsoft for instant setup</div>
-					</div>
-					<svg class="size-4 text-muted-foreground group-hover:text-foreground transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-				</button>
+				if oauth.google {
+					<button type="button" data-on-click='["ravenSwitchDialog","choose-account-type-dialog","gmail-account-dialog"]' class="w-full group flex items-center gap-4 p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-accent/50 transition-all duration-200 text-left">
+						<div class="flex items-center justify-center w-10 h-10 rounded-lg bg-accent text-muted-foreground group-hover:text-foreground transition-colors">
+							@AccountProviderIcon("gmail", "size-5")
+						</div>
+						<div class="flex-1 min-w-0">
+							<div class="text-sm font-medium text-foreground">Gmail</div>
+							<div class="text-xs text-muted-foreground mt-0.5">Sign in with Google for instant setup</div>
+						</div>
+						<svg class="size-4 text-muted-foreground group-hover:text-foreground transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+					</button>
+				} else {
+					<p class="text-xs text-muted-foreground px-1">Google sign-in isn't set up on this Raven.</p>
+				}
+				if oauth.microsoft {
+					<button type="button" data-on-click='["ravenSwitchDialog","choose-account-type-dialog","outlook-account-dialog"]' class="w-full group flex items-center gap-4 p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-accent/50 transition-all duration-200 text-left">
+						<div class="flex items-center justify-center w-10 h-10 rounded-lg bg-accent text-muted-foreground group-hover:text-foreground transition-colors">
+							@AccountProviderIcon("outlook", "size-5")
+						</div>
+						<div class="flex-1 min-w-0">
+							<div class="text-sm font-medium text-foreground">Outlook</div>
+							<div class="text-xs text-muted-foreground mt-0.5">Sign in with Microsoft for instant setup</div>
+						</div>
+						<svg class="size-4 text-muted-foreground group-hover:text-foreground transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+					</button>
+				} else {
+					<p class="text-xs text-muted-foreground px-1">Microsoft sign-in isn't set up on this Raven.</p>
+				}
 			</div>
 		}
 	}

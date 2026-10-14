@@ -180,7 +180,7 @@ func RunShared() {
 	log.Printf("boot: HTTP routes registered")
 	h.StartAccountDeletionCleanup(ctx)
 
-	var handler http.Handler = views.WithListViewCookie(mux)
+	var handler http.Handler = views.WithMailboxOAuth(mailboxOAuthConfig.GoogleClient != nil, mailboxOAuthConfig.MicrosoftClient != nil, views.WithListViewCookie(mux))
 	handler = authManager.Middleware(handler)
 	handler = httpConfig.Middleware(handler)
 	handler = httpConfig.ClientSourceMiddleware(handler)

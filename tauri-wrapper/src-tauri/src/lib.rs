@@ -88,6 +88,25 @@ const SIDECAR_ENV: [(&str, &str); 3] = [
     ("MICROSOFT_OAUTH_TENANT", "common"),
 ];
 
+/// Raven's Google "Desktop app" OAuth client, baked in when the release is
+/// built (the workflow passes both as secrets) so the ID and secret stay out
+/// of the repo. Google does not treat a desktop client secret as confidential,
+/// and the Gmail flow uses PKCE. Raven only falls back to it when the user has
+/// set no GOOGLE_OAUTH_CLIENT_ID of their own, so a Web client's existing
+/// refresh tokens keep working. Empty when this build was not given both.
+fn desktop_google_env() -> Vec<(&'static str, &'static str)> {
+    match (
+        option_env!("RAVEN_GOOGLE_DESKTOP_CLIENT_ID"),
+        option_env!("RAVEN_GOOGLE_DESKTOP_CLIENT_SECRET"),
+    ) {
+        (Some(id), Some(secret)) if !id.is_empty() && !secret.is_empty() => vec![
+            ("RAVEN_DESKTOP_GOOGLE_OAUTH_CLIENT_ID", id),
+            ("RAVEN_DESKTOP_GOOGLE_OAUTH_CLIENT_SECRET", secret),
+        ],
+        _ => Vec::new(),
+    }
+}
+
 /// Working directory the sidecar is spawned with. Raven reads its .env
 /// (OAuth credentials) and its data/ SQLite store relative to its process
 /// working directory, so this is the per-user app data folder
@@ -326,6 +345,7 @@ fn start_sidecar(app: &AppHandle) {
         let (mut rx, child) = match command
             .current_dir(working_dir)
             .envs(SIDECAR_ENV)
+            .envs(desktop_google_env())
             .env("RAVEN_ADDR", format!("127.0.0.1:{port}"))
             .env("RAVEN_BASE_URL", format!("http://localhost:{port}"))
             .env("RAVEN_DESKTOP_TOKEN", &state.token)

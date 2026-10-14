@@ -198,3 +198,73 @@ func TestMicrosoftPublicClientExchangesAndRefreshesWithoutSecret(t *testing.T) {
 		}
 	}
 }
+
+func TestGoogleAccountOAuthURLSendsPKCEChallengeOnlyWithVerifier(t *testing.T) {
+	manager := New(&Config{
+		BaseURL: "https://raven.example",
+		GoogleClient: &oauth2.Config{
+			ClientID: "client-id",
+			Scopes:   googleAccountScopes(),
+			Endpoint: oauth2.Endpoint{AuthURL: "https://accounts.example/authorize"},
+		},
+	}, nil, testMailboxCredentialKey)
+
+	parsed, err := url.Parse(manager.GoogleAccountOAuthURL("state-value", "verifier-value"))
+	if err != nil {
+		t.Fatalf("parse auth url: %v", err)
+	}
+	values := parsed.Query()
+	if values.Get("code_challenge_method") != "S256" || values.Get("code_challenge") != oauth2.S256ChallengeFromVerifier("verifier-value") {
+		t.Fatalf("PKCE challenge = %q (%q), want S256 of the verifier", values.Get("code_challenge"), values.Get("code_challenge_method"))
+	}
+	if values.Get("access_type") != "offline" || values.Get("prompt") != "consent" {
+		t.Fatalf("query = %v, want offline access with forced consent", values)
+	}
+
+	parsed, err = url.Parse(manager.GoogleAccountOAuthURL("state-value", ""))
+	if err != nil {
+		t.Fatalf("parse auth url: %v", err)
+	}
+	if parsed.Query().Has("code_challenge") {
+		t.Fatalf("auth url %q carries a PKCE challenge without a verifier", parsed)
+	}
+}
+
+// A flow started before Gmail used PKCE has no stored verifier; its exchange
+// must still go through, without a code_verifier field.
+func TestExchangeAccountCodeSendsVerifierWhenPresent(t *testing.T) {
+	var forms []url.Values
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			t.Fatalf("ParseForm() error = %v", err)
+		}
+		forms = append(forms, r.PostForm)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"access_token":"google-token","refresh_token":"refresh-token","token_type":"Bearer","expires_in":3600}`))
+	}))
+	defer server.Close()
+
+	manager := New(&Config{
+		BaseURL: "https://raven.example",
+		GoogleClient: &oauth2.Config{
+			ClientID:     "client-id",
+			ClientSecret: "client-secret",
+			Endpoint:     oauth2.Endpoint{AuthURL: "https://accounts.example/authorize", TokenURL: server.URL},
+		},
+	}, nil, testMailboxCredentialKey)
+
+	for _, verifier := range []string{"verifier-value", ""} {
+		if _, err := manager.ExchangeAccountCode(context.Background(), "auth-code", verifier); err != nil {
+			t.Fatalf("ExchangeAccountCode(%q) error = %v", verifier, err)
+		}
+	}
+	if len(forms) != 2 {
+		t.Fatalf("token requests = %d, want 2", len(forms))
+	}
+	if got := forms[0].Get("code_verifier"); got != "verifier-value" {
+		t.Fatalf("exchange code_verifier = %q, want verifier-value", got)
+	}
+	if forms[1].Has("code_verifier") {
+		t.Fatalf("exchange without a stored verifier sent code_verifier = %q", forms[1].Get("code_verifier"))
+	}
+}
