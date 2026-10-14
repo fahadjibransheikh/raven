@@ -18,6 +18,7 @@ See `construction.svg` for the circles and tangents.
 | `logo-minimal-light.*` / `logo-minimal-dark.*` | Minimal accent preset. |
 | `mark-raven.svg`, `mark-classic.svg`, `mark-ink.svg` | Bird only, transparent, for light surfaces. |
 | `mark-white.svg` | Bird only, transparent, for dark surfaces. |
+| `touch-logo-*.png` | 180px square-cornered home-screen icon for each `logo-*` tile (apple-touch-icon). |
 
 The SVGs are generated; edit `scripts/logo/generate.py` and rerun it rather than
 editing them by hand. It needs `numpy` and `shapely`:
@@ -27,6 +28,7 @@ pip install numpy shapely
 python3 scripts/logo/generate.py
 ```
 
-PNGs (`assets/logo.png` 512px, `assets/apple-touch-icon.png` 180px with square
-corners, `tauri-wrapper/src-tauri/icons/icon.png`, and the 1024px PNGs here)
+PNGs (`assets/logo.png` 512px, `assets/apple-touch-icon.png` and the
+`touch-logo-*.png` iOS home-screen icons here, 180px with square corners,
+`tauri-wrapper/src-tauri/icons/icon.png`, and the 1024px PNGs here)
 are rendered from the SVGs with any SVG renderer (headless Chromium was used).

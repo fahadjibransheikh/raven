@@ -1,4 +1,4 @@
-// App icon: the tab icon follows the chosen style and Raven's own theme (not the
+// App icon: the tab and iOS home-screen icons follow the chosen style and Raven's own theme (not the
 // OS), switches live, and the desktop shell is told through set_app_icon.
 const { test } = require("node:test")
 const assert = require("node:assert/strict")
@@ -13,7 +13,7 @@ const settingsPage = fs.readFileSync(path.join(root, "assets", "js", "settings-p
 function page(stored, { dark = true, tauri } = {}) {
   const settings = Object.assign({ timezone: "UTC", theme: dark ? "dark" : "light" }, stored)
   const dom = new JSDOM(
-    '<!doctype html><html class="' + (dark ? "dark" : "") + '"><head><link rel="icon" type="image/svg+xml" href="/assets/brand/logo-raven.svg"></head>' +
+    '<!doctype html><html class="' + (dark ? "dark" : "") + '"><head><link rel="icon" type="image/svg+xml" href="/assets/brand/logo-raven.svg"><link rel="apple-touch-icon" href="/assets/brand/touch-logo-raven.png"></head>' +
       "<body data-ui-settings='" + JSON.stringify(settings) + "'></body></html>",
     { url: "http://localhost/", runScripts: "outside-only" },
   )
@@ -22,7 +22,12 @@ function page(stored, { dark = true, tauri } = {}) {
   const calls = []
   if (tauri) w.__TAURI__ = { core: { invoke: (cmd, args) => { calls.push([cmd, JSON.parse(JSON.stringify(args))]); return tauri(cmd, args) } } }
   w.eval(uiSettings)
-  return { w, calls, icon: () => w.document.querySelector('link[rel="icon"]').getAttribute("href") }
+  return {
+    w,
+    calls,
+    icon: () => w.document.querySelector('link[rel="icon"]').getAttribute("href"),
+    touch: () => w.document.querySelector('link[rel="apple-touch-icon"]').getAttribute("href"),
+  }
 }
 
 const DARK = { raven: "logo-raven", classic: "logo-classic", minimal: "logo-minimal-dark" }
@@ -31,6 +36,7 @@ const LIGHT = { raven: "logo-raven-light", classic: "logo-classic-light", minima
 test("every style and appearance maps to a shipped SVG and PNG", () => {
   for (const file of [...Object.values(DARK), ...Object.values(LIGHT)]) {
     for (const ext of ["svg", "png"]) assert.ok(fs.existsSync(path.join(root, "assets", "brand", file + "." + ext)), file + "." + ext)
+    assert.ok(fs.existsSync(path.join(root, "assets", "brand", "touch-" + file + ".png")), "touch-" + file + ".png")
   }
 })
 
@@ -39,6 +45,19 @@ test("the tab icon picks the style's variant for the current theme", () => {
     assert.equal(page({ app_icon: style }, { dark: true }).icon(), "/assets/brand/" + DARK[style] + ".svg")
     assert.equal(page({ app_icon: style }, { dark: false }).icon(), "/assets/brand/" + LIGHT[style] + ".svg")
   }
+})
+
+test("the iOS home-screen icon follows the same style and theme, live", () => {
+  for (const style of Object.keys(DARK)) {
+    assert.equal(page({ app_icon: style }, { dark: true }).touch(), "/assets/brand/touch-" + DARK[style] + ".png")
+    assert.equal(page({ app_icon: style }, { dark: false }).touch(), "/assets/brand/touch-" + LIGHT[style] + ".png")
+  }
+  const { w, touch } = page({ app_icon: "raven" }, { dark: false })
+  w.RavenSettings.set("app_icon", "minimal")
+  assert.equal(touch(), "/assets/brand/touch-logo-minimal-light.png")
+  w.RavenSettings.set("theme", "dark")
+  assert.equal(touch(), "/assets/brand/touch-logo-minimal-dark.png")
+  assert.equal(w.document.querySelectorAll('link[rel="apple-touch-icon"]').length, 1)
 })
 
 test("a missing or unknown style falls back to raven", () => {

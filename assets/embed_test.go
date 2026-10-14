@@ -10,5 +10,8 @@ func TestBrandIconsAreEmbedded(t *testing.T) {
 		if _, err := FS.ReadFile("brand/" + name + ".svg"); err != nil {
 			t.Errorf("brand/%s.svg is not embedded: %v", name, err)
 		}
+		if _, err := FS.ReadFile("brand/touch-" + name + ".png"); err != nil {
+			t.Errorf("brand/touch-%s.png is not embedded: %v", name, err)
+		}
 	}
 }

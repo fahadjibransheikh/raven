@@ -44,22 +44,29 @@ var RavenSettings;
   };
   var _lastAppIcon = "";
 
-  // The tab icon and the desktop Dock icon follow Raven's own theme (html.dark),
-  // not the OS setting: Raven has no "system" mode, so they can differ.
-  function applyAppIcon() {
-    var style = APP_ICONS[_cache.app_icon] ? _cache.app_icon : "raven";
-    var dark = document.documentElement.classList.contains("dark");
-    var key = style + (dark ? ":dark" : ":light");
-    if (key === _lastAppIcon) return;
-    _lastAppIcon = key;
-    var href = "/assets/brand/" + APP_ICONS[style][dark ? 0 : 1] + ".svg";
-    var link = document.querySelector('link[rel="icon"]');
+  function setIconLink(selector, href) {
+    var link = document.querySelector(selector);
     if (link && link.getAttribute("href") !== href) {
       // Replacing the node (not just its href) makes Safari reload the icon too.
       var next = link.cloneNode();
       next.setAttribute("href", href);
       link.replaceWith(next);
     }
+  }
+
+  // The tab icon, the iOS home-screen icon and the desktop Dock icon follow
+  // Raven's own theme (html.dark), not the OS setting: Raven has no "system"
+  // mode, so they can differ.
+  function applyAppIcon() {
+    var style = APP_ICONS[_cache.app_icon] ? _cache.app_icon : "raven";
+    var dark = document.documentElement.classList.contains("dark");
+    var key = style + (dark ? ":dark" : ":light");
+    if (key === _lastAppIcon) return;
+    _lastAppIcon = key;
+    var file = APP_ICONS[style][dark ? 0 : 1];
+    setIconLink('link[rel="icon"]', "/assets/brand/" + file + ".svg");
+    // What iOS saves on "Add to Home Screen"; a square PNG, as iOS ignores SVG.
+    setIconLink('link[rel="apple-touch-icon"]', "/assets/brand/touch-" + file + ".png");
     var tauri = window.__TAURI__;
     if (tauri && tauri.core && typeof tauri.core.invoke === "function") {
       tauri.core.invoke("set_app_icon", { style: style, dark: dark }).catch(function (err) {
