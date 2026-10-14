@@ -28,10 +28,8 @@ func (h *Handler) handleUserAccountOAuthAuthorize(w http.ResponseWriter, r *http
 	}
 	owner := h.userID(r.Context())
 	form := map[string]string{"provider": provider, "email_address": strings.TrimSpace(r.FormValue("email_address")), "display_name": r.FormValue("display_name"), "flow_action": accountOAuthFlowAction(r.FormValue("flow_action"))}
-	if provider == providers.ProviderOutlook {
-		// Kept server-side in the one-time flow record, never sent to the browser.
-		form["code_verifier"] = oauth2.GenerateVerifier()
-	}
+	// Kept server-side in the one-time flow record, never sent to the browser.
+	form["code_verifier"] = oauth2.GenerateVerifier()
 	if form["flow_action"] == "reconnect" {
 		// Existing reconnect forms identify a mailbox by owner/provider/email.
 		// Resolve once and bind its opaque ID and subject into central flow state.

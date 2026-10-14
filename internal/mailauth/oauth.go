@@ -22,8 +22,15 @@ func googleAccountScopes() []string {
 	}
 }
 
-func (m *Service) GoogleAccountOAuthURL(state string) string {
-	return m.accountOAuthConfig().AuthCodeURL(state, oauth2.AccessTypeOffline, oauth2.ApprovalForce)
+// GoogleAccountOAuthURL starts the Gmail mailbox flow. A non-empty verifier adds
+// a PKCE challenge and must be passed back to ExchangeAccountCode; the built-in
+// desktop client's secret is not confidential, so PKCE is what binds the code.
+func (m *Service) GoogleAccountOAuthURL(state, verifier string) string {
+	opts := []oauth2.AuthCodeOption{oauth2.AccessTypeOffline, oauth2.ApprovalForce}
+	if verifier != "" {
+		opts = append(opts, oauth2.S256ChallengeOption(verifier))
+	}
+	return m.accountOAuthConfig().AuthCodeURL(state, opts...)
 }
 
 // MicrosoftAccountOAuthURL starts the Outlook mailbox flow with a PKCE
@@ -34,8 +41,12 @@ func (m *Service) MicrosoftAccountOAuthURL(state, verifier string) string {
 	return m.microsoftAccountOAuthConfig().AuthCodeURL(state, oauth2.SetAuthURLParam("prompt", "consent"), oauth2.S256ChallengeOption(verifier))
 }
 
-func (m *Service) ExchangeAccountCode(ctx context.Context, code string) (*oauth2.Token, error) {
-	token, err := m.accountOAuthConfig().Exchange(ctx, code)
+func (m *Service) ExchangeAccountCode(ctx context.Context, code, verifier string) (*oauth2.Token, error) {
+	var opts []oauth2.AuthCodeOption
+	if verifier != "" {
+		opts = append(opts, oauth2.VerifierOption(verifier))
+	}
+	token, err := m.accountOAuthConfig().Exchange(ctx, code, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("oauth exchange: %w", err)
 	}
