@@ -18,6 +18,7 @@ type GoogleAccountInfo struct {
 	Email         string `json:"email"`
 	EmailVerified bool   `json:"email_verified"`
 	Name          string `json:"name"`
+	Picture       string `json:"picture"`
 }
 
 type MicrosoftAccountInfo struct {
@@ -50,8 +51,14 @@ func (i MicrosoftAccountInfo) ProviderAccountID() string {
 }
 
 func (m *Service) GetGoogleAccountInfo(ctx context.Context, token *oauth2.Token) (*GoogleAccountInfo, error) {
-	client := m.config.GoogleClient.Client(ctx, token)
-	resp, err := client.Get("https://openidconnect.googleapis.com/v1/userinfo")
+	if m.config.GoogleClient == nil {
+		return nil, fmt.Errorf("google oauth not configured")
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://openidconnect.googleapis.com/v1/userinfo", nil)
+	if err != nil {
+		return nil, fmt.Errorf("fetch userinfo: %w", err)
+	}
+	resp, err := m.config.GoogleClient.Client(ctx, token).Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("fetch userinfo: %w", err)
 	}
