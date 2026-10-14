@@ -408,6 +408,35 @@ func (db *DB) GetReusableDomainIconAvatar(ctx context.Context, hash, email strin
 	return &rec, nil
 }
 
+// GetGmailAccountIDByEmail returns the id of the connected Gmail mailbox whose
+// address is email, or "" when email is not one.
+func (db *DB) GetGmailAccountIDByEmail(ctx context.Context, email string) (string, error) {
+	var id string
+	err := db.Read().QueryRowContext(ctx,
+		`SELECT id FROM accounts
+		 WHERE provider = 'gmail' AND COALESCE(is_deleting, 0) = 0 AND lower(trim(email_address)) = ?
+		 ORDER BY created_at, id
+		 LIMIT 1`, strings.ToLower(strings.TrimSpace(email))).Scan(&id)
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
+	return id, err
+}
+
+// ExtendSenderAvatar moves the expiry of a stored avatar from source to
+// expiresAt, keeping its image, and reports whether there was one.
+func (db *DB) ExtendSenderAvatar(ctx context.Context, hash, source string, expiresAt time.Time) (bool, error) {
+	res, err := db.Write().ExecContext(ctx,
+		`UPDATE sender_avatars SET expires_at = ?, updated_at = CURRENT_TIMESTAMP
+		 WHERE email_hash = ? AND status = 'found' AND source = ? AND (storage_path != '' OR image_data IS NOT NULL)`,
+		formatDBTime(expiresAt), strings.ToLower(strings.TrimSpace(hash)), source)
+	if err != nil {
+		return false, err
+	}
+	n, err := res.RowsAffected()
+	return n > 0, err
+}
+
 func (db *DB) hydrateContactAvatar(ctx context.Context, contact *models.Contact) {
 	if contact == nil || contact.AvatarHash == "" {
 		return

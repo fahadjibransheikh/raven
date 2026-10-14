@@ -731,6 +731,27 @@ func (h *Handler) fetchAndPersistAvatarGuarded(ctx context.Context, hash, email 
 	outcomes := []avatarProviderOutcome{}
 	lastProviderErr := error(nil)
 	lastErrorProvider := ""
+	// The user's own Gmail address has a photo of its own at Google; the
+	// providers below would give it the company logo of its domain.
+	accountID, err := h.ownGmailAccountID(ctx, email)
+	if err != nil {
+		return avatarresolver.Image{}, false, outcomes, err
+	}
+	if accountID != "" {
+		if observeProvider != nil {
+			observeProvider(avatarGoogleProfile)
+		}
+		image, found, outcome, err := h.fetchGoogleProfileAvatar(ctx, hash, email, accountID, validate)
+		if outcome.status != "" {
+			outcomes = append(outcomes, outcome)
+		}
+		if err != nil {
+			return avatarresolver.Image{}, false, outcomes, err
+		}
+		if found {
+			return image, true, outcomes, nil
+		}
+	}
 	plan := avatarProviderPlanForEmail(email, domainSenderCount)
 	for provider, message := range plan.skipped {
 		providerStatuses[provider] = "skipped"
