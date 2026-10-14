@@ -236,6 +236,38 @@ func TestOtherSendersNeverGetTheOwnersGoogleProfilePhoto(t *testing.T) {
 	}
 }
 
+func TestBackfillReplacesOwnGmailIconOnceAndRetriesFailuresLater(t *testing.T) {
+	f := newGoogleProfileFixture(t, "owner@brand.example")
+	email := "owner@brand.example"
+	hash := avatarresolver.GravatarHash(email)
+	f.saveAvatar(t, email, "domain_icon", time.Now().Add(avatarFoundTTL))
+
+	f.h.runAvatarBackfill(f.ctx, 1, false, time.Now(), "scheduled")
+	rec, err := f.db.GetSenderAvatarByHash(f.ctx, hash)
+	if err != nil || rec == nil || rec.Source != avatarGoogleProfile {
+		t.Fatalf("record after backfill = (%+v, %v), want the google_profile photo", rec, err)
+	}
+	f.h.runAvatarBackfill(f.ctx, 2, false, time.Now(), "scheduled")
+	if got := f.userinfoCalls.Load(); got != 1 {
+		t.Fatalf("userinfo calls after a second backfill = %d, want 1", got)
+	}
+
+	// A mailbox whose lookup failed is not looked up again until the retry wait passes.
+	g := newGoogleProfileFixture(t, "owner@gmail.com")
+	g.userinfoStatus.Store(http.StatusInternalServerError)
+	g.gravatarImage.Store(true)
+	g.saveAvatar(t, "owner@gmail.com", "libravatar", time.Now().Add(avatarFoundTTL))
+	g.h.runAvatarBackfill(g.ctx, 1, false, time.Now(), "scheduled")
+	g.h.runAvatarBackfill(g.ctx, 2, false, time.Now(), "scheduled")
+	if got := g.userinfoCalls.Load(); got != 1 {
+		t.Fatalf("userinfo calls after two backfills with a failing lookup = %d, want 1", got)
+	}
+	rec, err = g.db.GetSenderAvatarByHash(g.ctx, avatarresolver.GravatarHash("owner@gmail.com"))
+	if err != nil || rec == nil || rec.Source != "gravatar" {
+		t.Fatalf("record after failed lookup = (%+v, %v), want the ordinary fallback", rec, err)
+	}
+}
+
 func TestGoogleProfilePhotoSizeRewrite(t *testing.T) {
 	tests := map[string]string{
 		"https://lh3.googleusercontent.com/a/x=s96-c":   "https://lh3.googleusercontent.com/a/x=s256-c",

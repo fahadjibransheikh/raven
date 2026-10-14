@@ -33,6 +33,49 @@ func TestGetGmailAccountIDByEmail(t *testing.T) {
 	}
 }
 
+func TestGetOwnGmailAvatarCandidates(t *testing.T) {
+	db := newContactsTestDB(t)
+	ctx := t.Context()
+	for _, email := range []string{"icon@brand.example", "photo@brand.example", "none@brand.example", "failed@brand.example", "retry@brand.example", "gone@brand.example"} {
+		if _, err := db.Write().ExecContext(ctx, `INSERT INTO accounts (id, provider, email_address, is_deleting) VALUES (?, 'gmail', ?, ?)`, email, email, email == "gone@brand.example"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	save := func(email, source string) string {
+		hash := avatarresolver.GravatarHash(email)
+		if err := db.SaveSenderAvatarFound(ctx, hash, email, source, "image/png", "", []byte("png"), time.Now().Add(time.Hour), "unchecked", "unchecked"); err != nil {
+			t.Fatal(err)
+		}
+		return hash
+	}
+	save("icon@brand.example", "domain_icon")
+	save("photo@brand.example", "google_profile")
+	save("stranger@brand.example", "domain_icon")
+	save("gone@brand.example", "domain_icon")
+	for email, status := range map[string]string{"none@brand.example": "missing", "failed@brand.example": "error", "retry@brand.example": "error"} {
+		hash := save(email, "domain_icon")
+		if err := db.RecordSenderAvatarAttempt(ctx, hash, email, "google_profile", status, "attempt"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// This lookup failed longer ago than the retry wait.
+	if _, err := db.Write().ExecContext(ctx, `UPDATE avatar_provider_states SET checked_at = datetime('now', '-2 hours') WHERE email = 'retry@brand.example'`); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := db.GetOwnGmailAvatarCandidates(ctx, time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	emails := map[string]bool{}
+	for _, c := range got {
+		emails[c.Email] = true
+	}
+	if len(got) != 2 || !emails["icon@brand.example"] || !emails["retry@brand.example"] {
+		t.Fatalf("candidates = %+v, want the stored icon and the lookup due for a retry", got)
+	}
+}
+
 func TestExtendSenderAvatarKeepsImageOfSourceOnly(t *testing.T) {
 	db := newContactsTestDB(t)
 	ctx := t.Context()

@@ -279,6 +279,24 @@ func (h *Handler) runAvatarBackfill(ctx context.Context, runID int64, force bool
 		h.setAvatarBackfillState(state)
 	}
 
+	// The photo of each of the user's own Gmail mailboxes replaces the site
+	// icon stored before Raven looked for it, rather than waiting for it to
+	// expire.
+	if !force && h.mailCredentials() != nil {
+		own, err := h.db.GetOwnGmailAvatarCandidates(ctx, avatarGoogleProfileRetryAfter)
+		if err != nil {
+			log.Printf("avatar: own mailbox photo scan failed: %v", err)
+		} else if len(own) > 0 {
+			state.Total += len(own)
+			h.setAvatarBackfillState(state)
+			if err := h.runAvatarBackfillBatch(ctx, own, domainCounts, handleResult); err != nil {
+				state = finishAvatarBackfillCanceled(state, err)
+				h.setAvatarBackfillState(state)
+				return
+			}
+		}
+	}
+
 	if force {
 		if err := h.runAvatarBackfillFull(ctx, domainCounts, handleResult); err != nil {
 			state = finishAvatarBackfillCanceled(state, err)
