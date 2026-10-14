@@ -7063,6 +7063,8 @@ func (h *Handler) handleGoogleAccountCallback(w http.ResponseWriter, r *http.Req
 
 	h.closeBodyClient(accountID)
 	h.syncer.RestartAccount(accountID)
+	// Look up the account's own Google photo now instead of at the next backfill.
+	h.enqueueAvatarWarmup(storage.SenderAvatarCandidate{EmailHash: avatarresolver.GravatarHash(info.Email), Email: strings.ToLower(strings.TrimSpace(info.Email))})
 	go func() {
 		bg, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 		defer cancel()
