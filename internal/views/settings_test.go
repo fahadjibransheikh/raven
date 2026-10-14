@@ -3,6 +3,8 @@ package views
 import (
 	"bytes"
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"slices"
 	"strings"
@@ -905,5 +907,44 @@ func TestAddAccountDialogSlotDoesNotCarryTheWizard(t *testing.T) {
 	}
 	if strings.Contains(content.String(), "<script>") {
 		t.Fatal("wizard fragment must not carry the shared script; it is a static asset")
+	}
+}
+
+func TestChooseAccountTypeDialogOffersOnlyConfiguredOAuthProviders(t *testing.T) {
+	render := func(google, microsoft bool) string {
+		var out bytes.Buffer
+		handler := WithMailboxOAuth(google, microsoft, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if err := ChooseAccountTypeDialog().Render(r.Context(), &out); err != nil {
+				t.Fatalf("ChooseAccountTypeDialog.Render() error = %v", err)
+			}
+		}))
+		handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/", nil))
+		return out.String()
+	}
+	const gmail, outlook = `"gmail-account-dialog"`, `"outlook-account-dialog"`
+
+	both := render(true, true)
+	if !strings.Contains(both, gmail) || !strings.Contains(both, outlook) || strings.Contains(both, "isn't set up") {
+		t.Fatal("chooser hides a configured OAuth provider")
+	}
+	noGoogle := render(false, true)
+	if strings.Contains(noGoogle, gmail) || !strings.Contains(noGoogle, outlook) || !strings.Contains(noGoogle, "Google sign-in isn't set up on this Raven.") {
+		t.Fatal("chooser without Google should drop Gmail, keep Outlook, and say why")
+	}
+	noMicrosoft := render(true, false)
+	if strings.Contains(noMicrosoft, outlook) || !strings.Contains(noMicrosoft, gmail) || !strings.Contains(noMicrosoft, "Microsoft sign-in isn't set up on this Raven.") {
+		t.Fatal("chooser without Microsoft should drop Outlook, keep Gmail, and say why")
+	}
+	for name, html := range map[string]string{"google off": noGoogle, "microsoft off": noMicrosoft} {
+		if !strings.Contains(html, "openAddAccountDialog") || !strings.Contains(html, "openICloudAccountDialog") {
+			t.Fatalf("%s: chooser lost the IMAP/iCloud paths", name)
+		}
+	}
+	var plain bytes.Buffer
+	if err := ChooseAccountTypeDialog().Render(context.Background(), &plain); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(plain.String(), gmail) || !strings.Contains(plain.String(), outlook) {
+		t.Fatal("chooser without the middleware should offer both providers")
 	}
 }

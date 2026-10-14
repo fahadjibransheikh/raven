@@ -161,7 +161,7 @@ func newManagedApplication(parent context.Context, path string, maxOpen int) (re
 	app.auth.StartSessionCleanup(ctx)
 	app.flows.StartCleanup(ctx)
 	app.notifications.Start(ctx)
-	app.handler = httpguard.Gzip(app.httpConfig.ClientNetworkMiddleware(authConfig.Enabled, app.httpConfig.ClientSourceMiddleware(app.httpConfig.Middleware(app.auth.Middleware(views.WithListViewCookie(mux))))))
+	app.handler = httpguard.Gzip(app.httpConfig.ClientNetworkMiddleware(authConfig.Enabled, app.httpConfig.ClientSourceMiddleware(app.httpConfig.Middleware(app.auth.Middleware(views.WithMailboxOAuth(mailConfig.GoogleClient != nil, mailConfig.MicrosoftClient != nil, views.WithListViewCookie(mux)))))))
 	return app, nil
 }
 
