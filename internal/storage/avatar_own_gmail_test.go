@@ -36,7 +36,7 @@ func TestGetGmailAccountIDByEmail(t *testing.T) {
 func TestGetOwnGmailAvatarCandidates(t *testing.T) {
 	db := newContactsTestDB(t)
 	ctx := t.Context()
-	for _, email := range []string{"icon@brand.example", "photo@brand.example", "none@brand.example", "failed@brand.example", "retry@brand.example", "gone@brand.example"} {
+	for _, email := range []string{"icon@brand.example", "photo@brand.example", "none@brand.example", "failed@brand.example", "retry@brand.example", "gone@brand.example", "noimage@brand.example"} {
 		if _, err := db.Write().ExecContext(ctx, `INSERT INTO accounts (id, provider, email_address, is_deleting) VALUES (?, 'gmail', ?, ?)`, email, email, email == "gone@brand.example"); err != nil {
 			t.Fatal(err)
 		}
@@ -58,6 +58,10 @@ func TestGetOwnGmailAvatarCandidates(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	// No provider found an image for this mailbox; it waits for a retry days away.
+	if _, err := db.Write().ExecContext(ctx, `INSERT INTO sender_avatars (email_hash, email, source, status, next_retry_at) VALUES (?, 'noimage@brand.example', 'libravatar', 'error', datetime('now', '+2 days'))`, avatarresolver.GravatarHash("noimage@brand.example")); err != nil {
+		t.Fatal(err)
+	}
 	// This lookup failed longer ago than the retry wait.
 	if _, err := db.Write().ExecContext(ctx, `UPDATE avatar_provider_states SET checked_at = datetime('now', '-2 hours') WHERE email = 'retry@brand.example'`); err != nil {
 		t.Fatal(err)
@@ -71,8 +75,8 @@ func TestGetOwnGmailAvatarCandidates(t *testing.T) {
 	for _, c := range got {
 		emails[c.Email] = true
 	}
-	if len(got) != 2 || !emails["icon@brand.example"] || !emails["retry@brand.example"] {
-		t.Fatalf("candidates = %+v, want the stored icon and the lookup due for a retry", got)
+	if len(got) != 3 || !emails["icon@brand.example"] || !emails["retry@brand.example"] || !emails["noimage@brand.example"] {
+		t.Fatalf("candidates = %+v, want the stored icon, the mailbox without an image and the lookup due for a retry", got)
 	}
 }
 

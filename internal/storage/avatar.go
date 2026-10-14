@@ -424,16 +424,15 @@ func (db *DB) GetGmailAccountIDByEmail(ctx context.Context, email string) (strin
 }
 
 // GetOwnGmailAvatarCandidates lists the connected Gmail mailboxes whose
-// stored avatar came from another source and has not had a Google profile
-// lookup lately, so their photo can replace it before the stored avatar
-// expires. A failed lookup is retried after retryAfter; one that found nothing
+// stored avatar came from another source, or that have none yet, and have not
+// had a Google profile lookup lately, so their photo can replace it before the
+// stored avatar expires or its next retry is due. A failed lookup is retried after retryAfter; one that found nothing
 // or a photo is not repeated here.
 func (db *DB) GetOwnGmailAvatarCandidates(ctx context.Context, retryAfter time.Duration) ([]SenderAvatarCandidate, error) {
 	rows, err := db.Read().QueryContext(ctx,
 		`SELECT sa.email_hash, sa.email
 		 FROM sender_avatars sa
-		 WHERE sa.status = 'found'
-		  AND sa.source != 'google_profile'
+		 WHERE sa.source != 'google_profile'
 		  AND EXISTS (
 		 	SELECT 1 FROM accounts a
 		 	WHERE a.provider = 'gmail' AND COALESCE(a.is_deleting, 0) = 0
