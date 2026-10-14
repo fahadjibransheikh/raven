@@ -206,6 +206,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # Compiled into the app by option_env! (lib.rs) so they stay out of the
+          # repo; only the steps that run rustc need them.
+          RAVEN_GOOGLE_DESKTOP_CLIENT_ID: ${{ secrets.RAVEN_GOOGLE_DESKTOP_CLIENT_ID }}
+          RAVEN_GOOGLE_DESKTOP_CLIENT_SECRET: ${{ secrets.RAVEN_GOOGLE_DESKTOP_CLIENT_SECRET }}
         with:
           projectPath: tauri-wrapper
           tauriScript: cargo tauri
@@ -231,6 +235,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # Compiled into the app by option_env! (lib.rs) so they stay out of the
+          # repo; only the steps that run rustc need them.
+          RAVEN_GOOGLE_DESKTOP_CLIENT_ID: ${{ secrets.RAVEN_GOOGLE_DESKTOP_CLIENT_ID }}
+          RAVEN_GOOGLE_DESKTOP_CLIENT_SECRET: ${{ secrets.RAVEN_GOOGLE_DESKTOP_CLIENT_SECRET }}
         with:
           projectPath: tauri-wrapper
           tauriScript: cargo tauri
