@@ -35,6 +35,12 @@ func LoadConfig(baseURL string, authenticationEnabled bool) *Config {
 
 	googleClientID := strings.TrimSpace(os.Getenv("GOOGLE_OAUTH_CLIENT_ID"))
 	googleClientSecret := strings.TrimSpace(os.Getenv("GOOGLE_OAUTH_CLIENT_SECRET"))
+	if googleClientID == "" {
+		// Desktop built-in client: fallback only, since existing refresh tokens
+		// are bound to the operator's own Web client.
+		googleClientID = strings.TrimSpace(os.Getenv("RAVEN_DESKTOP_GOOGLE_OAUTH_CLIENT_ID"))
+		googleClientSecret = strings.TrimSpace(os.Getenv("RAVEN_DESKTOP_GOOGLE_OAUTH_CLIENT_SECRET"))
+	}
 	if googleClientID != "" && googleClientSecret != "" {
 		cfg.GoogleClient = &oauth2.Config{
 			ClientID:     googleClientID,

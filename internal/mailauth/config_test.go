@@ -69,3 +69,39 @@ func TestLoadConfigAllowsMicrosoftMailboxWithoutSecret(t *testing.T) {
 		t.Fatalf("auth style = %v, want client_id in form params", cfg.MicrosoftClient.Endpoint.AuthStyle)
 	}
 }
+
+func TestLoadConfigFallsBackToDesktopGoogleClient(t *testing.T) {
+	t.Setenv("GOOGLE_OAUTH_CLIENT_ID", "")
+	t.Setenv("GOOGLE_OAUTH_CLIENT_SECRET", "")
+	t.Setenv("RAVEN_DESKTOP_GOOGLE_OAUTH_CLIENT_ID", "desktop-client")
+	t.Setenv("RAVEN_DESKTOP_GOOGLE_OAUTH_CLIENT_SECRET", "desktop-secret")
+
+	cfg := LoadConfig("http://localhost:8090", true)
+	if cfg.GoogleClient == nil || cfg.GoogleClient.ClientID != "desktop-client" || cfg.GoogleClient.ClientSecret != "desktop-secret" {
+		t.Fatalf("Google client = %#v, want the desktop fallback", cfg.GoogleClient)
+	}
+	if cfg.GoogleClient.RedirectURL != "http://localhost:8090/auth/google/mailbox/callback" {
+		t.Fatalf("redirect = %q", cfg.GoogleClient.RedirectURL)
+	}
+}
+
+func TestLoadConfigPrefersConfiguredGoogleClientOverDesktopFallback(t *testing.T) {
+	t.Setenv("GOOGLE_OAUTH_CLIENT_ID", "web-client")
+	t.Setenv("GOOGLE_OAUTH_CLIENT_SECRET", "web-secret")
+	t.Setenv("RAVEN_DESKTOP_GOOGLE_OAUTH_CLIENT_ID", "desktop-client")
+	t.Setenv("RAVEN_DESKTOP_GOOGLE_OAUTH_CLIENT_SECRET", "desktop-secret")
+
+	cfg := LoadConfig("http://localhost:8090", true)
+	if cfg.GoogleClient == nil || cfg.GoogleClient.ClientID != "web-client" || cfg.GoogleClient.ClientSecret != "web-secret" {
+		t.Fatalf("Google client = %#v, want the configured Web client", cfg.GoogleClient)
+	}
+}
+
+func TestLoadConfigWithoutAnyGoogleClientLeavesGoogleDisabled(t *testing.T) {
+	for _, name := range []string{"GOOGLE_OAUTH_CLIENT_ID", "GOOGLE_OAUTH_CLIENT_SECRET", "RAVEN_DESKTOP_GOOGLE_OAUTH_CLIENT_ID", "RAVEN_DESKTOP_GOOGLE_OAUTH_CLIENT_SECRET"} {
+		t.Setenv(name, "")
+	}
+	if cfg := LoadConfig("http://localhost:8090", true); cfg.GoogleClient != nil {
+		t.Fatalf("Google client = %#v, want nil", cfg.GoogleClient)
+	}
+}
