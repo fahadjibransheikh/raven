@@ -3049,7 +3049,7 @@ dependencies = [
 
 [[package]]
 name = "raven-desktop"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "getrandom 0.3.4",
  "objc2",

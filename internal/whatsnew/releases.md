@@ -7,6 +7,12 @@ Then an optional hero line, then "### New", "### Improved", "### Fixed" or
 replaces it with the real version number. GitHub release notes use the same text.
 -->
 
+## 1.0.2 | 2026-10-14 | Your own profile photo
+Your Gmail and Google Workspace accounts now show your own Google profile photo.
+
+### Fixed
+- Google Workspace accounts showed the company's logo as your picture, and personal Gmail accounts could show only a letter. Raven now uses the profile photo from your Google account wherever your address appears. Existing accounts switch over on their own shortly after updating.
+
 ## 1.0.1 | 2026-10-14 | Add Gmail with Google sign-in
 Anyone using the desktop app can now add a Gmail account by signing in with Google.
 
