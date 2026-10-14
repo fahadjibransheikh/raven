@@ -7,6 +7,14 @@ Then an optional hero line, then "### New", "### Improved", "### Fixed" or
 replaces it with the real version number. GitHub release notes use the same text.
 -->
 
+## 1.0.1 | 2026-10-14 | Add Gmail with Google sign-in
+Anyone using the desktop app can now add a Gmail account by signing in with Google.
+
+### Fixed
+- Adding a Gmail account with "Sign in with Google" in the desktop app failed with "google oauth not configured" unless you had set up your own Google sign-in. It now works out of the box. Google may say it hasn't verified Raven yet; choose Advanced, then continue to Raven.
+- If Google or Microsoft sign-in isn't set up on a Raven server, the add-account window now says so instead of showing an option that fails.
+- On iPhone, adding Raven to the Home Screen always used the default icon. It now uses the app icon you picked under Settings, Appearance. Remove and re-add the Home Screen icon to pick up a new one.
+
 ## 1.0.0 | 2026-10-13 | Raven 1.0
 Raven reaches 1.0: one place for your mail, contacts and calendar, on your desktop and your phone. Here is what that covers.
 
