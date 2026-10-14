@@ -66,7 +66,7 @@ func TestEmbeddedNotesParse(t *testing.T) {
 	for _, g := range r[0].Groups {
 		items += len(g.Items)
 	}
-	if items < 8 || items > 14 {
+	if items < 1 || items > 14 { // patch releases can be short; the cap keeps the pop-up readable
 		t.Errorf("newest entry has %d bullets, want a short list", items)
 	}
 }
