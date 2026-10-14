@@ -279,6 +279,24 @@ func (h *Handler) runAvatarBackfill(ctx context.Context, runID int64, force bool
 		h.setAvatarBackfillState(state)
 	}
 
+	// The photo of each of the user's own Gmail mailboxes replaces the site
+	// icon stored before Raven looked for it, rather than waiting for it to
+	// expire.
+	if !force && h.mailCredentials() != nil {
+		own, err := h.db.GetOwnGmailAvatarCandidates(ctx, avatarGoogleProfileRetryAfter)
+		if err != nil {
+			log.Printf("avatar: own mailbox photo scan failed: %v", err)
+		} else if len(own) > 0 {
+			state.Total += len(own)
+			h.setAvatarBackfillState(state)
+			if err := h.runAvatarBackfillBatch(ctx, own, domainCounts, handleResult); err != nil {
+				state = finishAvatarBackfillCanceled(state, err)
+				h.setAvatarBackfillState(state)
+				return
+			}
+		}
+	}
+
 	if force {
 		if err := h.runAvatarBackfillFull(ctx, domainCounts, handleResult); err != nil {
 			state = finishAvatarBackfillCanceled(state, err)
@@ -731,6 +749,27 @@ func (h *Handler) fetchAndPersistAvatarGuarded(ctx context.Context, hash, email 
 	outcomes := []avatarProviderOutcome{}
 	lastProviderErr := error(nil)
 	lastErrorProvider := ""
+	// The user's own Gmail address has a photo of its own at Google; the
+	// providers below would give it the company logo of its domain.
+	accountID, err := h.ownGmailAccountID(ctx, email)
+	if err != nil {
+		return avatarresolver.Image{}, false, outcomes, err
+	}
+	if accountID != "" {
+		if observeProvider != nil {
+			observeProvider(avatarGoogleProfile)
+		}
+		image, found, outcome, err := h.fetchGoogleProfileAvatar(ctx, hash, email, accountID, validate)
+		if outcome.status != "" {
+			outcomes = append(outcomes, outcome)
+		}
+		if err != nil {
+			return avatarresolver.Image{}, false, outcomes, err
+		}
+		if found {
+			return image, true, outcomes, nil
+		}
+	}
 	plan := avatarProviderPlanForEmail(email, domainSenderCount)
 	for provider, message := range plan.skipped {
 		providerStatuses[provider] = "skipped"

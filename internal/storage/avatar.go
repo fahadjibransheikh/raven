@@ -408,6 +408,72 @@ func (db *DB) GetReusableDomainIconAvatar(ctx context.Context, hash, email strin
 	return &rec, nil
 }
 
+// GetGmailAccountIDByEmail returns the id of the connected Gmail mailbox whose
+// address is email, or "" when email is not one.
+func (db *DB) GetGmailAccountIDByEmail(ctx context.Context, email string) (string, error) {
+	var id string
+	err := db.Read().QueryRowContext(ctx,
+		`SELECT id FROM accounts
+		 WHERE provider = 'gmail' AND COALESCE(is_deleting, 0) = 0 AND lower(trim(email_address)) = ?
+		 ORDER BY created_at, id
+		 LIMIT 1`, strings.ToLower(strings.TrimSpace(email))).Scan(&id)
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
+	return id, err
+}
+
+// GetOwnGmailAvatarCandidates lists the connected Gmail mailboxes whose
+// stored avatar came from another source, or that have none yet, and have not
+// had a Google profile lookup lately, so their photo can replace it before the
+// stored avatar expires or its next retry is due. A failed lookup is retried after retryAfter; one that found nothing
+// or a photo is not repeated here.
+func (db *DB) GetOwnGmailAvatarCandidates(ctx context.Context, retryAfter time.Duration) ([]SenderAvatarCandidate, error) {
+	rows, err := db.Read().QueryContext(ctx,
+		`SELECT sa.email_hash, sa.email
+		 FROM sender_avatars sa
+		 WHERE sa.source != 'google_profile'
+		  AND EXISTS (
+		 	SELECT 1 FROM accounts a
+		 	WHERE a.provider = 'gmail' AND COALESCE(a.is_deleting, 0) = 0
+		 	  AND lower(trim(a.email_address)) = lower(trim(sa.email))
+		  )
+		  AND NOT EXISTS (
+		 	SELECT 1 FROM avatar_provider_states aps
+		 	WHERE aps.email_hash = sa.email_hash AND aps.provider = 'google_profile'
+		 	  AND (aps.status IN ('found', 'missing') OR aps.checked_at > ?)
+		  )
+		 ORDER BY sa.email_hash`, formatDBTime(time.Now().Add(-retryAfter)))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var candidates []SenderAvatarCandidate
+	for rows.Next() {
+		var c SenderAvatarCandidate
+		if err := rows.Scan(&c.EmailHash, &c.Email); err != nil {
+			return nil, err
+		}
+		candidates = append(candidates, c)
+	}
+	return candidates, rows.Err()
+}
+
+// ExtendSenderAvatar moves the expiry of a stored avatar from source to
+// expiresAt, keeping its image, and reports whether there was one.
+func (db *DB) ExtendSenderAvatar(ctx context.Context, hash, source string, expiresAt time.Time) (bool, error) {
+	res, err := db.Write().ExecContext(ctx,
+		`UPDATE sender_avatars SET expires_at = ?, updated_at = CURRENT_TIMESTAMP
+		 WHERE email_hash = ? AND status = 'found' AND source = ? AND (storage_path != '' OR image_data IS NOT NULL)`,
+		formatDBTime(expiresAt), strings.ToLower(strings.TrimSpace(hash)), source)
+	if err != nil {
+		return false, err
+	}
+	n, err := res.RowsAffected()
+	return n > 0, err
+}
+
 func (db *DB) hydrateContactAvatar(ctx context.Context, contact *models.Contact) {
 	if contact == nil || contact.AvatarHash == "" {
 		return
