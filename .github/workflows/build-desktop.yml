@@ -189,6 +189,12 @@ jobs:
         working-directory: tauri-wrapper/src-tauri
         run: cargo tauri icon icons/icon.png
 
+      # tauri.conf.json copies the widget into Raven.app/Contents/PlugIns.
+      - name: Build the macOS agenda widget
+        if: runner.os == 'macOS'
+        shell: bash
+        run: tauri-wrapper/widget/build.sh
+
       # The signing key is exposed only to the two tauri-action steps below (step
       # env, never job env), and no other third-party action in this job runs
       # with it. tauri-action is the one third-party action that must see it.

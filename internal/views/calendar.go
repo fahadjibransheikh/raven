@@ -276,6 +276,15 @@ func calendarEventSummary(event CalendarEvent) string {
 	return "Untitled event"
 }
 
+// CalendarEventHexColor is the event's source color as #rrggbb, or "" for the
+// theme's primary color.
+func CalendarEventHexColor(color string) string {
+	if strings.TrimSpace(color) == "" {
+		return ""
+	}
+	return accountColorValue(color)
+}
+
 func calendarEventColorStyle(event CalendarEvent) string {
 	color := strings.TrimSpace(event.SourceColor)
 	if color == "" {

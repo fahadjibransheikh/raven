@@ -107,6 +107,20 @@ fn desktop_google_env() -> Vec<(&'static str, &'static str)> {
     }
 }
 
+/// Where the server writes the agenda the macOS widget shows: inside the
+/// widget extension's own sandbox container, which macOS creates the first
+/// time the user adds the widget (the server skips writing until then). The
+/// widget only reads this file, so it needs no token or network access.
+fn widget_snapshot_env() -> Vec<(&'static str, String)> {
+    match std::env::var("HOME") {
+        Ok(home) if cfg!(target_os = "macos") && !home.is_empty() => vec![(
+            "RAVEN_WIDGET_SNAPSHOT_PATH",
+            format!("{home}/Library/Containers/com.fahadsheikh.raven.widget/Data/Library/Application Support/Raven/agenda.json"),
+        )],
+        _ => Vec::new(),
+    }
+}
+
 /// Working directory the sidecar is spawned with. Raven reads its .env
 /// (OAuth credentials) and its data/ SQLite store relative to its process
 /// working directory, so this is the per-user app data folder
@@ -346,6 +360,7 @@ fn start_sidecar(app: &AppHandle) {
             .current_dir(working_dir)
             .envs(SIDECAR_ENV)
             .envs(desktop_google_env())
+            .envs(widget_snapshot_env())
             .env("RAVEN_ADDR", format!("127.0.0.1:{port}"))
             .env("RAVEN_BASE_URL", format!("http://localhost:{port}"))
             .env("RAVEN_DESKTOP_TOKEN", &state.token)
@@ -624,13 +639,14 @@ fn mailto_path(raw: &str) -> String {
     format!("/?{}", url.query().unwrap_or_default())
 }
 
-/// Opens compose for a mailto: link handed to the app by the OS. Before the
-/// server is up the link is parked and used by the startup thread instead.
+/// Opens compose for a mailto: link handed to the app by the OS, or Calendar
+/// for raven://calendar (the agenda widget's tap target). Before the server is
+/// up the link is parked and used by the startup thread instead.
 fn open_mailto(app: &AppHandle, urls: Vec<tauri::Url>) {
-    let Some(url) = urls.into_iter().find(|url| url.scheme() == "mailto") else {
+    let Some(url) = urls.into_iter().find(|url| matches!(url.scheme(), "mailto" | "raven")) else {
         return;
     };
-    let next = mailto_path(url.as_str());
+    let next = if url.scheme() == "raven" { "/calendar".to_string() } else { mailto_path(url.as_str()) };
     show_main_window(app, false);
     let state = app.state::<SidecarState>();
     let mut pending = state.pending_next.lock().unwrap();

@@ -32,3 +32,6 @@ node_modules/
 # Local build output (air, scratch binaries)
 /tmp/
 __pycache__/
+
+# macOS widget build output (tauri-wrapper/widget/build.sh)
+/tauri-wrapper/widget/build/
