@@ -24,13 +24,15 @@ templ AppIcon() {
 	@AppIconFor(nil)
 }
 
-// AppIconFor renders the browser tab icon the user chose, in the theme the page
-// renders with. ui-settings.js swaps it live when either setting changes. The
-// manifest and apple-touch-icon stay the default on purpose.
+// AppIconFor renders the browser tab icon and the iOS home-screen icon the user
+// chose, in the theme the page renders with. ui-settings.js swaps both live when
+// either setting changes. iOS copies the home-screen icon when it is added, so
+// an icon already on a home screen keeps its old look. The manifest (Android,
+// desktop installs) stays the default.
 templ AppIconFor(uiSettings map[string]string) {
 	<link rel="icon" type="image/svg+xml" href={ appIconHref(uiSettings) }/>
 	<link rel="manifest" href="/assets/manifest.webmanifest"/>
-	<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png"/>
+	<link rel="apple-touch-icon" href={ appleTouchIconHref(uiSettings) }/>
 	<meta name="apple-mobile-web-app-capable" content="yes"/>
 	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 }
