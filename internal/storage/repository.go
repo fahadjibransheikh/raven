@@ -4376,7 +4376,9 @@ func (db *DB) UpdateFolderUnreadCount(ctx context.Context, folderID string) (int
 // changing their thread_id: only those messages' threads are recomputed.
 func (db *DB) refreshFolderForMessages(ctx context.Context, folderID string, messageIDs []int64) {
 	_, _ = db.UpdateFolderUnreadCount(ctx, folderID)
-	_ = db.RefreshFolderThreadsForMessages(ctx, folderID, messageIDs)
+	if err := db.RefreshFolderThreadsForMessages(ctx, folderID, messageIDs); err != nil {
+		log.Printf("storage: refresh thread state for %d message(s) in folder %s: %v", len(messageIDs), folderID, err)
+	}
 }
 
 func (db *DB) RefreshFolderThreadState(ctx context.Context, folderID string) error {
@@ -4400,6 +4402,17 @@ func (db *DB) RefreshFolderThreadsForMessages(ctx context.Context, folderID stri
 	if folderID == "" || len(messageIDs) == 0 {
 		return nil
 	}
+	// The ids are bound twice below and SQLite caps bound variables at 32766,
+	// so a big list goes in batches. Each batch recomputes its threads in full.
+	if len(messageIDs) > 500 {
+		for start := 0; start < len(messageIDs); start += 500 {
+			if err := db.RefreshFolderThreadsForMessages(ctx, folderID, messageIDs[start:min(start+500, len(messageIDs))]); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
 	idArgs := make([]any, 0, len(messageIDs))
 	for _, messageID := range messageIDs {
 		idArgs = append(idArgs, messageID)
