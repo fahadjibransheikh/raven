@@ -28,6 +28,11 @@ const (
 	manualRepairSyncTimeout           = 6 * time.Hour
 )
 
+// A scheduled, push, or poll sync that hangs would otherwise hold its account
+// (and, for scheduled runs, every later run) forever. Package variable so tests
+// can shorten it.
+var backgroundSyncTimeout = 30 * time.Minute
+
 type manualSyncJob struct {
 	index     int
 	accountID string
@@ -1140,7 +1145,9 @@ func (o *SyncOrchestrator) runScheduledSyncForUser(ctx context.Context, userID s
 					errorText = "account is already syncing"
 					log.Printf("scheduled sync: account %s skipped, account already syncing", job.accountID)
 				} else {
-					err := o.syncAccount(accountCtx, job.accountID, false)
+					timedCtx, cancelTimeout := context.WithTimeout(accountCtx, backgroundSyncTimeout)
+					err := o.syncAccount(timedCtx, job.accountID, false)
+					cancelTimeout()
 					if err != nil {
 						if ctx.Err() != nil {
 							status = "cancelled"
@@ -2078,7 +2085,11 @@ func (o *SyncOrchestrator) SyncAccount(ctx context.Context, accountID string) bo
 		if o.syncAccountOverride != nil {
 			syncAccount = o.syncAccountOverride
 		}
-		if err := syncAccount(syncCtx, accountID, false); err != nil {
+		// Errors are recorded against syncCtx: markAccountSyncError ignores a
+		// context that is already done, and a timeout is an error worth showing.
+		timedCtx, cancelTimeout := context.WithTimeout(syncCtx, backgroundSyncTimeout)
+		defer cancelTimeout()
+		if err := syncAccount(timedCtx, accountID, false); err != nil {
 			log.Printf("sync account %s: %v", accountID, err)
 			o.markAccountSyncError(syncCtx, accountID, err)
 		} else {

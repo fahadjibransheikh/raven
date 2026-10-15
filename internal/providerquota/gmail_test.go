@@ -219,3 +219,32 @@ func TestUnusedBudgetsAreForgotten(t *testing.T) {
 		t.Fatalf("budgets kept = %d, want only the one in use", len(b.mailboxes))
 	}
 }
+
+func TestDoGivesUpOnAServerThatNeverAnswers(t *testing.T) {
+	release := make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		select {
+		case <-release:
+		case <-time.After(3 * time.Second):
+		}
+	}))
+	defer server.Close()
+	defer close(release)
+	previous := requestTimeout
+	requestTimeout = 100 * time.Millisecond
+	defer func() { requestTimeout = previous }()
+
+	req, err := http.NewRequest(http.MethodGet, server.URL, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	start := time.Now()
+	resp, err := Do(req)
+	if err == nil {
+		resp.Body.Close()
+		t.Fatal("Do returned a response from a server that never answered")
+	}
+	if elapsed := time.Since(start); elapsed > 2*time.Second {
+		t.Fatalf("Do took %s to give up", elapsed)
+	}
+}
