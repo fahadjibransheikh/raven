@@ -235,11 +235,15 @@ func (h *Handler) signalOutgoingWorker() {
 	case h.outgoingWake <- struct{}{}:
 	default:
 	}
+	select {
+	case h.outgoingCopyWake <- struct{}{}:
+	default:
+	}
 }
 
 func (h *Handler) StartOutgoingSendWorker(ctx context.Context) {
 	// Calendar servers can be slow or unavailable. Their post-delivery saves
-	// must never hold up the mail queue or its independent Sent-copy worker.
+	// must never hold up the mail queue or the Sent-copy and draft loop.
 	go h.runCalendarReplyWorker(ctx)
 	go h.runOutgoingDispatcher(ctx)
 }
@@ -263,9 +267,9 @@ func (h *Handler) runOutgoingDispatcher(ctx context.Context) {
 		log.Printf("imap-draft: marked %d interrupted operation(s) ambiguous", count)
 	}
 	h.prepareMigratedOutgoingSends(ctx)
+	h.outgoingWorkers.Add(1)
+	go h.runSentCopyAndDraftLoop(ctx)
 	h.dispatchDueOutgoingSends(ctx)
-	h.runDueSentCopies(ctx)
-	h.runDueIMAPDraftOperations(ctx)
 
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
@@ -277,12 +281,33 @@ func (h *Handler) runOutgoingDispatcher(ctx context.Context) {
 			return
 		case <-h.outgoingWake:
 			h.dispatchDueOutgoingSends(ctx)
-			h.runDueSentCopies(ctx)
-			h.runDueIMAPDraftOperations(ctx)
 		case <-ticker.C:
 			h.dispatchDueOutgoingSends(ctx)
-			h.runDueSentCopies(ctx)
-			h.runDueIMAPDraftOperations(ctx)
+		}
+	}
+}
+
+// runSentCopyAndDraftLoop saves Sent copies and syncs IMAP drafts one at a time.
+// It is separate from the dispatcher so a hung IMAP server only delays this
+// loop, never the start of a send worker; each operation is bounded by
+// outgoingSendTimeout. The dispatcher's Wait covers it via outgoingWorkers.
+func (h *Handler) runSentCopyAndDraftLoop(ctx context.Context) {
+	defer h.outgoingWorkers.Done()
+	run := func() {
+		h.runDueSentCopies(ctx)
+		h.runDueIMAPDraftOperations(ctx)
+	}
+	run()
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-h.outgoingCopyWake:
+			run()
+		case <-ticker.C:
+			run()
 		}
 	}
 }
@@ -527,7 +552,9 @@ func (h *Handler) runDueSentCopies(ctx context.Context) {
 			return
 		}
 		for _, send := range sends {
-			h.reconcileSentCopy(ctx, send)
+			opCtx, cancel := context.WithTimeout(ctx, outgoingSendTimeout)
+			h.reconcileSentCopy(opCtx, send)
+			cancel()
 		}
 	}
 }

@@ -72,7 +72,9 @@ func (h *Handler) runDueIMAPDraftOperations(ctx context.Context) {
 			return
 		}
 		for _, operation := range operations {
-			h.reconcileIMAPDraftOperation(ctx, operation)
+			opCtx, cancel := context.WithTimeout(ctx, outgoingSendTimeout)
+			h.reconcileIMAPDraftOperation(opCtx, operation)
+			cancel()
 		}
 	}
 }
