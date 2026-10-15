@@ -71,9 +71,9 @@ With the development server running, open `http://local.localhost:8090`, or `htt
 ## releasing
 
 1. Bump `version` in `tauri-wrapper/src-tauri/Cargo.toml` (the only version source), add the release's entry to `internal/whatsnew/releases.md`, and commit both with `Cargo.lock`.
-2. Tag and push: `git tag vX.Y.Z && git push origin master vX.Y.Z`.
+2. Tag and push: `git tag vX.Y.Z && git push origin main vX.Y.Z`.
 
-GitHub Actions builds all three platforms, publishes the release with signed update files, and commits the Homebrew cask bump to `master` (run `git pull` afterwards). Then replace the placeholder under **Changes** in the release notes. The [`release`](./.claude/skills/release/SKILL.md) Claude skill covers every step, including writing the notes. Details, including the update signing key, are in [`tauri-wrapper/README.md`](./tauri-wrapper/README.md#releasing).
+GitHub Actions builds all three platforms, publishes the release with signed update files, and commits the Homebrew cask bump to `main` (run `git pull` afterwards). Then replace the placeholder under **Changes** in the release notes. The [`release`](./.claude/skills/release/SKILL.md) Claude skill covers every step, including writing the notes. Details, including the update signing key, are in [`tauri-wrapper/README.md`](./tauri-wrapper/README.md#releasing).
 
 ## setup and configuration
 

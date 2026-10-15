@@ -17,8 +17,8 @@ watching the run, checking the result, and writing the release notes.
 
 Skip this section if the user only wants notes for an existing release.
 
-1. `git pull --rebase origin master`. CI commits the Homebrew cask bump to
-   master after every release, so local master is often behind.
+1. `git pull --rebase origin main`. CI commits the Homebrew cask bump to
+   main after every release, so local main is often behind.
 2. The working tree must be clean and every change meant for this release
    committed. If not, stop and ask.
 3. Pick the version. Default to a patch bump (0.1.3 → 0.1.4). Use a minor
@@ -33,7 +33,7 @@ Skip this section if the user only wants notes for an existing release.
    the new version.
 6. Commit `internal/whatsnew/releases.md`, `tauri-wrapper/src-tauri/Cargo.toml` and `Cargo.lock` with the
    message `Bump desktop app version to X.Y.Z`. Then run
-   `git push origin master`, `git tag vX.Y.Z` and `git push origin vX.Y.Z`.
+   `git push origin main`, `git tag vX.Y.Z` and `git push origin vX.Y.Z`.
 7. Watch the run. It takes about 12 minutes, so run this in the background:
    `gh run list -R fahadjibransheikh/raven -w build-desktop.yml -L 1` gives
    the run ID, then poll `gh run view <id> -R ... --json status,conclusion,jobs`
