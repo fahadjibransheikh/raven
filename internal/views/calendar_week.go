@@ -10,20 +10,55 @@ import (
 
 const calendarWeekHourHeight = 64
 
+// Views in switcher order. Day, 3 Days and Week share the hour timeline.
+var calendarViews = []string{"day", "3day", "week", "month"}
+
+func calendarTimelineDays(view string) int {
+	switch view {
+	case "day":
+		return 1
+	case "3day":
+		return 3
+	case "week":
+		return 7
+	}
+	return 0
+}
+
+func calendarViewLabel(view string) string {
+	return map[string]string{"day": "Day", "3day": "3 Days", "week": "Week", "month": "Month"}[view]
+}
+
+// CalendarViewValid reports whether view is one the calendar can render.
+func CalendarViewValid(view string) bool {
+	return view == "month" || calendarTimelineDays(view) > 0
+}
+
 // Week view reuses the same cached events, agenda, and sync state as Month.
 func NewCalendarWeekData(at time.Time) CalendarMonthData {
+	return NewCalendarTimelineData(at, "week")
+}
+
+// Day and 3 Days start at the given date; Week starts on its Monday.
+func NewCalendarTimelineData(at time.Time, view string) CalendarMonthData {
 	if at.IsZero() {
 		at = time.Now()
 	}
+	days := calendarTimelineDays(view)
 	data := NewCalendarMonthData(at)
-	date := time.Date(at.Year(), at.Month(), at.Day(), 0, 0, 0, 0, at.Location())
-	start := date.AddDate(0, 0, -((int(date.Weekday()) + 6) % 7))
-	end := start.AddDate(0, 0, 6)
-	data.View = "week"
-	data.PeriodKey = "week:" + start.Format("2006-01-02")
+	start := time.Date(at.Year(), at.Month(), at.Day(), 0, 0, 0, 0, at.Location())
+	if view == "week" {
+		start = start.AddDate(0, 0, -((int(start.Weekday()) + 6) % 7))
+	}
+	end := start.AddDate(0, 0, days-1)
+	data.View = view
+	data.PeriodKey = view + ":" + start.Format("2006-01-02")
 	data.MonthLabel = calendarWeekRangeLabel(start, end)
+	if days == 1 {
+		data.MonthLabel = start.Format("Monday, Jan 2, 2006")
+	}
 	week := CalendarWeek{}
-	for index := 0; index < 7; index++ {
+	for index := 0; index < days; index++ {
 		day := start.AddDate(0, 0, index)
 		week.Days = append(week.Days, CalendarDay{
 			Date: day, DayNumber: day.Day(), ISODate: day.Format("2006-01-02"), InMonth: true,
@@ -46,29 +81,34 @@ func calendarWeekRangeLabel(start, end time.Time) string {
 }
 
 func calendarViewURL(view, date string) string {
-	if view != "week" {
+	if calendarTimelineDays(view) == 0 {
 		if len(date) >= 7 {
 			return calendarMonthURL(date[:7])
 		}
 		return "/calendar"
 	}
-	return "/calendar?" + url.Values{"view": {"week"}, "date": {date}}.Encode()
+	return "/calendar?" + url.Values{"view": {view}, "date": {date}}.Encode()
 }
 
 func calendarNavigationURL(data CalendarMonthData, direction int) string {
-	if data.View == "week" {
+	if days := calendarTimelineDays(data.View); days > 0 {
 		date, err := time.ParseInLocation("2006-01-02", data.DateKey, data.Month.Location())
 		if err != nil {
 			date = data.Weeks[0].Days[0].Date
 		}
-		date = date.AddDate(0, 0, direction*7)
-		return calendarViewURL("week", date.Format("2006-01-02"))
+		date = date.AddDate(0, 0, direction*days)
+		return calendarViewURL(data.View, date.Format("2006-01-02"))
 	}
 	return calendarMonthURL(data.Month.AddDate(0, direction, 0).Format("2006-01"))
 }
 
 func calendarNavigationLabel(data CalendarMonthData, direction string) string {
-	if data.View == "week" {
+	switch data.View {
+	case "day":
+		return direction + " day"
+	case "3day":
+		return direction + " 3 days"
+	case "week":
 		return direction + " week"
 	}
 	return direction + " month"
@@ -83,11 +123,30 @@ func calendarViewSwitchClass(active bool) string {
 }
 
 func calendarViewIndicatorStyle(view string) string {
-	transform := "translateX(0)"
-	if view == "week" {
-		transform = "translateX(calc(100% + 2px))"
+	index := 0
+	for i, candidate := range calendarViews {
+		if candidate == view {
+			index = i
+		}
 	}
-	return "width:calc((100% - 6px)/2);transform:" + transform
+	count := len(calendarViews)
+	return fmt.Sprintf("width:calc((100%% - %dpx)/%d);transform:translateX(calc(%d * (100%% + 2px)))", 4+2*(count-1), count, index)
+}
+
+func calendarTimelineGridStyle(days int) string {
+	return fmt.Sprintf("grid-template-columns:56px repeat(%d,minmax(0,1fr))", days)
+}
+
+func calendarAgendaEmptyDetail(view string) string {
+	switch view {
+	case "day":
+		return "Nothing is scheduled this day."
+	case "3day":
+		return "Nothing is scheduled in these 3 days."
+	case "week":
+		return "Nothing is scheduled this week."
+	}
+	return "Nothing is scheduled this month."
 }
 
 func calendarViewCurrent(active bool) string {

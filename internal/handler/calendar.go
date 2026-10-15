@@ -80,7 +80,7 @@ func (h *Handler) handleCalendarSync(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if value := strings.TrimSpace(r.FormValue("view")); value != "" {
-		if value != "month" && value != "week" {
+		if !views.CalendarViewValid(value) {
 			http.Error(w, "invalid calendar view", http.StatusBadRequest)
 			return
 		}
@@ -270,8 +270,13 @@ func calendarMonthFromRequest(r *http.Request, uiSettings map[string]string) tim
 
 func calendarDataFromRequest(r *http.Request, uiSettings map[string]string) views.CalendarMonthData {
 	at := calendarMonthFromRequest(r, uiSettings)
-	if r.URL.Query().Get("view") == "week" {
-		return views.NewCalendarWeekData(at)
+	view := r.URL.Query().Get("view")
+	if view == "" && r.URL.Query().Get("month") == "" {
+		// Opening Calendar with no period shows the next 3 days from today.
+		view = "3day"
+	}
+	if views.CalendarViewValid(view) && view != "month" {
+		return views.NewCalendarTimelineData(at, view)
 	}
 	return views.NewCalendarMonthData(at)
 }

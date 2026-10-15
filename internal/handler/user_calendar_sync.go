@@ -281,7 +281,7 @@ func (h *Handler) handleUserCalendarSync(w http.ResponseWriter, r *http.Request)
 		}
 	}
 	if view := strings.TrimSpace(r.FormValue("view")); view != "" {
-		if view != "month" && view != "week" {
+		if !views.CalendarViewValid(view) {
 			http.Error(w, "invalid calendar view", http.StatusBadRequest)
 			return
 		}

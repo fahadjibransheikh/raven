@@ -8475,10 +8475,12 @@ function calendarLoadingPeriodLabel(view, date) {
   function label(day, year) {
     return day.toLocaleDateString("en-US", { timeZone: "UTC", month: "short", day: "numeric", year: year ? "numeric" : undefined })
   }
-  if (view !== "week") return at.toLocaleDateString("en-US", { timeZone: "UTC", month: "long", year: "numeric" })
-  at.setUTCDate(at.getUTCDate() - (at.getUTCDay() + 6) % 7)
+  var days = { day: 1, "3day": 3, week: 7 }[view]
+  if (!days) return at.toLocaleDateString("en-US", { timeZone: "UTC", month: "long", year: "numeric" })
+  if (days === 1) return at.toLocaleDateString("en-US", { timeZone: "UTC", weekday: "long", month: "short", day: "numeric", year: "numeric" })
+  if (view === "week") at.setUTCDate(at.getUTCDate() - (at.getUTCDay() + 6) % 7)
   var end = new Date(at.getTime())
-  end.setUTCDate(end.getUTCDate() + 6)
+  end.setUTCDate(end.getUTCDate() + days - 1)
   if (at.getUTCFullYear() !== end.getUTCFullYear()) return label(at, true) + " – " + label(end, true)
   if (at.getUTCMonth() !== end.getUTCMonth()) return label(at, false) + " – " + label(end, true)
   return label(at, false) + "–" + end.getUTCDate() + ", " + end.getUTCFullYear()
@@ -8496,7 +8498,8 @@ function showCalendarContentPending(event) {
   var href = trigger.getAttribute("hx-get")
   if (!href || !href.startsWith("/calendar")) return
   var url = new URL(href, window.location.href)
-  var view = url.searchParams.get("view") === "week" ? "week" : "month"
+  // Mirrors calendarDataFromRequest: no view and no month opens 3 Days.
+  var view = url.searchParams.get("view") || (url.searchParams.get("month") ? "month" : "3day")
   var template = document.getElementById("calendar-loading-" + view)
   if (!template) return
   var content = template.content.cloneNode(true)
@@ -8584,6 +8587,13 @@ var _calendarLayoutFrame = null
 var _calendarNavigationRequest = null
 var _calendarNavigationTransition = null
 
+// Position of a view in the switcher (Day, 3 Days, Week, Month).
+function _calendarViewIndex(view) {
+  return Array.from(document.querySelectorAll("[data-calendar-view-nav] [data-calendar-view-switch]")).findIndex(function (link) {
+    return link.dataset.calendarViewSwitch === view
+  })
+}
+
 function setCalendarViewSwitch(view) {
   var group = document.querySelector("[data-calendar-view-nav]")
   if (!group) return
@@ -8595,7 +8605,8 @@ function setCalendarViewSwitch(view) {
     link.setAttribute("aria-current", active ? "page" : "false")
   })
   var indicator = group.querySelector("[data-calendar-view-indicator]")
-  if (indicator) indicator.style.transform = view === "week" ? "translateX(calc(100% + 2px))" : "translateX(0)"
+  var index = _calendarViewIndex(view)
+  if (indicator && index >= 0) indicator.style.transform = "translateX(calc(" + index + " * (100% + 2px)))"
 }
 
 document.body.addEventListener("htmx:beforeRequest", function (event) {
@@ -8767,12 +8778,13 @@ function initializeCalendarDaySelection() {
   agenda.querySelector("[data-calendar-agenda-empty-detail]").textContent = allHidden ?
     "Show a calendar in the sidebar to see its events." : selected ?
     "Nothing is scheduled on this day." :
-    calendar.dataset.calendarView === "week" ? "Nothing is scheduled this week." : "Nothing is scheduled this month."
+    agenda.querySelector("[data-calendar-agenda-empty-detail]").dataset.calendarAgendaEmptyDefault
   // Switch views around the selected date rather than an unrelated week.
   var focusDate = selected ? selected.dataset.calendarDay : calendar.dataset.calendarDate
   calendar.querySelectorAll("[data-calendar-view-switch]").forEach(function (link) {
-    var url = link.dataset.calendarViewSwitch === "week" ?
-      "/calendar?date=" + encodeURIComponent(focusDate) + "&view=week" : "/calendar?month=" + focusDate.slice(0, 7)
+    var view = link.dataset.calendarViewSwitch
+    var url = view !== "month" ?
+      "/calendar?date=" + encodeURIComponent(focusDate) + "&view=" + view : "/calendar?month=" + focusDate.slice(0, 7)
     if (link.getAttribute("hx-get") === url) return
     link.setAttribute("href", url)
     link.setAttribute("hx-get", url)
@@ -9052,6 +9064,7 @@ function initializeCalendarWeekScroll() {
     })
   })
   scroller.dataset.calendarLayoutKey = key
+  positionCalendarNowLine()
   var saved = _calendarWeekScrollState && _calendarWeekScrollState.period === calendar.dataset.calendarPeriod ? _calendarWeekScrollState : null
   if (_calendarWeekZoom === 0) scroller.scrollTop = 0
   else if (!wasInitialized) scroller.scrollTop = saved && saved.zoom === _calendarWeekZoom ? saved.top : _calendarWeekMinutePosition(7 * 60, axis)
@@ -9069,6 +9082,31 @@ function initializeCalendarWeekScroll() {
       button.setAttribute("aria-pressed", _calendarWeekZoom === 0 ? "true" : "false")
       button.classList.toggle("bg-accent", _calendarWeekZoom === 0)
     }
+  })
+}
+
+// The red current-time line sits on today's timed column, placed on the same
+// (possibly condensed) hour axis as the events.
+var _calendarNowLineTimer = null
+function positionCalendarNowLine() {
+  var calendar = document.getElementById("calendar-main")
+  var grid = calendar && calendar.querySelector("[data-calendar-week-grid]")
+  var axis = grid && grid._calendarWeekAxis
+  if (!axis) return
+  // Started on first use; it re-queries the DOM because HTMX swaps the grid.
+  if (!_calendarNowLineTimer) _calendarNowLineTimer = setInterval(positionCalendarNowLine, 30000)
+  var now = new Date()
+  var parts = {}
+  var options = { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }
+  // Go reports the "local" setting as "Local", which Intl rejects: use browser time.
+  try { options.timeZone = calendar.dataset.calendarTimezone === "Local" ? undefined : calendar.dataset.calendarTimezone; new Intl.DateTimeFormat("en-US", options) } catch (error) { options.timeZone = undefined }
+  new Intl.DateTimeFormat("en-US", options).formatToParts(now).forEach(function (part) { parts[part.type] = part.value })
+  var today = parts.year + "-" + parts.month + "-" + parts.day
+  var top = _calendarWeekMinutePosition(Number(parts.hour) * 60 + Number(parts.minute), axis)
+  grid.querySelectorAll("[data-calendar-now-line]").forEach(function (line) {
+    var column = line.closest("[data-calendar-timed-column]")
+    line.hidden = !column || column.dataset.calendarTimedColumn !== today
+    line.style.top = top + "px"
   })
 }
 
@@ -9130,6 +9168,7 @@ function setCalendarWeekZoom(zoom) {
       zoom: toAxis.zoom,
     }
     scroller.scrollTop = mix(fromTop, toTop)
+    positionCalendarNowLine()
   }
   function step(now) {
     if (scroller._calendarZoomAnimation !== animation) return
@@ -9415,7 +9454,7 @@ function configureCalendarNavigationRequest(event) {
   _calendarNavigationRequest = detail.xhr
   detail.xhr.ravenCalendarNavigationCrossover = viewSwitch
   if (viewSwitch) finishCalendarNavigationTransition()
-  detail.xhr.ravenCalendarNavigationDirection = arrow ? Number(trigger.dataset.calendarNavigate) : trigger.dataset.calendarViewSwitch === "week" ? 1 : -1
+  detail.xhr.ravenCalendarNavigationDirection = arrow ? Number(trigger.dataset.calendarNavigate) : _calendarViewIndex(trigger.dataset.calendarViewSwitch) > _calendarViewIndex(calendar.dataset.calendarView) ? 1 : -1
 }
 document.body.addEventListener("htmx:beforeRequest", configureCalendarNavigationRequest)
 document.body.addEventListener("htmx:beforeRequest", showCalendarContentPending)
@@ -9592,7 +9631,7 @@ function configureCalendarCreateDialog(event) {
   var calendar = document.getElementById("calendar-main")
   if (!calendar) return
   var selected = _calendarSelectedDay && _calendarSelectedDay.period === calendar.dataset.calendarPeriod ? _calendarSelectedDay.date : ""
-  event.detail.parameters.date = selected || (calendar.dataset.calendarView === "week" ? calendar.dataset.calendarDate : calendar.dataset.calendarTodayDate.slice(0, 7) === calendar.dataset.calendarMonth ? calendar.dataset.calendarTodayDate : calendar.dataset.calendarMonth + "-01")
+  event.detail.parameters.date = selected || (calendar.dataset.calendarView !== "month" ? calendar.dataset.calendarDate : calendar.dataset.calendarTodayDate.slice(0, 7) === calendar.dataset.calendarMonth ? calendar.dataset.calendarTodayDate : calendar.dataset.calendarMonth + "-01")
 }
 
 document.body.addEventListener("htmx:configRequest", function (event) {

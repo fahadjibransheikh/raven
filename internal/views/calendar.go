@@ -55,8 +55,8 @@ func calendarLoadingData(view string, uiSettings map[string]string) CalendarMont
 	}
 	at := time.Now().In(location)
 	data := NewCalendarMonthData(at)
-	if view == "week" {
-		data = NewCalendarWeekData(at)
+	if calendarTimelineDays(view) > 0 {
+		data = NewCalendarTimelineData(at, view)
 	}
 	data.Loading = true
 	return data
@@ -274,6 +274,15 @@ func calendarEventSummary(event CalendarEvent) string {
 		return summary
 	}
 	return "Untitled event"
+}
+
+// CalendarEventHexColor is the event's source color as #rrggbb, or "" for the
+// theme's primary color.
+func CalendarEventHexColor(color string) string {
+	if strings.TrimSpace(color) == "" {
+		return ""
+	}
+	return accountColorValue(color)
 }
 
 func calendarEventColorStyle(event CalendarEvent) string {

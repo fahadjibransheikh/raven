@@ -60,12 +60,18 @@
     "externalBin": [
       "binaries/raven-server"
     ],
-    "resources": []
+    "resources": [],
+    "macOS": {
+      "signingIdentity": "-",
+      "files": {
+        "PlugIns/RavenWidget.appex": "../widget/build/RavenWidget.appex"
+      }
+    }
   },
   "plugins": {
     "deep-link": {
       "desktop": {
-        "schemes": ["mailto"]
+        "schemes": ["mailto", "raven"]
       }
     },
     "updater": {

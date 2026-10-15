@@ -30,6 +30,7 @@ func (h *Handler) StartCalendarSync(ctx context.Context) {
 		go func() {
 			h.runRavenCalendarCarryoverTick(ctx, time.Now())
 			h.runCalendarSyncTick(ctx, time.Now())
+			h.writeCalendarWidgetSnapshot(ctx, time.Now())
 			h.runCalendarIncomingTick(ctx)
 			h.runCalendarMeetDraftCleanupTick(ctx)
 			h.runCalendarTeamsDraftCleanupTick(ctx)
@@ -42,6 +43,7 @@ func (h *Handler) StartCalendarSync(ctx context.Context) {
 				case now := <-ticker.C:
 					h.runRavenCalendarCarryoverTick(ctx, now)
 					h.runCalendarSyncTick(ctx, now)
+					h.writeCalendarWidgetSnapshot(ctx, now)
 					h.runCalendarIncomingTick(ctx)
 					h.runCalendarMeetDraftCleanupTick(ctx)
 					h.runCalendarTeamsDraftCleanupTick(ctx)

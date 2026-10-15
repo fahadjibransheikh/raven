@@ -1,10 +1,10 @@
 // Calendar keyboard shortcuts. Every key clicks an existing control (marked data-calendar-key),
 // so navigation, the new-event dialog and the rest keep their one code path.
-//   t today   j/ArrowRight next   k/ArrowLeft previous   m month   w week
+//   t today   j/ArrowRight next   k/ArrowLeft previous   d day   3 three days   w week   m month
 //   a agenda (phone)   c new event   e edit (while an event's details are open)
 //   Cmd/Ctrl+Enter saves the open event dialog. Esc already closes dialogs natively.
 (function () {
-  var KEYS = { t: "today", j: "next", ArrowRight: "next", k: "prev", ArrowLeft: "prev", m: "month", w: "week", a: "agenda", c: "new" }
+  var KEYS = { t: "today", j: "next", ArrowRight: "next", k: "prev", ArrowLeft: "prev", d: "day", 3: "3day", w: "week", m: "month", a: "agenda", c: "new" }
 
   // First visible-or-not, enabled control for the key (the New event button exists twice).
   function control(name) {
