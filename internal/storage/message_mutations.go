@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -445,7 +446,9 @@ func (db *DB) setMessageStateAndQueue(ctx context.Context, messageIDs []int64, k
 		if kind == MessageMutationRead {
 			db.refreshFolderForMessages(ctx, folderID, messageIDs)
 		} else {
-			_ = db.RefreshFolderThreadsForMessages(ctx, folderID, messageIDs)
+			if err := db.RefreshFolderThreadsForMessages(ctx, folderID, messageIDs); err != nil {
+				log.Printf("storage: refresh thread state for %d message(s) in folder %s: %v", len(messageIDs), folderID, err)
+			}
 		}
 	}
 	return nil

@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 type BlobStore struct {
@@ -408,10 +409,25 @@ func (s *BlobStore) DeleteAccount(accountID string) error {
 	return os.RemoveAll(filepath.Join(s.basePath, accountID))
 }
 
+// maxBlobFilenameBytes is the longest stored attachment name, ahead of the id prefix.
+const maxBlobFilenameBytes = 150
+
 func sanitizeFilename(name string) string {
 	clean := filepath.Base(name)
 	if clean == "." || clean == ".." {
 		return ""
+	}
+	if len(clean) > maxBlobFilenameBytes {
+		// Filesystems cap a name at 255 bytes and the attachment id prefix is added on top.
+		ext := filepath.Ext(clean)
+		if len(ext) > 16 {
+			ext = ""
+		}
+		n := maxBlobFilenameBytes - len(ext)
+		for n > 0 && !utf8.RuneStart(clean[n]) {
+			n--
+		}
+		clean = clean[:n] + ext
 	}
 	return clean
 }
