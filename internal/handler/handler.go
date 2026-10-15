@@ -204,7 +204,7 @@ func New(db *storage.DB, accountStore *config.AccountStore, syncer *mail.SyncOrc
 		messageMutationIMAPFactory: func(ctx context.Context, cfg *models.AccountConfig, password string) (messageMutationIMAPClient, error) {
 			return imap.NewClient(ctx, cfg, password)
 		},
-		remoteResourceDownloader: newRemoteResourceDownloader(privateTargetAllowed(db)),
+		remoteResourceDownloader: newRemoteResourceDownloader(nil),
 		messageFileKey:           newMessageFileKey(),
 		// Provider avatar addresses come from provider responses; they never
 		// need a private address.
@@ -250,6 +250,12 @@ func (h *Handler) mailCredentials() *mailauth.Service {
 // it before registering routes.
 func (h *Handler) SetTestPushSender(send func(ctx context.Context, userID, endpoint string) error) {
 	h.testPush = send
+}
+
+// SetRemoteResourceDownloader replaces how remote email images are fetched.
+// Tests use it to reach loopback servers; call it before registering routes.
+func (h *Handler) SetRemoteResourceDownloader(download func(ctx context.Context, url string) ([]byte, error)) {
+	h.remoteResourceDownloader = download
 }
 
 func (h *Handler) StartAccountDeletionCleanup(ctx context.Context) {
@@ -4460,7 +4466,7 @@ func (h *Handler) handleAllowRemoteContent(w http.ResponseWriter, r *http.Reques
 	for _, remoteURL := range remoteURLs {
 		download := h.remoteResourceDownloader
 		if download == nil {
-			download = newRemoteResourceDownloader(privateTargetAllowed(h.db))
+			download = newRemoteResourceDownloader(nil)
 		}
 		data, err := download(ctx, remoteURL)
 		if err != nil || len(data) == 0 {
@@ -4516,9 +4522,10 @@ func (h *Handler) handleAllowRemoteContent(w http.ResponseWriter, r *http.Reques
 
 // newRemoteResourceDownloader fetches the remote images a reader chose to
 // load. Their addresses come from the sender, so every connection goes
-// through netguard: private addresses only when an administrator approved
-// them, no proxy from the environment, and each redirect is checked again
-// when it connects.
+// through netguard, and callers pass a nil policy: administrator exceptions
+// are for servers the administrator named, not for URLs a sender chose. No
+// proxy from the environment, and each redirect is checked again when it
+// connects.
 func newRemoteResourceDownloader(allowPrivate netguard.PrivatePolicy) func(context.Context, string) ([]byte, error) {
 	client := &http.Client{
 		Timeout:   10 * time.Second,

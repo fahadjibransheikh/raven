@@ -3,11 +3,10 @@ package notifications
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -181,7 +180,6 @@ func TestUserMessageTranslationAndRemoteContentRoutes(t *testing.T) {
 	server := newRoutedIMAPServer(t)
 	image := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("remote image")) }))
 	t.Cleanup(image.Close)
-	allowPrivateImageServer(t, f, image)
 	server.mu.Lock()
 	server.bodyOverride = "From: sender@example.com\r\nSubject: Private content\r\nContent-Type: text/html\r\n\r\n<p>private body</p><img src=\"" + image.URL + "/image.png\">"
 	server.mu.Unlock()
@@ -232,7 +230,6 @@ func TestUserRemoteContentDownloadCancellation(t *testing.T) {
 	entered := make(chan struct{})
 	image := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { close(entered); <-r.Context().Done() }))
 	t.Cleanup(image.Close)
-	allowPrivateImageServer(t, f, image)
 	t.Cleanup(f.stopIMAP)
 	server.mu.Lock()
 	server.bodyOverride = "From: sender@example.com\r\nSubject: private\r\nContent-Type: text/html\r\n\r\n<p>private</p><img src=\"" + image.URL + "/image.png\">"
@@ -260,19 +257,20 @@ func TestUserRemoteContentDownloadCancellation(t *testing.T) {
 	}
 }
 
-// The test image server is on the loopback address, which remote image
-// downloads refuse unless an administrator approved it.
-func allowPrivateImageServer(t *testing.T, f *userStorageFixture, server *httptest.Server) {
-	t.Helper()
-	u, err := url.Parse(server.URL)
+// The test image servers are on the loopback address, which the real remote
+// image downloader refuses, so the fixture downloads without that guard.
+func downloadTestImage(ctx context.Context, rawURL string) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
-		t.Fatal(err)
+		return nil, err
 	}
-	port, err := strconv.Atoi(u.Port())
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		t.Fatal(err)
+		return nil, err
 	}
-	if err := f.system.AddPrivateTargetException(t.Context(), "http", u.Hostname(), port, "alice"); err != nil {
-		t.Fatal(err)
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
 	}
+	return io.ReadAll(resp.Body)
 }
