@@ -1,5 +1,7 @@
 # Upstream (gofer) merge plan
 
+> **Historical.** Raven split from gofer on 2026-10-15: the module is `github.com/fahadjibransheikh/raven`, the fork link and `upstream` remote are gone, and there are no more upstream merges. Kept because migration code cites it for the schema renumbering.
+
 Started 2026-10-12. Branch: `upstream-merge`. Goal: bring in gofer's work since the
 2026-09-17 merge-base (`338f103`) — calendar, per-user SQLite storage, security
 hardening, mail fixes, and the good parts of the phone UI — without changing
