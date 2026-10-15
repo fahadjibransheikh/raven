@@ -381,10 +381,6 @@ func contactInsightFieldLabel(kind string) string {
 	}
 }
 
-func (db *DB) ListContactCards(ctx context.Context, userID, profileID string) ([]models.ContactCard, error) {
-	return contactCardsQuery(ctx, db.Read(), userID, profileID)
-}
-
 func contactCardsQuery(ctx context.Context, query contactProfileQuery, userID, profileID string) ([]models.ContactCard, error) {
 	rows, err := query.QueryContext(ctx, `
 		SELECT id, user_id, profile_id, kind, provider, account_id, address_book_id, remote_id, etag, raw_payload, raw_payload_type, sync_status, last_error, is_deleted

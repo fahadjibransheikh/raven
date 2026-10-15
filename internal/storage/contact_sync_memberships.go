@@ -9,10 +9,6 @@ import (
 	"github.com/google/uuid"
 )
 
-func (db *DB) ListContactSyncMemberships(ctx context.Context, userID, profileID string) ([]models.ContactSyncMembership, error) {
-	return contactMembershipsQuery(ctx, db.Read(), userID, profileID)
-}
-
 func contactMembershipsQuery(ctx context.Context, query contactProfileQuery, userID, profileID string) ([]models.ContactSyncMembership, error) {
 	rows, err := query.QueryContext(ctx, `
 		SELECT id, user_id, profile_id, account_id, address_book_id, enabled, status, last_error

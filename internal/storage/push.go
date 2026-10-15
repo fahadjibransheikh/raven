@@ -74,14 +74,6 @@ func (db *DB) DeleteWebPushSubscription(ctx context.Context, userID, endpoint st
 	return err
 }
 
-func (db *DB) DeleteWebPushSubscriptionEndpoint(ctx context.Context, endpoint string) error {
-	if endpoint == "" {
-		return nil
-	}
-	_, err := db.Write().ExecContext(ctx, `DELETE FROM web_push_subscriptions WHERE endpoint = ?`, endpoint)
-	return err
-}
-
 func (db *DB) ListWebPushSubscriptions(ctx context.Context, userID string) ([]WebPushSubscription, error) {
 	rows, err := db.Read().QueryContext(ctx, `
 		SELECT endpoint, user_id, p256dh, auth, user_agent, last_error, revision
@@ -154,15 +146,4 @@ func migrateV119ToV120(db *sql.DB) error {
 		return err
 	}
 	return tx.Commit()
-}
-
-func (db *DB) SetWebPushSubscriptionError(ctx context.Context, endpoint, errText string) error {
-	if endpoint == "" {
-		return nil
-	}
-	_, err := db.Write().ExecContext(ctx, `
-		UPDATE web_push_subscriptions
-		SET last_error = ?, updated_at = CURRENT_TIMESTAMP
-		WHERE endpoint = ?`, errText, endpoint)
-	return err
 }

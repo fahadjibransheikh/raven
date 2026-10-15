@@ -1133,31 +1133,6 @@ func (db *DB) getProfileContactSaveTargets(ctx context.Context, userID, profileI
 	return targets, true, nil
 }
 
-func (db *DB) AddContactSaveTarget(ctx context.Context, userID, contactID, target string) error {
-	target = strings.TrimSpace(target)
-	if userID == "" || contactID == "" || target == "" {
-		return nil
-	}
-	profile, err := db.GetContactProfile(ctx, userID, contactID)
-	if err != nil {
-		return err
-	}
-	if profile == nil {
-		return sql.ErrNoRows
-	}
-	if target == "local" {
-		return db.upsertContactCard(ctx, models.ContactCard{UserID: userID, ProfileID: contactID, Kind: "local"})
-	}
-	if !strings.HasPrefix(target, "account:") && !strings.HasPrefix(target, "book:") {
-		return nil
-	}
-	current, err := db.GetContactSaveTargets(ctx, userID, contactID)
-	if err != nil {
-		return err
-	}
-	return db.ReplaceContactSyncMemberships(ctx, userID, contactID, append(current, target))
-}
-
 func normalizeContactSaveTargets(targets []string) []string {
 	seen := make(map[string]bool)
 	out := make([]string, 0, len(targets)+1)
