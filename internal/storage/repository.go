@@ -4140,6 +4140,15 @@ func (db *DB) GetFolderRemoteID(ctx context.Context, folderID string) (string, e
 	return strings.TrimSpace(remoteID), err
 }
 
+func (db *DB) GetFolderAccountID(ctx context.Context, folderID string) (string, error) {
+	var accountID string
+	err := db.Read().QueryRowContext(ctx, `SELECT account_id FROM folders WHERE id = ?`, strings.TrimSpace(folderID)).Scan(&accountID)
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
+	return accountID, err
+}
+
 // ResolveFolderIDForUser accepts a canonical folder ID or a pre-migration
 // alias, while keeping the lookup scoped to the account owner. Virtual folder
 // IDs are returned unchanged because they are not rows in folders.

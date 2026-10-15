@@ -6386,6 +6386,21 @@ func (h *Handler) handleMoveMessages(w http.ResponseWriter, r *http.Request) {
 		writeMessageTargetError(w, r, err)
 		return
 	}
+	// Check every message before queuing any, so a mixed selection fails
+	// whole instead of leaving some moves queued.
+	destAccountID, err := h.db.GetFolderAccountID(ctx, destFolderID)
+	if err != nil {
+		http.Error(w, "failed to load destination folder", http.StatusInternalServerError)
+		return
+	}
+	for _, target := range targets {
+		for _, info := range target.Infos {
+			if info.AccountID != destAccountID {
+				http.Error(w, "messages can only be moved within their own account", http.StatusUnprocessableEntity)
+				return
+			}
+		}
+	}
 	updated := 0
 
 	for _, target := range targets {
