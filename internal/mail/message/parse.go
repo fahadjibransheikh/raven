@@ -141,11 +141,25 @@ func ParseMessage(ctx context.Context, r io.Reader, blobStore *store.BlobStore, 
 				continue
 			}
 
+			partFilename, _ := (&mail.AttachmentHeader{Header: h.Header}).Filename()
+			// A text part with a disposition and a name is a file the sender attached inline, not the body;
+			// a bare Content-Type name= on a body part stays the body.
+			namedText := partFilename != "" && h.Get("Content-Disposition") != ""
+
 			switch {
-			case ct == "text/plain":
-				parsed.TextBody = string(content)
-			case ct == "text/html":
-				parsed.HTMLBody = content
+			case ct == "text/plain" && !namedText:
+				// Later unnamed text parts (Apple Mail's text/image/text, list footers) follow the first.
+				if parsed.TextBody == "" {
+					parsed.TextBody = string(content)
+				} else {
+					parsed.TextBody += "\n" + string(content)
+				}
+			case ct == "text/html" && !namedText:
+				if len(parsed.HTMLBody) == 0 {
+					parsed.HTMLBody = content
+				} else {
+					parsed.HTMLBody = append(append(parsed.HTMLBody, '\n'), content...)
+				}
 			case ct == "text/calendar":
 				// Exchange replies can contain only an unnamed calendar alternative.
 				// Keep it downloadable rather than replacing the human-readable body.
@@ -162,20 +176,22 @@ func ParseMessage(ctx context.Context, r io.Reader, blobStore *store.BlobStore, 
 				parsed.Attachments = append(parsed.Attachments, AttachmentMeta{
 					Filename: filename, ContentType: ct, BlobPath: bp, Size: int64(len(content)),
 				})
-			case strings.HasPrefix(ct, "text/"):
-				parsed.TextBody = string(content)
+			case strings.HasPrefix(ct, "text/") && !namedText:
+				if parsed.TextBody == "" {
+					parsed.TextBody = string(content)
+				} else {
+					parsed.TextBody += "\n" + string(content)
+				}
 			default:
 				cid := h.Get("Content-Id")
 				cid = strings.Trim(cid, "<>")
-				if cid == "" {
-					continue
-				}
 				attID++
-				filename := cid
-				if fn := h.Get("Content-Disposition"); fn != "" {
-					if idx := strings.Index(fn, "filename="); idx != -1 {
-						filename = strings.Trim(fn[idx+9:], ` "';`)
-					}
+				filename := partFilename
+				if filename == "" {
+					filename = cid
+				}
+				if filename == "" {
+					filename = fmt.Sprintf("attachment-%d", attID)
 				}
 				bp, storeErr := blobStore.StoreAttachment(ctx, accountID, localID, attID, filename, bytes.NewReader(content))
 				if storeErr != nil {
@@ -185,7 +201,7 @@ func ParseMessage(ctx context.Context, r io.Reader, blobStore *store.BlobStore, 
 					Filename:    filename,
 					ContentType: ct,
 					ContentID:   cid,
-					Inline:      true,
+					Inline:      cid != "", // without a Content-ID nothing references the part: list it as a normal attachment
 					BlobPath:    bp,
 					Size:        int64(len(content)),
 				})
