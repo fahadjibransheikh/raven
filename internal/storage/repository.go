@@ -1622,10 +1622,87 @@ func (db *DB) UpsertSyncMessages(ctx context.Context, msgs []SyncMessage) error 
 	if err := tx.Commit(); err != nil {
 		return err
 	}
+	observed := make([]observedMessage, 0, len(msgs))
 	for _, m := range msgs {
-		db.UpsertObservedContactsForMessage(ctx, m.AccountID, m.FromName, m.FromEmail, m.ToRecipients, m.CCRecipients, nil, m.DateSent)
+		observed = append(observed, observedMessage{
+			accountID:    m.AccountID,
+			fromName:     m.FromName,
+			fromEmail:    m.FromEmail,
+			toRecipients: m.ToRecipients,
+			ccRecipients: m.CCRecipients,
+			dateSent:     m.DateSent,
+		})
 	}
+	db.recordObservedContacts(ctx, observed)
 	return nil
+}
+
+// observedMessage is the sender and recipients of one synced message, for
+// recording contacts after its transaction commits.
+type observedMessage struct {
+	accountID     string
+	fromName      string
+	fromEmail     string
+	toRecipients  []Recipient
+	ccRecipients  []Recipient
+	bccRecipients []Recipient
+	dateSent      time.Time
+}
+
+// recordObservedContacts folds the participants of a batch of messages into one
+// write per distinct contact, instead of one per address per message.
+func (db *DB) recordObservedContacts(ctx context.Context, observed []observedMessage) {
+	observedByAccount := make(map[string][]observedMessage)
+	for _, message := range observed {
+		observedByAccount[message.accountID] = append(observedByAccount[message.accountID], message)
+	}
+	for accountID, messages := range observedByAccount {
+		userID, err := db.GetAccountUserID(ctx, accountID)
+		if err != nil || userID == "" {
+			continue
+		}
+		settings := db.GetContactSettings(ctx, userID)
+		type observedContact struct {
+			name   string
+			email  string
+			seenAt time.Time
+			count  int
+		}
+		contacts := make(map[string]observedContact)
+		addContact := func(name, email string, seenAt time.Time) {
+			normalized := normalizeContactEmail(email)
+			if normalized == "" {
+				return
+			}
+			contact := contacts[normalized]
+			contact.count++
+			if contact.email == "" || seenAt.After(contact.seenAt) {
+				contact.name = name
+				contact.email = email
+				contact.seenAt = seenAt
+			}
+			contacts[normalized] = contact
+		}
+		for _, message := range messages {
+			if settings.ObserveSenders {
+				addContact(message.fromName, message.fromEmail, message.dateSent)
+			}
+			if settings.ObserveRecipients {
+				for _, recipient := range message.toRecipients {
+					addContact(recipient.Name, recipient.Email, message.dateSent)
+				}
+				for _, recipient := range message.ccRecipients {
+					addContact(recipient.Name, recipient.Email, message.dateSent)
+				}
+				for _, recipient := range message.bccRecipients {
+					addContact(recipient.Name, recipient.Email, message.dateSent)
+				}
+			}
+		}
+		for _, contact := range contacts {
+			_ = db.upsertObservedContact(ctx, userID, contact.name, contact.email, contact.seenAt, contact.count, settings)
+		}
+	}
 }
 
 func (db *DB) UpsertProviderSyncMessages(ctx context.Context, msgs []ProviderSyncMessage) (map[string]int64, error) {
@@ -1726,15 +1803,6 @@ func (db *DB) UpsertProviderSyncMessages(ctx context.Context, msgs []ProviderSyn
 	}
 	defer delRecipStmt.Close()
 
-	type observedMessage struct {
-		accountID     string
-		fromName      string
-		fromEmail     string
-		toRecipients  []Recipient
-		ccRecipients  []Recipient
-		bccRecipients []Recipient
-		dateSent      time.Time
-	}
 	observed := make([]observedMessage, 0, len(msgs))
 	msgIDs := make([]int64, 0, len(msgs))
 	desiredProviderFolders := map[int64]map[string]bool{}
@@ -1951,57 +2019,7 @@ func (db *DB) UpsertProviderSyncMessages(ctx context.Context, msgs []ProviderSyn
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
-	observedByAccount := make(map[string][]observedMessage)
-	for _, message := range observed {
-		observedByAccount[message.accountID] = append(observedByAccount[message.accountID], message)
-	}
-	for accountID, messages := range observedByAccount {
-		userID, err := db.GetAccountUserID(ctx, accountID)
-		if err != nil || userID == "" {
-			continue
-		}
-		settings := db.GetContactSettings(ctx, userID)
-		type observedContact struct {
-			name   string
-			email  string
-			seenAt time.Time
-			count  int
-		}
-		contacts := make(map[string]observedContact)
-		addContact := func(name, email string, seenAt time.Time) {
-			normalized := normalizeContactEmail(email)
-			if normalized == "" {
-				return
-			}
-			contact := contacts[normalized]
-			contact.count++
-			if contact.email == "" || seenAt.After(contact.seenAt) {
-				contact.name = name
-				contact.email = email
-				contact.seenAt = seenAt
-			}
-			contacts[normalized] = contact
-		}
-		for _, message := range messages {
-			if settings.ObserveSenders {
-				addContact(message.fromName, message.fromEmail, message.dateSent)
-			}
-			if settings.ObserveRecipients {
-				for _, recipient := range message.toRecipients {
-					addContact(recipient.Name, recipient.Email, message.dateSent)
-				}
-				for _, recipient := range message.ccRecipients {
-					addContact(recipient.Name, recipient.Email, message.dateSent)
-				}
-				for _, recipient := range message.bccRecipients {
-					addContact(recipient.Name, recipient.Email, message.dateSent)
-				}
-			}
-		}
-		for _, contact := range contacts {
-			_ = db.upsertObservedContact(ctx, userID, contact.name, contact.email, contact.seenAt, contact.count, settings)
-		}
-	}
+	db.recordObservedContacts(ctx, observed)
 	for folderID, affectedMessageIDs := range affectedFolderMessages {
 		if err := db.RefreshFolderThreadsForMessages(ctx, folderID, affectedMessageIDs); err != nil {
 			return nil, fmt.Errorf("refresh provider folder thread state %s: %w", folderID, err)
