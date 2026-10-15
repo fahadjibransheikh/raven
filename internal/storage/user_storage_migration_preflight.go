@@ -130,7 +130,7 @@ func InspectUserStorageMigration(ctx context.Context, sourcePath string) (UserSt
 }
 
 // Raven numbers upstream's schema versions differently: upstream's 105,
-// 106 and 107 are Raven's 119, 120 and 121 (see docs/upstream-merge-plan.md).
+// 106 and 107 are Raven's 119, 120 and 121 (see docs/schema-and-history.md).
 // Use these names for every version-dependent decision in the converter.
 const (
 	migrationVersionBeforePushRevision = 119 // upstream 105: no web_push_subscriptions.revision

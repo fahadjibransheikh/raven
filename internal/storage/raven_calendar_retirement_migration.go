@@ -13,7 +13,7 @@ import (
 // Raven shipped its own calendar cache at v97 (calendars, calendar_events,
 // calendar_account_state). Upstream later built an incompatible calendar
 // under the same calendar_events name; Raven now uses upstream's, created by
-// migrateV107ToV108 onwards. See docs/upstream-merge-plan.md.
+// migrateV107ToV108 onwards. See docs/schema-and-history.md.
 
 // migrateV96ToV97 used to create Raven's calendar tables. They are dropped again
 // at v107, so a database still below v97 just records the version.
