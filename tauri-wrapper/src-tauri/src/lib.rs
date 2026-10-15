@@ -143,6 +143,10 @@ const SLOW_START_AFTER: Duration = Duration::from_secs(5);
 const POLL_INTERVAL: Duration = Duration::from_millis(200);
 /// How many of the sidecar's last output lines the error page shows.
 const TAIL_LINES: usize = 12;
+/// A sidecar that dies after it was ready is restarted, unless it has already
+/// died more than MAX_RESTARTS times within RESTART_WINDOW (a crash loop).
+const MAX_RESTARTS: usize = 3;
+const RESTART_WINDOW: Duration = Duration::from_secs(60);
 
 /// What the placeholder page (frontend/status.js) should currently show.
 #[derive(Clone, serde::Serialize)]
@@ -178,6 +182,11 @@ struct SidecarState {
     /// Latest migration/boot progress line from the sidecar's log.
     progress: Mutex<String>,
     view: Mutex<StartupView>,
+    /// The placeholder page's URL, read off the window when it is built, so the
+    /// window can be sent back to it when Raven is restarted.
+    home: Mutex<Option<tauri::Url>>,
+    /// When the sidecar last died after it was ready (see MAX_RESTARTS).
+    restarts: Mutex<Vec<Instant>>,
     /// A same-origin path (a mailto: compose link) waiting for the window to be
     /// pointed at Raven. Guards `ready` too: see open_mailto.
     pending_next: Mutex<Option<String>>,
@@ -198,6 +207,8 @@ impl SidecarState {
             tail: Mutex::new(VecDeque::new()),
             progress: Mutex::new(String::new()),
             view: Mutex::new(StartupView::starting()),
+            home: Mutex::new(None),
+            restarts: Mutex::new(Vec::new()),
             pending_next: Mutex::new(None),
             token: new_token(),
         }
@@ -294,9 +305,41 @@ fn startup_state(state: tauri::State<'_, SidecarState>) -> StartupView {
 /// remote Raven page (which can also reach app commands) cannot restart it.
 #[tauri::command]
 fn retry_startup(app: AppHandle) {
-    if !app.state::<SidecarState>().ready.load(Ordering::SeqCst) {
+    let state = app.state::<SidecarState>();
+    if !state.ready.load(Ordering::SeqCst) {
+        state.restarts.lock().unwrap().clear();
         start_sidecar(&app);
     }
+}
+
+fn show_placeholder(app: &AppHandle) {
+    let home = app.state::<SidecarState>().home.lock().unwrap().clone();
+    if let (Some(window), Some(url)) = (app.get_webview_window("main"), home) {
+        if let Err(err) = window.navigate(url) {
+            eprintln!("failed to show the startup page: {err}");
+        }
+    }
+}
+
+/// The sidecar died on its own after Raven was up: start it again, or show the
+/// error page if it keeps dying.
+fn restart_after_crash(app: &AppHandle, how: &str) {
+    let state = app.state::<SidecarState>();
+    let died = {
+        let mut restarts = state.restarts.lock().unwrap();
+        restarts.retain(|at| at.elapsed() < RESTART_WINDOW);
+        restarts.push(Instant::now());
+        restarts.len()
+    };
+    if died > MAX_RESTARTS {
+        state.ready.store(false, Ordering::SeqCst);
+        show_placeholder(app);
+        let tail = state.tail.lock().unwrap().iter().cloned().collect::<Vec<_>>().join("\n");
+        set_view(app, StartupView { state: "error", detail: format!("The server {how} and keeps doing so."), tail });
+        return;
+    }
+    eprintln!("the server {how}; restarting it");
+    start_sidecar(app);
 }
 
 fn push_output(state: &SidecarState, bytes: &[u8]) {
@@ -322,7 +365,10 @@ fn start_sidecar(app: &AppHandle) {
     let state = app.state::<SidecarState>();
     let attempt = state.attempt.fetch_add(1, Ordering::SeqCst) + 1;
     kill_sidecar(app);
-    state.ready.store(false, Ordering::SeqCst);
+    // The window is showing Raven itself if it was up; go back to the placeholder.
+    if state.ready.swap(false, Ordering::SeqCst) {
+        show_placeholder(app);
+    }
     *state.exit.lock().unwrap() = None;
     state.tail.lock().unwrap().clear();
     state.progress.lock().unwrap().clear();
@@ -393,6 +439,12 @@ fn start_sidecar(app: &AppHandle) {
                             (None, Some(signal)) => format!("was stopped by signal {signal}"),
                             _ => "stopped".to_string(),
                         };
+                        // kill_sidecar takes `child` before killing, so a child
+                        // still there means the process died on its own.
+                        if state.ready.load(Ordering::SeqCst) && state.child.lock().unwrap().is_some() {
+                            restart_after_crash(&app_for_events, &how);
+                            return;
+                        }
                         *state.exit.lock().unwrap() = Some(format!("The server {how} before it started."));
                         return;
                     }
@@ -618,10 +670,11 @@ async fn check_for_update_inner(app: AppHandle, user_initiated: bool) {
     kill_sidecar(&app);
     if let Err(err) = update.install(bytes) {
         eprintln!("update install failed: {err}");
+        start_sidecar(&app);
         dialog(
             &app,
             MessageDialogKind::Error,
-            format!("Couldn't install the update: {err}\n\nRestart Raven to keep using it."),
+            format!("Couldn't install the update: {err}\n\nRaven was restarted and is still on the current version."),
             MessageDialogButtons::Ok,
         )
         .await;
@@ -754,7 +807,7 @@ pub fn run() {
                 .find(|w| w.label == "main")
                 .expect("main window config missing from tauri.conf.json")
                 .clone();
-            desktop_glass(tauri::WebviewWindowBuilder::from_config(&app_handle, &window_config)?)
+            let window = desktop_glass(tauri::WebviewWindowBuilder::from_config(&app_handle, &window_config)?)
                 .on_new_window(|url, _features| {
                     if matches!(url.scheme(), "http" | "https" | "mailto") {
                         if let Err(err) = tauri_plugin_opener::open_url(url.as_str(), None::<&str>) {
@@ -809,6 +862,7 @@ pub fn run() {
                     }
                 })
                 .build()?;
+            *app_handle.state::<SidecarState>().home.lock().unwrap() = window.url().ok();
 
             // macOS: no menu bar icon. Compose and Check for Updates live in
             // the app's own menu bar menus; the Dock icon brings the window
