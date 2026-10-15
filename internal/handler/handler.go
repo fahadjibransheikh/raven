@@ -3880,7 +3880,7 @@ func (h *Handler) handleGetUISettings(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) handleSaveUISettings(w http.ResponseWriter, r *http.Request) {
 	var updates map[string]string
-	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, storage.UISettingsMaxBytes)).Decode(&updates); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}
@@ -3892,7 +3892,10 @@ func (h *Handler) handleSaveUISettings(w http.ResponseWriter, r *http.Request) {
 	userID := h.userID(r.Context())
 	if err := h.withUserDB(r.Context(), userID, func(db *storage.DB) error {
 		return db.MergeUISettings(r.Context(), userID, updates)
-	}); err != nil {
+	}); errors.Is(err, storage.ErrUISettingsTooLarge) {
+		http.Error(w, "settings too large", http.StatusRequestEntityTooLarge)
+		return
+	} else if err != nil {
 		http.Error(w, "save failed", http.StatusInternalServerError)
 		return
 	}
@@ -4031,7 +4034,7 @@ func truncateString(value string, max int) string {
 
 func (h *Handler) handleDeletePushSubscription(w http.ResponseWriter, r *http.Request) {
 	var req pushSubscriptionDeleteRequest
-	_ = json.NewDecoder(r.Body).Decode(&req)
+	_ = json.NewDecoder(http.MaxBytesReader(w, r.Body, 16<<10)).Decode(&req)
 	req.Endpoint = strings.TrimSpace(req.Endpoint)
 	if req.Endpoint != "" {
 		if err := h.db.DeleteWebPushSubscription(r.Context(), h.userID(r.Context()), req.Endpoint); err != nil {
@@ -4046,7 +4049,7 @@ func (h *Handler) handleDeletePushSubscription(w http.ResponseWriter, r *http.Re
 
 func (h *Handler) handleTestPush(w http.ResponseWriter, r *http.Request) {
 	var req pushSubscriptionDeleteRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 16<<10)).Decode(&req); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}
@@ -5247,7 +5250,9 @@ func validateComposeMessageSize(attachments []message.OutgoingAttachment, body, 
 	total := int64(len(body) + len(htmlBody) + 4096)
 	for _, att := range attachments {
 		size := att.Size
-		if size <= 0 && att.Path != "" {
+		// Measure the file; never trust a client-sent size (repeated IDs could
+		// otherwise build gigabytes in memory under a tiny claimed size).
+		if att.Path != "" {
 			if info, err := os.Stat(att.Path); err == nil {
 				size = info.Size()
 			}
@@ -5282,7 +5287,6 @@ func (h *Handler) collectComposeAttachments(r *http.Request) ([]message.Outgoing
 	ids := r.Form["attachment_id"]
 	filenames := r.Form["attachment_filename"]
 	contentTypes := r.Form["attachment_content_type"]
-	sizes := r.Form["attachment_size"]
 	for i, id := range ids {
 		path, err := h.blobStore.ComposeAttachmentPath(userID, id)
 		if err != nil {
@@ -5290,7 +5294,11 @@ func (h *Handler) collectComposeAttachments(r *http.Request) ([]message.Outgoing
 		}
 		filename := formValueAt(filenames, i, filepath.Base(path))
 		contentType := formValueAt(contentTypes, i, "application/octet-stream")
-		size, _ := strconv.ParseInt(formValueAt(sizes, i, "0"), 10, 64)
+		info, err := os.Stat(path)
+		if err != nil {
+			return nil, nil, fmt.Errorf("attachment not found")
+		}
+		size := info.Size()
 		outgoing = append(outgoing, message.OutgoingAttachment{Filename: filename, ContentType: contentType, Path: path, Size: size})
 		rows = append(rows, storage.AttachmentRow{Filename: filename, ContentType: contentType, SizeBytes: size, StoragePath: path})
 	}
@@ -5299,7 +5307,6 @@ func (h *Handler) collectComposeAttachments(r *http.Request) ([]message.Outgoing
 	inlineCIDs := r.Form["inline_attachment_cid"]
 	inlineFilenames := r.Form["inline_attachment_filename"]
 	inlineContentTypes := r.Form["inline_attachment_content_type"]
-	inlineSizes := r.Form["inline_attachment_size"]
 	for i, id := range inlineIDs {
 		path, err := h.blobStore.ComposeAttachmentPath(userID, id)
 		if err != nil {
@@ -5311,7 +5318,11 @@ func (h *Handler) collectComposeAttachments(r *http.Request) ([]message.Outgoing
 		}
 		filename := formValueAt(inlineFilenames, i, filepath.Base(path))
 		contentType := formValueAt(inlineContentTypes, i, "application/octet-stream")
-		size, _ := strconv.ParseInt(formValueAt(inlineSizes, i, "0"), 10, 64)
+		info, err := os.Stat(path)
+		if err != nil {
+			return nil, nil, fmt.Errorf("attachment not found")
+		}
+		size := info.Size()
 		outgoing = append(outgoing, message.OutgoingAttachment{Filename: filename, ContentType: contentType, Path: path, Size: size, ContentID: contentID, Inline: true})
 		rows = append(rows, storage.AttachmentRow{Filename: filename, ContentType: contentType, SizeBytes: size, ContentID: contentID, Inline: true, StoragePath: path})
 	}
