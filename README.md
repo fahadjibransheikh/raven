@@ -19,9 +19,9 @@ It's built with Go, templ views, HTMX-style interactions, and SQLite storage.
 
 - **Mail:** multiple IMAP/SMTP, Gmail, and Outlook accounts, with real-time sync, threads, attachments, drafts with autosave, signatures, sending identities, scheduled send, one-click unsubscribe, and translation.
 - **Organization and search:** folders, labels, stars, archive, spam controls, select-all across a whole folder, and advanced search filters.
-- **Calendar:** Google, Outlook, and CalDAV (including iCloud) calendars in month, week, and agenda views, with event creation, invitations, and replies from the inbox.
+- **Calendar:** Google, Outlook, and CalDAV (including iCloud) calendars in day, 3-day, week, and month views with a current-time line and an agenda list, plus event creation, invitations, and replies from the inbox.
 - **Contacts:** local address books, vCard import/export, and Google, Outlook, and CardDAV sync.
-- **Desktop app:** a Tauri app in [`tauri-wrapper/`](./tauri-wrapper) for macOS, Windows, and Linux, with an unread count on the Dock/taskbar icon, a global compose shortcut (`Cmd/Ctrl+Shift+M`), and automatic updates.
+- **Desktop app:** a Tauri app in [`tauri-wrapper/`](./tauri-wrapper) for macOS, Windows, and Linux, with an unread count on the Dock/taskbar icon, a global compose shortcut (`Cmd/Ctrl+Shift+M`), automatic updates, and on macOS an agenda widget for the next 3 days.
 - **Phone:** a phone layout and Web Push notifications, for use as an installed web app when Raven runs on a server you can reach.
 - **Security:** encrypted stored credentials, remote content blocked by default and loaded through Raven when allowed, and optional sign-in with passwords, TOTP, passkeys, or external providers.
 - **Access modes:** no-login local use, one protected personal profile, or managed users with separate administrators.
@@ -50,7 +50,7 @@ Use the full `fahadjibransheikh/raven/raven` name: a plain `brew install raven` 
 
 On Linux, Homebrew installs the AppImage as `~/Applications/Raven.AppImage` and adds Raven to your app launcher.
 
-The macOS app isn't signed or notarized yet. If you install the `.dmg` and macOS says it can't verify Raven, open System Settings → Privacy & Security and click **Open Anyway**. The Homebrew install doesn't need this.
+The macOS app is ad-hoc signed but not notarized yet. If you install the `.dmg` and macOS says it can't verify Raven, open System Settings → Privacy & Security and click **Open Anyway**. The Homebrew install doesn't need this.
 
 Once installed, Raven updates itself. On Linux that works for the AppImage; with the `.deb` or `.rpm`, install the new package from the release page.
 
@@ -62,15 +62,15 @@ Downloaded release binaries include the web assets. Development from source requ
 
 ```sh
 task dev      # development server with hot reload
-task build    # local build at ./tmp/main
+task build    # local build at ./dist/raven
 task release  # self-contained binary at ./dist/raven-server
 ```
 
-With the development server running, open `http://local.localhost:8090`. See the [Taskfile](./Taskfile.yml) for packaging and other build tasks, and [`tauri-wrapper/README.md`](./tauri-wrapper/README.md) for building the desktop app.
+With the development server running, open `http://local.localhost:8090`, or `http://localhost:9090` for automatic browser reloads. See the [Taskfile](./Taskfile.yml) for packaging and other build tasks, and [`tauri-wrapper/README.md`](./tauri-wrapper/README.md) for building the desktop app.
 
 ## releasing
 
-1. Bump `version` in `tauri-wrapper/src-tauri/Cargo.toml` and commit.
+1. Bump `version` in `tauri-wrapper/src-tauri/Cargo.toml` (the only version source), add the release's entry to `internal/whatsnew/releases.md`, and commit both with `Cargo.lock`.
 2. Tag and push: `git tag vX.Y.Z && git push origin master vX.Y.Z`.
 
 GitHub Actions builds all three platforms, publishes the release with signed update files, and commits the Homebrew cask bump to `master` (run `git pull` afterwards). Then replace the placeholder under **Changes** in the release notes. The [`release`](./.claude/skills/release/SKILL.md) Claude skill covers every step, including writing the notes. Details, including the update signing key, are in [`tauri-wrapper/README.md`](./tauri-wrapper/README.md#releasing).
