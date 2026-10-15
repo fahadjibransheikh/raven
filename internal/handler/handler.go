@@ -1650,6 +1650,15 @@ function rg(c){return"rgb("+c[0]+", "+c[1]+", "+c[2]+")"}
 function ra(c,a){return"rgba("+c[0]+", "+c[1]+", "+c[2]+", "+a+")"}
 function sb(s){var m=s&&String(s).match(/background(?:-color)?\s*:\s*([^;]+)/i);return m?m[1]:null}
 function rb(){try{for(var i=0;i<document.styleSheets.length;i++){var rs=document.styleSheets[i].cssRules;if(!rs)continue;for(var j=0;j<rs.length;j++){var r=rs[j];if(!r.selectorText||!r.style)continue;var ss=String(r.selectorText).split(","),body=false;for(var k=0;k<ss.length;k++){if(ss[k].trim()==="body"){body=true;break}}if(!body)continue;var c=p(r.style.backgroundColor)||av(cl(r.style.background));if(c&&ds(c,base)>3)return c}}}catch(_){}return null}
+// Text colours are judged on computed styles, which dark-mode browser extensions can
+// rewrite while the document loads and put back once it has settled. A second pass at
+// load judges the settled colours, so dark text is not left on the dark page.
+function tx(el,cs,nbg){var fc=p(cs.color);
+if(fc&&nbg&&cr(fc,nbg)<4.5){
+el.style.setProperty("color",df,"important");
+if(nbg&&cr(p(getComputedStyle(el).color),nbg)<4.5)el.style.setProperty("color","rgba(255,255,255,0.95)","important");
+}}
+window.addEventListener("load",function(){var all=document.querySelectorAll("*");for(var i=0;i<all.length;i++){var e=all[i],t=e.tagName;if(t==="IMG"||t==="VIDEO"||t==="SVG"||t==="CANVAS"||t==="STYLE"||t==="SCRIPT")continue;tx(e,getComputedStyle(e),eb(e))}});
 function bw(v){var n=parseFloat(v);return isNaN(n)?0:n}
 function hb(cs){return(bw(cs.borderTopWidth)>0&&cs.borderTopStyle!=="none"&&cs.borderTopStyle!=="hidden")||(bw(cs.borderRightWidth)>0&&cs.borderRightStyle!=="none"&&cs.borderRightStyle!=="hidden")||(bw(cs.borderBottomWidth)>0&&cs.borderBottomStyle!=="none"&&cs.borderBottomStyle!=="hidden")||(bw(cs.borderLeftWidth)>0&&cs.borderLeftStyle!=="none"&&cs.borderLeftStyle!=="hidden")}
 var de=document.documentElement,bd=document.body,base=p(db)||[20,20,20],canvas=null;
@@ -1670,11 +1679,7 @@ if(gi&&lu(gi)>0.4){el.style.setProperty("background-image","none","important");e
 var bc=p(cs.backgroundColor);
 if(bc&&lu(bc)>0.4)el.style.setProperty("background-color",mb(bc),"important");
 var nbg=eb(el);
-var fc=p(cs.color);
-if(fc&&nbg&&cr(fc,nbg)<4.5){
-el.style.setProperty("color",df,"important");
-if(nbg&&cr(p(getComputedStyle(el).color),nbg)<4.5)el.style.setProperty("color","rgba(255,255,255,0.95)","important");
-}
+tx(el,cs,nbg);
 if(hb(cs)){var bdc=p(cs.borderTopColor)||p(cs.borderRightColor)||p(cs.borderBottomColor)||p(cs.borderLeftColor);if(bdc&&lu(bdc)>0.45&&sa(bdc)>.16){el.style.setProperty("border-color",ml(bdc),"important")}else if(!bdc||!nbg||cr(bdc,nbg)<2.2||lu(bdc)>0.55)el.style.setProperty("border-color","rgba(255,255,255,0.22)","important")}
 var oc=p(cs.outlineColor);
 if(oc&&bw(cs.outlineWidth)>0&&(!nbg||cr(oc,nbg)<2.2||lu(oc)>0.55))el.style.setProperty("outline-color","rgba(255,255,255,0.22)","important");
