@@ -2,6 +2,7 @@ package storage
 
 import (
 	"database/sql"
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -76,5 +77,37 @@ func TestAbsolutizeStoredPathsResolvesRetainedRelativePaths(t *testing.T) {
 	}
 	if err := absolutizeStoredPaths(t.Context(), path, layout); err == nil {
 		t.Fatal("escaping path accepted")
+	}
+}
+
+func TestRelativeToCanonicalBaseAcceptsSymlinkedSpellingOnly(t *testing.T) {
+	real, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	base := filepath.Join(real, "accounts")
+	if err := os.MkdirAll(filepath.Join(base, "a1"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(t.TempDir(), "data")
+	if err := os.Symlink(real, link); err != nil {
+		t.Fatal(err)
+	}
+	// Path written through the symlinked data directory, as on a symlinked install.
+	relative, err := relativeToCanonicalBase(base, filepath.Join(link, "accounts", "a1", "raw.eml"))
+	if err != nil || relative != filepath.Join("a1", "raw.eml") {
+		t.Fatal("symlinked spelling not matched", relative, err)
+	}
+	// A symlink inside the tree must not be resolved away; it stays in the
+	// relative path so migrationNoSymlinks can reject it.
+	if err := os.Symlink(base, filepath.Join(base, "a1", "loop")); err != nil {
+		t.Fatal(err)
+	}
+	relative, err = relativeToCanonicalBase(base, filepath.Join(base, "a1", "loop", "a1", "raw.eml"))
+	if err != nil || relative != filepath.Join("a1", "loop", "a1", "raw.eml") {
+		t.Fatal("in-tree symlink resolved", relative, err)
+	}
+	if relative, _ := relativeToCanonicalBase(base, filepath.Join(real, "elsewhere", "raw.eml")); filepath.IsLocal(relative) {
+		t.Fatal("outside path accepted", relative)
 	}
 }
