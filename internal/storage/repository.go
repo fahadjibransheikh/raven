@@ -1041,26 +1041,6 @@ type DraftMessageInput struct {
 	Date              time.Time
 }
 
-func (db *DB) ReindexMessageSearch(ctx context.Context, messageID int64) error {
-	return db.ReindexMessagesSearch(ctx, []int64{messageID})
-}
-
-func (db *DB) ReindexMessagesSearch(ctx context.Context, messageIDs []int64) error {
-	messageIDs = compactMessageIDs(messageIDs)
-	if len(messageIDs) == 0 {
-		return nil
-	}
-	tx, err := db.Write().BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("begin message search batch: %w", err)
-	}
-	defer tx.Rollback()
-	if err := db.reindexMessagesSearchTx(ctx, tx, messageIDs); err != nil {
-		return err
-	}
-	return tx.Commit()
-}
-
 // Keep search documents in the same transaction as the mail they describe.
 // Callers must not commit mail changes before this succeeds.
 func (db *DB) reindexMessagesSearchTx(ctx context.Context, tx *sql.Tx, messageIDs []int64) (err error) {
@@ -1289,8 +1269,6 @@ type ProviderMessageIDBackfillCandidate struct {
 	FolderProviderID  string
 }
 
-type OutlookGraphIDBackfillCandidate = ProviderMessageIDBackfillCandidate
-
 func (db *DB) ListProviderMessageIDBackfillCandidates(ctx context.Context, accountID string, limit int) ([]ProviderMessageIDBackfillCandidate, error) {
 	accountID = strings.TrimSpace(accountID)
 	if accountID == "" {
@@ -1341,10 +1319,6 @@ func (db *DB) CountProviderBackedMessages(ctx context.Context, accountID string)
 		return 0, err
 	}
 	return count, nil
-}
-
-func (db *DB) ListOutlookGraphIDBackfillCandidates(ctx context.Context, accountID string, limit int) ([]OutlookGraphIDBackfillCandidate, error) {
-	return db.ListProviderMessageIDBackfillCandidates(ctx, accountID, limit)
 }
 
 func (db *DB) GetDraftProviderInfoInternal(ctx context.Context, accountID, internetMessageID string) (*DraftProviderInfo, error) {
@@ -2677,22 +2651,6 @@ func (db *DB) ResolveLabelAliasProviderID(ctx context.Context, accountID, provid
 	return providerID, true, nil
 }
 
-func (db *DB) EnsureLabel(ctx context.Context, label LabelInput) (models.Label, error) {
-	tx, err := db.Write().BeginTx(ctx, nil)
-	if err != nil {
-		return models.Label{}, err
-	}
-	defer tx.Rollback()
-	out, err := db.ensureLabelTx(ctx, tx, label)
-	if err != nil {
-		return models.Label{}, err
-	}
-	if err := tx.Commit(); err != nil {
-		return models.Label{}, err
-	}
-	return out, nil
-}
-
 func (db *DB) UpsertLabels(ctx context.Context, labels []LabelInput) error {
 	tx, err := db.Write().BeginTx(ctx, nil)
 	if err != nil {
@@ -3718,17 +3676,6 @@ func labelMutationRetryDelay(attempts int) time.Duration {
 	return time.Duration(minutes) * time.Minute
 }
 
-func (db *DB) GetFolderByAccountAndRemote(ctx context.Context, accountID, remoteID string) (string, error) {
-	var id string
-	err := db.Read().QueryRowContext(ctx,
-		`SELECT id FROM folders WHERE account_id = ? AND remote_id = ?`, accountID, remoteID,
-	).Scan(&id)
-	if err == sql.ErrNoRows {
-		return "", nil
-	}
-	return id, err
-}
-
 func (db *DB) UpdateFolderSyncState(ctx context.Context, folderID string, highestUID uint32, uidValidity uint32, totalCount int) error {
 	_, err := db.Write().ExecContext(ctx,
 		`UPDATE folders SET highest_seen_uid = ?, uid_validity = ?, total_count = ?,
@@ -3794,24 +3741,6 @@ func (db *DB) UpdateProviderFolderPageCursor(ctx context.Context, folderID, curs
 	return err
 }
 
-func (db *DB) GetProviderFolderMessageCount(ctx context.Context, accountID, folderID string) (int, error) {
-	accountID = strings.TrimSpace(accountID)
-	folderID = strings.TrimSpace(folderID)
-	if accountID == "" || folderID == "" {
-		return 0, nil
-	}
-	var count int
-	err := db.Read().QueryRowContext(ctx, `
-		SELECT COUNT(*)
-		FROM message_folder_state mfs
-		JOIN messages m ON m.id = mfs.message_id
-		WHERE mfs.folder_id = ?
-		  AND mfs.is_deleted = 0
-		  AND m.account_id = ?
-		  AND COALESCE(m.remote_message_id, '') != ''`, folderID, accountID).Scan(&count)
-	return count, err
-}
-
 func (db *DB) HasProviderFolderMessagesMissingSender(ctx context.Context, accountID, folderID string) (bool, error) {
 	accountID = strings.TrimSpace(accountID)
 	folderID = strings.TrimSpace(folderID)
@@ -3836,56 +3765,6 @@ func (db *DB) HasProviderFolderMessagesMissingSender(ctx context.Context, accoun
 		return false, err
 	}
 	return exists == 1, nil
-}
-
-func (db *DB) ClearProviderFolderCountDrift(ctx context.Context, folderID string) error {
-	folderID = strings.TrimSpace(folderID)
-	if folderID == "" {
-		return nil
-	}
-	_, err := db.Write().ExecContext(ctx,
-		`UPDATE folders SET
-		 provider_count_drift_first_seen_at = NULL,
-		 provider_count_drift_last_seen_at = NULL,
-		 provider_count_drift_local_count = 0,
-		 provider_count_drift_remote_count = 0,
-		 provider_count_drift_cursor = '',
-		 provider_count_drift_confirmations = 0,
-		 updated_at = CURRENT_TIMESTAMP
-		 WHERE id = ?`, folderID)
-	return err
-}
-
-func (db *DB) RecordProviderFolderCountDrift(ctx context.Context, folderID string, localCount, remoteCount int, cursor string) (int, error) {
-	folderID = strings.TrimSpace(folderID)
-	if folderID == "" {
-		return 0, nil
-	}
-	_, err := db.Write().ExecContext(ctx,
-		`UPDATE folders SET
-		 provider_count_drift_first_seen_at = CASE
-		   WHEN COALESCE(provider_count_drift_confirmations, 0) > 0
-		   THEN provider_count_drift_first_seen_at
-		   ELSE CURRENT_TIMESTAMP
-		 END,
-		 provider_count_drift_last_seen_at = CURRENT_TIMESTAMP,
-		 provider_count_drift_local_count = ?,
-		 provider_count_drift_remote_count = ?,
-		 provider_count_drift_cursor = ?,
-		 provider_count_drift_confirmations = CASE
-		   WHEN COALESCE(provider_count_drift_confirmations, 0) > 0
-		   THEN provider_count_drift_confirmations + 1
-		   ELSE 1
-		 END,
-		 updated_at = CURRENT_TIMESTAMP
-		 WHERE id = ?`,
-		clampNonNegative(localCount), clampNonNegative(remoteCount), strings.TrimSpace(cursor), folderID)
-	if err != nil {
-		return 0, err
-	}
-	var confirmations int
-	err = db.Write().QueryRowContext(ctx, `SELECT COALESCE(provider_count_drift_confirmations, 0) FROM folders WHERE id = ?`, folderID).Scan(&confirmations)
-	return confirmations, err
 }
 
 func (db *DB) MarkProviderMessageRemovedFromFolder(ctx context.Context, accountID, folderID, providerMessageID string) error {
@@ -4718,14 +4597,6 @@ func (db *DB) GetAllFolderUnreadCounts(ctx context.Context, userID string) (map[
 	return result, nil
 }
 
-func (db *DB) GetFolderHighestUID(ctx context.Context, folderID string) (uint32, error) {
-	var uid uint32
-	err := db.Read().QueryRowContext(ctx,
-		`SELECT COALESCE(MAX(remote_uid), 0) FROM message_folder_state WHERE folder_id = ?`, folderID,
-	).Scan(&uid)
-	return uid, err
-}
-
 func (db *DB) GetAccounts(ctx context.Context, userID string) ([]models.Account, error) {
 	rows, err := db.Read().QueryContext(ctx,
 		`SELECT a.id, a.provider, a.email_address, a.display_name, a.label, a.color, a.initials, COALESCE(a.is_deleting, 0), COALESCE(a.email_sync_enabled, 1),
@@ -4991,10 +4862,6 @@ func buildFolderTree(flat []folderRow) []models.Folder {
 
 func (db *DB) GetFolderEmailCount(ctx context.Context, folderID string) (int, error) {
 	return db.GetFolderEmailCountFiltered(ctx, folderID, models.EmailFilters{})
-}
-
-func (db *DB) GetFolderEmailCountForUser(ctx context.Context, userID, folderID string) (int, error) {
-	return db.GetFolderEmailCountFilteredForUser(ctx, userID, folderID, models.EmailFilters{})
 }
 
 func (db *DB) GetFolderEmailCountFilteredForUser(ctx context.Context, userID, folderID string, filters models.EmailFilters) (int, error) {
@@ -5872,10 +5739,6 @@ func (db *DB) getEmailByID(ctx context.Context, id, userID string) (*models.Emai
 	return &email, nil
 }
 
-func (db *DB) GetEmailByIDForFolder(ctx context.Context, id, folderID string) (*models.Email, error) {
-	return db.getEmailByIDForFolder(ctx, id, folderID, "")
-}
-
 func (db *DB) GetEmailByIDForFolderForUser(ctx context.Context, id, folderID, userID string) (*models.Email, error) {
 	userID = strings.TrimSpace(userID)
 	if userID == "" {
@@ -5985,10 +5848,6 @@ func (db *DB) GetEmailsAroundEmailForUser(ctx context.Context, userID, folderID,
 		start = 0
 	}
 	return db.GetEmailsRangeForUser(ctx, userID, folderID, start, limit)
-}
-
-func (db *DB) listEmails(ctx context.Context, folderID string, offset, limit int) ([]models.Email, error) {
-	return db.listEmailsFiltered(ctx, folderID, offset, limit, models.EmailFilters{})
 }
 
 func (db *DB) unifiedMailListFromWhere(ctx context.Context, userID, folderID string) (string, []any, error) {
@@ -6913,10 +6772,6 @@ func (db *DB) getEmailBody(ctx context.Context, id, userID string) ([]byte, erro
 	return nil, nil
 }
 
-func (db *DB) GetEmailOriginalHTMLBody(ctx context.Context, id string) ([]byte, error) {
-	return db.getEmailOriginalHTMLBody(ctx, id, "")
-}
-
 func (db *DB) GetEmailOriginalHTMLBodyForUser(ctx context.Context, id, userID string) ([]byte, error) {
 	userID = strings.TrimSpace(userID)
 	if userID == "" {
@@ -7001,10 +6856,6 @@ func (db *DB) ClearEmailBody(ctx context.Context, messageID int64) error {
 		return err
 	}
 	return tx.Commit()
-}
-
-func (db *DB) ClearEmailData(ctx context.Context, messageID int64) error {
-	return db.clearEmailData(ctx, messageID, "")
 }
 
 func (db *DB) ClearEmailDataForUser(ctx context.Context, messageID int64, userID string) error {
@@ -7341,23 +7192,6 @@ func (db *DB) GetAttachmentFetchInfoForUser(ctx context.Context, attachmentID in
 	return scanAttachmentFetchInfo(row)
 }
 
-func (db *DB) GetAttachmentFetchInfoByContentID(ctx context.Context, messageID int64, contentID string) (*AttachmentFetchInfo, error) {
-	contentID = strings.Trim(strings.TrimSpace(contentID), "<>")
-	if messageID == 0 || contentID == "" {
-		return nil, nil
-	}
-	row := db.Read().QueryRowContext(ctx, `
-		SELECT att.id, att.message_id, m.account_id, a.provider, m.remote_message_id,
-		       att.provider_remote_id, att.filename, att.content_type, COALESCE(att.content_id, ''), att.size_bytes, att.storage_path
-		FROM attachments att
-		JOIN messages m ON att.message_id = m.id
-		JOIN accounts a ON m.account_id = a.id
-		WHERE att.message_id = ? AND COALESCE(att.content_id, '') = ?
-		LIMIT 1`, messageID, contentID,
-	)
-	return scanAttachmentFetchInfo(row)
-}
-
 func (db *DB) GetAttachmentFetchInfoByContentIDForUser(ctx context.Context, messageID int64, contentID, userID string) (*AttachmentFetchInfo, error) {
 	contentID = strings.Trim(strings.TrimSpace(contentID), "<>")
 	if messageID == 0 || contentID == "" || strings.TrimSpace(userID) == "" {
@@ -7404,13 +7238,6 @@ func (db *DB) UpdateAttachmentStoragePathInternal(ctx context.Context, attachmen
 	_, err := db.Write().ExecContext(ctx,
 		`UPDATE attachments SET storage_path = ? WHERE id = ?`, strings.TrimSpace(storagePath), attachmentID)
 	return err
-}
-
-func (db *DB) GetMessageBodyPaths(ctx context.Context, messageID int64) (textPath, htmlPath sql.NullString, err error) {
-	err = db.Read().QueryRowContext(ctx,
-		`SELECT body_text_path, body_html_path FROM messages WHERE id = ?`, messageID,
-	).Scan(&textPath, &htmlPath)
-	return
 }
 
 type MessageMutationInfo struct {
@@ -7701,121 +7528,6 @@ func (db *DB) SetMessageProviderMessageID(ctx context.Context, messageID int64, 
 	return err
 }
 
-func (db *DB) ThreadHasUnread(ctx context.Context, accountID, threadID string) (bool, error) {
-	if threadID == "" {
-		return false, nil
-	}
-	var hasUnread int
-	err := db.Read().QueryRowContext(ctx,
-		`SELECT EXISTS(
-			SELECT 1 FROM messages m
-			JOIN message_folder_state mfs ON m.id = mfs.message_id
-			WHERE m.account_id = ? AND m.thread_id = ? AND mfs.is_deleted = 0 AND mfs.is_read = 0
-		)`, accountID, threadID,
-	).Scan(&hasUnread)
-	return hasUnread == 1, err
-}
-
-func (db *DB) SetMessageRead(ctx context.Context, messageID int64, isRead bool) error {
-	folderIDs, _ := db.messageFolderIDs(ctx, messageID)
-	_, err := db.Write().ExecContext(ctx,
-		`UPDATE message_folder_state SET is_read = ? WHERE message_id = ?`,
-		isRead, messageID)
-	if err != nil {
-		return err
-	}
-
-	for _, folderID := range folderIDs {
-		db.RefreshFolderUnreadCount(ctx, folderID)
-	}
-	return nil
-}
-
-func (db *DB) messageFolderIDs(ctx context.Context, messageID int64) ([]string, error) {
-	rows, err := db.Read().QueryContext(ctx, `SELECT DISTINCT folder_id FROM message_folder_state WHERE message_id = ?`, messageID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var folderIDs []string
-	for rows.Next() {
-		var folderID string
-		if err := rows.Scan(&folderID); err != nil {
-			return nil, err
-		}
-		folderIDs = append(folderIDs, folderID)
-	}
-	return folderIDs, rows.Err()
-}
-
-func (db *DB) SetThreadRead(ctx context.Context, accountID, threadID string, isRead bool) error {
-	rows, err := db.Read().QueryContext(ctx,
-		`SELECT DISTINCT mfs.folder_id
-		 FROM messages m
-		 JOIN message_folder_state mfs ON m.id = mfs.message_id
-		 WHERE m.account_id = ? AND m.thread_id = ? AND mfs.is_deleted = 0`, accountID, threadID)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-
-	var folderIDs []string
-	for rows.Next() {
-		var folderID string
-		if err := rows.Scan(&folderID); err != nil {
-			return err
-		}
-		folderIDs = append(folderIDs, folderID)
-	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-
-	_, err = db.Write().ExecContext(ctx,
-		`UPDATE message_folder_state
-		 SET is_read = ?
-		 WHERE is_deleted = 0 AND message_id IN (SELECT id FROM messages WHERE account_id = ? AND thread_id = ?)`,
-		isRead, accountID, threadID)
-	if err != nil {
-		return err
-	}
-	for _, folderID := range folderIDs {
-		db.RefreshFolderUnreadCount(ctx, folderID)
-	}
-	return nil
-}
-
-func (db *DB) SetMessageStarred(ctx context.Context, messageID int64, isStarred bool) error {
-	folderIDs, _ := db.messageFolderIDs(ctx, messageID)
-	_, err := db.Write().ExecContext(ctx,
-		`UPDATE message_folder_state SET is_starred = ? WHERE message_id = ?`,
-		isStarred, messageID)
-	if err != nil {
-		return err
-	}
-	for _, folderID := range folderIDs {
-		if err := db.RefreshFolderThreadState(ctx, folderID); err != nil {
-			return err
-		}
-	}
-	return err
-}
-
-func (db *DB) MarkMessageDeleted(ctx context.Context, messageID int64) error {
-	folderIDs, _ := db.messageFolderIDs(ctx, messageID)
-	_, err := db.Write().ExecContext(ctx,
-		`UPDATE message_folder_state SET is_deleted = 1 WHERE message_id = ?`,
-		messageID)
-	if err != nil {
-		return err
-	}
-
-	for _, folderID := range folderIDs {
-		db.RefreshFolderUnreadCount(ctx, folderID)
-	}
-	return nil
-}
-
 func (db *DB) RemoveMessageFromFolder(ctx context.Context, messageID int64, folderID string) error {
 	_, err := db.Write().ExecContext(ctx,
 		`DELETE FROM message_folder_state WHERE message_id = ? AND folder_id = ?`,
@@ -7997,43 +7709,6 @@ func (db *DB) GetSyncInterval(ctx context.Context, userID string) int {
 		return 5
 	}
 	return n
-}
-
-func (db *DB) GetIdleFoldersForAccount(ctx context.Context, userID string, accountID string) map[string]bool {
-	val, err := db.GetSetting(ctx, userID, "idle_folders")
-	if err != nil || val == "" {
-		return map[string]bool{"inbox": true, "sent": true, "drafts": true}
-	}
-	if val == "none" {
-		return map[string]bool{}
-	}
-
-	var perAccount map[string][]string
-	if err := json.Unmarshal([]byte(val), &perAccount); err == nil {
-		roles := perAccount[accountID]
-		if roles == nil {
-			return map[string]bool{"inbox": true, "sent": true, "drafts": true}
-		}
-		if len(roles) == 1 && roles[0] == "none" {
-			return map[string]bool{}
-		}
-		result := make(map[string]bool)
-		for _, role := range roles {
-			if role != "" {
-				result[role] = true
-			}
-		}
-		return result
-	}
-
-	result := make(map[string]bool)
-	for _, role := range strings.Split(val, ",") {
-		role = strings.TrimSpace(role)
-		if role != "" {
-			result[role] = true
-		}
-	}
-	return result
 }
 
 func (db *DB) GetIdleFolderIDsForAccount(ctx context.Context, userID string, accountID string) map[string]bool {
@@ -8372,10 +8047,6 @@ func (db *DB) GetAccountSignatureSettings(ctx context.Context, userID, accountID
 	settings.ReplyPlacement = normalizeSignaturePlacement(replyPlacement)
 	settings.ForwardPlacement = normalizeSignaturePlacement(forwardPlacement)
 	return settings, nil
-}
-
-func (db *DB) SaveAccountSignatureSettings(ctx context.Context, userID string, settings models.AccountSignatureSettings) error {
-	return db.SaveAccountSignatureSettingsGuarded(ctx, userID, settings, nil)
 }
 
 func (db *DB) SaveAccountSignatureSettingsGuarded(ctx context.Context, userID string, settings models.AccountSignatureSettings, guard func(*sql.Tx) error) error {
@@ -8932,47 +8603,6 @@ func (db *DB) applyIMAPFlagUpdates(ctx context.Context, folderID string, expecte
 	return changed, nil
 }
 
-func (db *DB) GetMessageAllFolderStates(ctx context.Context, messageID int64) ([]struct {
-	FolderID  string
-	RemoteUID uint32
-	IsRead    bool
-	IsStarred bool
-}, error) {
-	rows, err := db.Read().QueryContext(ctx,
-		`SELECT folder_id, remote_uid, is_read, is_starred FROM message_folder_state WHERE message_id = ?`, messageID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var results []struct {
-		FolderID  string
-		RemoteUID uint32
-		IsRead    bool
-		IsStarred bool
-	}
-	for rows.Next() {
-		var item struct {
-			FolderID  string
-			RemoteUID uint32
-			IsRead    bool
-			IsStarred bool
-		}
-		var isRead, isStarred int
-		var remoteUID sql.NullInt64
-		if err := rows.Scan(&item.FolderID, &remoteUID, &isRead, &isStarred); err != nil {
-			return nil, err
-		}
-		if remoteUID.Valid {
-			item.RemoteUID = uint32(remoteUID.Int64)
-		}
-		item.IsRead = isRead == 1
-		item.IsStarred = isStarred == 1
-		results = append(results, item)
-	}
-	return results, nil
-}
-
 func (db *DB) IsRemoteContentAllowedForSenderForUser(ctx context.Context, email, userID string) bool {
 	email = strings.ToLower(strings.TrimSpace(email))
 	userID = strings.TrimSpace(userID)
@@ -9130,14 +8760,6 @@ func (db *DB) AllowRemoteContentForSenderFromMessageForUser(ctx context.Context,
 		}
 	}
 	return tx.Commit()
-}
-
-func (db *DB) GetMessageSenderEmail(ctx context.Context, messageID int64) (string, error) {
-	var email string
-	err := db.Read().QueryRowContext(ctx,
-		`SELECT from_email FROM messages WHERE id = ?`, messageID,
-	).Scan(&email)
-	return email, err
 }
 
 func (db *DB) GetMessageSenderEmailForUser(ctx context.Context, messageID int64, userID string) (string, error) {

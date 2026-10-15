@@ -788,11 +788,6 @@ func (db *DB) GetRecentSenderAvatarAttemptLogs(ctx context.Context, limit int) (
 	return logs, err
 }
 
-func (db *DB) GetRecentSenderAvatarErrorLogs(ctx context.Context, limit int) ([]SenderAvatarAttemptLog, error) {
-	logs, _, err := db.GetSenderAvatarAttemptLogs(ctx, SenderAvatarAttemptLogFilter{ErrorsOnly: true, Limit: limit})
-	return logs, err
-}
-
 func (db *DB) GetSenderAvatarAttemptLogs(ctx context.Context, filter SenderAvatarAttemptLogFilter) ([]SenderAvatarAttemptLog, int, error) {
 	if filter.Limit <= 0 {
 		filter.Limit = 50
