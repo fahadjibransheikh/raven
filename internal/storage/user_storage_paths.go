@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 )
 
@@ -24,11 +25,17 @@ func absolutizeStoredPaths(ctx context.Context, path string, layout UserStorageL
 	if err != nil || !pending {
 		return err
 	}
+	base, err := canonicalMigrationPath(layout.BlobDirectory)
+	if errors.Is(err, os.ErrNotExist) {
+		base = filepath.Clean(layout.BlobDirectory) // nothing on disk to resolve yet
+	} else if err != nil {
+		return err
+	}
 	resolve := func(stored string) (string, bool, error) {
 		if stored == "" || filepath.IsAbs(stored) {
 			return stored, false, nil
 		}
-		relative, err := filepath.Rel(layout.BlobDirectory, filepath.Join(layout.WorkingDirectory, stored))
+		relative, err := relativeToCanonicalBase(base, filepath.Join(layout.WorkingDirectory, stored))
 		if err != nil || !filepath.IsLocal(relative) {
 			return "", false, errors.New("a retained file path is outside the blob directory")
 		}

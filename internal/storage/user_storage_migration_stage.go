@@ -164,6 +164,29 @@ func canonicalMigrationPath(path string) (string, error) {
 	return filepath.Join(parent, filepath.Base(abs)), nil
 }
 
+// relativeToCanonicalBase returns path relative to base (a symlink-free path),
+// accepting any spelling of base in path, such as macOS /var for /private/var.
+// Ancestors are tried from the root down and nothing below the matched base is
+// resolved, so symlinks inside the tree stay visible to migrationNoSymlinks.
+func relativeToCanonicalBase(base, path string) (string, error) {
+	if relative, err := filepath.Rel(base, path); err == nil && filepath.IsLocal(relative) {
+		return relative, nil
+	}
+	var ancestors []string
+	for dir := filepath.Dir(path); ; dir = filepath.Dir(dir) {
+		ancestors = append(ancestors, dir)
+		if filepath.Dir(dir) == dir {
+			break
+		}
+	}
+	for i := len(ancestors) - 1; i >= 0; i-- {
+		if real, err := filepath.EvalSymlinks(ancestors[i]); err == nil && real == base {
+			return filepath.Rel(ancestors[i], path)
+		}
+	}
+	return filepath.Rel(base, path)
+}
+
 func stageUserStorageMigration(ctx context.Context, source *DB, directory string, report UserStorageMigrationPreflight, importCredentials func(context.Context, *sql.Tx) error, bindPreparation func(string) error) (result UserStorageMigrationStage, err error) {
 	if err := ctx.Err(); err != nil {
 		return result, err

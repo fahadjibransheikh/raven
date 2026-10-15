@@ -52,7 +52,7 @@ func InspectUserStorageMigrationFiles(ctx context.Context, source *DB, workingDi
 	if err != nil {
 		return result, err
 	}
-	base, err := filepath.Abs(filepath.Join(filepath.Dir(source.Path()), "accounts"))
+	base, err := canonicalMigrationPath(filepath.Join(filepath.Dir(source.Path()), "accounts"))
 	if err != nil {
 		return result, err
 	}
@@ -85,7 +85,7 @@ func InspectUserStorageMigrationFiles(ctx context.Context, source *DB, workingDi
 			path = filepath.Join(workingDirectory, path)
 		}
 		path = filepath.Clean(path)
-		relative, err := filepath.Rel(base, path)
+		relative, err := relativeToCanonicalBase(base, path)
 		if err != nil || !filepath.IsLocal(relative) || relative == "." {
 			if !avatar && !filepath.IsAbs(stored) {
 				return fmt.Errorf("a stored file path does not resolve inside %s from the working directory %s; run Raven from the directory the previous version was started from", base, workingDirectory)

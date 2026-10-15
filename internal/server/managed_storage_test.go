@@ -19,7 +19,12 @@ import (
 
 func TestManagedStorageFreshInitializationRestartAndExclusiveLocks(t *testing.T) {
 	t.Setenv("RAVEN_SECRET_KEY", "")
-	path := filepath.Join(t.TempDir(), "new-data", "central.db")
+	// openManagedStorage canonicalizes; macOS temp dirs sit behind /var -> /private/var.
+	root, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(root, "new-data", "central.db")
 	s, err := openManagedStorage(t.Context(), path, 1)
 	if err != nil {
 		t.Fatal(err)
