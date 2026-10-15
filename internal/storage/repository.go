@@ -437,6 +437,11 @@ func (db *DB) reconcileMessageThreadTx(ctx context.Context, tx *sql.Tx, msgID in
 		threadID, parentValue, messageID, normalizedSubject, inReplyTo, refsRaw, msgID); err != nil {
 		return err
 	}
+	if oldThreadID.String != threadID {
+		if err := setMessageSearchThreadKeyTx(ctx, tx, msgID, threadID); err != nil {
+			return err
+		}
+	}
 
 	for i, ref := range refs {
 		var exists int
@@ -569,6 +574,11 @@ func (db *DB) resolveWaitingChildrenTx(ctx context.Context, tx *sql.Tx, accountI
 			`UPDATE messages SET thread_id = ?, thread_parent_id = ? WHERE id = ?`, threadID, parentMsgID, childID); err != nil {
 			return err
 		}
+		if oldThread.String != threadID {
+			if err := setMessageSearchThreadKeyTx(ctx, tx, childID, threadID); err != nil {
+				return err
+			}
+		}
 		if oldThread.Valid && oldThread.String != "" && oldThread.String != threadID {
 			if err := db.updateThreadAggregatesTx(ctx, tx, oldThread.String); err != nil {
 				return err
@@ -625,6 +635,9 @@ func (db *DB) reattachResolvedChildrenTx(ctx context.Context, tx *sql.Tx, parent
 		if _, err := tx.ExecContext(ctx,
 			`UPDATE messages SET thread_id = ?, thread_parent_id = ? WHERE id = ?`,
 			threadID, parentValue, c.id); err != nil {
+			return err
+		}
+		if err := setMessageSearchThreadKeyTx(ctx, tx, c.id, threadID); err != nil {
 			return err
 		}
 	}
@@ -1039,6 +1052,15 @@ type DraftMessageInput struct {
 	CCRecipients      []Recipient
 	BCCRecipients     []Recipient
 	Date              time.Time
+}
+
+// A message that moves threads keeps its search document, so the stored
+// thread_key must follow or thread-scoped search misses it.
+func setMessageSearchThreadKeyTx(ctx context.Context, tx *sql.Tx, messageID int64, threadID string) error {
+	if _, err := tx.ExecContext(ctx, `UPDATE message_search SET thread_key = ? WHERE rowid = ?`, threadID, messageID); err != nil {
+		return fmt.Errorf("update message search thread key: %w", err)
+	}
+	return nil
 }
 
 // Keep search documents in the same transaction as the mail they describe.

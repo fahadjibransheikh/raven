@@ -3509,6 +3509,31 @@ func TestLateParentStillRethreadsAndDropsEmptyThread(t *testing.T) {
 	}
 }
 
+func TestLateParentUpdatesSearchThreadKeyOfRethreadedChild(t *testing.T) {
+	ctx := context.Background()
+	db := seedThreadTestAccount(t, "outlook")
+	base := time.Date(2020, 8, 7, 12, 0, 0, 0, time.UTC)
+	child := threadTestMsg("child", "Re: Topic", "<parent@example.com>", base.Add(time.Hour))
+	parent := threadTestMsg("parent", "Topic", "", base)
+
+	if _, err := db.UpsertProviderSyncMessages(ctx, []ProviderSyncMessage{child}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.UpsertProviderSyncMessages(ctx, []ProviderSyncMessage{parent}); err != nil {
+		t.Fatal(err)
+	}
+	parentThread, _ := threadTestState(t, db, "parent")
+	var searchKey string
+	if err := db.Read().QueryRowContext(ctx, `
+		SELECT s.thread_key FROM message_search s JOIN messages m ON m.id = s.rowid
+		WHERE m.internet_message_id = '<child@example.com>'`).Scan(&searchKey); err != nil {
+		t.Fatalf("read child search thread_key: %v", err)
+	}
+	if searchKey != parentThread {
+		t.Fatalf("child search thread_key=%q, want re-threaded %q", searchKey, parentThread)
+	}
+}
+
 func TestMigrateV97ToV98DeletesOnlyUnreferencedThreads(t *testing.T) {
 	ctx := context.Background()
 	db := seedThreadTestAccount(t, "outlook")
