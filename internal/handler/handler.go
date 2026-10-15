@@ -6369,6 +6369,25 @@ func (h *Handler) handleDeleteMessages(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]any{"updated": updated, "moved": moved})
 }
 
+// requireMoveWithinAccount writes the error response and returns false unless
+// every source account owns destFolderID. A move cannot cross accounts, so this
+// runs before anything is queued.
+func (h *Handler) requireMoveWithinAccount(ctx context.Context, w http.ResponseWriter, destFolderID string, sourceAccountIDs ...string) bool {
+	destAccountID, err := h.db.GetFolderAccountID(ctx, destFolderID)
+	if err != nil {
+		log.Printf("load destination folder %s: %v", destFolderID, err)
+		http.Error(w, "failed to load destination folder", http.StatusInternalServerError)
+		return false
+	}
+	for _, accountID := range sourceAccountIDs {
+		if accountID != destAccountID {
+			http.Error(w, "messages can only be moved within their own account", http.StatusUnprocessableEntity)
+			return false
+		}
+	}
+	return true
+}
+
 func (h *Handler) handleMoveMessages(w http.ResponseWriter, r *http.Request) {
 	payload, err := decodeMessageBulkRequest(r)
 	if err != nil {
@@ -6397,18 +6416,14 @@ func (h *Handler) handleMoveMessages(w http.ResponseWriter, r *http.Request) {
 	}
 	// Check every message before queuing any, so a mixed selection fails
 	// whole instead of leaving some moves queued.
-	destAccountID, err := h.db.GetFolderAccountID(ctx, destFolderID)
-	if err != nil {
-		http.Error(w, "failed to load destination folder", http.StatusInternalServerError)
-		return
-	}
+	var sourceAccountIDs []string
 	for _, target := range targets {
 		for _, info := range target.Infos {
-			if info.AccountID != destAccountID {
-				http.Error(w, "messages can only be moved within their own account", http.StatusUnprocessableEntity)
-				return
-			}
+			sourceAccountIDs = append(sourceAccountIDs, info.AccountID)
 		}
+	}
+	if !h.requireMoveWithinAccount(ctx, w, destFolderID, sourceAccountIDs...) {
+		return
 	}
 	updated := 0
 
@@ -6682,6 +6697,9 @@ func (h *Handler) handleMoveMessage(w http.ResponseWriter, r *http.Request) {
 	destRemoteID, err := h.db.GetFolderRemoteID(ctx, destFolderID)
 	if err != nil || destRemoteID == "" {
 		http.Error(w, "destination folder not found", http.StatusBadRequest)
+		return
+	}
+	if !h.requireMoveWithinAccount(ctx, w, destFolderID, info.AccountID) {
 		return
 	}
 
