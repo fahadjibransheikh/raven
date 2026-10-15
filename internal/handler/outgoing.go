@@ -241,44 +241,50 @@ func (h *Handler) StartOutgoingSendWorker(ctx context.Context) {
 	// Calendar servers can be slow or unavailable. Their post-delivery saves
 	// must never hold up the mail queue or its independent Sent-copy worker.
 	go h.runCalendarReplyWorker(ctx)
-	go func() {
-		if count, err := h.db.MarkInterruptedOutgoingSendsAmbiguous(ctx, "Raven stopped while this message was being sent. It may have been delivered."); err != nil {
-			log.Printf("outgoing-send: recover interrupted sends: %v", err)
-		} else if count > 0 {
-			log.Printf("outgoing-send: marked %d interrupted send(s) ambiguous", count)
-		}
-		if count, err := h.db.MarkInterruptedSentCopiesAmbiguous(ctx, "Raven stopped while copying this message to Sent. The remote copy may already exist."); err != nil {
-			log.Printf("outgoing-send: recover interrupted Sent copies: %v", err)
-		} else if count > 0 {
-			log.Printf("outgoing-send: marked %d interrupted Sent copy operation(s) ambiguous", count)
-		}
-		if count, err := h.db.MarkInterruptedIMAPDraftOperationsAmbiguous(ctx, "Raven stopped while syncing this draft. The remote revision may already exist."); err != nil {
-			log.Printf("imap-draft: recover interrupted operations: %v", err)
-		} else if count > 0 {
-			log.Printf("imap-draft: marked %d interrupted operation(s) ambiguous", count)
-		}
-		h.prepareMigratedOutgoingSends(ctx)
-		h.runDueOutgoingSends(ctx)
-		h.runDueSentCopies(ctx)
-		h.runDueIMAPDraftOperations(ctx)
+	go h.runOutgoingDispatcher(ctx)
+}
 
-		ticker := time.NewTicker(30 * time.Second)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-h.outgoingWake:
-				h.runDueOutgoingSends(ctx)
-				h.runDueSentCopies(ctx)
-				h.runDueIMAPDraftOperations(ctx)
-			case <-ticker.C:
-				h.runDueOutgoingSends(ctx)
-				h.runDueSentCopies(ctx)
-				h.runDueIMAPDraftOperations(ctx)
-			}
+// runOutgoingDispatcher returns once ctx is done and every running worker has
+// finished its in-flight delivery.
+func (h *Handler) runOutgoingDispatcher(ctx context.Context) {
+	if count, err := h.db.MarkInterruptedOutgoingSendsAmbiguous(ctx, "Raven stopped while this message was being sent. It may have been delivered."); err != nil {
+		log.Printf("outgoing-send: recover interrupted sends: %v", err)
+	} else if count > 0 {
+		log.Printf("outgoing-send: marked %d interrupted send(s) ambiguous", count)
+	}
+	if count, err := h.db.MarkInterruptedSentCopiesAmbiguous(ctx, "Raven stopped while copying this message to Sent. The remote copy may already exist."); err != nil {
+		log.Printf("outgoing-send: recover interrupted Sent copies: %v", err)
+	} else if count > 0 {
+		log.Printf("outgoing-send: marked %d interrupted Sent copy operation(s) ambiguous", count)
+	}
+	if count, err := h.db.MarkInterruptedIMAPDraftOperationsAmbiguous(ctx, "Raven stopped while syncing this draft. The remote revision may already exist."); err != nil {
+		log.Printf("imap-draft: recover interrupted operations: %v", err)
+	} else if count > 0 {
+		log.Printf("imap-draft: marked %d interrupted operation(s) ambiguous", count)
+	}
+	h.prepareMigratedOutgoingSends(ctx)
+	h.dispatchDueOutgoingSends(ctx)
+	h.runDueSentCopies(ctx)
+	h.runDueIMAPDraftOperations(ctx)
+
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			// Let in-flight deliveries record their result before returning.
+			h.outgoingWorkers.Wait()
+			return
+		case <-h.outgoingWake:
+			h.dispatchDueOutgoingSends(ctx)
+			h.runDueSentCopies(ctx)
+			h.runDueIMAPDraftOperations(ctx)
+		case <-ticker.C:
+			h.dispatchDueOutgoingSends(ctx)
+			h.runDueSentCopies(ctx)
+			h.runDueIMAPDraftOperations(ctx)
 		}
-	}()
+	}
 }
 
 func (h *Handler) prepareMigratedOutgoingSends(ctx context.Context) {
@@ -315,22 +321,76 @@ func (h *Handler) prepareMigratedOutgoingSends(ctx context.Context) {
 	}
 }
 
-func (h *Handler) runDueOutgoingSends(ctx context.Context) {
+// dispatchDueOutgoingSends starts a worker for every account with a due send
+// and does not wait for them, so one account's slow server never delays the
+// others. An account whose worker is already running is flagged instead, so the
+// worker re-checks before it exits and a wake is never lost.
+func (h *Handler) dispatchDueOutgoingSends(ctx context.Context) {
+	accounts, err := h.db.AccountsWithDueOutgoing(ctx, time.Now())
+	if err != nil {
+		if !errors.Is(err, context.Canceled) {
+			log.Printf("outgoing-send: list accounts with due sends: %v", err)
+		}
+		return
+	}
+	h.outgoingMu.Lock()
+	defer h.outgoingMu.Unlock()
+	for _, accountID := range accounts {
+		if _, running := h.outgoingRunning[accountID]; running {
+			h.outgoingRunning[accountID] = true
+			continue
+		}
+		h.outgoingRunning[accountID] = false
+		h.outgoingWorkers.Add(1)
+		go h.runAccountOutgoingWorker(ctx, accountID)
+	}
+}
+
+// runAccountOutgoingWorker delivers one account's due sends one at a time, then
+// exits. The pending-to-sending claim is what prevents double delivery, so a
+// second worker for the same account (e.g. another dispatcher) is harmless.
+func (h *Handler) runAccountOutgoingWorker(ctx context.Context, accountID string) {
+	defer h.outgoingWorkers.Done()
 	for {
-		sends, err := h.db.ClaimDueOutgoingSends(ctx, time.Now(), 5)
-		if err != nil {
-			if !errors.Is(err, context.Canceled) {
-				log.Printf("outgoing-send: claim due sends: %v", err)
-			}
-			return
+		if h.deliverNextOutgoingSend(ctx, accountID) {
+			continue
 		}
-		if len(sends) == 0 {
-			return
+		h.outgoingMu.Lock()
+		again := h.outgoingRunning[accountID] && ctx.Err() == nil
+		if again {
+			h.outgoingRunning[accountID] = false
+		} else {
+			delete(h.outgoingRunning, accountID)
 		}
-		for _, send := range sends {
-			h.deliverOutgoingSend(ctx, send)
+		h.outgoingMu.Unlock()
+		if !again {
+			return
 		}
 	}
+}
+
+// deliverNextOutgoingSend reports whether it delivered a send. The slot is taken
+// before the claim: a claimed send waiting for a slot would sit in "sending" and
+// be recovered as ambiguous after a restart although nothing was attempted.
+func (h *Handler) deliverNextOutgoingSend(ctx context.Context, accountID string) bool {
+	select {
+	case h.outgoingSlots <- struct{}{}:
+		defer func() { <-h.outgoingSlots }()
+	case <-ctx.Done():
+		return false
+	}
+	sends, err := h.db.ClaimDueOutgoingSendsForAccount(ctx, accountID, time.Now(), 1)
+	if err != nil {
+		if !errors.Is(err, context.Canceled) {
+			log.Printf("outgoing-send: claim due send for account %s: %v", accountID, err)
+		}
+		return false
+	}
+	if len(sends) == 0 {
+		return false
+	}
+	h.deliverOutgoingSend(ctx, sends[0])
+	return true
 }
 
 // scheduledSendWithCurrentDate rebuilds a scheduled send's MIME with Date set to

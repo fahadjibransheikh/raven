@@ -152,6 +152,10 @@ type Handler struct {
 	authEventRetentionWorkers sync.WaitGroup
 	smtpProfileMu             sync.RWMutex
 	smtpProfile               smtpDeliveryProfileState
+	outgoingMu                sync.Mutex
+	outgoingRunning           map[string]bool // account -> new work arrived while its worker ran
+	outgoingWorkers           sync.WaitGroup
+	outgoingSlots             chan struct{}
 }
 
 const (
@@ -162,6 +166,9 @@ const (
 	contactAvatarMaxBytes         int64 = 2 << 20
 	composeStagedAttachmentMaxAge       = 24 * time.Hour
 	outgoingSendTimeout                 = 5 * time.Minute
+	// outgoingMaxConcurrentSends caps deliveries across all accounts; each
+	// account still sends one at a time, in order.
+	outgoingMaxConcurrentSends = 8
 )
 
 func outgoingSendContext(parent context.Context) (context.Context, context.CancelFunc) {
@@ -194,6 +201,8 @@ func New(db *storage.DB, accountStore *config.AccountStore, syncer *mail.SyncOrc
 		googleTranslator:       translation.NewGoogleWebConnector(nil),
 		vapidPublicKey:         vapidPublicKey,
 		outgoingWake:           make(chan struct{}, 1),
+		outgoingRunning:        make(map[string]bool),
+		outgoingSlots:          make(chan struct{}, outgoingMaxConcurrentSends),
 		outgoingNow:            time.Now,
 		outgoingRandom:         rand.Float64,
 		messageMutationWake:    make(chan struct{}, 1),

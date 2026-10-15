@@ -352,6 +352,33 @@ func (db *DB) claimDueOutgoingSends(ctx context.Context, accountID string, now t
 	return sends, nil
 }
 
+// AccountsWithDueOutgoing lists accounts that ClaimDueOutgoingSendsForAccount
+// would currently claim from, so the dispatcher starts workers only where there
+// is work. It must keep the same filters as claimDueOutgoingSends.
+func (db *DB) AccountsWithDueOutgoing(ctx context.Context, now time.Time) ([]string, error) {
+	now = now.UTC()
+	rows, err := db.Read().QueryContext(ctx, `
+		SELECT DISTINCT account_id FROM outgoing_sends
+		WHERE status = ? AND send_after <= ? AND next_attempt_at <= ? AND mime_data IS NOT NULL AND length(mime_data) > 0
+		  AND EXISTS (
+			SELECT 1 FROM accounts a JOIN users u ON u.id = a.user_id
+			WHERE a.id = outgoing_sends.account_id AND COALESCE(a.is_deleting, 0) = 0 AND u.status = 'active'
+		  )`, OutgoingSendPending, now, now)
+	if err != nil {
+		return nil, fmt.Errorf("select accounts with due outgoing sends: %w", err)
+	}
+	defer rows.Close()
+	var accounts []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		accounts = append(accounts, id)
+	}
+	return accounts, rows.Err()
+}
+
 // UpdateClaimedOutgoingSendPayload replaces the MIME and snapshot of a send the
 // worker has already claimed, so the Sent copy matches what is delivered.
 func (db *DB) UpdateClaimedOutgoingSendPayload(ctx context.Context, id string, mimeData, messageJSON []byte) error {
