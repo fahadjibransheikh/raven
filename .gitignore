@@ -33,5 +33,8 @@ node_modules/
 /tmp/
 __pycache__/
 
+# Local audit report
+/ponytail-audit.md
+
 # macOS widget build output (tauri-wrapper/widget/build.sh)
 /tauri-wrapper/widget/build/
