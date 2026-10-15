@@ -352,6 +352,24 @@ func (db *DB) claimDueOutgoingSends(ctx context.Context, accountID string, now t
 	return sends, nil
 }
 
+// UpdateClaimedOutgoingSendPayload replaces the MIME and snapshot of a send the
+// worker has already claimed, so the Sent copy matches what is delivered.
+func (db *DB) UpdateClaimedOutgoingSendPayload(ctx context.Context, id string, mimeData, messageJSON []byte) error {
+	if id == "" || len(mimeData) == 0 || len(messageJSON) == 0 {
+		return fmt.Errorf("missing outgoing send payload")
+	}
+	result, err := db.Write().ExecContext(ctx, `
+		UPDATE outgoing_sends SET mime_data = ?, message_json = ?, updated_at = CURRENT_TIMESTAMP
+		WHERE id = ? AND status = ?`, mimeData, string(messageJSON), id, OutgoingSendSending)
+	if err != nil {
+		return err
+	}
+	if changed, _ := result.RowsAffected(); changed != 1 {
+		return fmt.Errorf("outgoing send %s is no longer being sent", id)
+	}
+	return nil
+}
+
 func (db *DB) CompleteOutgoingSend(ctx context.Context, id, sentMessageID string, needsSentCopy bool) error {
 	query := `UPDATE outgoing_sends
 		SET status = ?, sent_message_id = ?, last_error = '', locked_at = NULL,

@@ -333,7 +333,52 @@ func (h *Handler) runDueOutgoingSends(ctx context.Context) {
 	}
 }
 
+// scheduledSendWithCurrentDate rebuilds a scheduled send's MIME with Date set to
+// now, keeping the Message-ID. The Date was fixed when the user scheduled it,
+// so mail due on Friday would otherwise arrive dated Monday. A send whose Date
+// is already at or after send_after (a retry, or an earlier refresh) is left
+// alone, which keeps every attempt of one send on one Date and Message-ID.
+// Unscheduled sends are due at once, so their Date is already the send time.
+func scheduledSendWithCurrentDate(send storage.OutgoingSend, now time.Time) (storage.OutgoingSend, bool, error) {
+	if !send.IsScheduled {
+		return send, false, nil
+	}
+	var snapshot outgoingMessageSnapshot
+	if err := json.Unmarshal(send.MessageJSON, &snapshot); err != nil {
+		return send, false, fmt.Errorf("decode outgoing message: %w", err)
+	}
+	if !snapshot.Date.Before(send.SendAfter) {
+		return send, false, nil
+	}
+	snapshot.Date = now.UTC()
+	raw, err := buildOutgoingMIME(send.Transport, snapshot.outgoingMessage())
+	if err != nil {
+		return send, false, fmt.Errorf("rebuild outgoing message: %w", err)
+	}
+	snapshotJSON, err := json.Marshal(snapshot)
+	if err != nil {
+		return send, false, fmt.Errorf("encode outgoing message: %w", err)
+	}
+	send.MIMEData, send.MessageJSON = raw, snapshotJSON
+	return send, true, nil
+}
+
+// refreshScheduledSendDate is best effort: if the message cannot be rebuilt or
+// saved, it is delivered with its original Date rather than not at all.
+func (h *Handler) refreshScheduledSendDate(ctx context.Context, send storage.OutgoingSend) storage.OutgoingSend {
+	fresh, changed, err := scheduledSendWithCurrentDate(send, h.outgoingNowUTC())
+	if err == nil && changed {
+		err = h.db.UpdateClaimedOutgoingSendPayload(ctx, fresh.ID, fresh.MIMEData, fresh.MessageJSON)
+	}
+	if err != nil {
+		log.Printf("outgoing-send: keep original Date for scheduled send %s: %v", send.ID, err)
+		return send
+	}
+	return fresh
+}
+
 func (h *Handler) deliverOutgoingSend(parent context.Context, send storage.OutgoingSend) {
+	send = h.refreshScheduledSendDate(parent, send)
 	var snapshot outgoingMessageSnapshot
 	if err := json.Unmarshal(send.MessageJSON, &snapshot); err != nil {
 		h.finishOutgoingSend(send, storage.OutgoingSendFailed, fmt.Errorf("decode outgoing message: %w", err))

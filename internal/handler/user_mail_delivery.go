@@ -131,6 +131,18 @@ func (s *userMailDeliveryScope) send(ctx context.Context) (bool, error) {
 		return false, nil
 	}
 	send := claimed[0]
+	fresh, changed, dateErr := scheduledSendWithCurrentDate(send, s.runner.h.outgoingNowUTC())
+	if dateErr == nil && changed {
+		dateErr = s.call(ctx, func(db *storage.DB) error {
+			return db.UpdateClaimedOutgoingSendPayload(ctx, fresh.ID, fresh.MIMEData, fresh.MessageJSON)
+		})
+	}
+	if dateErr != nil {
+		// Best effort: deliver with the original Date rather than not at all.
+		log.Printf("outgoing-send: keep original Date for scheduled send %s: %v", send.ID, dateErr)
+	} else {
+		send = fresh
+	}
 	if calendarReply {
 		return s.sendCalendarReply(ctx, send)
 	}
