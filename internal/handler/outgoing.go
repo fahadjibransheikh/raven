@@ -470,16 +470,20 @@ func (h *Handler) reconcileSentCopy(parent context.Context, send storage.Outgoin
 		messageID = strings.TrimSpace(send.SentMessageID)
 	}
 
-	if send.SentCopyStatus == storage.SentCopyAmbiguous {
-		uid, uidValidity, err := client.FindUIDByMessageIDWithValidity(parent, remoteName, messageID)
-		if err != nil {
-			h.finishSentCopy(send, storage.SentCopyAmbiguous, fmt.Errorf("check ambiguous Sent copy: %w", err))
-			return
+	// Some servers (Microsoft 365, outlook.com, Yahoo) file their own Sent copy
+	// on submission, so look for it before every append, not only after doubt.
+	uid, uidValidity, err := client.FindUIDByMessageIDWithValidity(parent, remoteName, messageID)
+	if err != nil {
+		status := storage.SentCopyFailed // nothing was appended yet unless a prior attempt left it ambiguous
+		if send.SentCopyStatus == storage.SentCopyAmbiguous {
+			status = storage.SentCopyAmbiguous
 		}
-		if uid > 0 {
-			h.completeSentCopy(parent, send, folderID, uid, uidValidity)
-			return
-		}
+		h.finishSentCopy(send, status, fmt.Errorf("check for existing Sent copy: %w", err))
+		return
+	}
+	if uid > 0 {
+		h.completeSentCopy(parent, send, folderID, uid, uidValidity)
+		return
 	}
 
 	result, err := client.AppendMessage(parent, remoteName, send.MIMEData, []goimap.Flag{goimap.FlagSeen}, snapshot.Date)
@@ -491,7 +495,7 @@ func (h *Handler) reconcileSentCopy(parent context.Context, send storage.Outgoin
 		h.finishSentCopy(send, status, err)
 		return
 	}
-	uid := result.UID
+	uid = result.UID
 	if uid == 0 {
 		if foundUID, foundUIDValidity, findErr := client.FindUIDByMessageIDWithValidity(parent, remoteName, messageID); findErr == nil {
 			uid = foundUID

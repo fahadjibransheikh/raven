@@ -473,7 +473,7 @@ func TestSentCopyWorkerAppendsExactMIMEAndLinksRemoteUID(t *testing.T) {
 
 	h.runDueSentCopies(t.Context())
 
-	if fake.appendCalls != 1 || fake.findCalls != 0 || fake.mailbox != "Sent" {
+	if fake.appendCalls != 1 || fake.findCalls != 1 || fake.mailbox != "Sent" {
 		t.Fatalf("fake IMAP calls append=%d find=%d mailbox=%q", fake.appendCalls, fake.findCalls, fake.mailbox)
 	}
 	if !strings.Contains(string(fake.raw), "Sent copy body") {
@@ -495,6 +495,24 @@ func TestSentCopyWorkerAppendsExactMIMEAndLinksRemoteUID(t *testing.T) {
 	}
 	if remoteUID != 77 {
 		t.Fatalf("linked remote UID = %d, want 77", remoteUID)
+	}
+}
+
+func TestFirstSentCopyAttemptSkipsAppendWhenServerAlreadySavedCopy(t *testing.T) {
+	h, db, queued, _ := seedPendingSentCopy(t)
+	fake := &fakeSentCopyIMAPClient{findUID: 55, findUIDValidity: 123}
+	h.sentCopyIMAPFactory = func(context.Context, *models.AccountConfig, string) (sentCopyIMAPClient, error) {
+		return fake, nil
+	}
+
+	h.runDueSentCopies(t.Context())
+
+	if fake.appendCalls != 0 {
+		t.Fatalf("append calls = %d, want 0: server already filed its own Sent copy", fake.appendCalls)
+	}
+	completed, err := db.GetOutgoingSend(t.Context(), queued.ID)
+	if err != nil || completed.SentCopyStatus != storage.SentCopyComplete || completed.SentCopyUID != 55 {
+		t.Fatalf("Sent copy = %#v, %v", completed, err)
 	}
 }
 
