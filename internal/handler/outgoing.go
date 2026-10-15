@@ -537,6 +537,14 @@ func (h *Handler) finishSentCopy(send storage.OutgoingSend, status string, err e
 	if err != nil {
 		errText = sanitizeOutgoingErrorText(err.Error())
 	}
+	if send.SentCopyAttempts >= outgoingSendMaxAttempts {
+		if dbErr := h.db.AbandonSentCopy(context.Background(), send.ID, errText); dbErr != nil {
+			log.Printf("outgoing-send: abandon Sent copy %s: %v", send.ID, dbErr)
+			return
+		}
+		log.Printf("outgoing-send: Sent copy %s gave up after %d attempts; the message was delivered but no Sent copy was saved: %s", send.ID, send.SentCopyAttempts, errText)
+		return
+	}
 	nextAttempt := h.outgoingNowUTC().Add(sentCopyRetryDelayWithJitter(send.SentCopyAttempts, h.outgoingRandomValue()))
 	if dbErr := h.db.FinishSentCopyWithError(context.Background(), send.ID, status, errText, nextAttempt); dbErr != nil {
 		log.Printf("outgoing-send: finish Sent copy %s: %v", send.ID, dbErr)

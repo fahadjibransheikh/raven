@@ -482,6 +482,20 @@ func (db *DB) FinishSentCopyWithError(ctx context.Context, id, status, errText s
 	return err
 }
 
+// AbandonSentCopy ends Sent-copy retries for good once they keep failing. The
+// mail itself was delivered; dropping mime_data frees the stored message and
+// takes the row out of the claim query. The failed status and error stay for
+// the outgoing-status list.
+func (db *DB) AbandonSentCopy(ctx context.Context, id, errText string) error {
+	_, err := db.Write().ExecContext(ctx, `
+		UPDATE outgoing_sends
+		SET sent_copy_status = ?, sent_copy_last_error = ?, sent_copy_locked_at = NULL,
+			envelope_recipients = '[]', mime_data = NULL, message_json = '', updated_at = CURRENT_TIMESTAMP
+		WHERE id = ? AND status = ? AND sent_copy_status = ?`,
+		SentCopyFailed, errText, id, OutgoingSendSent, SentCopyCopying)
+	return err
+}
+
 func (db *DB) MarkInterruptedSentCopiesAmbiguous(ctx context.Context, reason string) (int64, error) {
 	result, err := db.Write().ExecContext(ctx, `
 		UPDATE outgoing_sends

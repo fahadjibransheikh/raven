@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -513,6 +514,43 @@ func TestFirstSentCopyAttemptSkipsAppendWhenServerAlreadySavedCopy(t *testing.T)
 	completed, err := db.GetOutgoingSend(t.Context(), queued.ID)
 	if err != nil || completed.SentCopyStatus != storage.SentCopyComplete || completed.SentCopyUID != 55 {
 		t.Fatalf("Sent copy = %#v, %v", completed, err)
+	}
+}
+
+func TestSentCopyRetriesStopAfterMaxAttempts(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		priorTries   int
+		wantGivenUp  bool
+		wantMIMEKept bool
+	}{
+		{"below cap keeps retrying", outgoingSendMaxAttempts - 2, false, true},
+		{"cap reached gives up", outgoingSendMaxAttempts - 1, true, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h, db, queued, _ := seedPendingSentCopy(t)
+			if _, err := db.Write().ExecContext(t.Context(), `UPDATE outgoing_sends SET sent_copy_attempt_count = ? WHERE id = ?`, tc.priorTries, queued.ID); err != nil {
+				t.Fatalf("seed attempts: %v", err)
+			}
+			fake := &fakeSentCopyIMAPClient{appendErr: errors.New("permission denied")}
+			h.sentCopyIMAPFactory = func(context.Context, *models.AccountConfig, string) (sentCopyIMAPClient, error) {
+				return fake, nil
+			}
+
+			h.runDueSentCopies(t.Context())
+
+			row, err := db.GetOutgoingSend(t.Context(), queued.ID)
+			if err != nil || row.SentCopyStatus != storage.SentCopyFailed || row.SentCopyLastError == "" {
+				t.Fatalf("Sent copy = %#v, %v", row, err)
+			}
+			if kept := len(row.MIMEData) > 0; kept != tc.wantMIMEKept {
+				t.Fatalf("mime_data kept = %v, want %v", kept, tc.wantMIMEKept)
+			}
+			due, err := db.ClaimDueSentCopies(t.Context(), time.Now().Add(365*24*time.Hour), 5)
+			if err != nil || (len(due) == 0) != tc.wantGivenUp {
+				t.Fatalf("due after a year = %d, %v; want gave up = %v", len(due), err, tc.wantGivenUp)
+			}
+		})
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	goimap "github.com/emersion/go-imap/v2"
@@ -223,6 +224,10 @@ func (s *userMailDeliveryScope) sentCopy(ctx context.Context) (bool, error) {
 		// Once claimed, any failure after APPEND may follow remote acceptance.
 		// Search the stable Message-ID before every subsequent append.
 		saveErr := s.call(ctx, func(db *storage.DB) error {
+			if send.SentCopyAttempts >= outgoingSendMaxAttempts {
+				log.Printf("outgoing-send: Sent copy %s gave up after %d attempts; the message was delivered but no Sent copy was saved", send.ID, send.SentCopyAttempts)
+				return db.AbandonSentCopy(ctx, send.ID, sanitizeOutgoingErrorText(err.Error()))
+			}
 			return db.FinishSentCopyWithError(ctx, send.ID, storage.SentCopyAmbiguous, sanitizeOutgoingErrorText(err.Error()), time.Now().Add(sentCopyRetryDelay(send.SentCopyAttempts)))
 		})
 		return saveErr == nil, errors.Join(err, saveErr)
