@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"encoding/base64"
+	"io"
 	"strings"
 	"testing"
 
@@ -152,5 +154,38 @@ func TestParseVCardContactsFallsBackToStructuredName(t *testing.T) {
 	}
 	if contacts[0].Name != "Jane Doe" {
 		t.Fatalf("Name = %q, want Jane Doe", contacts[0].Name)
+	}
+}
+
+func TestParseVCardContactsKeepsOnlySmallEmbeddedPhotos(t *testing.T) {
+	card := func(photo string) string {
+		return strings.Join([]string{"BEGIN:VCARD", "VERSION:4.0", "FN:Jane", "EMAIL:jane@example.com", photo, "END:VCARD", ""}, "\r\n")
+	}
+	oversized := base64.StdEncoding.EncodeToString(make([]byte, contactAvatarMaxBytes+1))
+	const small = "data:image/png;base64,iVBORw0KGgo="
+	// want is the photo kept from an uploaded file; wantSync is the photo kept
+	// from a contact provider, which may serve its own image address.
+	for name, tc := range map[string]struct{ photo, want, wantSync string }{
+		"tracking url":      {"PHOTO:https://tracker.example/x.png", "", "https://tracker.example/x.png"},
+		"plain http url":    {"PHOTO;VALUE=uri:http://tracker.example/x.png", "", "http://tracker.example/x.png"},
+		"small data url":    {"PHOTO:" + small, small, small},
+		"data url no b64":   {"PHOTO:data:image/svg+xml,<svg/>", "", ""},
+		"oversized data":    {"PHOTO:data:image/png;base64," + oversized, "", ""},
+		"small raw base64":  {"PHOTO;MEDIATYPE=image/png:iVBORw0KGgo=", small, small},
+		"oversized raw b64": {"PHOTO;MEDIATYPE=image/png:" + oversized, "", ""},
+	} {
+		for source, parse := range map[string]func(io.Reader, []string) ([]models.Contact, error){"import": parseImportedVCardContacts, "sync": parseVCardContacts} {
+			want := tc.want
+			if source == "sync" {
+				want = tc.wantSync
+			}
+			contacts, err := parse(strings.NewReader(card(tc.photo)), nil)
+			if err != nil || len(contacts) != 1 {
+				t.Fatalf("%s %s: contacts = %d, err = %v", name, source, len(contacts), err)
+			}
+			if got := contacts[0].AvatarURL; got != want {
+				t.Errorf("%s %s: AvatarURL = %.60q, want %.60q", name, source, got, want)
+			}
+		}
 	}
 }

@@ -1296,7 +1296,7 @@ func (h *Handler) handleImportContacts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	contacts, err := parseVCardContacts(bytes.NewReader(data), h.contactSaveTargets(ctx, r.FormValue("save_targets")))
+	contacts, err := parseImportedVCardContacts(bytes.NewReader(data), h.contactSaveTargets(ctx, r.FormValue("save_targets")))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return

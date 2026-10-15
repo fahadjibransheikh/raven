@@ -139,7 +139,19 @@ func writeFoldedVCardLine(b *strings.Builder, line string) {
 	b.WriteString("\r\n")
 }
 
+// parseVCardContacts reads cards a contact provider served, which may point
+// PHOTO at the provider's own image address.
 func parseVCardContacts(r io.Reader, saveTargets []string) ([]models.Contact, error) {
+	return decodeVCardContacts(r, saveTargets, true)
+}
+
+// parseImportedVCardContacts reads an uploaded .vcf file, whose author is not
+// the user's provider, so it keeps no remote PHOTO.
+func parseImportedVCardContacts(r io.Reader, saveTargets []string) ([]models.Contact, error) {
+	return decodeVCardContacts(r, saveTargets, false)
+}
+
+func decodeVCardContacts(r io.Reader, saveTargets []string, remotePhotos bool) ([]models.Contact, error) {
 	dec := emersionvcard.NewDecoder(r)
 	var contacts []models.Contact
 	for {
@@ -150,7 +162,7 @@ func parseVCardContacts(r io.Reader, saveTargets []string) ([]models.Contact, er
 		if err != nil {
 			return nil, fmt.Errorf("invalid vCard: %w", err)
 		}
-		contact, ok := contactFromVCard(card, saveTargets)
+		contact, ok := contactFromVCard(card, saveTargets, remotePhotos)
 		if ok {
 			contacts = append(contacts, contact)
 		}
@@ -161,7 +173,7 @@ func parseVCardContacts(r io.Reader, saveTargets []string) ([]models.Contact, er
 	return contacts, nil
 }
 
-func contactFromVCard(card emersionvcard.Card, saveTargets []string) (models.Contact, bool) {
+func contactFromVCard(card emersionvcard.Card, saveTargets []string, remotePhotos bool) (models.Contact, bool) {
 	email := strings.TrimSpace(card.PreferredValue(emersionvcard.FieldEmail))
 	if email == "" {
 		email = strings.TrimSpace(card.Value(emersionvcard.FieldEmail))
@@ -191,12 +203,12 @@ func contactFromVCard(card emersionvcard.Card, saveTargets []string) (models.Con
 		Organization:          cleanVCardText(card.PreferredValue(emersionvcard.FieldOrganization)),
 		Title:                 cleanVCardText(card.PreferredValue(emersionvcard.FieldTitle)),
 		Notes:                 cleanVCardText(card.PreferredValue(emersionvcard.FieldNote)),
-		AvatarURL:             contactVCardPhotoURL(card),
+		AvatarURL:             contactVCardPhotoURL(card, remotePhotos),
 		SaveTargets:           saveTargets,
 	}, true
 }
 
-func contactVCardPhotoURL(card emersionvcard.Card) string {
+func contactVCardPhotoURL(card emersionvcard.Card, remotePhotos bool) string {
 	for _, field := range card[emersionvcard.FieldPhoto] {
 		if field == nil {
 			continue
@@ -206,7 +218,19 @@ func contactVCardPhotoURL(card emersionvcard.Card) string {
 			continue
 		}
 		lower := strings.ToLower(value)
-		if strings.HasPrefix(lower, "http://") || strings.HasPrefix(lower, "https://") || strings.HasPrefix(lower, "data:image/") {
+		if strings.HasPrefix(lower, "http://") || strings.HasPrefix(lower, "https://") {
+			// In an uploaded file a remote PHOTO would be fetched on every view,
+			// telling its host when the user looked.
+			if remotePhotos {
+				return value
+			}
+			continue
+		}
+		if strings.HasPrefix(lower, "data:image/") {
+			comma := strings.IndexByte(value, ',')
+			if comma < 0 || !strings.HasSuffix(lower[:comma], ";base64") || !vCardPhotoFits(value[comma+1:]) {
+				continue
+			}
 			return value
 		}
 		mediaType := strings.TrimSpace(field.Params.Get(emersionvcard.ParamMediaType))
@@ -220,12 +244,19 @@ func contactVCardPhotoURL(card emersionvcard.Card) string {
 		if encoding != "" && encoding != "b" && encoding != "base64" {
 			continue
 		}
+		if !vCardPhotoFits(value) {
+			continue
+		}
 		if _, err := base64.StdEncoding.DecodeString(value); err != nil {
 			continue
 		}
 		return "data:" + mediaType + ";base64," + value
 	}
 	return ""
+}
+
+func vCardPhotoFits(base64Payload string) bool {
+	return int64(base64.StdEncoding.DecodedLen(len(base64Payload))) <= contactAvatarMaxBytes
 }
 
 func vCardPhotoMediaType(value string) string {

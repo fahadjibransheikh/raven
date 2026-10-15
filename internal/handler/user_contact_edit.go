@@ -90,7 +90,7 @@ func (h *Handler) handleUserImportContacts(w http.ResponseWriter, r *http.Reques
 	}
 	// The editor snapshot applies the owned destination allowlist. vCard imports
 	// retain the existing disabled-sync behavior and never perform provider HTTP.
-	contacts, err := parseVCardContacts(bytes.NewReader(data), strings.Split(r.FormValue("save_targets"), ","))
+	contacts, err := parseImportedVCardContacts(bytes.NewReader(data), strings.Split(r.FormValue("save_targets"), ","))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
