@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -609,6 +610,48 @@ func TestBulkMoveAcrossAccountsQueuesNothing(t *testing.T) {
 	var queued int
 	_ = db.Read().QueryRow(`SELECT COUNT(*) FROM message_mutations WHERE kind = 'move'`).Scan(&queued)
 	var hidden int
+	_ = db.Read().QueryRow(`SELECT COUNT(*) FROM message_folder_state WHERE is_deleted = 1`).Scan(&hidden)
+	if queued != 0 || hidden != 0 {
+		t.Fatalf("queued moves=%d hidden rows=%d, want nothing changed", queued, hidden)
+	}
+}
+
+func TestSingleMoveAcrossAccountsQueuesNothing(t *testing.T) {
+	h, db := newAccountOwnershipTestHandler(t)
+	h.syncer = mailpkg.NewSyncOrchestrator(db, nil, nil, nil)
+	if _, err := db.Write().ExecContext(t.Context(), `
+		INSERT INTO accounts (
+			id, user_id, provider, email_address, display_name,
+			imap_host, imap_port, imap_tls_mode, smtp_host, smtp_port, smtp_tls_mode, username
+		) VALUES ('second-account', 'owner', 'imap', 'second@example.com', 'Second',
+			'127.0.0.1', 1, 'tls', '127.0.0.1', 1, 'tls', 'second@example.com')`); err != nil {
+		t.Fatalf("insert second account: %v", err)
+	}
+	if err := db.UpsertFolders(t.Context(), []storage.UpsertFolderInput{
+		{ID: "victim-archive", AccountID: "victim-account", RemoteID: "Archive", Name: "Archive", Role: "archive", Selectable: true},
+		{ID: "second-inbox", AccountID: "second-account", RemoteID: "INBOX", Name: "Inbox", Role: "inbox", Selectable: true},
+	}); err != nil {
+		t.Fatalf("UpsertFolders() error = %v", err)
+	}
+	if err := db.UpsertSyncMessages(t.Context(), []storage.SyncMessage{
+		{AccountID: "second-account", FolderID: "second-inbox", RemoteUID: 1, MessageID: "<other@example.com>", Subject: "Other", FromEmail: "sender@example.com", DateSent: time.Now()},
+	}); err != nil {
+		t.Fatalf("UpsertSyncMessages() error = %v", err)
+	}
+	otherID, _ := db.GetMessageLocalIDByInternetIDInternal(t.Context(), "second-account", "<other@example.com>")
+
+	req := httptest.NewRequest(http.MethodPost, "/api/messages/"+strconv.FormatInt(otherID, 10)+"/move", strings.NewReader(url.Values{"folder_id": {"victim-archive"}}.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.SetPathValue("id", strconv.FormatInt(otherID, 10))
+	req = req.WithContext(auth.ContextWithUser(req.Context(), &auth.User{ID: "owner", Username: "owner"}))
+	rec := httptest.NewRecorder()
+	h.handleMoveMessage(rec, req)
+
+	if rec.Code != http.StatusUnprocessableEntity || !strings.Contains(rec.Body.String(), "messages can only be moved within their own account") {
+		t.Fatalf("status=%d body=%s, want 422 with the same-account message", rec.Code, rec.Body.String())
+	}
+	var queued, hidden int
+	_ = db.Read().QueryRow(`SELECT COUNT(*) FROM message_mutations WHERE kind = 'move'`).Scan(&queued)
 	_ = db.Read().QueryRow(`SELECT COUNT(*) FROM message_folder_state WHERE is_deleted = 1`).Scan(&hidden)
 	if queued != 0 || hidden != 0 {
 		t.Fatalf("queued moves=%d hidden rows=%d, want nothing changed", queued, hidden)
