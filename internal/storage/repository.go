@@ -4910,7 +4910,7 @@ func (db *DB) GetFolderEmailCountFilteredForUser(ctx context.Context, userID, fo
 		return db.GetFolderEmailCountFiltered(ctx, folderID, filters)
 	}
 
-	filterSQL := emailFilterSQL(filters)
+	filterSQL := emailFilterSQL(ctx, filters)
 	var where string
 	var args []any
 	if filters.Participant != "" {
@@ -4966,7 +4966,7 @@ func (db *DB) GetFolderEmailCountFiltered(ctx context.Context, folderID string, 
 		return db.GetFolderEmailCountUnfiltered(ctx, folderID)
 	}
 
-	filterSQL := emailFilterSQL(filters)
+	filterSQL := emailFilterSQL(ctx, filters)
 	if isStarredFolder(folderID) {
 		var count int
 		err := db.Read().QueryRowContext(ctx,
@@ -5288,7 +5288,7 @@ func attachmentTypeFilterSQL(filterType, customExtension string) (string, []any)
 	return "", nil
 }
 
-func emailFilterSQL(filters models.EmailFilters) emailFilterParts {
+func emailFilterSQL(ctx context.Context, filters models.EmailFilters) emailFilterParts {
 	var cteParts []string
 	var outerParts []string
 	var matchParts []string
@@ -5415,13 +5415,27 @@ func emailFilterSQL(filters models.EmailFilters) emailFilterParts {
 		}
 		cteParts = append(cteParts, "EXISTS (SELECT 1 FROM message_labels ml JOIN labels l ON ml.label_id = l.id WHERE ml.message_id = m.id AND ("+predicate+"))")
 	}
+	// Day bounds are the user's local days, converted to UTC instants.
+	// datetime() normalizes the mixed text formats stored in date_received.
+	// Values that are not YYYY-MM-DD keep SQLite's own date() handling.
+	loc := timezoneLocationFromContext(ctx)
 	if filters.After != "" {
-		cteParts = append(cteParts, "date(m.date_received) >= date(?)")
-		args = append(args, filters.After)
+		if day, err := time.ParseInLocation("2006-01-02", filters.After, loc); err == nil {
+			cteParts = append(cteParts, "datetime(m.date_received) >= ?")
+			args = append(args, day.UTC().Format("2006-01-02 15:04:05"))
+		} else {
+			cteParts = append(cteParts, "date(m.date_received) >= date(?)")
+			args = append(args, filters.After)
+		}
 	}
 	if filters.Before != "" {
-		cteParts = append(cteParts, "date(m.date_received) <= date(?)")
-		args = append(args, filters.Before)
+		if day, err := time.ParseInLocation("2006-01-02", filters.Before, loc); err == nil {
+			cteParts = append(cteParts, "datetime(m.date_received) < ?")
+			args = append(args, day.AddDate(0, 0, 1).UTC().Format("2006-01-02 15:04:05"))
+		} else {
+			cteParts = append(cteParts, "date(m.date_received) <= date(?)")
+			args = append(args, filters.Before)
+		}
 	}
 
 	parts := emailFilterParts{withArgs: withArgs, args: args}
@@ -6077,7 +6091,7 @@ func (db *DB) listEmailsUnfilteredFrom(ctx context.Context, fromWhere string, ar
 }
 
 func (db *DB) listEmailsFilteredForUser(ctx context.Context, userID, folderID string, offset, limit int, filters models.EmailFilters) ([]models.Email, error) {
-	filterSQL := emailFilterSQL(filters)
+	filterSQL := emailFilterSQL(ctx, filters)
 	var where string
 	var args []any
 	if filters.Participant != "" {
@@ -6141,7 +6155,7 @@ func (db *DB) listEmailsFilteredForUser(ctx context.Context, userID, folderID st
 }
 
 func (db *DB) listEmailsFiltered(ctx context.Context, folderID string, offset, limit int, filters models.EmailFilters) ([]models.Email, error) {
-	filterSQL := emailFilterSQL(filters)
+	filterSQL := emailFilterSQL(ctx, filters)
 	query := `WITH ` + filterSQL.withClause + `visible AS (
 			  SELECT m.id, m.account_id, a.color AS account_color, m.subject, m.from_name, m.from_email,
 			         m.date_received, COALESCE(NULLIF(m.preview_text, ''), m.snippet) AS snippet, m.has_attachments, m.body_text_path, m.body_html_path,

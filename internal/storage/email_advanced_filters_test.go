@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"reflect"
 	"strings"
 	"testing"
@@ -9,7 +10,7 @@ import (
 )
 
 func TestEmailFilterSQLSupportsRecipientTagsAndSizeRange(t *testing.T) {
-	parts := emailFilterSQL(models.EmailFilters{
+	parts := emailFilterSQL(context.Background(), models.EmailFilters{
 		NoTags:          true,
 		To:              "person",
 		RecipientType:   "cc",
@@ -42,14 +43,14 @@ func TestAttachmentTypeFilterSQLSupportsPresetsAndCustomExtensions(t *testing.T)
 }
 
 func TestEmailFilterSQLSupportsSingleMessagesOnly(t *testing.T) {
-	parts := emailFilterSQL(models.EmailFilters{NoThreads: true})
+	parts := emailFilterSQL(context.Background(), models.EmailFilters{NoThreads: true})
 	if !strings.Contains(parts.outerClause, "thread_count = 1") {
 		t.Fatalf("single-message filter SQL = %q", parts.outerClause)
 	}
 }
 
 func TestEmailFilterSQLSupportsExactParticipant(t *testing.T) {
-	parts := emailFilterSQL(models.EmailFilters{Participant: " Person@Example.com "})
+	parts := emailFilterSQL(context.Background(), models.EmailFilters{Participant: " Person@Example.com "})
 	for _, want := range []string{"lower(trim(m.from_email)) = ?", "lower(trim(participant_recipient.email)) = ?"} {
 		if !strings.Contains(parts.cteClause, want) {
 			t.Fatalf("participant filter SQL missing %q: %s", want, parts.cteClause)
