@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -12,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -20,6 +22,7 @@ import (
 	mailpkg "github.com/fahadjibransheikh/raven/internal/mail"
 	"github.com/fahadjibransheikh/raven/internal/mail/message"
 	"github.com/fahadjibransheikh/raven/internal/mailauth"
+	"github.com/fahadjibransheikh/raven/internal/models"
 	"github.com/fahadjibransheikh/raven/internal/providers"
 	"github.com/fahadjibransheikh/raven/internal/storage"
 	"github.com/fahadjibransheikh/raven/internal/store"
@@ -404,5 +407,80 @@ func TestWakeWhileWorkerRunningDeliversNewSend(t *testing.T) {
 	waitForSendStatus(t, db, second.ID, storage.OutgoingSendSent)
 	if got := f.deliveries("<second@example.com>"); got != 1 {
 		t.Fatalf("second send delivered %d times, want 1", got)
+	}
+}
+
+// blockingSentCopyIMAPClient never answers, like an IMAP server that accepted
+// the connection and then went silent.
+type blockingSentCopyIMAPClient struct {
+	fakeSentCopyIMAPClient
+	entered     chan struct{}
+	release     chan struct{}
+	once        sync.Once
+	hadDeadline atomic.Bool
+}
+
+func (c *blockingSentCopyIMAPClient) FindUIDByMessageIDWithValidity(ctx context.Context, _, _ string) (uint32, uint32, error) {
+	_, ok := ctx.Deadline()
+	c.hadDeadline.Store(ok)
+	c.once.Do(func() { close(c.entered) })
+	<-c.release
+	return 0, 0, errors.New("released")
+}
+
+func TestHungSentCopyDoesNotDelayOtherAccountsSends(t *testing.T) {
+	f := newGmailSendFixture(t, "a", "b")
+	db := f.openDB()
+	h := f.newHandler(db)
+	if err := db.UpsertFolders(context.Background(), []storage.UpsertFolderInput{{
+		ID: "a-sent", AccountID: "a", RemoteID: "Sent", Name: "Sent", Role: "sent", Selectable: true,
+	}}); err != nil {
+		t.Fatalf("UpsertFolders() error = %v", err)
+	}
+	// Account a already delivered a message and now owes a Sent copy.
+	copyOwed := queueTestSend(t, h, "a", "copy-owed")
+	if sends, err := db.ClaimDueOutgoingSends(context.Background(), time.Now(), 1); err != nil || len(sends) != 1 {
+		t.Fatalf("ClaimDueOutgoingSends() = %#v, %v", sends, err)
+	}
+	if err := db.CompleteOutgoingSend(context.Background(), copyOwed.ID, "<copy-owed@example.com>", true); err != nil {
+		t.Fatalf("CompleteOutgoingSend() error = %v", err)
+	}
+	fake := &blockingSentCopyIMAPClient{entered: make(chan struct{}), release: make(chan struct{})}
+	var releaseOnce sync.Once
+	t.Cleanup(func() { releaseOnce.Do(func() { close(fake.release) }) })
+	h.sentCopyIMAPFactory = func(context.Context, *models.AccountConfig, string) (sentCopyIMAPClient, error) { return fake, nil }
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	done := make(chan struct{})
+	go func() {
+		h.runOutgoingDispatcher(ctx)
+		close(done)
+	}()
+	select {
+	case <-fake.entered:
+	case <-time.After(10 * time.Second):
+		t.Fatal("Sent copy never reached IMAP")
+	}
+
+	healthy := queueTestSend(t, h, "b", "healthy")
+	h.signalOutgoingWorker()
+	waitForSendStatus(t, db, healthy.ID, storage.OutgoingSendSent)
+	if !fake.hadDeadline.Load() {
+		t.Fatal("Sent copy IMAP work has no per-operation timeout")
+	}
+
+	// Shutdown waits for the Sent-copy loop, like it waits for send workers.
+	cancel()
+	select {
+	case <-done:
+		t.Fatal("dispatcher returned while a Sent copy was still in flight")
+	case <-time.After(150 * time.Millisecond):
+	}
+	releaseOnce.Do(func() { close(fake.release) })
+	select {
+	case <-done:
+	case <-time.After(10 * time.Second):
+		t.Fatal("dispatcher did not return after the Sent copy ended")
 	}
 }

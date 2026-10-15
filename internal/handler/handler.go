@@ -130,6 +130,7 @@ type Handler struct {
 	vapidPublicKey             string
 	testPush                   func(ctx context.Context, userID, endpoint string) error
 	outgoingWake               chan struct{}
+	outgoingCopyWake           chan struct{}
 	outgoingNow                func() time.Time
 	outgoingRandom             func() float64
 	sentCopyIMAPFactory        sentCopyIMAPClientFactory
@@ -201,6 +202,7 @@ func New(db *storage.DB, accountStore *config.AccountStore, syncer *mail.SyncOrc
 		googleTranslator:       translation.NewGoogleWebConnector(nil),
 		vapidPublicKey:         vapidPublicKey,
 		outgoingWake:           make(chan struct{}, 1),
+		outgoingCopyWake:       make(chan struct{}, 1),
 		outgoingRunning:        make(map[string]bool),
 		outgoingSlots:          make(chan struct{}, outgoingMaxConcurrentSends),
 		outgoingNow:            time.Now,
