@@ -112,7 +112,7 @@ func cacheableRelayedImage(data []byte) bool {
 func (h *Handler) downloadRemote(ctx context.Context, remoteURL string) ([]byte, error) {
 	download := h.remoteResourceDownloader
 	if download == nil {
-		download = newRemoteResourceDownloader(privateTargetAllowed(h.db))
+		download = newRemoteResourceDownloader(nil)
 	}
 	data, err := download(ctx, remoteURL)
 	if err == nil && len(data) == 0 {

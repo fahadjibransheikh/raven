@@ -122,6 +122,7 @@ func newUserStorageFixtureServices(t *testing.T, enableIMAP bool, oauth *mailaut
 	f.events = syncer.Events()
 	base := handler.New(system, nil, syncer, nil, manager, "test-vapid-public")
 	f.base = base
+	base.SetRemoteResourceDownloader(downloadTestImage)
 	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 	mux := http.NewServeMux()

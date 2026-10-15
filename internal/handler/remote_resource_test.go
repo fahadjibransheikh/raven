@@ -63,3 +63,29 @@ func TestRemoteResourceDownloaderRefusesPrivateTargets(t *testing.T) {
 		t.Fatal("downloaded a file URL")
 	}
 }
+
+// An administrator's private-target exception is for servers they named, such
+// as a calendar host. A sender-chosen image URL must not ride on it.
+func TestHandlerRemoteImagesIgnorePrivateTargetExceptions(t *testing.T) {
+	h, db := newAccountOwnershipTestHandler(t)
+	internal, internalHits := countingServer(t, func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("internal data")) })
+	u, _ := url.Parse(internal.URL)
+	port, _ := strconv.Atoi(u.Port())
+	if err := db.AddPrivateTargetException(t.Context(), "http", u.Hostname(), port, "administrator"); err != nil {
+		t.Fatal(err)
+	}
+	if !privateTargetAllowed(db)(t.Context(), "http", u.Hostname(), port) {
+		t.Fatal("test setup: the exception is not in effect")
+	}
+
+	if _, err := h.downloadRemote(t.Context(), internal.URL+"/logo.png"); !netguard.IsBlocked(err) {
+		t.Fatalf("default downloader error = %v, want a private target refusal", err)
+	}
+	h.remoteResourceDownloader = nil
+	if _, err := h.downloadRemote(t.Context(), internal.URL+"/logo.png"); !netguard.IsBlocked(err) {
+		t.Fatalf("fallback downloader error = %v, want a private target refusal", err)
+	}
+	if internalHits.Load() != 0 {
+		t.Fatal("the approved private server was contacted for a sender-chosen URL")
+	}
+}

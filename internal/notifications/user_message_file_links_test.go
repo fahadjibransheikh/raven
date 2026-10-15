@@ -18,7 +18,6 @@ func TestOwnedMessagePageSignsItsImagesForUseWithoutASession(t *testing.T) {
 	server := newRoutedIMAPServer(t)
 	image := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("remote image")) }))
 	t.Cleanup(image.Close)
-	allowPrivateImageServer(t, f, image)
 	server.mu.Lock()
 	server.bodyOverride = "From: sender@example.com\r\nSubject: Logo\r\nContent-Type: text/html\r\n\r\n<p>hello</p><img src=\"" + image.URL + "/logo.png\">"
 	server.mu.Unlock()
@@ -62,7 +61,6 @@ func TestLoadOnceRelaysRemoteContentThroughRaven(t *testing.T) {
 		_, _ = w.Write([]byte(png))
 	}))
 	t.Cleanup(image.Close)
-	allowPrivateImageServer(t, f, image)
 	server.mu.Lock()
 	server.bodyOverride = "From: sender@example.com\r\nSubject: Logo\r\nContent-Type: text/html\r\n\r\n<p>hello</p><img src=\"" + image.URL + "/logo.png\"><div style=\"background:url(" + image.URL + "/bg.png)\">x</div>"
 	server.mu.Unlock()
