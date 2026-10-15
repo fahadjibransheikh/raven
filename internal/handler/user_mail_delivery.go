@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	goimap "github.com/emersion/go-imap/v2"
@@ -130,6 +131,18 @@ func (s *userMailDeliveryScope) send(ctx context.Context) (bool, error) {
 		return false, nil
 	}
 	send := claimed[0]
+	fresh, changed, dateErr := scheduledSendWithCurrentDate(send, s.runner.h.outgoingNowUTC())
+	if dateErr == nil && changed {
+		dateErr = s.call(ctx, func(db *storage.DB) error {
+			return db.UpdateClaimedOutgoingSendPayload(ctx, fresh.ID, fresh.MIMEData, fresh.MessageJSON)
+		})
+	}
+	if dateErr != nil {
+		// Best effort: deliver with the original Date rather than not at all.
+		log.Printf("outgoing-send: keep original Date for scheduled send %s: %v", send.ID, dateErr)
+	} else {
+		send = fresh
+	}
 	if calendarReply {
 		return s.sendCalendarReply(ctx, send)
 	}
@@ -223,6 +236,10 @@ func (s *userMailDeliveryScope) sentCopy(ctx context.Context) (bool, error) {
 		// Once claimed, any failure after APPEND may follow remote acceptance.
 		// Search the stable Message-ID before every subsequent append.
 		saveErr := s.call(ctx, func(db *storage.DB) error {
+			if send.SentCopyAttempts >= outgoingSendMaxAttempts {
+				log.Printf("outgoing-send: Sent copy %s gave up after %d attempts; the message was delivered but no Sent copy was saved", send.ID, send.SentCopyAttempts)
+				return db.AbandonSentCopy(ctx, send.ID, sanitizeOutgoingErrorText(err.Error()))
+			}
 			return db.FinishSentCopyWithError(ctx, send.ID, storage.SentCopyAmbiguous, sanitizeOutgoingErrorText(err.Error()), time.Now().Add(sentCopyRetryDelay(send.SentCopyAttempts)))
 		})
 		return saveErr == nil, errors.Join(err, saveErr)

@@ -333,7 +333,52 @@ func (h *Handler) runDueOutgoingSends(ctx context.Context) {
 	}
 }
 
+// scheduledSendWithCurrentDate rebuilds a scheduled send's MIME with Date set to
+// now, keeping the Message-ID. The Date was fixed when the user scheduled it,
+// so mail due on Friday would otherwise arrive dated Monday. A send whose Date
+// is already at or after send_after (a retry, or an earlier refresh) is left
+// alone, which keeps every attempt of one send on one Date and Message-ID.
+// Unscheduled sends are due at once, so their Date is already the send time.
+func scheduledSendWithCurrentDate(send storage.OutgoingSend, now time.Time) (storage.OutgoingSend, bool, error) {
+	if !send.IsScheduled {
+		return send, false, nil
+	}
+	var snapshot outgoingMessageSnapshot
+	if err := json.Unmarshal(send.MessageJSON, &snapshot); err != nil {
+		return send, false, fmt.Errorf("decode outgoing message: %w", err)
+	}
+	if !snapshot.Date.Before(send.SendAfter) {
+		return send, false, nil
+	}
+	snapshot.Date = now.UTC()
+	raw, err := buildOutgoingMIME(send.Transport, snapshot.outgoingMessage())
+	if err != nil {
+		return send, false, fmt.Errorf("rebuild outgoing message: %w", err)
+	}
+	snapshotJSON, err := json.Marshal(snapshot)
+	if err != nil {
+		return send, false, fmt.Errorf("encode outgoing message: %w", err)
+	}
+	send.MIMEData, send.MessageJSON = raw, snapshotJSON
+	return send, true, nil
+}
+
+// refreshScheduledSendDate is best effort: if the message cannot be rebuilt or
+// saved, it is delivered with its original Date rather than not at all.
+func (h *Handler) refreshScheduledSendDate(ctx context.Context, send storage.OutgoingSend) storage.OutgoingSend {
+	fresh, changed, err := scheduledSendWithCurrentDate(send, h.outgoingNowUTC())
+	if err == nil && changed {
+		err = h.db.UpdateClaimedOutgoingSendPayload(ctx, fresh.ID, fresh.MIMEData, fresh.MessageJSON)
+	}
+	if err != nil {
+		log.Printf("outgoing-send: keep original Date for scheduled send %s: %v", send.ID, err)
+		return send
+	}
+	return fresh
+}
+
 func (h *Handler) deliverOutgoingSend(parent context.Context, send storage.OutgoingSend) {
+	send = h.refreshScheduledSendDate(parent, send)
 	var snapshot outgoingMessageSnapshot
 	if err := json.Unmarshal(send.MessageJSON, &snapshot); err != nil {
 		h.finishOutgoingSend(send, storage.OutgoingSendFailed, fmt.Errorf("decode outgoing message: %w", err))
@@ -470,16 +515,20 @@ func (h *Handler) reconcileSentCopy(parent context.Context, send storage.Outgoin
 		messageID = strings.TrimSpace(send.SentMessageID)
 	}
 
-	if send.SentCopyStatus == storage.SentCopyAmbiguous {
-		uid, uidValidity, err := client.FindUIDByMessageIDWithValidity(parent, remoteName, messageID)
-		if err != nil {
-			h.finishSentCopy(send, storage.SentCopyAmbiguous, fmt.Errorf("check ambiguous Sent copy: %w", err))
-			return
+	// Some servers (Microsoft 365, outlook.com, Yahoo) file their own Sent copy
+	// on submission, so look for it before every append, not only after doubt.
+	uid, uidValidity, err := client.FindUIDByMessageIDWithValidity(parent, remoteName, messageID)
+	if err != nil {
+		status := storage.SentCopyFailed // nothing was appended yet unless a prior attempt left it ambiguous
+		if send.SentCopyStatus == storage.SentCopyAmbiguous {
+			status = storage.SentCopyAmbiguous
 		}
-		if uid > 0 {
-			h.completeSentCopy(parent, send, folderID, uid, uidValidity)
-			return
-		}
+		h.finishSentCopy(send, status, fmt.Errorf("check for existing Sent copy: %w", err))
+		return
+	}
+	if uid > 0 {
+		h.completeSentCopy(parent, send, folderID, uid, uidValidity)
+		return
 	}
 
 	result, err := client.AppendMessage(parent, remoteName, send.MIMEData, []goimap.Flag{goimap.FlagSeen}, snapshot.Date)
@@ -491,7 +540,7 @@ func (h *Handler) reconcileSentCopy(parent context.Context, send storage.Outgoin
 		h.finishSentCopy(send, status, err)
 		return
 	}
-	uid := result.UID
+	uid = result.UID
 	if uid == 0 {
 		if foundUID, foundUIDValidity, findErr := client.FindUIDByMessageIDWithValidity(parent, remoteName, messageID); findErr == nil {
 			uid = foundUID
@@ -532,6 +581,14 @@ func (h *Handler) finishSentCopy(send storage.OutgoingSend, status string, err e
 	errText := "Failed to copy message to the remote Sent folder."
 	if err != nil {
 		errText = sanitizeOutgoingErrorText(err.Error())
+	}
+	if send.SentCopyAttempts >= outgoingSendMaxAttempts {
+		if dbErr := h.db.AbandonSentCopy(context.Background(), send.ID, errText); dbErr != nil {
+			log.Printf("outgoing-send: abandon Sent copy %s: %v", send.ID, dbErr)
+			return
+		}
+		log.Printf("outgoing-send: Sent copy %s gave up after %d attempts; the message was delivered but no Sent copy was saved: %s", send.ID, send.SentCopyAttempts, errText)
+		return
 	}
 	nextAttempt := h.outgoingNowUTC().Add(sentCopyRetryDelayWithJitter(send.SentCopyAttempts, h.outgoingRandomValue()))
 	if dbErr := h.db.FinishSentCopyWithError(context.Background(), send.ID, status, errText, nextAttempt); dbErr != nil {

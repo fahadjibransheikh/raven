@@ -1,9 +1,11 @@
 package handler
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -14,6 +16,7 @@ import (
 	"time"
 
 	goimap "github.com/emersion/go-imap/v2"
+	"github.com/emersion/go-message/mail"
 
 	"github.com/fahadjibransheikh/raven/internal/auth"
 	"github.com/fahadjibransheikh/raven/internal/config"
@@ -292,6 +295,127 @@ func TestOutgoingWorkerRetriesTemporaryGmailFailureWithSameSnapshot(t *testing.T
 	}
 }
 
+func TestScheduledSendIsDeliveredWithCurrentDateAndSameMessageID(t *testing.T) {
+	ctx := context.Background()
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
+	if err != nil {
+		t.Fatalf("storage.New() error = %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	if _, err := db.Write().ExecContext(ctx, `
+		INSERT INTO users (id, username, username_normalized, name) VALUES ('default', 'default', 'default', 'Default');
+		INSERT INTO accounts (id, user_id, provider, provider_account_id, email_address)
+		VALUES ('acc', 'default', ?, 'google-subject', 'user@example.com')`, providers.ProviderGmail); err != nil {
+		t.Fatalf("seed Gmail account: %v", err)
+	}
+	expires := time.Now().Add(time.Hour)
+	mailCredentials := mailauth.New(&mailauth.Config{}, db, testMailboxCredentialKey)
+	if err := mailCredentials.UpsertOAuthAccount(ctx, "acc", providers.OAuthGoogle, "google-subject", "gmail-token", "refresh-token", "Bearer", &expires, "https://mail.google.com/"); err != nil {
+		t.Fatalf("UpsertOAuthAccount() error = %v", err)
+	}
+	accountStore, err := config.NewAccountStore(db, []byte("0123456789abcdef0123456789abcdef"))
+	if err != nil {
+		t.Fatalf("NewAccountStore() error = %v", err)
+	}
+	h := New(db, accountStore, mailpkg.NewSyncOrchestrator(db, accountStore, nil, nil), store.NewBlobStore(filepath.Join(t.TempDir(), "blobs")), auth.NewManager(&auth.Config{}, db), "", mailCredentials)
+
+	var delivered [][]byte
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var payload map[string]string
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			t.Fatalf("decode request: %v", err)
+		}
+		raw, err := base64.RawURLEncoding.DecodeString(payload["raw"])
+		if err != nil {
+			t.Fatalf("decode MIME: %v", err)
+		}
+		delivered = append(delivered, raw)
+		if len(delivered) == 1 {
+			http.Error(w, "temporarily unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"gmail-scheduled-id"}`))
+	}))
+	defer server.Close()
+	previousBase := gmailAPIBaseURL
+	gmailAPIBaseURL = server.URL
+	t.Cleanup(func() { gmailAPIBaseURL = previousBase })
+
+	// Scheduled three days ago for "now": the Date header must not stay at schedule time.
+	scheduledAt := time.Now().UTC().Add(-72 * time.Hour).Truncate(time.Second)
+	to, _ := message.ParseAddressList("recipient@example.com")
+	msg := &message.OutgoingMessage{
+		FromEmail: "user@example.com", To: to, Subject: "Scheduled", TextBody: "Later body",
+		MessageID: "<scheduled@example.com>", Date: scheduledAt,
+	}
+	queued, err := h.queueOutgoingMessage(ctx, "acc", 0, "", msg, time.Now().Add(-time.Second), true)
+	if err != nil {
+		t.Fatalf("queueOutgoingMessage() error = %v", err)
+	}
+	headerDate := func(raw []byte) time.Time {
+		t.Helper()
+		reader, err := mail.CreateReader(bytes.NewReader(raw))
+		if err != nil {
+			t.Fatalf("mail.CreateReader() error = %v", err)
+		}
+		defer reader.Close()
+		date, err := reader.Header.Date()
+		if err != nil {
+			t.Fatalf("Date header: %v", err)
+		}
+		return date
+	}
+	if got := headerDate(queued.MIMEData); !got.Equal(scheduledAt) {
+		t.Fatalf("queued Date = %s, want schedule time %s", got, scheduledAt)
+	}
+
+	// First attempt fails temporarily; the retry must keep the refreshed Date and Message-ID.
+	h.runDueOutgoingSends(ctx)
+	if _, err := db.Write().ExecContext(ctx, `UPDATE outgoing_sends SET next_attempt_at = CURRENT_TIMESTAMP WHERE id = ?`, queued.ID); err != nil {
+		t.Fatalf("make retry due: %v", err)
+	}
+	h.runDueOutgoingSends(ctx)
+
+	if len(delivered) != 2 {
+		t.Fatalf("deliveries = %d, want 2", len(delivered))
+	}
+	for i, raw := range delivered {
+		if got := headerDate(raw); time.Since(got) > time.Minute {
+			t.Fatalf("delivery %d Date = %s, want about now", i+1, got)
+		}
+		assertMIMEHeaders(t, raw, "Scheduled", "<scheduled@example.com>", "")
+	}
+	if headerDate(delivered[0]) != headerDate(delivered[1]) {
+		t.Fatalf("retry changed Date: %s then %s", headerDate(delivered[0]), headerDate(delivered[1]))
+	}
+	done, err := db.GetOutgoingSend(ctx, queued.ID)
+	if err != nil || done.Status != storage.OutgoingSendSent || done.SentMessageID != "<scheduled@example.com>" {
+		t.Fatalf("completed send = %#v, %v", done, err)
+	}
+}
+
+func TestScheduledSendWithCurrentDateLeavesOtherSendsAlone(t *testing.T) {
+	to, _ := message.ParseAddressList("recipient@example.com")
+	msg := &message.OutgoingMessage{FromEmail: "user@example.com", To: to, Subject: "s", TextBody: "b", MessageID: "<keep@example.com>", Date: time.Now().UTC().Add(-time.Hour)}
+	raw, err := message.BuildMIMEMessage(msg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	snapshotJSON, _ := json.Marshal(snapshotOutgoingMessage(msg))
+	base := storage.OutgoingSend{Transport: storage.OutgoingTransportSMTP, MIMEData: raw, MessageJSON: snapshotJSON, SendAfter: time.Now().UTC()}
+
+	unscheduled, changed, err := scheduledSendWithCurrentDate(base, time.Now())
+	if err != nil || changed || !bytes.Equal(unscheduled.MIMEData, raw) {
+		t.Fatalf("unscheduled send changed=%v err=%v", changed, err)
+	}
+	base.IsScheduled = true
+	base.SendAfter = msg.Date.Add(-time.Minute) // Date already at or after send_after: a retry
+	if _, changed, err := scheduledSendWithCurrentDate(base, time.Now()); err != nil || changed {
+		t.Fatalf("already-refreshed send changed=%v err=%v", changed, err)
+	}
+}
+
 func TestEditingRetryingDraftRefreshesPayloadWithoutResettingDeliveryIdentity(t *testing.T) {
 	h, db := newAccountOwnershipTestHandler(t)
 	h.blobStore = store.NewBlobStore(filepath.Join(t.TempDir(), "blobs"))
@@ -473,7 +597,7 @@ func TestSentCopyWorkerAppendsExactMIMEAndLinksRemoteUID(t *testing.T) {
 
 	h.runDueSentCopies(t.Context())
 
-	if fake.appendCalls != 1 || fake.findCalls != 0 || fake.mailbox != "Sent" {
+	if fake.appendCalls != 1 || fake.findCalls != 1 || fake.mailbox != "Sent" {
 		t.Fatalf("fake IMAP calls append=%d find=%d mailbox=%q", fake.appendCalls, fake.findCalls, fake.mailbox)
 	}
 	if !strings.Contains(string(fake.raw), "Sent copy body") {
@@ -495,6 +619,61 @@ func TestSentCopyWorkerAppendsExactMIMEAndLinksRemoteUID(t *testing.T) {
 	}
 	if remoteUID != 77 {
 		t.Fatalf("linked remote UID = %d, want 77", remoteUID)
+	}
+}
+
+func TestFirstSentCopyAttemptSkipsAppendWhenServerAlreadySavedCopy(t *testing.T) {
+	h, db, queued, _ := seedPendingSentCopy(t)
+	fake := &fakeSentCopyIMAPClient{findUID: 55, findUIDValidity: 123}
+	h.sentCopyIMAPFactory = func(context.Context, *models.AccountConfig, string) (sentCopyIMAPClient, error) {
+		return fake, nil
+	}
+
+	h.runDueSentCopies(t.Context())
+
+	if fake.appendCalls != 0 {
+		t.Fatalf("append calls = %d, want 0: server already filed its own Sent copy", fake.appendCalls)
+	}
+	completed, err := db.GetOutgoingSend(t.Context(), queued.ID)
+	if err != nil || completed.SentCopyStatus != storage.SentCopyComplete || completed.SentCopyUID != 55 {
+		t.Fatalf("Sent copy = %#v, %v", completed, err)
+	}
+}
+
+func TestSentCopyRetriesStopAfterMaxAttempts(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		priorTries   int
+		wantGivenUp  bool
+		wantMIMEKept bool
+	}{
+		{"below cap keeps retrying", outgoingSendMaxAttempts - 2, false, true},
+		{"cap reached gives up", outgoingSendMaxAttempts - 1, true, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h, db, queued, _ := seedPendingSentCopy(t)
+			if _, err := db.Write().ExecContext(t.Context(), `UPDATE outgoing_sends SET sent_copy_attempt_count = ? WHERE id = ?`, tc.priorTries, queued.ID); err != nil {
+				t.Fatalf("seed attempts: %v", err)
+			}
+			fake := &fakeSentCopyIMAPClient{appendErr: errors.New("permission denied")}
+			h.sentCopyIMAPFactory = func(context.Context, *models.AccountConfig, string) (sentCopyIMAPClient, error) {
+				return fake, nil
+			}
+
+			h.runDueSentCopies(t.Context())
+
+			row, err := db.GetOutgoingSend(t.Context(), queued.ID)
+			if err != nil || row.SentCopyStatus != storage.SentCopyFailed || row.SentCopyLastError == "" {
+				t.Fatalf("Sent copy = %#v, %v", row, err)
+			}
+			if kept := len(row.MIMEData) > 0; kept != tc.wantMIMEKept {
+				t.Fatalf("mime_data kept = %v, want %v", kept, tc.wantMIMEKept)
+			}
+			due, err := db.ClaimDueSentCopies(t.Context(), time.Now().Add(365*24*time.Hour), 5)
+			if err != nil || (len(due) == 0) != tc.wantGivenUp {
+				t.Fatalf("due after a year = %d, %v; want gave up = %v", len(due), err, tc.wantGivenUp)
+			}
+		})
 	}
 }
 

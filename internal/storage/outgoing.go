@@ -352,6 +352,24 @@ func (db *DB) claimDueOutgoingSends(ctx context.Context, accountID string, now t
 	return sends, nil
 }
 
+// UpdateClaimedOutgoingSendPayload replaces the MIME and snapshot of a send the
+// worker has already claimed, so the Sent copy matches what is delivered.
+func (db *DB) UpdateClaimedOutgoingSendPayload(ctx context.Context, id string, mimeData, messageJSON []byte) error {
+	if id == "" || len(mimeData) == 0 || len(messageJSON) == 0 {
+		return fmt.Errorf("missing outgoing send payload")
+	}
+	result, err := db.Write().ExecContext(ctx, `
+		UPDATE outgoing_sends SET mime_data = ?, message_json = ?, updated_at = CURRENT_TIMESTAMP
+		WHERE id = ? AND status = ?`, mimeData, string(messageJSON), id, OutgoingSendSending)
+	if err != nil {
+		return err
+	}
+	if changed, _ := result.RowsAffected(); changed != 1 {
+		return fmt.Errorf("outgoing send %s is no longer being sent", id)
+	}
+	return nil
+}
+
 func (db *DB) CompleteOutgoingSend(ctx context.Context, id, sentMessageID string, needsSentCopy bool) error {
 	query := `UPDATE outgoing_sends
 		SET status = ?, sent_message_id = ?, last_error = '', locked_at = NULL,
@@ -479,6 +497,20 @@ func (db *DB) FinishSentCopyWithError(ctx context.Context, id, status, errText s
 			sent_copy_next_attempt_at = ?, updated_at = CURRENT_TIMESTAMP
 		WHERE id = ? AND status = ? AND sent_copy_status = ?`,
 		status, errText, nextAttempt.UTC(), id, OutgoingSendSent, SentCopyCopying)
+	return err
+}
+
+// AbandonSentCopy ends Sent-copy retries for good once they keep failing. The
+// mail itself was delivered; dropping mime_data frees the stored message and
+// takes the row out of the claim query. The failed status and error stay for
+// the outgoing-status list.
+func (db *DB) AbandonSentCopy(ctx context.Context, id, errText string) error {
+	_, err := db.Write().ExecContext(ctx, `
+		UPDATE outgoing_sends
+		SET sent_copy_status = ?, sent_copy_last_error = ?, sent_copy_locked_at = NULL,
+			envelope_recipients = '[]', mime_data = NULL, message_json = '', updated_at = CURRENT_TIMESTAMP
+		WHERE id = ? AND status = ? AND sent_copy_status = ?`,
+		SentCopyFailed, errText, id, OutgoingSendSent, SentCopyCopying)
 	return err
 }
 
