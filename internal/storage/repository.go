@@ -4400,7 +4400,6 @@ func (db *DB) RefreshFolderThreadsForMessages(ctx context.Context, folderID stri
 	if folderID == "" || len(messageIDs) == 0 {
 		return nil
 	}
-
 	idArgs := make([]any, 0, len(messageIDs))
 	for _, messageID := range messageIDs {
 		idArgs = append(idArgs, messageID)
@@ -8680,59 +8679,65 @@ func (db *DB) RemoveExpungedUIDs(ctx context.Context, folderID string, expungedU
 	}
 	defer tx.Rollback()
 
-	placeholders := make([]string, len(expungedUIDs))
-	args := make([]any, len(expungedUIDs)+1)
-	args[0] = folderID
-	for i, uid := range expungedUIDs {
-		placeholders[i] = "?"
-		args[i+1] = uid
-	}
 	// Thread keys of the rows about to go, read before messages can be deleted.
 	var threadKeys []string
-	keyRows, err := tx.QueryContext(ctx, fmt.Sprintf(`
+	var removed int64
+	// SQLite caps bound variables at 32766, so a large reconcile goes in batches.
+	for start := 0; start < len(expungedUIDs); start += 500 {
+		batch := expungedUIDs[start:min(start+500, len(expungedUIDs))]
+		placeholders := make([]string, len(batch))
+		args := make([]any, len(batch)+1)
+		args[0] = folderID
+		for i, uid := range batch {
+			placeholders[i] = "?"
+			args[i+1] = uid
+		}
+		keyRows, err := tx.QueryContext(ctx, fmt.Sprintf(`
 		SELECT DISTINCT COALESCE(NULLIF(m.thread_id, ''), printf('msg:%%d', m.id))
 		FROM message_folder_state mfs JOIN messages m ON m.id = mfs.message_id
 		WHERE mfs.folder_id = ? AND mfs.remote_uid IN (%s)`, strings.Join(placeholders, ",")), args...)
-	if err != nil {
-		return 0, fmt.Errorf("collect expunged threads: %w", err)
-	}
-	for keyRows.Next() {
-		var key string
-		if err := keyRows.Scan(&key); err != nil {
-			keyRows.Close()
+		if err != nil {
+			return 0, fmt.Errorf("collect expunged threads: %w", err)
+		}
+		for keyRows.Next() {
+			var key string
+			if err := keyRows.Scan(&key); err != nil {
+				keyRows.Close()
+				return 0, err
+			}
+			threadKeys = append(threadKeys, key)
+		}
+		if err := keyRows.Close(); err != nil {
 			return 0, err
 		}
-		threadKeys = append(threadKeys, key)
-	}
-	if err := keyRows.Close(); err != nil {
-		return 0, err
-	}
-	confirmQuery := fmt.Sprintf(`
+		confirmQuery := fmt.Sprintf(`
 		DELETE FROM message_mutations
 		WHERE kind = 'delete' AND status = 'applied' AND EXISTS (
 			SELECT 1 FROM message_folder_state mfs
 			WHERE mfs.message_id = message_mutations.message_id
 			  AND mfs.folder_id = ? AND mfs.remote_uid IN (%s)
 		)`, strings.Join(placeholders, ","))
-	if _, err := tx.ExecContext(ctx, confirmQuery, args...); err != nil {
-		return 0, fmt.Errorf("confirm expunged deletes: %w", err)
-	}
+		if _, err := tx.ExecContext(ctx, confirmQuery, args...); err != nil {
+			return 0, fmt.Errorf("confirm expunged deletes: %w", err)
+		}
 
-	query := fmt.Sprintf(
-		`DELETE FROM message_folder_state
+		query := fmt.Sprintf(
+			`DELETE FROM message_folder_state
 		 WHERE folder_id = ? AND remote_uid IN (%s)
 		   AND NOT EXISTS (
 		     SELECT 1 FROM message_mutations mm
 		     WHERE mm.message_id = message_folder_state.message_id
 		       AND mm.kind = 'move' AND mm.destination_folder_id = message_folder_state.folder_id
 		   )`,
-		strings.Join(placeholders, ","))
+			strings.Join(placeholders, ","))
 
-	res, err := tx.ExecContext(ctx, query, args...)
-	if err != nil {
-		return 0, fmt.Errorf("delete expunged: %w", err)
+		res, err := tx.ExecContext(ctx, query, args...)
+		if err != nil {
+			return 0, fmt.Errorf("delete expunged: %w", err)
+		}
+		n, _ := res.RowsAffected()
+		removed += n
 	}
-	removed, _ := res.RowsAffected()
 
 	_, err = tx.ExecContext(ctx,
 		`DELETE FROM messages WHERE id NOT IN (SELECT message_id FROM message_folder_state)`)
@@ -8745,7 +8750,9 @@ func (db *DB) RemoveExpungedUIDs(ctx context.Context, folderID string, expungedU
 	}
 	if removed > 0 {
 		_, _ = db.UpdateFolderUnreadCount(ctx, folderID)
-		_ = db.refreshFolderThreadKeys(ctx, folderID, threadKeys)
+		for _, keys := range chunkStrings(threadKeys, 500) {
+			_ = db.refreshFolderThreadKeys(ctx, folderID, keys)
+		}
 	}
 
 	return int(removed), nil
