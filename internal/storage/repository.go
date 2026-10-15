@@ -8160,6 +8160,13 @@ func (db *DB) SetUISettings(ctx context.Context, userID string, settings map[str
 	return db.SetSetting(ctx, userID, "ui_settings", string(val))
 }
 
+// UISettingsMaxBytes caps a user's stored UI settings. The client sends its
+// whole settings cache, which can hold keys beyond the defaults, so the size is
+// capped instead of the key set.
+const UISettingsMaxBytes = 256 << 10
+
+var ErrUISettingsTooLarge = errors.New("ui settings too large")
+
 // MergeUISettings serializes partial updates in the writer transaction so
 // simultaneous requests cannot overwrite each other's unrelated preferences.
 func (db *DB) MergeUISettings(ctx context.Context, userID string, updates map[string]string) error {
@@ -8201,6 +8208,9 @@ func (db *DB) MergeUISettings(ctx context.Context, userID string, updates map[st
 	payload, err := json.Marshal(current)
 	if err != nil {
 		return err
+	}
+	if len(payload) > UISettingsMaxBytes {
+		return ErrUISettingsTooLarge
 	}
 	if _, err := tx.ExecContext(ctx, `INSERT OR REPLACE INTO app_settings (key, user_id, value, updated_at) VALUES ('ui_settings', ?, ?, CURRENT_TIMESTAMP)`, userID, string(payload)); err != nil {
 		return err
