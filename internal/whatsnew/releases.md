@@ -7,6 +7,27 @@ Then an optional hero line, then "### New", "### Improved", "### Fixed" or
 replaces it with the real version number. GitHub release notes use the same text.
 -->
 
+## 1.1.0 | 2026-10-15 | A 3-day calendar, a Mac widget and many fixes
+Calendar opens on your next 3 days, Mac gets an agenda widget, and mail, sending and sync are more reliable.
+
+### New
+- Calendar now opens on the next 3 days on an hour grid, with a red line at the current time. Day and 3 Days are also in the view switcher.
+- On Mac, a Raven widget shows your events for the next 3 days. Add it once from the widget gallery (right-click the desktop, then Edit Widgets). Clicking it opens the calendar.
+
+### Fixed
+- Some attachments never appeared, such as a PDF placed inline or a file with a very long name, and an attached text file could replace the message itself. Attachments now always show up, and messages sent in several parts show in full.
+- After a big clean-up in another mail app, a folder could stop getting new mail, and emptying a very large Trash left the deleted mail on screen. Both now work at any size.
+- Scheduled emails arrived dated the day you scheduled them, and some Microsoft 365, Outlook.com and Yahoo accounts got two copies of each sent message. Scheduled mail now carries the time it went out, and Sent gets one copy.
+- Search missed some replies, and after: and before: dates followed UTC instead of your time zone. Both now find what you expect.
+- Moving "select all" across two accounts moved some messages, then said the change was undone. Raven now refuses the move before moving anything.
+- In dark mode, some emails showed black text on the dark background. The text now switches to a light colour.
+- On Mac, if Raven's background server stopped, the window stayed on an error until you quit, and a failed update left the app unusable. Raven now restarts it on its own.
+- On a shared Raven server, sync could stall with no error, contacts and calendar sync sometimes failed with "database is locked", and one slow mail server held up everyone's outgoing mail. All three are fixed.
+
+### Security
+- On a shared Raven server, images in an email could make the server fetch from a private calendar server the administrator had allowed, and an oversized request from a signed-in user could crash the server. Both are blocked.
+- Importing a contacts file could add photos that told a third party when you looked at the contact. Imported contacts now keep only photos stored inside the file.
+
 ## 1.0.2 | 2026-10-14 | Your own profile photo
 Your Gmail and Google Workspace accounts now show your own Google profile photo.
 
