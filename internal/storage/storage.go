@@ -75,7 +75,7 @@ func New(dbPath string) (*DB, error) {
 	}
 	restrictDatabaseFiles(dbPath)
 
-	write, err := openDB(dbPath)
+	write, err := openWriteDB(dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("open write connection: %w", err)
 	}
@@ -161,7 +161,7 @@ func OpenExisting(dbPath string) (*DB, error) {
 	if err := requireExistingDatabase(dbPath); err != nil {
 		return nil, err
 	}
-	write, err := openDB(dbPath)
+	write, err := openWriteDB(dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("open write connection: %w", err)
 	}
@@ -232,8 +232,17 @@ func (db *DB) notifyContactActivity(event ContactActivityNotification) {
 	}
 }
 
-func openDB(path string) (*sql.DB, error) {
-	db, err := sql.Open("sqlite", path+"?_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)&_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)&_pragma=temp_store(MEMORY)&_texttotime=true")
+func openDB(path string) (*sql.DB, error) { return openSQLite(path, "") }
+
+// openWriteDB begins transactions with BEGIN IMMEDIATE. A deferred transaction
+// that reads and then writes cannot wait for busy_timeout when another process
+// (Litestream, a CLI) holds the write lock: SQLite fails the upgrade at once
+// with SQLITE_BUSY. Taking the lock up front makes it wait instead. Read-only
+// pools stay deferred so readers never queue behind writers.
+func openWriteDB(path string) (*sql.DB, error) { return openSQLite(path, "&_txlock=immediate") }
+
+func openSQLite(path, extraQuery string) (*sql.DB, error) {
+	db, err := sql.Open("sqlite", path+"?_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)&_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)&_pragma=temp_store(MEMORY)&_texttotime=true"+extraQuery)
 	if err != nil {
 		return nil, err
 	}
