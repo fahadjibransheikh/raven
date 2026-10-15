@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -1968,6 +1969,61 @@ func TestEmailQueryFilterMatchesThreadWhenOlderMessageMatches(t *testing.T) {
 	}
 }
 
+func TestEmailDateFiltersUseUserTimezoneDays(t *testing.T) {
+	db := newContactsTestDB(t)
+	ctx := WithTimezone(context.Background(), "America/Los_Angeles")
+
+	if _, err := db.Write().ExecContext(ctx, `INSERT INTO accounts (id, user_id, email_address) VALUES ('acc', 'default', 'user@example.com')`); err != nil {
+		t.Fatalf("insert account: %v", err)
+	}
+	if err := db.UpsertFolders(ctx, []UpsertFolderInput{{ID: "inbox", AccountID: "acc", Name: "Inbox", Role: "inbox", Selectable: true}}); err != nil {
+		t.Fatalf("UpsertFolders() error = %v", err)
+	}
+	// Oct 13 18:00 PDT and Oct 14 01:00 PDT; both are Oct 14 in UTC.
+	evening := time.Date(2026, 10, 14, 1, 0, 0, 0, time.UTC)
+	night := time.Date(2026, 10, 14, 8, 0, 0, 0, time.UTC)
+	if err := db.UpsertSyncMessages(ctx, []SyncMessage{
+		{AccountID: "acc", FolderID: "inbox", RemoteUID: 1, MessageID: "<evening@example.com>", Subject: "evening", FromEmail: "a@example.com", DateSent: evening, IsRead: true},
+		{AccountID: "acc", FolderID: "inbox", RemoteUID: 2, MessageID: "<night@example.com>", Subject: "night", FromEmail: "b@example.com", DateSent: night, IsRead: true},
+	}); err != nil {
+		t.Fatalf("UpsertSyncMessages() error = %v", err)
+	}
+	// Other writers store RFC3339 text; the filter must treat both forms alike.
+	if _, err := db.Write().ExecContext(ctx, `UPDATE messages SET date_received = '2026-10-14T08:00:00Z' WHERE subject = 'night'`); err != nil {
+		t.Fatalf("rewrite date_received: %v", err)
+	}
+
+	subjects := func(filters models.EmailFilters) string {
+		t.Helper()
+		page, err := db.GetEmailsRangeFilteredForUser(ctx, "default", "inbox", 0, 50, filters)
+		if err != nil {
+			t.Fatalf("GetEmailsRangeFilteredForUser(%+v) error = %v", filters, err)
+		}
+		var got []string
+		for _, e := range page.Emails {
+			got = append(got, e.Subject)
+		}
+		sort.Strings(got)
+		return strings.Join(got, ",")
+	}
+	for _, tc := range []struct {
+		name    string
+		filters models.EmailFilters
+		want    string
+	}{
+		{"before is inclusive of the local day", models.EmailFilters{Before: "2026-10-13"}, "evening"},
+		{"after starts at local midnight", models.EmailFilters{After: "2026-10-14"}, "night"},
+		{"same local day", models.EmailFilters{After: "2026-10-13", Before: "2026-10-13"}, "evening"},
+		{"range spanning both", models.EmailFilters{After: "2026-10-13", Before: "2026-10-14"}, "evening,night"},
+		{"before earlier day", models.EmailFilters{Before: "2026-10-12"}, ""},
+		{"unparsable date matches nothing", models.EmailFilters{After: "garbage"}, ""},
+	} {
+		if got := subjects(tc.filters); got != tc.want {
+			t.Errorf("%s: got %q, want %q", tc.name, got, tc.want)
+		}
+	}
+}
+
 func TestEmailQueryFilterSearchesBeyondInitialWindow(t *testing.T) {
 	ctx := context.Background()
 	db := newContactsTestDB(t)
@@ -3506,6 +3562,31 @@ func TestLateParentStillRethreadsAndDropsEmptyThread(t *testing.T) {
 	}
 	if got, n := threadTestState(t, db, "child"); got != parentThread || n != 1 {
 		t.Fatalf("after child re-sync thread=%q threads=%d, want %q and 1", got, n, parentThread)
+	}
+}
+
+func TestLateParentUpdatesSearchThreadKeyOfRethreadedChild(t *testing.T) {
+	ctx := context.Background()
+	db := seedThreadTestAccount(t, "outlook")
+	base := time.Date(2020, 8, 7, 12, 0, 0, 0, time.UTC)
+	child := threadTestMsg("child", "Re: Topic", "<parent@example.com>", base.Add(time.Hour))
+	parent := threadTestMsg("parent", "Topic", "", base)
+
+	if _, err := db.UpsertProviderSyncMessages(ctx, []ProviderSyncMessage{child}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.UpsertProviderSyncMessages(ctx, []ProviderSyncMessage{parent}); err != nil {
+		t.Fatal(err)
+	}
+	parentThread, _ := threadTestState(t, db, "parent")
+	var searchKey string
+	if err := db.Read().QueryRowContext(ctx, `
+		SELECT s.thread_key FROM message_search s JOIN messages m ON m.id = s.rowid
+		WHERE m.internet_message_id = '<child@example.com>'`).Scan(&searchKey); err != nil {
+		t.Fatalf("read child search thread_key: %v", err)
+	}
+	if searchKey != parentThread {
+		t.Fatalf("child search thread_key=%q, want re-threaded %q", searchKey, parentThread)
 	}
 }
 

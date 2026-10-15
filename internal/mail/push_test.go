@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -234,5 +235,44 @@ func TestRenewPushWatchPatchesExistingGraphSubscriptionAndDeletesDuplicates(t *t
 	}
 	if c := (*calls)[2]; c.Method != http.MethodDelete || c.Path != "/subscriptions/sub-2" {
 		t.Fatalf("third call = %#v, want DELETE /subscriptions/sub-2", c)
+	}
+}
+
+func TestBackgroundSyncAccountTimesOutAndRecordsError(t *testing.T) {
+	o := newPushTestOrchestrator(t, map[string][2]string{"acc": {providers.ProviderGmail, "a@example.com"}})
+	previous := backgroundSyncTimeout
+	backgroundSyncTimeout = 50 * time.Millisecond
+	t.Cleanup(func() { backgroundSyncTimeout = previous })
+	o.syncAccountOverride = func(ctx context.Context, _ string, _ bool) error {
+		<-ctx.Done() // a provider that never answers
+		return ctx.Err()
+	}
+
+	if !o.SyncAccount(context.Background(), "acc") {
+		t.Fatal("SyncAccount did not start")
+	}
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		var message string
+		if err := o.db.Read().QueryRow(`SELECT email_sync_error FROM accounts WHERE id = 'acc'`).Scan(&message); err != nil {
+			t.Fatal(err)
+		}
+		if message != "" {
+			if !strings.Contains(message, "deadline exceeded") {
+				t.Fatalf("email_sync_error = %q, want a deadline error", message)
+			}
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("hung sync was not cancelled and recorded within 2s")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	// The account must be free for the next scheduled run.
+	for !o.SyncAccount(context.Background(), "acc") {
+		if time.Now().After(deadline) {
+			t.Fatal("account still marked as syncing after the timeout")
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 }

@@ -273,10 +273,20 @@ func gmailRefusal(resp *http.Response, now time.Time) (bool, time.Time) {
 		strings.Contains(text, "quota exceeded"), retryAt
 }
 
-// Do sends a request with http.DefaultClient, first waiting until a Gmail
-// request fits its mailbox's quota. Requests to other hosts go straight out.
+// requestTimeout bounds a whole request, body included, so a server that
+// accepts the connection and never answers cannot stall a sync. It is generous
+// because attachment downloads share it. Package variable so tests can shorten it.
+var requestTimeout = 5 * time.Minute
+
+// Do sends a request with a copy of http.DefaultClient that has a timeout
+// (the copy keeps any transport set on the default), first waiting until a
+// Gmail request fits its mailbox's quota. Requests to other hosts go straight out.
 func Do(req *http.Request) (*http.Response, error) {
-	return gmail.do(req, http.DefaultClient.Do)
+	client := *http.DefaultClient
+	if client.Timeout == 0 {
+		client.Timeout = requestTimeout
+	}
+	return gmail.do(req, client.Do)
 }
 
 func (b *budget) do(req *http.Request, send func(*http.Request) (*http.Response, error)) (*http.Response, error) {

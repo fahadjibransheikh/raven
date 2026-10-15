@@ -1153,3 +1153,68 @@ func TestPruneAvatarAttemptLogsKeepsRecentRows(t *testing.T) {
 		t.Fatalf("remaining=%d, want 2", left)
 	}
 }
+
+func TestSyncMessagesRecordSameObservedContactsAsPerMessageUpserts(t *testing.T) {
+	ctx := context.Background()
+	base := time.Date(2026, 10, 1, 9, 0, 0, 0, time.UTC)
+	msgs := []SyncMessage{
+		{AccountID: "acc", FolderID: "inbox", RemoteUID: 1, MessageID: "<1@example.com>", Subject: "one", DateSent: base,
+			FromName: "Alice", FromEmail: "alice@example.com",
+			ToRecipients: []Recipient{{Name: "Me", Email: "me@example.com"}, {Name: "Bob", Email: "bob@example.com"}}},
+		{AccountID: "acc", FolderID: "inbox", RemoteUID: 2, MessageID: "<2@example.com>", Subject: "two", DateSent: base.Add(time.Hour),
+			FromName: "Alice B.", FromEmail: "Alice@Example.com",
+			ToRecipients: []Recipient{{Name: "Me", Email: "me@example.com"}},
+			CCRecipients: []Recipient{{Name: "Bob", Email: "bob@example.com"}, {Name: "", Email: ""}}},
+		{AccountID: "acc", FolderID: "inbox", RemoteUID: 3, MessageID: "<3@example.com>", Subject: "three", DateSent: base.Add(2 * time.Hour),
+			FromName: "Me", FromEmail: "me@example.com",
+			ToRecipients: []Recipient{{Name: "Carol", Email: "carol@example.com"}, {Name: "Alice", Email: "alice@example.com"}}},
+	}
+	type observation struct {
+		Email, Name string
+		Count       int
+	}
+	observations := func(db *DB) []observation {
+		t.Helper()
+		rows, err := db.Read().QueryContext(ctx, `SELECT normalized_email, observed_name, message_count FROM contact_observations ORDER BY normalized_email`)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer rows.Close()
+		var got []observation
+		for rows.Next() {
+			var o observation
+			if err := rows.Scan(&o.Email, &o.Name, &o.Count); err != nil {
+				t.Fatal(err)
+			}
+			got = append(got, o)
+		}
+		return got
+	}
+	seed := func() *DB {
+		db := newContactsTestDB(t)
+		if _, err := db.Write().Exec(`INSERT INTO accounts (id, user_id, email_address, display_name) VALUES ('acc', 'default', 'me@example.com', 'Me')`); err != nil {
+			t.Fatal(err)
+		}
+		if err := db.UpsertFolders(ctx, []UpsertFolderInput{{ID: "inbox", AccountID: "acc", Name: "Inbox", Role: "inbox", Selectable: true}}); err != nil {
+			t.Fatal(err)
+		}
+		return db
+	}
+
+	batched := seed()
+	if err := batched.UpsertSyncMessages(ctx, msgs); err != nil {
+		t.Fatal(err)
+	}
+	perMessage := seed()
+	for _, m := range msgs {
+		perMessage.UpsertObservedContactsForMessage(ctx, m.AccountID, m.FromName, m.FromEmail, m.ToRecipients, m.CCRecipients, nil, m.DateSent)
+	}
+
+	got, want := observations(batched), observations(perMessage)
+	if len(want) != 4 {
+		t.Fatalf("reference observations = %#v, want alice, bob, carol, me", want)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("batched observations = %#v, want %#v", got, want)
+	}
+}
