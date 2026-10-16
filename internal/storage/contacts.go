@@ -498,15 +498,15 @@ func contactProfileFilterSQL(userID string, filters models.ContactFilters) (stri
 	where := `p.user_id = ? AND p.is_deleted = 0`
 	args := []any{userID}
 	if query != "" {
-		where += ` AND (p.display_name LIKE ? OR p.primary_email LIKE ? OR EXISTS (
+		where += ` AND (p.display_name LIKE ? ESCAPE '\' OR p.primary_email LIKE ? ESCAPE '\' OR EXISTS (
 			SELECT 1
 			FROM contact_fields email
 			WHERE email.profile_id = p.id
 			  AND email.user_id = p.user_id
 			  AND email.kind = 'email'
-			  AND (email.value LIKE ? OR email.normalized_value LIKE ?)
+			  AND (email.value LIKE ? ESCAPE '\' OR email.normalized_value LIKE ? ESCAPE '\')
 		))`
-		like := "%" + query + "%"
+		like := "%" + likeEscape(query) + "%"
 		args = append(args, like, like, like, strings.ToLower(like))
 	}
 	switch filters.Source {

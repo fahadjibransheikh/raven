@@ -809,8 +809,8 @@ func (db *DB) GetSenderAvatarAttemptLogs(ctx context.Context, filter SenderAvata
 		clauses = append(clauses, "log.status = 'error'")
 	}
 	if filter.Query = strings.ToLower(strings.TrimSpace(filter.Query)); filter.Query != "" {
-		clauses = append(clauses, "lower(log.email) LIKE ?")
-		args = append(args, "%"+filter.Query+"%")
+		clauses = append(clauses, "lower(log.email) LIKE ? ESCAPE '\\'")
+		args = append(args, "%"+likeEscape(filter.Query)+"%")
 	}
 	if filter.Provider = strings.ToLower(strings.TrimSpace(filter.Provider)); filter.Provider != "" && filter.Provider != "all" {
 		clauses = append(clauses, "log.provider = ?")
@@ -871,8 +871,8 @@ func (db *DB) GetSenderAvatarRows(ctx context.Context, filter SenderAvatarRowFil
 		args = append(args, scopeArgs...)
 	}
 	if filter.Query = strings.ToLower(strings.TrimSpace(filter.Query)); filter.Query != "" {
-		clauses = append(clauses, "lower(sa.email) LIKE ?")
-		args = append(args, "%"+filter.Query+"%")
+		clauses = append(clauses, "lower(sa.email) LIKE ? ESCAPE '\\'")
+		args = append(args, "%"+likeEscape(filter.Query)+"%")
 	}
 	if filter.Status = strings.ToLower(strings.TrimSpace(filter.Status)); filter.Status != "" && filter.Status != "all" {
 		clauses = append(clauses, "sa.status = ?")

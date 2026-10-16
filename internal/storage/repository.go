@@ -5292,6 +5292,9 @@ func ftsQuery(input string) string {
 	return strings.Join(terms, " ")
 }
 
+// likeEscape makes % and _ in user text match literally; pair it with ESCAPE '\'.
+var likeEscape = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace
+
 func attachmentTypeFilterSQL(filterType, customExtension string) (string, []any) {
 	switch filterType {
 	case "pdf":
@@ -5309,7 +5312,7 @@ func attachmentTypeFilterSQL(filterType, customExtension string) (string, []any)
 	case "custom":
 		customExtension = strings.TrimPrefix(strings.ToLower(strings.TrimSpace(customExtension)), ".")
 		if customExtension != "" {
-			return "lower(att.filename) LIKE ?", []any{"%." + customExtension}
+			return "lower(att.filename) LIKE ? ESCAPE '\\'", []any{"%." + likeEscape(customExtension)}
 		}
 	}
 	return "", nil
@@ -5366,14 +5369,14 @@ func emailFilterSQL(ctx context.Context, filters models.EmailFilters) emailFilte
 		args = append(args, participant, participant)
 	}
 	if filters.From != "" {
-		cteParts = append(cteParts, "(m.from_name LIKE ? OR m.from_email LIKE ?)")
-		like := "%" + filters.From + "%"
+		cteParts = append(cteParts, "(m.from_name LIKE ? ESCAPE '\\' OR m.from_email LIKE ? ESCAPE '\\')")
+		like := "%" + likeEscape(filters.From) + "%"
 		args = append(args, like, like)
 	}
 	if filters.FromDomain != "" {
 		domain := strings.TrimPrefix(strings.ToLower(filters.FromDomain), "@")
-		cteParts = append(cteParts, "lower(m.from_email) LIKE ?")
-		args = append(args, "%@"+domain)
+		cteParts = append(cteParts, "lower(m.from_email) LIKE ? ESCAPE '\\'")
+		args = append(args, "%@"+likeEscape(domain))
 	}
 	if filters.To != "" {
 		recipientKind := "mr.kind IN ('to', 'cc', 'bcc')"
@@ -5381,8 +5384,8 @@ func emailFilterSQL(ctx context.Context, filters models.EmailFilters) emailFilte
 			recipientKind = "mr.kind = ?"
 			args = append(args, filters.RecipientType)
 		}
-		cteParts = append(cteParts, "EXISTS (SELECT 1 FROM message_recipients mr WHERE mr.message_id = m.id AND "+recipientKind+" AND (mr.name LIKE ? OR mr.email LIKE ?))")
-		like := "%" + filters.To + "%"
+		cteParts = append(cteParts, "EXISTS (SELECT 1 FROM message_recipients mr WHERE mr.message_id = m.id AND "+recipientKind+" AND (mr.name LIKE ? ESCAPE '\\' OR mr.email LIKE ? ESCAPE '\\'))")
+		like := "%" + likeEscape(filters.To) + "%"
 		args = append(args, like, like)
 	}
 	if filters.RecipientDomain != "" {
@@ -5392,15 +5395,15 @@ func emailFilterSQL(ctx context.Context, filters models.EmailFilters) emailFilte
 			recipientKind = "mr.kind = ?"
 			args = append(args, filters.RecipientType)
 		}
-		cteParts = append(cteParts, "EXISTS (SELECT 1 FROM message_recipients mr WHERE mr.message_id = m.id AND "+recipientKind+" AND lower(mr.email) LIKE ?)")
-		args = append(args, "%@"+domain)
+		cteParts = append(cteParts, "EXISTS (SELECT 1 FROM message_recipients mr WHERE mr.message_id = m.id AND "+recipientKind+" AND lower(mr.email) LIKE ? ESCAPE '\\')")
+		args = append(args, "%@"+likeEscape(domain))
 	} else if filters.RecipientType != "" && filters.To == "" {
 		cteParts = append(cteParts, "EXISTS (SELECT 1 FROM message_recipients mr WHERE mr.message_id = m.id AND mr.kind = ?)")
 		args = append(args, filters.RecipientType)
 	}
 	if filters.Subject != "" {
-		cteParts = append(cteParts, "m.subject LIKE ?")
-		args = append(args, "%"+filters.Subject+"%")
+		cteParts = append(cteParts, "m.subject LIKE ? ESCAPE '\\'")
+		args = append(args, "%"+likeEscape(filters.Subject)+"%")
 	}
 	if filters.Body != "" {
 		if query := ftsQuery(filters.Body); query != "" {
@@ -5408,8 +5411,8 @@ func emailFilterSQL(ctx context.Context, filters models.EmailFilters) emailFilte
 		}
 	}
 	if filters.Attachment != "" {
-		cteParts = append(cteParts, "EXISTS (SELECT 1 FROM attachments att WHERE att.message_id = m.id AND att.filename LIKE ?)")
-		args = append(args, "%"+filters.Attachment+"%")
+		cteParts = append(cteParts, "EXISTS (SELECT 1 FROM attachments att WHERE att.message_id = m.id AND att.filename LIKE ? ESCAPE '\\')")
+		args = append(args, "%"+likeEscape(filters.Attachment)+"%")
 	}
 	if clause, clauseArgs := attachmentTypeFilterSQL(filters.AttachmentType, filters.AttachmentExt); clause != "" {
 		cteParts = append(cteParts, "EXISTS (SELECT 1 FROM attachments att WHERE att.message_id = m.id AND ("+clause+"))")
