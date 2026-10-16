@@ -148,25 +148,27 @@ struct AgendaView: View {
     @Environment(\.widgetFamily) private var family
     var entry: AgendaEntry
 
-    private var rowLimit: Int {
-        switch family {
-        case .systemSmall: return 3
-        case .systemMedium: return 4
-        default: return 10
-        }
-    }
+    // Fixed row heights so the row count can be worked out from the widget's
+    // height; widget text doesn't scale with Dynamic Type on macOS.
+    private static let spacing: CGFloat = 6
+    private static let headerHeight: CGFloat = 16
+    private static let dayHeight: CGFloat = 16
+    private static let moreHeight: CGFloat = 14
+    static func eventHeight(compact: Bool) -> CGFloat { compact ? 16 : 28 }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            header
-            if entry.missing {
-                Spacer()
-                Text("Open Raven to load your calendar.")
-                    .font(.caption).foregroundStyle(.secondary)
-                Spacer()
-            } else {
-                rows
-                Spacer(minLength: 0)
+        GeometryReader { geometry in
+            VStack(alignment: .leading, spacing: Self.spacing) {
+                header.frame(height: Self.headerHeight)
+                if entry.missing {
+                    Spacer()
+                    Text("Open Raven to load your calendar.")
+                        .font(.caption).foregroundStyle(.secondary)
+                    Spacer()
+                } else {
+                    rows(height: geometry.size.height)
+                    Spacer(minLength: 0)
+                }
             }
         }
         .containerBackground(.background, for: .widget)
@@ -185,10 +187,29 @@ struct AgendaView: View {
                 Text("Updated \(updated, style: .relative) ago").font(.caption2).foregroundStyle(.tertiary)
             }
         }
+        .lineLimit(1)
     }
 
-    @ViewBuilder private var rows: some View {
-        let shown = Array(visibleRows.prefix(rowLimit))
+    // How many rows fit in `height` below the header, keeping room for the
+    // "+N more" line when rows are left over and never ending on a day heading.
+    static func fittingCount(_ rows: [Row], height: CGFloat, compact: Bool) -> Int {
+        var used = headerHeight
+        var count = 0
+        for (index, row) in rows.enumerated() {
+            let rowHeight: CGFloat
+            if case .day = row.kind { rowHeight = dayHeight } else { rowHeight = eventHeight(compact: compact) }
+            let more = index + 1 < rows.count ? spacing + moreHeight : 0
+            if used + spacing + rowHeight + more > height { break }
+            used += spacing + rowHeight
+            count += 1
+        }
+        while count > 0, case .day = rows[count - 1].kind { count -= 1 }
+        return count
+    }
+
+    @ViewBuilder private func rows(height: CGFloat) -> some View {
+        let compact = family == .systemSmall
+        let shown = Array(visibleRows.prefix(Self.fittingCount(visibleRows, height: height, compact: compact)))
         if shown.isEmpty {
             Text("Nothing scheduled in the next 3 days")
                 .font(.caption).foregroundStyle(.secondary)
@@ -197,18 +218,18 @@ struct AgendaView: View {
             switch row.kind {
             case .day(let date):
                 Text(dayLabel(date)).font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
-                    .padding(.top, 2)
+                    .lineLimit(1).frame(height: Self.dayHeight, alignment: .bottom)
             case .event(let item):
-                EventRow(item: item, now: entry.date, calendar: entry.calendar, compact: family == .systemSmall)
+                EventRow(item: item, now: entry.date, calendar: entry.calendar, compact: compact)
             }
         }
-        let hidden = visibleRows.dropFirst(rowLimit).filter { if case .event = $0.kind { return true } else { return false } }.count
+        let hidden = visibleRows.dropFirst(shown.count).filter { if case .event = $0.kind { return true } else { return false } }.count
         if hidden > 0 {
-            Text("+\(hidden) more").font(.caption2).foregroundStyle(.secondary)
+            Text("+\(hidden) more").font(.caption2).foregroundStyle(.secondary).frame(height: Self.moreHeight)
         }
     }
 
-    private struct Row: Identifiable {
+    struct Row: Identifiable {
         enum Kind { case day(Date), event(AgendaItem) }
         var id: String
         var kind: Kind
@@ -252,7 +273,7 @@ struct EventRow: View {
                 }
             }
         }
-        .frame(maxHeight: compact ? 16 : 28, alignment: .leading)
+        .frame(height: AgendaView.eventHeight(compact: compact), alignment: .leading)
         .opacity(item.declined ? 0.5 : 1)
     }
 
