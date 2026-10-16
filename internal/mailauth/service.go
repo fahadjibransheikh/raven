@@ -88,6 +88,8 @@ type Service struct {
 	config         *Config
 	db             *storage.DB
 	credentialKey  []byte
+	// Microsoft access tokens by grant and scope set; see refreshMicrosoftScopes.
+	microsoftTokens sync.Map
 }
 
 // Manager remains an alias while callers migrate to the service terminology.
@@ -140,6 +142,12 @@ func (m *Service) UpsertOAuthAccount(ctx context.Context, accountID, provider, p
 	if strings.TrimSpace(accountID) == "" || providerAccountID == "" {
 		return fmt.Errorf("mailbox account and provider identity are required")
 	}
+	m.microsoftTokens.Range(func(key, _ any) bool {
+		if strings.HasPrefix(key.(string), accountID+"\x00") {
+			m.microsoftTokens.Delete(key)
+		}
+		return true
+	})
 	tx, err := m.db.Write().BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin mailbox OAuth credential upsert: %w", err)

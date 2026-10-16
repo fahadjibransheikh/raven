@@ -262,6 +262,15 @@ func (m *Manager) refreshMicrosoftScopes(ctx context.Context, record oauthTokenR
 	if strings.TrimSpace(record.RefreshToken) == "" {
 		return "", fmt.Errorf("no refresh token available for account %s", record.AccountID)
 	}
+	// The stored record holds one access token, but mail, contacts, calendar
+	// and SMTP each need their own, so those live in memory until near expiry.
+	// UpsertOAuthAccount forgets them when the account is reconnected.
+	key := microsoftTokenKey(record.AccountID, scopes)
+	if cached, ok := m.microsoftTokens.Load(key); ok {
+		if c := cached.(*oauth2.Token); c.Expiry.After(time.Now().Add(5 * time.Minute)) {
+			return c.AccessToken, nil
+		}
+	}
 	cfg, err := m.oauthConfigForProvider(providers.OAuthMicrosoft)
 	if err != nil {
 		return "", err
@@ -278,7 +287,14 @@ func (m *Manager) refreshMicrosoftScopes(ctx context.Context, record oauthTokenR
 			return "", fmt.Errorf("store graph %s refresh token: %w", label, err)
 		}
 	}
+	if !token.Expiry.IsZero() {
+		m.microsoftTokens.Store(key, token)
+	}
 	return token.AccessToken, nil
+}
+
+func microsoftTokenKey(accountID string, scopes []string) string {
+	return accountID + "\x00" + strings.Join(scopes, " ")
 }
 
 func microsoftGraphMailScopes() []string {

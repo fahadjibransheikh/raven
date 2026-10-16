@@ -3,6 +3,7 @@ package mailauth
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -601,5 +602,85 @@ func TestMicrosoftCalendarTokenRefreshesWithTheConsentedWriteScope(t *testing.T)
 	}
 	if gotScope != microsoftGraphCalendarWriteScope {
 		t.Fatalf("refresh scope = %q, want the consented %q", gotScope, microsoftGraphCalendarWriteScope)
+	}
+}
+
+func TestMicrosoftScopedTokensAreReusedUntilExpiryWithoutTouchingStoredToken(t *testing.T) {
+	ctx := context.Background()
+	db, err := storage.New(filepath.Join(t.TempDir(), "raven.db"))
+	if err != nil {
+		t.Fatalf("storage.New() error = %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	if _, err := db.Write().ExecContext(ctx, `INSERT OR IGNORE INTO users (id, username, username_normalized, name) VALUES ('default', 'default', 'default', 'Default')`); err != nil {
+		t.Fatalf("insert user: %v", err)
+	}
+	if _, err := db.Write().ExecContext(ctx, `
+		INSERT INTO accounts (id, user_id, provider, provider_account_id, email_address)
+		VALUES ('acc', 'default', 'outlook', 'subject-id', 'person@outlook.com')`); err != nil {
+		t.Fatalf("insert account: %v", err)
+	}
+
+	refreshes := map[string]int{}
+	expiresIn := 3600
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = r.ParseForm()
+		scope := r.FormValue("scope")
+		refreshes[scope]++
+		w.Header().Set("Content-Type", "application/json")
+		// Microsoft rotates the refresh token on every refresh.
+		_, _ = fmt.Fprintf(w, `{"access_token":"token-%d","refresh_token":"refresh-%d","token_type":"Bearer","expires_in":%d}`,
+			len(refreshes)*10+refreshes[scope], len(refreshes)*10+refreshes[scope], expiresIn)
+	}))
+	defer server.Close()
+
+	manager := NewManager(&Config{MicrosoftClient: &oauth2.Config{
+		ClientID: "client-id", ClientSecret: "client-secret", Endpoint: oauth2.Endpoint{TokenURL: server.URL},
+	}}, db, testMailboxCredentialKey)
+	expiresAt := time.Now().Add(time.Hour)
+	if err := manager.UpsertOAuthAccount(ctx, "acc", providers.OAuthMicrosoft, "subject-id", "cached-contacts-token", "refresh-token", "Bearer", &expiresAt, microsoftGraphContactsScope); err != nil {
+		t.Fatalf("UpsertOAuthAccount() error = %v", err)
+	}
+
+	first, err := manager.GetMicrosoftGraphMailTokenForAccount(ctx, "acc")
+	if err != nil {
+		t.Fatalf("first mail token: %v", err)
+	}
+	if _, err := manager.GetMicrosoftSMTPTokenForAccount(ctx, "acc"); err != nil {
+		t.Fatalf("smtp token: %v", err)
+	}
+	second, err := manager.GetMicrosoftGraphMailTokenForAccount(ctx, "acc")
+	if err != nil {
+		t.Fatalf("second mail token: %v", err)
+	}
+	mailScope := strings.Join(microsoftGraphMailScopes(), " ")
+	if second != first || refreshes[mailScope] != 1 {
+		t.Fatalf("mail token reused = %v, mail refreshes = %d, want same token and 1 refresh", second == first, refreshes[mailScope])
+	}
+	if refreshes[microsoftSMTPSendScope] != 1 {
+		t.Fatalf("smtp refreshes = %d, want 1 (separate token)", refreshes[microsoftSMTPSendScope])
+	}
+	stored, err := manager.oauthTokenForAccount(ctx, "acc", providers.OAuthMicrosoft)
+	if err != nil {
+		t.Fatalf("read stored token: %v", err)
+	}
+	if stored.AccessToken != "cached-contacts-token" {
+		t.Fatalf("stored access token = %q, want the contacts token left alone", stored.AccessToken)
+	}
+
+	// Reconnecting forgets cached tokens, and a token within 5 minutes of
+	// expiry is refreshed rather than reused.
+	expiresIn = 60
+	if err := manager.UpsertOAuthAccount(ctx, "acc", providers.OAuthMicrosoft, "subject-id", "cached-contacts-token", "refresh-token", "Bearer", &expiresAt, microsoftGraphContactsScope); err != nil {
+		t.Fatalf("reconnect: %v", err)
+	}
+	if _, err := manager.GetMicrosoftGraphMailTokenForAccount(ctx, "acc"); err != nil {
+		t.Fatalf("short-lived token: %v", err)
+	}
+	if _, err := manager.GetMicrosoftGraphMailTokenForAccount(ctx, "acc"); err != nil {
+		t.Fatalf("after short-lived token: %v", err)
+	}
+	if refreshes[mailScope] != 3 {
+		t.Fatalf("mail refreshes = %d, want 3 (near-expiry token not reused)", refreshes[mailScope])
 	}
 }
