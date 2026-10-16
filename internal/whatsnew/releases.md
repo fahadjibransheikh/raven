@@ -7,6 +7,16 @@ Then an optional hero line, then "### New", "### Improved", "### Fixed" or
 replaces it with the real version number. GitHub release notes use the same text.
 -->
 
+## 1.1.1 | 2026-10-16 | Widget, search and Outlook fixes
+A tidier Mac widget, more exact search and faster Outlook accounts.
+
+### Improved
+- Outlook and Microsoft 365 accounts asked Microsoft for a new sign-in token before almost every mail, contacts and calendar request. Raven now reuses each token until it is about to expire, so these accounts respond faster.
+
+### Fixed
+- On Mac, the agenda widget could cut off its last event and the "+N more" line, and the large widget could end on a day heading with no events under it. Events now fit the widget at every size.
+- Searching for text with % or _ in it, such as "50%" or "first_name", also matched messages and contacts that did not contain it. Search now matches these characters exactly.
+
 ## 1.1.0 | 2026-10-15 | A 3-day calendar, a Mac widget and many fixes
 Calendar opens on your next 3 days, Mac gets an agenda widget, and mail, sending and sync are more reliable.
 
