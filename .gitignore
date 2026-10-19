@@ -38,3 +38,8 @@ __pycache__/
 
 # macOS widget build output (tauri-wrapper/widget/build.sh)
 /tauri-wrapper/widget/build/
+
+# Design notes from the impeccable tooling, kept local
+/DESIGN.md
+/PRODUCT.md
+/.impeccable/
