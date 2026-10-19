@@ -58,8 +58,8 @@ templ MailListHeader(accounts []models.Account, activeFolder string, totalCount 
 					<span id="mail-folder-count" class="inline-flex h-5 min-w-10 items-center justify-center rounded-full bg-muted px-2 text-xs font-medium text-muted-foreground"></span>
 				}
 			</div>
-			<button type="button" class="inline-flex lg:hidden h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90" aria-label="Compose" data-on-click='["openNewCompose"]'>
-				@icon.SquarePen(icon.Props{Class: "size-4"})
+			<button type="button" class="mail-compose-fab lg:hidden" aria-label="Compose" data-on-click='["openNewCompose"]'>
+				@icon.SquarePen(icon.Props{Class: "size-5"})
 			</button>
 		</div>
 		<div class="mail-list-search-section">

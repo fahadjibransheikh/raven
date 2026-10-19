@@ -86,7 +86,7 @@ func settingsSectionHeading(section string) (string, string) {
 templ SettingsSectionHeader(section string) {
 	{{ title, description := settingsSectionHeading(section) }}
 	<div class="mb-6">
-		@PhoneNavToggle("-ml-2 mb-2")
+		@PhoneNavToggle("-ml-2 mb-2", "Open settings menu")
 		<h2 class="text-2xl font-semibold text-foreground mb-1">{ title }</h2>
 		<p class="text-sm text-muted-foreground">{ description }</p>
 	</div>

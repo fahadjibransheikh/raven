@@ -3726,8 +3726,9 @@ html[data-platform="other"] .hint-other {
     padding-bottom: 0;
   }
 
+  /* Clears the compose button; the tab bar below the list carries the safe-area inset. */
   #mail-list-scroll {
-    padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+    padding-bottom: 5rem;
   }
 
   #reply-bar {
@@ -3869,6 +3870,160 @@ html[data-platform="other"] .hint-other {
   html[data-phone] [data-mail-row-actions] {
     display: none !important;
   }
+
+  /* App tab bar (PhoneTabBar in sidebar.templ): the shell stacks into one column so the
+     panes end above the bar. The bar carries the bottom safe-area inset, so the shell drops it. */
+  html[data-phone] #app-shell {
+    flex-direction: column;
+  }
+
+  html[data-phone] #app-shell > * {
+    min-height: 0;
+  }
+
+  html[data-phone] #app-shell:has(> .phone-tab-bar) {
+    padding-bottom: 0;
+  }
+
+  .phone-tab-bar {
+    display: flex;
+    flex: none;
+    border-top: 1px solid var(--border);
+    background: var(--card);
+    padding: 0.25rem max(0.5rem, env(safe-area-inset-right)) env(safe-area-inset-bottom) max(0.5rem, env(safe-area-inset-left));
+  }
+
+  /* The reader is a full-screen detail view with its own bottom toolbar. */
+  html[data-phone-pane="view"] .phone-tab-bar {
+    display: none;
+  }
+
+  html[data-phone-pane="view"] #app-shell:has(> .phone-tab-bar) {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .phone-tab-link {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.125rem;
+    min-height: 3rem;
+    border-radius: calc(var(--radius) - 2px);
+    color: var(--muted-foreground);
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1rem;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .phone-tab-link[aria-current] {
+    color: var(--foreground);
+    font-weight: 600;
+  }
+
+  .phone-tab-link[aria-current] svg {
+    color: var(--primary);
+  }
+
+  .phone-tab-link:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: -2px;
+  }
+
+  /* Compose sits bottom-right of the list, above the tab bar, within thumb reach. */
+  html[data-phone] #mail-list {
+    position: relative;
+  }
+
+  .mail-compose-fab {
+    position: absolute;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 20;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: var(--radius-xl, 12px);
+    background: var(--primary);
+    color: var(--primary-foreground);
+    box-shadow: var(--shadow-menu);
+  }
+
+  .mail-compose-fab:active {
+    opacity: 0.9;
+  }
+
+  .mail-compose-fab:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  /* Reader: Back and the date on top; the action toolbar at the bottom (MailViewHeader). */
+  .mail-view-phone-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.25rem 1rem 0 0.25rem;
+  }
+
+  html[data-phone] .mail-view-toolbar {
+    order: 10;
+    border-top: 1px solid var(--border);
+    padding: 0.25rem 0.5rem calc(0.25rem + env(safe-area-inset-bottom));
+    gap: 0.25rem;
+  }
+
+  html[data-phone] .mail-view-toolbar + .h-px,
+  html[data-phone] .mail-view-toolbar .mail-view-date,
+  html[data-phone] .mail-view-toolbar .mail-view-meta > span:not(.mail-view-date) {
+    display: none;
+  }
+
+  html[data-phone] .mail-view-content {
+    padding-bottom: 1.25rem;
+  }
+
+  /* Reply moves into the bottom toolbar; the bar stays in the DOM for its reply data. */
+  html[data-phone] #reply-bar {
+    display: none;
+  }
+
+  .mail-view-phone-reply {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    height: 2.75rem;
+    padding-inline: 0.875rem;
+    border-radius: calc(var(--radius) - 2px);
+    background: var(--foreground);
+    color: var(--background);
+    font-size: 0.875rem;
+    font-weight: 500;
+    order: 10;
+  }
+
+  .mail-view-phone-reply:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  /* Writing a reply inline: the editor needs the room, and Back stays on top. */
+  html[data-phone] #mail-view:has([data-compose-inline]) .mail-view-toolbar {
+    display: none;
+  }
+
+  /* Desktop-only controls: table view, the card layout editor, and compose pane width. */
+  html[data-phone] [data-mail-list-view-toggle],
+  html[data-phone] [data-mail-card-layout-dialog-open],
+  html[data-phone] #pane-btns-normal,
+  html[data-phone] #pane-btns-full {
+    display: none !important;
+  }
 }
 
 #phone-nav-backdrop {
@@ -3894,13 +4049,25 @@ html[data-platform="other"] .hint-other {
 .dark .avatar-tone-6 { background: #2a2548; color: #b6a5f5; }
 .dark .avatar-tone-7 { background: #3a2340; color: #e3a3ec; }
 
-/* Phone / PWA: >= 40px tap targets where the row can afford them. data-phone
-   is set on <html> below 1024px (see layout.templ and phone-layout.js). */
+/* Phone / PWA: 44px-tall tap targets. data-phone is set on <html> below 1024px (see
+   layout.templ and phone-layout.js). Width stays 40px so the reader's bottom toolbar
+   (six actions, More and Reply) fits a 360px screen. */
 html[data-phone] .mail-view-toolbar button,
 html[data-phone] .mail-list-toolbar button,
 html[data-phone] .mail-list-header button {
   min-width: 2.5rem;
-  min-height: 2.5rem;
+  min-height: 2.75rem;
+}
+
+html[data-phone] .mail-view-toolbar .mail-view-actions {
+  gap: 0;
+}
+
+/* Reply drops its label on the narrowest phones; aria-label keeps the name. */
+@container (max-width: 399px) {
+  .mail-view-phone-reply-label {
+    display: none;
+  }
 }
 
 html[data-phone] .mail-list-toolbar [data-mail-list-view-toggle] {

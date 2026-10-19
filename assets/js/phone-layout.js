@@ -27,7 +27,12 @@
   function syncPane() {
     scheduled = false
     var view = document.getElementById("mail-view")
-    var isMail = document.getElementById("app-shell") && view && !document.getElementById("contacts-list-scroll") && !document.querySelector("[data-calendar-app]")
+    // The sidebar body names the current app and is swapped on in-place app switches;
+    // #app-shell keeps the attributes of whichever app the page first loaded.
+    var appBody = document.getElementById("sidebar-app-body")
+    var isMail = document.getElementById("app-shell") && view && (appBody
+      ? appBody.getAttribute("data-sidebar-app-body") === "mail"
+      : !document.getElementById("contacts-list-scroll") && !document.querySelector("[data-calendar-app]"))
     if (!isMail) {
       root.removeAttribute("data-phone-pane")
       return

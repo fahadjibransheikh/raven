@@ -685,11 +685,16 @@ templ MailViewSnoozeMenu(email *models.Email) {
 }
 
 templ MailViewHeader(email *models.Email, thread []models.ThreadItem) {
+	// Phone only: Back and the date stay at the top while the action toolbar below moves to
+	// the bottom of the reader, within thumb reach (input.css, phone media block).
+	<div class="mail-view-phone-top lg:hidden">
+		<button type="button" class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-row-hover" aria-label="Back to list" data-on-click='["clearActiveMailSelection"]'>
+			@icon.ChevronLeft(icon.Props{Class: "size-5"})
+		</button>
+		<span class="text-xs text-subtle-foreground tabular-nums">{ email.DateFull }</span>
+	</div>
 	<div class="mail-view-toolbar flex items-center justify-between px-6 py-2.5">
 		<div class="mail-view-actions flex items-center gap-1 min-w-0">
-			<button type="button" class="inline-flex lg:hidden h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-row-hover" aria-label="Back to list" data-on-click='["clearActiveMailSelection"]'>
-				@icon.ChevronLeft(icon.Props{Class: "size-5"})
-			</button>
 			@tooltip.Tooltip() {
 				@tooltip.Trigger() {
 					@button.Button(button.Props{
@@ -823,12 +828,20 @@ templ MailViewHeader(email *models.Email, thread []models.ThreadItem) {
 				}
 			}
 			<span class="mail-view-date text-xs text-subtle-foreground tabular-nums">{ email.DateFull }</span>
+			if !email.IsDraft {
+				// Phone only: the reply bar is hidden there, so Reply joins the bottom toolbar.
+				<button type="button" class="mail-view-phone-reply lg:hidden" aria-label="Reply" data-on-click={ onAction("handleReply", nil, "reply") }>
+					@icon.Reply(icon.Props{Class: "size-4"})
+					<span class="mail-view-phone-reply-label">Reply</span>
+				</button>
+			}
 			@dropdown.Dropdown() {
 				@dropdown.Trigger() {
 					@button.Button(button.Props{
-						Variant: button.VariantGhost,
-						Size:    button.SizeIcon,
-						Class:   "h-8 w-8 text-subtle-foreground hover:text-foreground",
+						Variant:    button.VariantGhost,
+						Size:       button.SizeIcon,
+						Class:      "h-8 w-8 text-subtle-foreground hover:text-foreground",
+						Attributes: templ.Attributes{"aria-label": "More actions"},
 					}) {
 						@icon.EllipsisVertical(icon.Props{Class: "size-4"})
 					}

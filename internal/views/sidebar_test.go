@@ -613,3 +613,35 @@ func TestSettingsSidebarLinksToTheLicenses(t *testing.T) {
 		t.Fatal("the Licenses link must not use inline handlers (CSP is script-src 'self')")
 	}
 }
+
+func TestPhoneTabBarSwitchesAppsLikeTheSidebar(t *testing.T) {
+	var buf bytes.Buffer
+	if err := PhoneTabBar("calendar").Render(context.Background(), &buf); err != nil {
+		t.Fatalf("PhoneTabBar.Render() error = %v", err)
+	}
+	html := buf.String()
+	// data-sidebar-app-nav and data-sidebar-app-button let setupSidebarAppNavToggle drive it.
+	for _, want := range []string{
+		`data-phone-tab-bar`, `data-sidebar-app-nav`, `lg:hidden`,
+		`data-sidebar-app-button="mail"`, `hx-get="/"`, `>Mail</span>`,
+		`data-sidebar-app-button="calendar" aria-current`, `>Calendar</span>`,
+		`data-sidebar-app-button="contacts"`, `hx-get="/contacts"`, `>Contacts</span>`,
+	} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("tab bar missing %q: %s", want, html)
+		}
+	}
+	if strings.Count(html, "aria-current") != 1 {
+		t.Fatalf("exactly one tab should be current: %s", html)
+	}
+}
+
+func TestPhoneNavToggleNamesItsDrawer(t *testing.T) {
+	var buf bytes.Buffer
+	if err := PhoneNavToggle("", "Open settings menu").Render(context.Background(), &buf); err != nil {
+		t.Fatalf("PhoneNavToggle.Render() error = %v", err)
+	}
+	if html := buf.String(); !strings.Contains(html, `aria-label="Open settings menu"`) || strings.Contains(html, "Open folders") {
+		t.Fatalf("toggle should carry the given label: %s", html)
+	}
+}

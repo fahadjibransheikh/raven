@@ -67,6 +67,7 @@ templ CalendarShell(accounts []models.Account, month CalendarMonthData, uiSettin
 		@CalendarSidebar(accounts, uiSettingGet(uiSettings, "sidebar_width", "256px"))
 		@ResizeHandle("sidebar")
 		@CalendarPage(month, uiSettings)
+		@PhoneTabBar("calendar")
 	</div>
 }
 
@@ -212,7 +213,7 @@ templ CalendarMainContent(month CalendarMonthData) {
 		}
 		<header class="flex shrink-0 flex-wrap items-center gap-x-1.5 gap-y-2 border-b border-border px-4 py-4" inert?={ month.Loading }>
 			<div class="flex min-w-0 flex-1 items-center gap-1.5">
-				@PhoneNavToggle("-ml-1.5")
+				@PhoneNavToggle("-ml-1.5", "Open calendars")
 				<h1 class="min-w-0 truncate text-lg font-bold tracking-tight">{ month.MonthLabel }</h1>
 			</div>
 			<div class="flex shrink-0 items-center gap-1.5">
