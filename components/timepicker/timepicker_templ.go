@@ -228,7 +228,7 @@ func TimePicker(props ...Props) templ.Component {
 						// Selection styles
 						"selection:bg-primary selection:text-primary-foreground",
 						// Focus styles
-						"focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
+						"focus-visible:border-ring focus-visible:ring-ring focus-visible:ring-[3px]",
 						// Error/Invalid styles
 						"aria-invalid:ring-destructive/20 aria-invalid:border-destructive dark:aria-invalid:ring-destructive/40",
 						utils.If(p.HasError, "border-destructive ring-destructive/20 dark:ring-destructive/40"),

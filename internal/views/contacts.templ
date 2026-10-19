@@ -1149,7 +1149,7 @@ func contactInsightSeverityClass(severity string) string {
 }
 
 templ ContactsPage(contacts []models.Contact, selected *models.Contact, selectedProfile *models.ContactProfile, showNew bool, syncQueued bool, filters models.ContactFilters, totalCount int, width string, accounts []models.Account) {
-	<div id="main-content" class="flex flex-1 min-w-0 bg-background">
+	<div id="main-content" role="main" tabindex="-1" class="flex flex-1 min-w-0 bg-background">
 		@ContactsListPane(contacts, selected, filters, totalCount, width, accounts)
 		@ResizeHandle("maillist")
 		@ContactsViewPane(selected, selectedProfile, showNew, syncQueued, accounts)

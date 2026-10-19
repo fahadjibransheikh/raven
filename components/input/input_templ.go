@@ -99,7 +99,7 @@ func Input(props ...Props) templ.Component {
 			// File input styles
 			"file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground",
 			// Focus styles
-			"focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
+			"focus-visible:border-ring focus-visible:ring-ring focus-visible:ring-[3px]",
 			// Disabled styles
 			"disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
 			// Error/Invalid styles

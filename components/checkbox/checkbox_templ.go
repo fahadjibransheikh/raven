@@ -62,7 +62,7 @@ func Checkbox(props ...Props) templ.Component {
 		}
 		var templ_7745c5c3_Var2 = []any{utils.TwMerge(
 			"peer size-4 shrink-0 rounded-sm border border-input shadow-xs",
-			"focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:border-ring",
+			"focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:border-ring",
 			"disabled:cursor-not-allowed disabled:opacity-50",
 			"checked:bg-primary checked:text-primary-foreground checked:border-primary",
 			"indeterminate:bg-primary indeterminate:text-primary-foreground indeterminate:border-primary",

@@ -1179,7 +1179,7 @@ func ContactsPage(contacts []models.Contact, selected *models.Contact, selectedP
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div id=\"main-content\" class=\"flex flex-1 min-w-0 bg-background\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div id=\"main-content\" role=\"main\" tabindex=\"-1\" class=\"flex flex-1 min-w-0 bg-background\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
