@@ -8327,7 +8327,7 @@ func defaultUISettings() map[string]string {
 		"prefetch_on_hover":                 "true",
 		"default_compose_view":              "dialog",
 		"default_new_compose_view":          "dialog",
-		"default_reply_compose_view":        "dialog",
+		"default_reply_compose_view":        "thread",
 		"compose_autosave_enabled":          "true",
 		"compose_autosave_conditions":       "chars,attachment",
 		"compose_autosave_min_chars":        "30",

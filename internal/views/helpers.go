@@ -839,6 +839,8 @@ func threadOrderSettingLabel(value string) string {
 
 func defaultComposeViewSettingLabel(view string) string {
 	switch view {
+	case "thread":
+		return "Inline, below the message"
 	case "pane":
 		return "Inline, one pane"
 	case "full":

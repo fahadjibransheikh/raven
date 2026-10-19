@@ -132,6 +132,7 @@ templ SettingsComposeDisplayTab(uiSettings map[string]string, signatureData []mo
 							}
 						}
 						@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
+							@selectbox.Item(selectbox.ItemProps{Value: "thread", Selected: uiSettingGet(uiSettings, "default_reply_compose_view", uiSettingGet(uiSettings, "default_compose_view", "dialog")) == "thread"}) { Inline, below the message }
 							@selectbox.Item(selectbox.ItemProps{Value: "dialog", Selected: uiSettingGet(uiSettings, "default_reply_compose_view", uiSettingGet(uiSettings, "default_compose_view", "dialog")) == "dialog"}) { Dialog }
 							@selectbox.Item(selectbox.ItemProps{Value: "pane", Selected: uiSettingGet(uiSettings, "default_reply_compose_view", uiSettingGet(uiSettings, "default_compose_view", "dialog")) == "pane"}) { Inline, one pane }
 							@selectbox.Item(selectbox.ItemProps{Value: "full", Selected: uiSettingGet(uiSettings, "default_reply_compose_view", uiSettingGet(uiSettings, "default_compose_view", "dialog")) == "full"}) { Inline, expanded }
