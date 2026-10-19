@@ -1262,6 +1262,49 @@ func (s *newMailSummary) Add(msgs []storage.SyncMessage) {
 	}
 }
 
+// newMailMark is taken before a Gmail or Graph incremental pass stores
+// anything; publishNewProviderMail announces inbox rows inserted after it.
+// -1 means the mark could not be read, and nothing is announced.
+func (o *SyncOrchestrator) newMailMark(ctx context.Context) int64 {
+	id, err := o.imapRepository().MaxMessageID(ctx)
+	if err != nil {
+		log.Printf("new mail mark: %v", err)
+		return -1
+	}
+	return id
+}
+
+// publishNewProviderMail raises new-mail for inbox messages that a Gmail or
+// Graph incremental pass stored. IMAP builds its summary while fetching; these
+// providers upsert in batches, so the new rows are read back. Callers skip
+// baselines and imports, which would announce old mail.
+func (o *SyncOrchestrator) publishNewProviderMail(ctx context.Context, accountID string, mark int64) {
+	if mark < 0 {
+		return
+	}
+	found, err := o.imapRepository().NewInboxMessagesAfter(ctx, accountID, mark, 200)
+	if err != nil {
+		log.Printf("new mail %s: %v", accountID, err)
+		return
+	}
+	summaries := map[string]*newMailSummary{}
+	remote := map[string]string{}
+	var order []string
+	for _, n := range found {
+		s := summaries[n.FolderID]
+		if s == nil {
+			s = &newMailSummary{}
+			summaries[n.FolderID], remote[n.FolderID] = s, n.FolderRemoteID
+			order = append(order, n.FolderID)
+		}
+		// Rows come newest first and carry no date, so the first one stays Latest.
+		s.Add([]storage.SyncMessage{n.Message})
+	}
+	for _, folderID := range order {
+		o.publishNewMail(ctx, accountID, folderID, remote[folderID], *summaries[folderID])
+	}
+}
+
 func (o *SyncOrchestrator) publishNewMail(ctx context.Context, accountID, folderID, remoteName string, summary newMailSummary) {
 	if summary.Count <= 0 {
 		return

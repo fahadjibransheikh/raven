@@ -6414,7 +6414,7 @@ func (db *DB) findEmailPosition(ctx context.Context, folderID, emailID string) (
 				 SELECT COALESCE(NULLIF(m.thread_id, ''), printf('msg:%d', m.id)) AS thread_key, MAX(m.date_received) AS latest
 				 FROM message_folder_state mfs
 				 JOIN messages m ON mfs.message_id = m.id
-				 WHERE mfs.folder_id = ? AND mfs.is_deleted = 0 AND `+notSnoozedInInboxClause+`
+				 WHERE mfs.folder_id = ? AND mfs.is_deleted = 0 AND ` + notSnoozedInInboxClause + `
 				 GROUP BY thread_key
 			)
 			SELECT COUNT(*) FROM visible WHERE latest > (SELECT latest FROM visible WHERE thread_key = (SELECT thread_key FROM selected))`

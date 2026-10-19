@@ -94,8 +94,10 @@ load:
 	if original && body != nil {
 		body = message.RewriteCIDReferences(message.SanitizeOriginalHTML(body), cidURLs)
 	}
-	if body == nil {
-		body = cached
+	if body == nil && cached != nil {
+		// As in the shared path: stored bodies are sanitized again, so ones cached
+		// before a sanitizer change (tracker stripping, link checks) get it too.
+		body = message.SanitizeHTML(cached)
 	}
 	if body == nil && h.userIMAP != nil && !attempted {
 		attempted = true

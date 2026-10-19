@@ -13,6 +13,8 @@ import (
 // methods lease a store only for the local operation, never for protocol waits.
 type imapSyncRepository interface {
 	GetFolderRole(ctx context.Context, folderID string) (string, error)
+	MaxMessageID(ctx context.Context) (int64, error)
+	NewInboxMessagesAfter(ctx context.Context, accountID string, afterID int64, limit int) ([]storage.NewInboxMessage, error)
 	ResetFolderUIDState(ctx context.Context, folderID string, uidValidity uint32) error
 	GetFolderEmailCount(ctx context.Context, folderID string) (int, error)
 	GetStoredUIDValidity(ctx context.Context, folderID string) (uint32, error)
@@ -63,6 +65,20 @@ func (o *SyncOrchestrator) imapSenderAvatarURL(ctx context.Context, email string
 func (r *userIMAPScope) GetFolderRole(ctx context.Context, folderID string) (string, error) {
 	var result string
 	err := r.call(ctx, func(db *storage.DB) error { var err error; result, err = db.GetFolderRole(ctx, folderID); return err })
+	return result, err
+}
+func (r *userIMAPScope) MaxMessageID(ctx context.Context) (int64, error) {
+	var result int64
+	err := r.call(ctx, func(db *storage.DB) error { var err error; result, err = db.MaxMessageID(ctx); return err })
+	return result, err
+}
+func (r *userIMAPScope) NewInboxMessagesAfter(ctx context.Context, accountID string, afterID int64, limit int) ([]storage.NewInboxMessage, error) {
+	var result []storage.NewInboxMessage
+	err := r.call(ctx, func(db *storage.DB) error {
+		var err error
+		result, err = db.NewInboxMessagesAfter(ctx, accountID, afterID, limit)
+		return err
+	})
 	return result, err
 }
 func (r *userIMAPScope) ResetFolderUIDState(ctx context.Context, folderID string, uidValidity uint32) error {

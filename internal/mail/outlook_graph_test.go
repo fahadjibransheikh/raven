@@ -1553,3 +1553,58 @@ func TestSharedOutlookSyncWaitsAfterThrottling(t *testing.T) {
 		})
 	}
 }
+
+func TestSyncOutlookGraphFolderAnnouncesOnlyNewInboxMailFromDelta(t *testing.T) {
+	graphMessage := func(id, subject string) map[string]any {
+		return map[string]any{
+			"id": id, "internetMessageId": "<" + id + "@example.com>", "subject": subject, "bodyPreview": subject,
+			"isRead": false, "from": map[string]any{"emailAddress": map[string]string{"address": "sender@example.com"}},
+			"toRecipients":     []map[string]any{{"emailAddress": map[string]string{"address": "recipient@example.com"}}},
+			"receivedDateTime": "2026-06-22T10:00:00Z", "sentDateTime": "2026-06-22T09:59:00Z",
+		}
+	}
+	for _, tc := range []struct {
+		name string
+		full bool
+		want int
+	}{{"delta pass", false, 1}, {"full baseline", true, 0}} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			db := newLabelSyncTestDB(t)
+			seedOutlookGraphFolder(t, ctx, db)
+			seedOutlookGraphProviderMessages(t, ctx, db, "graph-message-1")
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method == http.MethodGet && (r.URL.Path == "/delta/current" || r.URL.Path == "/me/mailFolders/folder-inbox/messages/delta") {
+					_ = json.NewEncoder(w).Encode(map[string]any{
+						"value":            []map[string]any{graphMessage("graph-message-1", "Known"), graphMessage("graph-message-2", "Brand new")},
+						"@odata.deltaLink": "https://graph.test/delta/next",
+					})
+					return
+				}
+				t.Fatalf("unexpected Graph request %s %s", r.Method, r.URL.String())
+			}))
+			defer server.Close()
+			if !tc.full {
+				if _, err := db.Write().ExecContext(ctx, `UPDATE folders SET total_count = 1, sync_cursor = ?, last_full_sync_at = CURRENT_TIMESTAMP WHERE id = 'acc_inbox'`, server.URL+"/delta/current"); err != nil {
+					t.Fatal(err)
+				}
+			}
+			previousBaseURL := outlookGraphBaseURL
+			outlookGraphBaseURL = server.URL
+			t.Cleanup(func() { outlookGraphBaseURL = previousBaseURL })
+
+			orchestrator := NewSyncOrchestrator(db, nil, store.NewBlobStore(filepath.Join(t.TempDir(), "blobs")), labelSyncTestTokens{})
+			newMailEvents := collectEvents(t, orchestrator.Events(), EventNewMail)
+			if err := orchestrator.syncOutlookGraphFolder(ctx, "acc", "graph-token", outlookGraphInboxTargetFromDB(t, ctx, db), nil, 1, 1); err != nil {
+				t.Fatalf("syncOutlookGraphFolder() error = %v", err)
+			}
+			newMail := newMailEvents()
+			if len(newMail) != tc.want {
+				t.Fatalf("new-mail events = %#v, want %d", newMail, tc.want)
+			}
+			if tc.want == 1 && (newMail[0].FolderRole != "inbox" || newMail[0].Payload["count"] != 1 || newMail[0].Payload["unread_count"] != 1 || newMail[0].Payload["subject"] != "Brand new") {
+				t.Fatalf("new-mail payload = %#v", newMail[0].Payload)
+			}
+		})
+	}
+}

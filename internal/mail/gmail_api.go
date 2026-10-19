@@ -690,6 +690,7 @@ func (o *SyncOrchestrator) syncGmailAPIHistoryChanges(ctx context.Context, accou
 		retErr = o.completeGmailSyncRun(ctx, stats, retErr)
 	}()
 
+	newMailMark := o.newMailMark(ctx)
 	delta, err := o.gmailHistoryChangesWithAuthRetry(ctx, accountID, &token, cursor)
 	if err != nil {
 		if status, ok := providerAPIStatus(err); ok && status == http.StatusNotFound {
@@ -846,6 +847,7 @@ func (o *SyncOrchestrator) syncGmailAPIHistoryChanges(ctx context.Context, accou
 	}
 	o.publishGmailAPIFolderSyncEvent(ctx, EventSyncProgress, accountID, touchedFolders, targetsByFolderID, processed, total, true, false)
 	o.publishGmailAPIFolderSyncEvent(ctx, EventSyncComplete, accountID, syncedFolders, targetsByFolderID, processed, total, false, false)
+	o.publishNewProviderMail(ctx, accountID, newMailMark)
 	o.replayGmailLabelMutationQueue(ctx, accountID, token)
 	if failed > 0 {
 		return fmt.Errorf("%d Gmail API message change import(s) failed", failed)
