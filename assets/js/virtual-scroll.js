@@ -3583,7 +3583,8 @@ window.addEventListener("popstate", function (e) {
   }
 })
 
-// The list footer says where mail lives and when it last synced (data-mail-list-synced).
+// The list footer says when mail last synced; it stays hidden until the first sync.
+// It does not say where mail is stored: that is the server, not this device, on a hosted install.
 var mailListLastSyncedAt = 0
 
 var mailListSyncedTimer = null
@@ -3598,16 +3599,21 @@ function mailListMarkSynced() {
 function mailListSyncedLabel(syncedAt, now) {
   if (!syncedAt) return ""
   var minutes = Math.floor((now - syncedAt) / 60000)
-  if (minutes < 1) return "synced just now"
-  if (minutes < 60) return "synced " + minutes + "m ago"
-  return "synced " + Math.floor(minutes / 60) + "h ago"
+  if (minutes < 1) return "Synced just now"
+  if (minutes < 60) return "Synced " + minutes + "m ago"
+  return "Synced " + Math.floor(minutes / 60) + "h ago"
 }
 
 function mailListRenderSynced() {
   var el = document.querySelector("[data-mail-list-synced]")
   if (!el) return
   var label = mailListSyncedLabel(mailListLastSyncedAt, Date.now())
-  el.textContent = label ? " · " + label : ""
+  el.textContent = label
+  var footer = el.closest("[data-mail-list-footer]")
+  if (footer) {
+    footer.classList.toggle("hidden", !label)
+    footer.classList.toggle("flex", !!label)
+  }
 }
 
 if (typeof document !== "undefined") {

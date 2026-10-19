@@ -1,4 +1,4 @@
-// List footer: "Stored on this device" plus how long ago mail last synced,
+// List footer: how long ago mail last synced,
 // filled in when a sync finishes (virtual-scroll.js updateSyncHeader).
 const { test } = require("node:test")
 const assert = require("node:assert/strict")
@@ -15,21 +15,24 @@ function vsWindow(body) {
   return dom.window
 }
 
-test("synced label reads as relative time", () => {
+test("Synced label reads as relative time", () => {
   const w = vsWindow()
   const now = 10 * 60 * 60 * 1000
   assert.equal(w.mailListSyncedLabel(0, now), "")
-  assert.equal(w.mailListSyncedLabel(now - 30 * 1000, now), "synced just now")
-  assert.equal(w.mailListSyncedLabel(now - 5 * 60 * 1000, now), "synced 5m ago")
-  assert.equal(w.mailListSyncedLabel(now - 3 * 60 * 60 * 1000, now), "synced 3h ago")
+  assert.equal(w.mailListSyncedLabel(now - 30 * 1000, now), "Synced just now")
+  assert.equal(w.mailListSyncedLabel(now - 5 * 60 * 1000, now), "Synced 5m ago")
+  assert.equal(w.mailListSyncedLabel(now - 3 * 60 * 60 * 1000, now), "Synced 3h ago")
 })
 
-test("marking a sync fills the footer, which stays blank before one", () => {
-  const w = vsWindow('<p><span data-mail-list-synced></span></p>')
+test("marking a sync fills and shows the footer, which stays hidden before one", () => {
+  const w = vsWindow('<p class="hidden" data-mail-list-footer><span data-mail-list-synced></span></p>')
+  const footer = w.document.querySelector("[data-mail-list-footer]")
   const el = w.document.querySelector("[data-mail-list-synced]")
   w.mailListRenderSynced()
   assert.equal(el.textContent, "")
+  assert.ok(footer.classList.contains("hidden"))
   w.mailListMarkSynced()
-  assert.equal(el.textContent, " · synced just now")
+  assert.equal(el.textContent, "Synced just now")
+  assert.ok(!footer.classList.contains("hidden"))
   w.close()
 })

@@ -30,9 +30,9 @@ templ MailList(accounts []models.Account, emails []models.Email, activeFolder st
 		if mailListNavigationMode(navigationMode) == "pagination" && scrollCount >= 0 {
 			@MailListPagination(scrollCount, windowStart, len(emails), mailListPaginationPageSize())
 		}
-		<p class="mail-list-footer flex items-center gap-1.5 px-4 py-2 text-xs text-subtle-foreground" aria-live="polite">
-			@icon.HardDrive(icon.Props{Class: "size-3.5 shrink-0"})
-			<span>Stored on this device<span data-mail-list-synced></span></span>
+		<p class="mail-list-footer hidden items-center gap-1.5 px-4 py-2 text-xs text-subtle-foreground" data-mail-list-footer>
+			@icon.RefreshCw(icon.Props{Class: "size-3.5 shrink-0"})
+			<span data-mail-list-synced></span>
 		</p>
 	</div>
 }
