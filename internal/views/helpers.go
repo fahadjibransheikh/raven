@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net/url"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -79,9 +80,9 @@ func mailFolderIDIsSpam(folderID string, accounts []models.Account) bool {
 	return false
 }
 
-// mailListEmptyText names the folder in the empty state instead of always saying "inbox".
-// Unified folders use the role as their id; account folders carry it in Role.
-func mailListEmptyText(accounts []models.Account, folderID string) string {
+// mailFolderRole resolves a list's folder id to its role. Unified folders use the
+// role as their id; account folders carry it in Role.
+func mailFolderRole(accounts []models.Account, folderID string) string {
 	role := strings.ToLower(strings.TrimSpace(folderID))
 	for _, account := range accounts {
 		for _, folder := range account.Folders {
@@ -90,7 +91,44 @@ func mailListEmptyText(accounts []models.Account, folderID string) string {
 			}
 		}
 	}
-	switch role {
+	return role
+}
+
+// mailListRowEmail tags rows listed in Sent or Drafts with that role (list queries
+// don't load it), so the row can lead with the recipient instead of the user.
+func mailListRowEmail(email models.Email, accounts []models.Account, folderID string) models.Email {
+	if email.FolderRole == "" {
+		if role := mailFolderRole(accounts, folderID); role == "sent" || role == "drafts" {
+			email.FolderRole = role
+		}
+	}
+	return email
+}
+
+// mailListShowsRecipient is true for outgoing mail, where the sender is always the user.
+func mailListShowsRecipient(email models.Email) bool {
+	role := strings.ToLower(strings.TrimSpace(email.FolderRole))
+	return (role == "sent" || role == "drafts") && len(email.To) > 0
+}
+
+// mailFolderCountTitle says what the header count means; the sidebar counts unread.
+func mailFolderCountTitle(total int) string {
+	if total == 1 {
+		return "1 message"
+	}
+	return fmt.Sprintf("%d messages", total)
+}
+
+// mailPreviewText collapses runs of filler punctuation ("______", "-----") that
+// newsletters use as rules, so the one-line preview shows words instead.
+func mailPreviewText(preview string) string {
+	return strings.Join(strings.Fields(mailPreviewRuleRun.ReplaceAllString(preview, " ")), " ")
+}
+
+// mailListEmptyText names the folder in the empty state instead of always saying "inbox".
+// Unified folders use the role as their id; account folders carry it in Role.
+func mailListEmptyText(accounts []models.Account, folderID string) string {
+	switch mailFolderRole(accounts, folderID) {
 	case "inbox":
 		return "Your inbox is empty"
 	case "sent":
@@ -1224,3 +1262,5 @@ func boolParam(b bool) string {
 	}
 	return "0"
 }
+
+var mailPreviewRuleRun = regexp.MustCompile(`[_=*~#\-]{3,}`)

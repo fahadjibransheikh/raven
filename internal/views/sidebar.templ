@@ -86,7 +86,7 @@ templ ContactsSidebarAccountSection(account models.Account, filters models.Conta
 	<div class="mb-1.5" data-sidebar-account={ sectionID } data-sidebar-account-active?={ active } data-sidebar-account-collapsed={ fmt.Sprintf("%t", collapsed) }>
 		<button
 			type="button"
-			class="sidebar-account-toggle flex w-full items-center gap-2.5 px-2 py-2 text-sm font-semibold text-sidebar-accent-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
+			class="sidebar-account-toggle flex w-full items-center gap-2.5 px-2 py-2 text-sm font-medium text-sidebar-accent-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
 			data-sidebar-account-toggle={ sectionID }
 			aria-expanded={ fmt.Sprintf("%t", !collapsed) }
 		>
@@ -644,7 +644,7 @@ templ SidebarUnifiedSection(accounts []models.Account, activeFolder string, uiSe
 	<div class="mb-1.5" data-sidebar-account="__unified__" data-sidebar-account-active?={ active } data-sidebar-account-collapsed={ fmt.Sprintf("%t", collapsed) }>
 		<button
 			type="button"
-			class="sidebar-account-toggle flex w-full items-center gap-2.5 px-2 py-2 text-sm font-semibold text-sidebar-accent-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
+			class="sidebar-account-toggle flex w-full items-center gap-2.5 px-2 py-2 text-sm font-medium text-sidebar-accent-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
 			data-sidebar-account-toggle="__unified__"
 			aria-expanded={ fmt.Sprintf("%t", !collapsed) }
 		>
@@ -672,7 +672,7 @@ templ SidebarAccountSection(account models.Account, activeFolder string, uiSetti
 	<div id={ "sidebar-account-" + account.ID } class="mb-1.5" data-sidebar-account={ account.ID } data-sidebar-account-active?={ active } data-sidebar-account-collapsed={ fmt.Sprintf("%t", collapsed) } data-sidebar-account-default-collapsed>
 		<button
 			type="button"
-			class="sidebar-account-toggle flex w-full items-center gap-2.5 px-2 py-2 text-sm font-semibold text-sidebar-accent-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
+			class="sidebar-account-toggle flex w-full items-center gap-2.5 px-2 py-2 text-sm font-medium text-sidebar-accent-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
 			data-sidebar-account-toggle={ account.ID }
 			aria-expanded={ fmt.Sprintf("%t", !collapsed) }
 		>
@@ -707,11 +707,11 @@ templ SidebarTagGroup(labels []models.Label, activeFolder string, filters models
 		>
 			<button
 				type="button"
-				class="flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] text-sidebar-foreground transition-all duration-150 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
+				class="flex w-full items-center gap-2 h-8 rounded-md px-2 text-sm text-sidebar-foreground transition-all duration-150 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
 				data-sidebar-tag-toggle={ sidebarTagGroupID(accountID) }
 				aria-expanded={ fmt.Sprintf("%t", !collapsed) }
 			>
-				<span class="flex size-5 shrink-0 items-center justify-center rounded text-sidebar-foreground/70">
+				<span class="flex size-4 shrink-0 items-center justify-center rounded text-sidebar-foreground/70">
 					@icon.Tags(icon.Props{Class: "size-4"})
 				</span>
 				<span class="flex-1 truncate text-left">Tags</span>
@@ -739,7 +739,7 @@ templ SidebarTagFilterLink(label models.Label, folderID string, activeFolder str
 		data-sidebar-tag-label={ strings.TrimSpace(label.Name) }
 		data-sidebar-tag-account={ strings.TrimSpace(accountID) }
 		class={
-			"flex items-center gap-2.5 w-full rounded-md px-2.5 py-1.5 text-[13px] transition-all duration-150",
+			"flex items-center gap-2.5 w-full rounded-md px-2.5 py-1.5 text-sm transition-all duration-150",
 			templ.KV("bg-sidebar-accent text-sidebar-primary font-medium", active),
 			templ.KV("text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground", !active),
 		}
@@ -770,7 +770,7 @@ templ SidebarFolderItem(folder models.Folder, activeFolder string, accountID str
 				hx-swap="outerHTML settle:0s"
 				data-folder-role={ folder.Role }
 				class={
-					"flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] transition-all duration-150",
+					"flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm transition-all duration-150",
 					templ.KV("bg-sidebar-accent text-sidebar-primary font-medium", activeFolder == folder.ID),
 					templ.KV("text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground", activeFolder != folder.ID),
 				}
@@ -948,7 +948,7 @@ templ SidebarFooter(activeApp string) {
 			</div>
 			<a
 				href="/settings/accounts"
-				class="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 rounded-md text-subtle-foreground hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/60 transition-colors text-[13px]"
+				class="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 rounded-md text-subtle-foreground hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/60 transition-colors text-sm"
 			>
 				<span class="flex size-4 shrink-0 items-center justify-center">
 					@icon.Settings(icon.Props{Class: "size-4"})
@@ -985,7 +985,7 @@ templ SidebarFooter(activeApp string) {
 						@SidebarShortcutHint("Toggle read", "u")
 						@SidebarShortcutHint("Clear selection", "Esc")
 					</div>
-					<button type="button" data-whats-new-open class="mt-2 flex w-full items-center gap-2 rounded-md border-t border-sidebar-border px-1.5 pt-2.5 pb-1 text-left text-[13px] text-sidebar-foreground transition-colors hover:text-sidebar-accent-foreground">
+					<button type="button" data-whats-new-open class="mt-2 flex w-full items-center gap-2 rounded-md border-t border-sidebar-border px-1.5 pt-2.5 pb-1 text-left text-sm text-sidebar-foreground transition-colors hover:text-sidebar-accent-foreground">
 						@icon.Sparkles(icon.Props{Class: "size-4 shrink-0"})
 						What's new
 					</button>
@@ -1034,7 +1034,7 @@ templ SidebarAppLink(app string, label string, href string, activeApp string) {
 templ SidebarShortcutHint(label string, keys string) {
 	<div class="flex items-center justify-between gap-3 rounded-md px-1.5 py-1 transition-colors hover:bg-sidebar-accent/25">
 		<span class="min-w-0 truncate text-sidebar-foreground">{ label }</span>
-		<kbd class="shrink-0 rounded-md border border-sidebar-border bg-sidebar px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sidebar-accent-foreground shadow-[0_1px_0_rgba(0,0,0,0.18)]">{ keys }</kbd>
+		<kbd class="shrink-0 rounded-md border border-sidebar-border bg-sidebar px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wider text-sidebar-accent-foreground shadow-[0_1px_0_rgba(0,0,0,0.18)]">{ keys }</kbd>
 	</div>
 }
 
@@ -1042,7 +1042,7 @@ templ WebmailSidebarLogout() {
 	if user := auth.GetCurrentUser(ctx); user != nil && user.UserType == auth.UserTypeWebmail && auth.GetCurrentSession(ctx) != nil {
 		<form method="post" action="/auth/logout" class="mt-2">
 			<input type="hidden" name="_csrf" value={ auth.CSRFToken(ctx, "POST", "/auth/logout") }/>
-			<button type="submit" class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-[13px] text-subtle-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground">
+			<button type="submit" class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-subtle-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground">
 				@icon.LogOut(icon.Props{Class: "size-4 shrink-0"})
 				Log out
 			</button>

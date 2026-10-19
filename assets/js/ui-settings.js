@@ -393,7 +393,9 @@ var RavenSettings;
 
   function normalizeMailTableColumnWidths(value, visibleIds) {
     var parts = String(value).split(",");
-    if (!value || parts.length !== MAIL_TABLE_COLUMNS.length) parts = ["0.8", "0.8", "0.8", "1", "3", "3", "5", "2"];
+    // The stored default (repository.go) predates giving Subject the most room; treat it as unset.
+    if (value === "0.8,0.8,0.8,1,3,3,5,2") parts = [];
+    if (!value || parts.length !== MAIL_TABLE_COLUMNS.length) parts = ["0.8", "0.8", "0.8", "1", "3", "2", "8", "2"];
     var values = [];
     for (var i = 0; i < parts.length; i++) {
       var n = parseFloat(parts[i]);

@@ -2322,6 +2322,9 @@ class VirtualMailList {
     if (countEl) {
       countEl.className = "inline-flex h-5 min-w-10 items-center justify-center rounded-full bg-muted px-2 text-xs font-medium text-muted-foreground shadow-[0_1px_2px_rgba(0,0,0,0.06)]"
       countEl.textContent = String(this.displayTotalCount)
+      var countLabel = this.displayTotalCount === 1 ? "1 message" : this.displayTotalCount + " messages"
+      countEl.title = countLabel
+      countEl.setAttribute("aria-label", countLabel)
     }
     if (typeof syncMailDeleteActionState === "function") syncMailDeleteActionState()
   }
@@ -2340,14 +2343,13 @@ class VirtualMailList {
       row.setAttribute("aria-hidden", "true")
       row.innerHTML =
         '<div class="relative overflow-hidden rounded-xl border border-border bg-card/98 px-3.5 py-3 shadow-[0_14px_38px_rgba(0,0,0,0.24),0_2px_8px_rgba(0,0,0,0.14)] ring-1 ring-black/5 dark:ring-white/10 backdrop-blur-md">' +
-          '<div class="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-foreground/15 to-transparent"></div>' +
           '<div class="flex items-center justify-between gap-3">' +
             '<div class="flex min-w-0 items-center gap-2.5">' +
               '<span class="flex size-8 shrink-0 items-center justify-center rounded-lg border border-primary/25 bg-primary/10 text-primary shadow-sm">' +
                 '<svg class="size-4 animate-spin" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>' +
               '</span>' +
               '<div class="min-w-0">' +
-                '<div class="text-xs font-bold uppercase tracking-[0.12em] text-primary">Mail sync in progress</div>' +
+                '<div class="text-xs font-semibold text-foreground">Syncing mail</div>' +
                 '<div id="mail-sync-text" class="mt-0.5 truncate text-xs font-medium text-foreground">Syncing folder</div>' +
               '</div>' +
             '</div>' +
@@ -2372,6 +2374,8 @@ class VirtualMailList {
       row.setAttribute("aria-hidden", "true")
     }.bind(this)
     if (!this.syncState || !this.syncState.active) {
+      if (this.syncWasActive) mailListMarkSynced()
+      this.syncWasActive = false
       clearTimeout(this.syncBannerShowTimer)
       this.syncBannerShowTimer = null
       if (this.syncBannerHideTimer) return
@@ -2386,6 +2390,7 @@ class VirtualMailList {
     }
     clearTimeout(this.syncBannerHideTimer)
     this.syncBannerHideTimer = null
+    this.syncWasActive = true
     var cur = this.syncState.current || 0
     var total = this.syncState.total || 0
     var text = document.getElementById("mail-sync-text")
@@ -3577,3 +3582,40 @@ window.addEventListener("popstate", function (e) {
     if (typeof setMailViewEmpty === "function") setMailViewEmpty()
   }
 })
+
+// The list footer says when mail last synced; it stays hidden until the first sync.
+// It does not say where mail is stored: that is the server, not this device, on a hosted install.
+var mailListLastSyncedAt = 0
+
+var mailListSyncedTimer = null
+
+function mailListMarkSynced() {
+  mailListLastSyncedAt = Date.now()
+  mailListRenderSynced()
+  // Started on the first sync only, so loading the script never leaves a timer running.
+  if (!mailListSyncedTimer) mailListSyncedTimer = setInterval(mailListRenderSynced, 60000)
+}
+
+function mailListSyncedLabel(syncedAt, now) {
+  if (!syncedAt) return ""
+  var minutes = Math.floor((now - syncedAt) / 60000)
+  if (minutes < 1) return "Synced just now"
+  if (minutes < 60) return "Synced " + minutes + "m ago"
+  return "Synced " + Math.floor(minutes / 60) + "h ago"
+}
+
+function mailListRenderSynced() {
+  var el = document.querySelector("[data-mail-list-synced]")
+  if (!el) return
+  var label = mailListSyncedLabel(mailListLastSyncedAt, Date.now())
+  el.textContent = label
+  var footer = el.closest("[data-mail-list-footer]")
+  if (footer) {
+    footer.classList.toggle("hidden", !label)
+    footer.classList.toggle("flex", !!label)
+  }
+}
+
+if (typeof document !== "undefined") {
+  document.addEventListener("htmx:afterSwap", mailListRenderSynced)
+}

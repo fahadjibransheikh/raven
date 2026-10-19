@@ -30,6 +30,10 @@ templ MailList(accounts []models.Account, emails []models.Email, activeFolder st
 		if mailListNavigationMode(navigationMode) == "pagination" && scrollCount >= 0 {
 			@MailListPagination(scrollCount, windowStart, len(emails), mailListPaginationPageSize())
 		}
+		<p class="mail-list-footer hidden items-center gap-1.5 px-4 py-2 text-xs text-subtle-foreground" data-mail-list-footer>
+			@icon.RefreshCw(icon.Props{Class: "size-3.5 shrink-0"})
+			<span data-mail-list-synced></span>
+		</p>
 	</div>
 }
 
@@ -49,12 +53,12 @@ templ MailListHeader(accounts []models.Account, activeFolder string, totalCount 
 				</button>
 				<h2 id="mail-folder-name" data-mail-folder-default-name={ folderDisplayName(activeFolder) } class="text-lg font-semibold tracking-tight">{ mailListFolderHeading(activeFolder, filters) }</h2>
 				if totalCount >= 0 {
-					<span id="mail-folder-count" class="inline-flex h-5 min-w-10 items-center justify-center rounded-full bg-muted px-2 text-xs font-medium text-muted-foreground">{ fmt.Sprintf("%d", totalCount) }</span>
+					<span id="mail-folder-count" class="inline-flex h-5 min-w-10 items-center justify-center rounded-full bg-muted px-2 text-xs font-medium text-muted-foreground" title={ mailFolderCountTitle(totalCount) } aria-label={ mailFolderCountTitle(totalCount) }>{ fmt.Sprintf("%d", totalCount) }</span>
 				} else {
 					<span id="mail-folder-count" class="inline-flex h-5 min-w-10 items-center justify-center rounded-full bg-muted px-2 text-xs font-medium text-muted-foreground"></span>
 				}
 			</div>
-			<button type="button" class="inline-flex lg:hidden h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90" aria-label="Compose" onclick="openNewCompose()">
+			<button type="button" class="inline-flex lg:hidden h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90" aria-label="Compose" data-on-click='["openNewCompose"]'>
 				@icon.SquarePen(icon.Props{Class: "size-4"})
 			</button>
 		</div>
@@ -600,9 +604,9 @@ templ MailFiltersPopover(accounts []models.Account) {
 						<button type="button" data-mail-advanced-filter-clear class="h-8 rounded-md px-2 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground">Clear all</button>
 						<div class="flex items-center gap-2">
 							<button type="button" data-mail-filters-close class="h-8 rounded-md border border-border px-3 text-xs font-medium hover:bg-accent">Cancel</button>
-							<button type="submit" class="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-secondary px-3 text-xs font-semibold text-secondary-foreground hover:bg-accent">
+							<button type="submit" class="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90">
 								<span>Apply</span>
-								<span data-mail-advanced-filter-count class="hidden min-w-4 rounded-full bg-foreground/10 px-1.5 py-0.5 text-center text-xs leading-none">0</span>
+								<span data-mail-advanced-filter-count class="hidden min-w-4 rounded-full bg-primary-foreground/20 px-1.5 py-0.5 text-center text-xs leading-none">0</span>
 							</button>
 						</div>
 					</div>
@@ -690,7 +694,7 @@ templ MailListEmails(accounts []models.Account, emails []models.Email, folderID 
 		}
 		if scrollCount >= 0 {
 			for i, email := range emails {
-				@MailListItem(accounts, email, windowStart+i, selectedEmail, senderDisplayMode, mailListViewMode(viewMode))
+				@MailListItem(accounts, mailListRowEmail(email, accounts, folderID), windowStart+i, selectedEmail, senderDisplayMode, mailListViewMode(viewMode))
 			}
 			if len(emails) == 0 {
 				@MailListEmpty(accounts, folderID)
@@ -848,7 +852,7 @@ templ MailCardLayoutDialog() {
 								</span>
 							</div>
 							<div class="mail-list-card-zone mail-list-card-zone-body" data-mail-card-zone="body" data-mail-card-layout-zone-items="body" data-mail-card-layout-dropzone="body">
-								<p data-mail-card-field="subject" class="truncate text-[13px] font-medium text-foreground">Layout editor review</p>
+								<p data-mail-card-field="subject" class="truncate text-sm font-medium text-foreground">Layout editor review</p>
 								<p data-mail-card-field="to" class="truncate text-xs leading-4 text-muted-foreground">
 									<span class="font-medium text-muted-foreground/80">To</span>
 									Team
@@ -971,11 +975,23 @@ templ MailListCardItem(accounts []models.Account, email models.Email, position i
 				<span
 					class={
 						"text-sm truncate",
-						templ.KV("text-foreground", !email.IsRead),
+						templ.KV("font-semibold text-foreground", !email.IsRead),
 						templ.KV("text-muted-foreground", email.IsRead),
 					}
 					data-mail-card-field="from"
-				>@SenderLabel(email.From, senderDisplayMode)</span>
+				>
+					if !email.IsRead {
+						<span class="sr-only" data-mail-unread-label>Unread, </span>
+					}
+					if mailListShowsRecipient(email) {
+						<span class="font-normal text-subtle-foreground">To </span>@SenderLabel(email.To[0], senderDisplayMode)
+						if len(email.To) > 1 {
+							<span class="ml-1 text-xs font-normal text-subtle-foreground">{ fmt.Sprintf("+%d", len(email.To)-1) }</span>
+						}
+					} else {
+						@SenderLabel(email.From, senderDisplayMode)
+					}
+				</span>
 				<span
 					class={
 						"text-xs font-mono tabular-nums",
@@ -1008,8 +1024,8 @@ templ MailListCardItem(accounts []models.Account, email models.Email, position i
 			<div class="mail-list-card-zone mail-list-card-zone-body" data-mail-card-zone="body">
 				<p
 					class={
-						"text-[13px] leading-[18px] truncate",
-						templ.KV("text-foreground", !email.IsRead),
+						"text-sm leading-[18px] truncate",
+						templ.KV("font-medium text-foreground", !email.IsRead),
 						templ.KV("text-muted-foreground", email.IsRead),
 					}
 					data-mail-card-field="subject"
@@ -1020,7 +1036,7 @@ templ MailListCardItem(accounts []models.Account, email models.Email, position i
 						{ contactsDisplay(email.To, senderDisplayMode) }
 					</p>
 				}
-				<p class="min-w-0 flex-1 text-xs leading-4 text-subtle-foreground truncate" data-mail-card-field="preview">{ email.Preview }</p>
+				<p class="min-w-0 flex-1 text-xs leading-4 text-subtle-foreground truncate" data-mail-card-field="preview">{ mailPreviewText(email.Preview) }</p>
 			</div>
 			<div class="mail-list-card-zone mail-list-card-zone-footer" data-mail-card-zone="footer">
 				if len(email.Labels) > 0 {
@@ -1041,11 +1057,11 @@ templ MailListCardItem(accounts []models.Account, email models.Email, position i
 					<span data-mail-card-field="thread" class="mail-list-card-empty-icon-slot" aria-hidden="true"></span>
 				}
 				if email.IsStarred {
-					<button class="star-btn shrink-0" data-email-id={ email.ID } data-mail-card-field="starred" aria-label="Unstar">
+					<button type="button" class="star-btn shrink-0" data-email-id={ email.ID } data-mail-card-field="starred" aria-label="Unstar">
 						@icon.Star(icon.Props{Class: "size-3.5 text-warning fill-warning shrink-0"})
 					</button>
 				} else {
-					<button class="opacity-0 group-hover:opacity-100 transition-opacity star-btn shrink-0" data-email-id={ email.ID } data-mail-card-field="starred">
+					<button type="button" class="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 transition-opacity star-btn shrink-0" data-email-id={ email.ID } data-mail-card-field="starred" aria-label="Star">
 						@icon.Star(icon.Props{Class: "size-3.5 text-muted-foreground/30"})
 					</button>
 				}
@@ -1078,11 +1094,11 @@ templ MailListTableItem(email models.Email, position int, selectedEmail *models.
 			</div>
 			<div class="flex items-center justify-center text-muted-foreground" data-mail-table-cell="starred">
 				if email.IsStarred {
-					<button class="star-btn" data-email-id={ email.ID } aria-label="Unstar">
+					<button type="button" class="star-btn" data-email-id={ email.ID } aria-label="Unstar">
 						@icon.Star(icon.Props{Class: "size-3.5 text-warning fill-warning"})
 					</button>
 				} else {
-					<button class="opacity-0 group-hover:opacity-100 transition-opacity star-btn" data-email-id={ email.ID }>
+					<button type="button" class="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 transition-opacity star-btn" data-email-id={ email.ID } aria-label="Star">
 						@icon.Star(icon.Props{Class: "size-3.5 text-muted-foreground/30"})
 					</button>
 				}
@@ -1107,7 +1123,12 @@ templ MailListTableItem(email models.Email, position int, selectedEmail *models.
 						"truncate text-foreground",
 						templ.KV("font-semibold", !email.IsRead),
 					}
-				>@SenderLabel(email.From, senderDisplayMode)</span>
+				>
+					if !email.IsRead {
+						<span class="sr-only" data-mail-unread-label>Unread, </span>
+					}
+					@SenderLabel(email.From, senderDisplayMode)
+				</span>
 			</div>
 			<div class="flex items-center min-w-0" data-mail-table-cell="to">
 				<span
@@ -1168,7 +1189,7 @@ templ MailListItemsFragment(accounts []models.Account, emails []models.Email, fo
 		data-view-mode={ mailListViewMode(viewMode) }
 	>
 		for i, email := range emails {
-			@MailListItem(accounts, email, windowStart+i, &models.Email{ID: selectedEmailId}, senderDisplayMode, mailListViewMode(viewMode))
+			@MailListItem(accounts, mailListRowEmail(email, accounts, folderID), windowStart+i, &models.Email{ID: selectedEmailId}, senderDisplayMode, mailListViewMode(viewMode))
 		}
 	</div>
 }
@@ -1215,11 +1236,11 @@ templ MailListThreadSubItems(items []models.ThreadItem, senderDisplayMode string
 							</div>
 							<div class="flex items-center justify-center shrink-0" data-mail-table-cell="starred">
 								if item.IsStarred {
-									<button class="star-btn" data-email-id={ item.ID } aria-label="Unstar">
+									<button type="button" class="star-btn" data-email-id={ item.ID } aria-label="Unstar">
 										@icon.Star(icon.Props{Class: "size-3 text-warning fill-warning"})
 									</button>
 								} else {
-									<button class="opacity-0 group-hover:opacity-100 transition-opacity star-btn" data-email-id={ item.ID }>
+									<button type="button" class="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 transition-opacity star-btn" data-email-id={ item.ID } aria-label="Star">
 										@icon.Star(icon.Props{Class: "size-3 text-muted-foreground/30"})
 									</button>
 								}
