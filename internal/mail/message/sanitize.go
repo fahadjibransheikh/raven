@@ -4,14 +4,17 @@ import (
 	"bytes"
 	"fmt"
 	stdhtml "html"
+	"net"
 	"net/url"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
+	"golang.org/x/net/publicsuffix"
 )
 
 // SanitizeHTML turns untrusted mail HTML into markup that is safe to show in
@@ -20,7 +23,10 @@ import (
 // background= attributes and CSS background url()s become markers
 // (data-remote-src, data-remote-bg, url("raven-remote:...")) that
 // RestoreRemoteContent undoes once the user allows remote content; everything
-// else (srcset, other CSS url()s, @import, @font-face, ...) is dropped. Mail without an
+// else (srcset, other CSS url()s, @import, @font-face, ...) is dropped. It also
+// strips tracking query parameters from links, drops evident tracking pixels,
+// and flags links whose shown address belongs to another site
+// (data-link-mismatch). Mail without an
 // <html> tag stays a fragment because buildBodyDocument keys off that. The
 // reader's Content-Security-Policy enforces the same limits in the browser, so
 // this is the first of two layers rather than the only one.
@@ -132,7 +138,7 @@ func cleanChildren(n *html.Node) {
 }
 
 func cleanElement(parent, el *html.Node) {
-	if el.Namespace != "" || dropWithContent[el.Data] {
+	if el.Namespace != "" || dropWithContent[el.Data] || (el.Data == "img" && isTrackingPixel(el)) {
 		parent.RemoveChild(el)
 		return
 	}
@@ -148,6 +154,9 @@ func cleanElement(parent, el *html.Node) {
 		return
 	}
 	cleanAttrs(el)
+	if el.Data == "a" {
+		flagLinkMismatch(el)
+	}
 }
 
 func cleanAttrs(el *html.Node) {
@@ -165,7 +174,7 @@ func cleanAttrs(el *html.Node) {
 		case a.Key == "href":
 			if el.Data == "a" {
 				if v, ok := safeLinkURL(a.Val); ok {
-					attrs = append(attrs, html.Attribute{Key: "href", Val: v})
+					attrs = append(attrs, html.Attribute{Key: "href", Val: stripTrackingParams(v)})
 				}
 			}
 		case a.Key == "src" && el.Data == "img":
@@ -247,6 +256,147 @@ func safeLinkURL(v string) (string, bool) {
 		return v, true
 	}
 	return "", false
+}
+
+var (
+	reTrackingParam = regexp.MustCompile(`^(?:utm_.*|fbclid|gclid|dclid|msclkid|mc_eid|mc_cid|mkt_tok|_hsenc|_hsmi|yclid)$`)
+	reTinyStyleSize = regexp.MustCompile(`(?:^|;)(?:width|height):0*[01](?:px)?(?:;|$)`)
+	reBareHost      = regexp.MustCompile(`(?i)^[a-z0-9-]+(?:\.[a-z0-9-]+)+(?:[/:?#]\S*)?$`)
+)
+
+// stripTrackingParams drops click-tracking query parameters from an http(s)
+// link, keeping the other parameters in order and the fragment. Other schemes
+// and in-page anchors pass through.
+func stripTrackingParams(v string) string {
+	if lower := strings.ToLower(v); !strings.HasPrefix(lower, "http:") && !strings.HasPrefix(lower, "https:") {
+		return v
+	}
+	rest, frag, hasFrag := strings.Cut(v, "#")
+	base, query, hasQuery := strings.Cut(rest, "?")
+	if !hasQuery {
+		return v
+	}
+	var kept []string
+	for _, pair := range strings.Split(query, "&") {
+		key, _, _ := strings.Cut(pair, "=")
+		if k, err := url.QueryUnescape(key); err == nil {
+			key = k
+		}
+		if !reTrackingParam.MatchString(strings.ToLower(key)) {
+			kept = append(kept, pair)
+		}
+	}
+	out := base
+	if len(kept) > 0 {
+		out += "?" + strings.Join(kept, "&")
+	}
+	if hasFrag {
+		out += "#" + frag
+	}
+	return out
+}
+
+// isTrackingPixel reports whether an <img> is evidently a beacon: sized to one
+// pixel or less, or hidden.
+// shortcut: size/visibility heuristic only, no tracker host list; add one if pixels slip through.
+func isTrackingPixel(img *html.Node) bool {
+	w, h := -1, -1
+	for _, a := range img.Attr {
+		switch a.Key {
+		case "width", "height":
+			n, err := strconv.Atoi(strings.TrimSuffix(strings.ToLower(strings.TrimSpace(a.Val)), "px"))
+			if err != nil {
+				continue
+			}
+			if a.Key == "width" {
+				w = n
+			} else {
+				h = n
+			}
+		case "style":
+			style := strings.ToLower(strings.Map(func(r rune) rune {
+				if r <= ' ' {
+					return -1
+				}
+				return r
+			}, a.Val))
+			if strings.Contains(style, "display:none") || strings.Contains(style, "visibility:hidden") || reTinyStyleSize.MatchString(style) {
+				return true
+			}
+		}
+	}
+	return w == 0 || h == 0 || (w >= 0 && w <= 1 && h >= 0 && h <= 1)
+}
+
+// shownHost returns the host that a link's visible text claims, when the text
+// is a URL or a bare host name ("paypal.com/login"); otherwise "".
+func shownHost(text string) string {
+	text = strings.TrimSpace(text)
+	if lower := strings.ToLower(text); !strings.HasPrefix(lower, "http://") && !strings.HasPrefix(lower, "https://") {
+		if !reBareHost.MatchString(text) {
+			return ""
+		}
+		text = "https://" + text
+	}
+	u, err := url.Parse(text)
+	if err != nil || strings.ContainsAny(text, " \t\r\n") {
+		return ""
+	}
+	host := strings.ToLower(u.Hostname())
+	// A made-up TLD means a file name ("report.pdf"), not an address.
+	if _, icann := publicsuffix.PublicSuffix(host); !icann && net.ParseIP(host) == nil {
+		return ""
+	}
+	return host
+}
+
+// registrableDomain is the part of a host that its owner controls
+// (example.co.uk for a.b.example.co.uk), or the host itself when it has none.
+func registrableDomain(host string) string {
+	host = strings.TrimPrefix(host, "www.")
+	if net.ParseIP(host) != nil {
+		return host
+	}
+	if d, err := publicsuffix.EffectiveTLDPlusOne(host); err == nil {
+		return d
+	}
+	return host
+}
+
+func nodeText(n *html.Node, b *strings.Builder) {
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		if c.Type == html.TextNode {
+			b.WriteString(c.Data)
+		} else {
+			nodeText(c, b)
+		}
+	}
+}
+
+// flagLinkMismatch marks a link whose visible text names one site while its
+// href goes to another, so the reader can be asked before following it. The
+// attribute is never accepted from input (cleanAttrs drops it); it is set here.
+func flagLinkMismatch(a *html.Node) {
+	var href string
+	for _, at := range a.Attr {
+		if at.Key == "href" {
+			href = at.Val
+		}
+	}
+	if lower := strings.ToLower(href); !strings.HasPrefix(lower, "http://") && !strings.HasPrefix(lower, "https://") {
+		return
+	}
+	u, err := url.Parse(href)
+	if err != nil || u.Hostname() == "" {
+		return
+	}
+	var text strings.Builder
+	nodeText(a, &text)
+	shown, target := shownHost(text.String()), strings.ToLower(u.Hostname())
+	if shown == "" || registrableDomain(shown) == registrableDomain(target) {
+		return
+	}
+	a.Attr = append(a.Attr, html.Attribute{Key: "data-link-mismatch", Val: target})
 }
 
 // remoteHTTPURL accepts absolute http(s) and protocol-relative URLs.

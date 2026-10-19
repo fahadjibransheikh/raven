@@ -120,6 +120,8 @@ type Email struct {
 	ListUnsubscribePost string
 	// Comma-joined Delivered-To / X-Original-To addresses captured at sync; empty if unknown.
 	DeliveredTo string
+	// Reasons the sender looks like an impersonation; filled by the handler for the message view.
+	SenderWarnings []string
 }
 
 type Contact struct {
@@ -317,6 +319,7 @@ type ThreadItem struct {
 	// Raw List-Unsubscribe headers; filled by storage.FillThreadListUnsubscribe.
 	ListUnsubscribe     string
 	ListUnsubscribePost string
+	SenderWarnings      []string
 }
 
 type ComposeRequest struct {

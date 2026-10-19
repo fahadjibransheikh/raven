@@ -713,3 +713,98 @@ func TestRemoteImageDownloadsUseDecodedAddresses(t *testing.T) {
 		t.Fatalf("RewriteToLocalAssets = %q", local)
 	}
 }
+
+// anchorAttr returns attribute key of the first <a> in the sanitized output.
+func anchorAttr(t *testing.T, out []byte, key string) string {
+	t.Helper()
+	var got string
+	walk(parseOut(t, out), func(n *html.Node) {
+		if n.Type == html.ElementNode && n.Data == "a" && got == "" {
+			for _, a := range n.Attr {
+				if a.Key == key {
+					got = a.Val
+				}
+			}
+		}
+	})
+	return got
+}
+
+func TestSanitizeHTMLStripsTrackingParams(t *testing.T) {
+	for _, tc := range []struct{ name, href, want string }{
+		{"utm and click ids", "https://shop.example/p?utm_source=a&id=7&fbclid=x&UTM_Medium=m&gclid=g&ref=2", "https://shop.example/p?id=7&ref=2"},
+		{"every listed key", "https://e.example/?dclid=1&msclkid=2&mc_eid=3&mc_cid=4&mkt_tok=5&_hsenc=6&_hsmi=7&yclid=8&keep=9", "https://e.example/?keep=9"},
+		{"only tracking leaves no query", "https://e.example/a?utm_source=x", "https://e.example/a"},
+		{"fragment kept", "https://e.example/a?utm_source=x&b=1#frag", "https://e.example/a?b=1#frag"},
+		{"non-tracking untouched", "https://e.example/a?b=1&c=2&utm=3", "https://e.example/a?b=1&c=2&utm=3"},
+		{"encoded key", "https://e.example/a?%75tm_source=x&b=1", "https://e.example/a?b=1"},
+		{"mailto untouched", "mailto:a@example.com?subject=utm_source=1", "mailto:a@example.com?subject=utm_source=1"},
+		{"anchor untouched", "#utm_source=1", "#utm_source=1"},
+	} {
+		out := SanitizeHTML([]byte(`<a href="` + tc.href + `">link</a>`))
+		if got := anchorAttr(t, out, "href"); got != tc.want {
+			t.Errorf("%s: href = %q, want %q", tc.name, got, tc.want)
+		}
+	}
+}
+
+func TestSanitizeHTMLDropsTrackingPixels(t *testing.T) {
+	for _, tc := range []struct {
+		name, img string
+		dropped   bool
+	}{
+		{"1x1", `<img src="https://t.example/p.gif" width="1" height="1">`, true},
+		{"1px units", `<img src="https://t.example/p.gif" width="1px" height="1px">`, true},
+		{"zero width", `<img src="https://t.example/p.gif" width="0" height="40">`, true},
+		{"zero height", `<img src="https://t.example/p.gif" width="40" height="0">`, true},
+		{"display none", `<img src="https://t.example/p.gif" style="display: none">`, true},
+		{"visibility hidden", `<img src="https://t.example/p.gif" style="VISIBILITY:hidden">`, true},
+		{"style size 1px", `<img src="https://t.example/p.gif" style="width:1px;height:1px">`, true},
+		{"style size 0", `<img src="https://t.example/p.gif" style="color:red;height:0">`, true},
+		{"local pixel", `<img src="cid:p@example" width="1" height="1">`, true},
+		{"normal", `<img src="https://img.example/a.png" width="600" height="200">`, false},
+		{"no size", `<img src="https://img.example/a.png" alt="x">`, false},
+		{"only width 1", `<img src="https://img.example/rule.png" width="1" height="300">`, false},
+		{"percent width", `<img src="https://img.example/a.png" width="100%">`, false},
+		{"style size 10px", `<img src="https://img.example/a.png" style="width:10px;max-width:1px">`, false},
+	} {
+		out := string(SanitizeHTML([]byte(`<p>a` + tc.img + `b</p>`)))
+		if got := !strings.Contains(out, "<img"); got != tc.dropped {
+			t.Errorf("%s: dropped = %v, want %v: %s", tc.name, got, tc.dropped, out)
+		}
+		if tc.dropped && !strings.Contains(out, "<p>ab</p>") {
+			t.Errorf("%s: surrounding content changed: %s", tc.name, out)
+		}
+	}
+}
+
+func TestSanitizeHTMLFlagsLinkMismatch(t *testing.T) {
+	for _, tc := range []struct{ name, in, want string }{
+		{"url text", `<a href="https://evil.example/x">https://paypal.com/x</a>`, "evil.example"},
+		{"www text", `<a href="https://evil.example/x">www.paypal.com</a>`, "evil.example"},
+		{"bare host", `<a href="http://Evil.Example/x">PayPal.com</a>`, "evil.example"},
+		{"bare host with path", `<a href="https://evil.example/">paypal.com/login</a>`, "evil.example"},
+		{"nested markup", `<a href="https://evil.example/"><b>paypal.com</b></a>`, "evil.example"},
+		{"lookalike suffix", `<a href="https://paypal.com.evil.example/">paypal.com</a>`, "paypal.com.evil.example"},
+		{"same domain", `<a href="https://paypal.com/x">https://paypal.com/y</a>`, ""},
+		{"www difference", `<a href="https://www.paypal.com/x">paypal.com</a>`, ""},
+		{"case difference", `<a href="https://PAYPAL.com/x">PayPal.COM</a>`, ""},
+		{"subdomain of same domain", `<a href="https://click.mail.paypal.com/x">www.paypal.com</a>`, ""},
+		{"multi-part public suffix", `<a href="https://shop.example.co.uk/x">example.co.uk</a>`, ""},
+		{"different owner under shared suffix", `<a href="https://evil.co.uk/x">example.co.uk</a>`, "evil.co.uk"},
+		{"plain text", `<a href="https://evil.example/x">Click here</a>`, ""},
+		{"sentence with domain", `<a href="https://evil.example/x">Visit paypal.com now</a>`, ""},
+		{"file name", `<a href="https://files.example/x">invoice.pdf</a>`, ""},
+		{"mailto", `<a href="mailto:a@evil.example">paypal.com</a>`, ""},
+		{"no text", `<a href="https://evil.example/x"><img src="cid:a@b"></a>`, ""},
+		{"forged attribute is replaced", `<a href="https://paypal.com/x" data-link-mismatch="evil">paypal.com</a>`, ""},
+	} {
+		out := SanitizeHTML([]byte(tc.in))
+		if got := anchorAttr(t, out, "data-link-mismatch"); got != tc.want {
+			t.Errorf("%s: data-link-mismatch = %q, want %q: %s", tc.name, got, tc.want, out)
+		}
+		if again := SanitizeHTML(out); !bytes.Equal(again, out) {
+			t.Errorf("%s: not idempotent:\n%s\n%s", tc.name, out, again)
+		}
+	}
+}

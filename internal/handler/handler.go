@@ -757,6 +757,7 @@ func (h *Handler) handleEmailPartial(w http.ResponseWriter, r *http.Request) {
 			}
 			_ = h.db.FillThreadListUnsubscribe(ctx, thread)
 		}
+		fillSenderWarnings(ctx, h.db, userID, email, thread)
 		newestFirst := views.ThreadNewestFirst(h.db.GetUISettings(ctx, userID))
 		if newestFirst {
 			slices.Reverse(thread)
@@ -1450,7 +1451,7 @@ func remoteImagesDetectScript(emailID string) []byte {
 // app routes. Keystrokes are forwarded too (except while typing into a form
 // field), because focus in the frame would otherwise swallow the mail shortcuts.
 func emailExternalLinksScript() []byte {
-	return []byte(`<script>document.addEventListener('click',function(e){var t=e.target,a=t&&t.closest?t.closest('a[href]'):null;if(!a)return;var h=(a.getAttribute('href')||'').trim();if(h.charAt(0)==='#')return;e.preventDefault();if(/^(?:https?:|mailto:)/i.test(h))parent.postMessage({type:'emailLinkClick',href:a.href},'*')},true);document.addEventListener('keydown',function(e){var t=e.target;if(e.isComposing||(t&&(t.isContentEditable||(t.closest&&t.closest('input,textarea,select')))))return;parent.postMessage({type:'emailKeydown',key:e.key,shiftKey:e.shiftKey,ctrlKey:e.ctrlKey,metaKey:e.metaKey,altKey:e.altKey},'*')},true);</script>`)
+	return []byte(`<script>document.addEventListener('click',function(e){var t=e.target,a=t&&t.closest?t.closest('a[href]'):null;if(!a)return;var h=(a.getAttribute('href')||'').trim();if(h.charAt(0)==='#')return;e.preventDefault();if(/^(?:https?:|mailto:)/i.test(h))parent.postMessage({type:'emailLinkClick',href:a.href,mismatch:a.getAttribute('data-link-mismatch')||''},'*')},true);document.addEventListener('keydown',function(e){var t=e.target;if(e.isComposing||(t&&(t.isContentEditable||(t.closest&&t.closest('input,textarea,select')))))return;parent.postMessage({type:'emailKeydown',key:e.key,shiftKey:e.shiftKey,ctrlKey:e.ctrlKey,metaKey:e.metaKey,altKey:e.altKey},'*')},true);</script>`)
 }
 
 // newCSPNonce returns a per-response script nonce.
@@ -5699,7 +5700,8 @@ func (h *Handler) handleCompose(w http.ResponseWriter, r *http.Request) {
 	if draftID != "" {
 		localDraftMessageID, _ = h.db.GetMessageLocalIDByInternetIDInternal(ctx, accountID, draftID)
 	}
-	queued, err := h.queueOutgoingMessageWithID(ctx, sendKey, accountID, localDraftMessageID, draftID, msg, time.Now().UTC(), false)
+	undoDelay := undoSendDelay(h.db.GetUISettings(ctx, h.userID(ctx)))
+	queued, err := h.queueOutgoingMessageWithID(ctx, sendKey, accountID, localDraftMessageID, draftID, msg, time.Now().UTC().Add(undoDelay), false)
 	if err != nil {
 		// A concurrent request with the same key may have won the insert.
 		if sendKey != "" && h.writeExistingComposeSend(w, r, sendKey) {
@@ -5708,11 +5710,19 @@ func (h *Handler) handleCompose(w http.ResponseWriter, r *http.Request) {
 		writeComposeJSONError(w, http.StatusInternalServerError, "failed to queue message")
 		return
 	}
-	h.signalOutgoingWorker()
+	if undoDelay > 0 && h.userMutationState != nil {
+		// Managed mode wakes the owner's queue after the request; ask for a second wake when the window closes.
+		h.userMutationState.wakeAfter = map[string]time.Duration{accountID: undoDelay}
+	} else if undoDelay > 0 {
+		// Wake the dispatcher when the undo window closes instead of waiting for its 30 s tick.
+		time.AfterFunc(undoDelay, h.signalOutgoingWorker)
+	} else {
+		h.signalOutgoingWorker()
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted)
-	json.NewEncoder(w).Encode(map[string]string{"status": "sending", "send_id": queued.ID})
+	json.NewEncoder(w).Encode(map[string]string{"status": "sending", "send_id": queued.ID, "undo_seconds": strconv.Itoa(int(undoDelay / time.Second))})
 }
 
 // writeExistingComposeSend answers 202 with the already-queued send for key, if the caller owns it.

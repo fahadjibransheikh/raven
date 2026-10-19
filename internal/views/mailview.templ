@@ -258,6 +258,7 @@ templ MailViewContent(email *models.Email, thread []models.ThreadItem, newestFir
 						</div>
 						for i, item := range thread {
 							@MailViewThreadItemSender(email, &item, !newestFirst && threadItemOpen(thread, i, false))
+							@SenderWarningBanner(item.SenderWarnings)
 							@MailViewThreadItemMiniHeader(&item, threadItemIsNewest(thread, i, newestFirst))
 							if len(item.Attachments) > 0 {
 								@MailViewThreadItemAttachments(&item)
@@ -287,6 +288,7 @@ templ MailViewContent(email *models.Email, thread []models.ThreadItem, newestFir
 						}
 					} else {
 						@MailViewSender(email)
+						@SenderWarningBanner(email.SenderWarnings)
 						<div class="h-px bg-border my-6"></div>
 						@MailViewBody(email)
 					}
@@ -1000,6 +1002,22 @@ templ MailViewAttachments(email *models.Email) {
 					</div>
 				}
 			}
+		</div>
+	}
+}
+
+// SenderWarningBanner is rendered server-side only when a local look-alike check fired.
+templ SenderWarningBanner(warnings []string) {
+	if len(warnings) > 0 {
+		<div data-sender-warning-banner role="note" class="mt-3 mb-3 w-full px-3 py-2.5 rounded-lg border border-amber-600/20 bg-amber-50/50 dark:bg-amber-900/10 flex items-center gap-3">
+			<div class="size-7 rounded-md bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
+				@icon.TriangleAlert(icon.Props{Class: "size-3.5 text-amber-600 dark:text-amber-400"})
+			</div>
+			<div class="min-w-0 flex-1 text-xs text-muted-foreground">
+				for _, warning := range warnings {
+					<p>{ warning }</p>
+				}
+			</div>
 		</div>
 	}
 }
