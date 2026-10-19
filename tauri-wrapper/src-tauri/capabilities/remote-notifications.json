@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/remote-schema.json",
   "identifier": "remote-notifications",
-  "description": "Lets the Raven page served by the bundled Go server (http://127.0.0.1:<port>, the origin src/lib.rs navigates to; the port is 8090 unless that was taken at launch, hence the wildcard) use native notifications. WKWebView has no web Notification permission prompt, so the page calls window.__TAURI__.notification instead. It may also set the window theme (so the native title bar follows the page's light/dark mode), drag/zoom the window from the page-drawn macOS title bar, and tell the app which icon style and appearance to show (set_app_icon). Nothing else is exposed to the remote page.",
+  "description": "Lets the Raven page served by the bundled Go server (http://127.0.0.1:<port>, the origin src/lib.rs navigates to; the port is 8090 unless that was taken at launch, hence the wildcard) use native notifications. WKWebView has no web Notification permission prompt, so the page calls window.__TAURI__.notification instead. It may also set the window theme (so the native title bar follows the page's light/dark mode), drag/zoom the window from the page-drawn macOS title bar, and tell the app which icon style and appearance to show (set_app_icon). It may also open http(s), mailto and tel links in the system browser: tauri-plugin-shell injects a click handler that sends every <a target=\"_blank\"> click to shell|open and cancels the click, so without shell:allow-open those links (calendar Join meeting, invite cards) do nothing. Nothing else is exposed to the remote page.",
   "windows": ["main"],
   "remote": {
     "urls": ["http://127.0.0.1:*"]
@@ -13,6 +13,7 @@
     "core:window:allow-set-theme",
     "core:window:allow-start-dragging",
     "core:window:allow-internal-toggle-maximize",
-    "allow-set-app-icon"
+    "allow-set-app-icon",
+    "shell:allow-open"
   ]
 }
