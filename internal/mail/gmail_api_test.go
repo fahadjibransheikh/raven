@@ -913,8 +913,15 @@ func TestSyncGmailAPIAccountUsesHistoryAfterLiveCursorWithoutFullBaseline(t *tes
 	t.Cleanup(func() { gmailAPIBaseURL = previousBaseURL })
 
 	orchestrator := NewSyncOrchestrator(db, nil, store.NewBlobStore(filepath.Join(t.TempDir(), "blobs")), labelSyncTestTokens{})
+	newMailEvents := collectEvents(t, orchestrator.Events(), EventNewMail)
 	if err := orchestrator.syncGmailAPIAccount(ctx, "acc", true); err != nil {
 		t.Fatalf("syncGmailAPIAccount() error = %v", err)
+	}
+	newMail := newMailEvents()
+	// Only the message history brought in is new; the known one is not announced.
+	if len(newMail) != 1 || newMail[0].FolderID != gmailAPITestFolderID("INBOX") || newMail[0].FolderRole != "inbox" ||
+		newMail[0].Payload["count"] != 1 || newMail[0].Payload["subject"] != "Gmail history" {
+		t.Fatalf("new-mail events = %#v", newMail)
 	}
 	if !sawHistory {
 		t.Fatal("Gmail history API was not used")

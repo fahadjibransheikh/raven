@@ -91,7 +91,9 @@ func TestSnoozeHidesThreadFromInboxListsAndCountsOnly(t *testing.T) {
 	// Message 1 is the oldest; with 2 snoozed only 3 is newer, so a one-row window around it starts at 1.
 	for _, around := range []func() (*models.EmailPage, error){
 		func() (*models.EmailPage, error) { return db.GetEmailsAroundEmail(ctx, "inbox", "1", 1) },
-		func() (*models.EmailPage, error) { return db.GetEmailsAroundEmailForUser(ctx, "default", "inbox", "1", 1) },
+		func() (*models.EmailPage, error) {
+			return db.GetEmailsAroundEmailForUser(ctx, "default", "inbox", "1", 1)
+		},
 	} {
 		page, err := around()
 		if err != nil || indexOfEmail(page, "1") != 0 {
