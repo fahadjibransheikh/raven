@@ -839,6 +839,8 @@ func threadOrderSettingLabel(value string) string {
 
 func defaultComposeViewSettingLabel(view string) string {
 	switch view {
+	case "thread":
+		return "Inline, below the message"
 	case "pane":
 		return "Inline, one pane"
 	case "full":
@@ -1096,6 +1098,20 @@ func undoSendSettingLabel(value string) string {
 		return value + " seconds"
 	default:
 		return "10 seconds"
+	}
+}
+
+// calendarReminderSettingValues must match the lead times handler.calendarReminderLead accepts.
+var calendarReminderSettingValues = []string{"0", "5", "10", "15"}
+
+func calendarReminderSettingLabel(value string) string {
+	switch value {
+	case "0":
+		return "Off"
+	case "5", "15":
+		return value + " minutes"
+	default:
+		return "10 minutes"
 	}
 }
 

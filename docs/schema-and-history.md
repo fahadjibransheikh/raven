@@ -15,7 +15,7 @@ history.
   The managed-mode per-user conversion maps gofer's shared versions 105/106/107 to
   Raven's 119/120/121.
 - v122, together with storage layout step 2, renames the old `gofer_*` tables.
-- New migrations continue from v122 in Raven's own numbering.
+- New migrations continue from v122 in Raven's own numbering. v123 adds `message_timers`, v124 sets the inline compose default, v125 adds `calendar_reminders`.
 - `schema.sql` (fresh installs) must end in the same state as the migration chain; a
   test compares the two.
 
@@ -63,16 +63,16 @@ Items 1–6 shipped on 2026-10-19 (plan: `docs/backlog-plan.md`). Next: 7 and 8.
 
 ## Calendar issues (reported 2026-10-19)
 
-Reported by the user from the Mac app; not yet investigated.
+Reported by the user from the Mac app. All three were built on 2026-10-19.
 
 | # | Issue | Notes |
 |---|---|---|
-| C1 | Google Meet links don't open | "Join meeting" in the event dialog does nothing for a Google Meet event. Start at `internal/calendar/meeting.go` (`MeetingJoinURL`, `GoogleMeetJoinURLFromDescription`) and how the dialog opens the link in the desktop app. |
-| C2 | No reminder before a meeting starts | Raven sends no notification when a meeting is about to start. Needs a reminder lead time and delivery through the existing desktop and web push notifications. |
-| C3 | Agenda view is confusing (reworked in the `agenda-redesign` PR: day groups, compact rows, repeated all-day events merged into one span row, account shown only with several calendars, past/now/next marks, quiet "Awaiting response") | The agenda panel next to the 3-day view repeats every event as a large card with the date on the right, the same account address on every card and an icon per row. All-day events repeat daily. Rework it: group by day, one compact line per event, collapse repeated all-day events, drop the per-card account line. |
+| C1 | Google Meet links don't open | Fixed (2026-10-19). Not Meet-specific: in the desktop app, the shell plugin cancels every `<a target="_blank">` click and hands it to `shell|open`, which the remote page wasn't allowed to call, so Join meeting (Meet and Teams) and invite-card links did nothing. The remote capability now grants `shell:allow-open` (http(s), mailto and tel only). |
+| C2 | No reminder before a meeting starts | Built (2026-10-19). The message-timer worker (30 s, single-user and managed) announces timed events starting within `calendar_reminder_minutes` (Off/5/10/15, default 10), once per occurrence (`calendar_reminders`, schema v125). It skips all-day, cancelled and declined events and hidden calendars, and never announces an event that already started. Delivery: `calendar-reminder` SSE event for browser-tab/desktop, Web Push for the rest; clicking opens `/calendar`. Providers' own per-event reminder times are not cached, so the one setting applies to every event. |
+| C3 | Agenda view is confusing | Built (2026-10-19). Day groups (Today, Tomorrow, then the date), one compact row per event, repeated all-day events on the same calendar merged into one row with its span, the calendar name shown only when several calendars are in view, past events dimmed and the current and next events marked, and a quiet "Awaiting response" label. "Accepted" is no longer labelled in the agenda. |
 
 ## Compose (reported 2026-10-19)
 
 | # | Issue | Notes |
 |---|---|---|
-| M1 | Compose should open inline by default | New mail and replies should open in the message pane ("Inline, one pane", setting value `pane`), with a way to expand to the full view. Today both defaults are `dialog` (`default_compose_view` in `internal/storage/repository.go`; `default_new_compose_view` / `default_reply_compose_view` fall back to it). Change the default for new users and for existing users who never picked one, and check the pane's expand control. |
+| M1 | Compose should open inline by default | Built (2026-10-19). Replies and forwards open below the open conversation (`default_reply_compose_view` = `thread`, the default), and Full width moves the editor into the whole view. New mail keeps opening in the dialog. Migration v124 moved replies left on the old `dialog` default to `thread`. |

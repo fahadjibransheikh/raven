@@ -476,6 +476,25 @@
   position: relative;
 }
 
+/* A reply open below its conversation sizes to its content inside the thread's scroll area. */
+[data-compose-inline] {
+  margin-top: 1.5rem;
+}
+[data-compose-inline] [data-compose-pane],
+[data-compose-inline] [data-compose-pane] > div {
+  height: auto;
+  padding: 0;
+}
+[data-compose-inline] [data-compose-pane] > div {
+  border: 1px solid var(--border);
+}
+[data-compose-inline] [data-compose-editor] {
+  min-height: 12rem;
+}
+#mail-view:has([data-compose-inline]) #reply-bar {
+  display: none;
+}
+
 #compose-form.compose-drop-active::after,
 [data-compose-pane].compose-drop-active::after {
   content: "Drop files to attach";

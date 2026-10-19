@@ -4147,6 +4147,12 @@ document.addEventListener("DOMContentLoaded", function () {
       withMailListForFolder(data.folder_id, data.folder_role || "", function (vml) { vml.onNewEmail() })
     })
 
+    source.addEventListener("calendar-reminder", function (e) {
+      var data
+      try { data = JSON.parse(e.data) } catch (_) { return }
+      showBrowserTabCalendarReminder(data)
+    })
+
     source.addEventListener("send-result", function (e) {
       var data
       try { data = JSON.parse(e.data) } catch (_) { return }
@@ -4841,6 +4847,23 @@ document.addEventListener("DOMContentLoaded", function () {
     })
   }
 
+  // Web Push delivers meeting reminders itself; this covers the browser-tab and
+  // desktop-app paths. Shown even while Raven has focus: a reminder is about
+  // something outside the window.
+  function showBrowserTabCalendarReminder(data) {
+    if (!data || !data.title) return
+    if (!notificationsEnabled()) return
+    if (_notificationActiveMethod !== "browser_tab") return
+    if (!browserNotificationsSupported() || currentNotificationPermission() !== "granted") return
+    deliverNotification(String(data.title), {
+      body: String(data.body || ""),
+      tag: "raven-calendar-" + (data.event_id || ""),
+      icon: "/assets/logo.png",
+      badge: "/assets/logo.png",
+      data: { url: /^\/(?!\/)/.test(String(data.url || "")) ? String(data.url) : "/calendar" },
+    })
+  }
+
   function deliverNotification(title, options) {
     var native = tauriNotifications()
     if (native) {
@@ -4851,7 +4874,9 @@ document.addEventListener("DOMContentLoaded", function () {
     var notification = new Notification(title, options)
     notification.onclick = function () {
       window.focus()
-      if (notification.data && notification.data.folderID) {
+      if (notification.data && notification.data.url) {
+        window.location.href = notification.data.url
+      } else if (notification.data && notification.data.folderID) {
         window.location.href = "/folder/" + encodeURIComponent(notification.data.folderID)
       }
       notification.close()
@@ -6968,6 +6993,12 @@ function setMailViewEmpty(force) {
   var mailView = document.getElementById("mail-view")
   if (!mailView) return
   if (force !== true && mailView.querySelector("[data-compose-pane]") && _dirtyComposeForm()) return
+  // Forced calls close the compose pane; an inline reply closes and leaves its conversation in view.
+  var inlineCompose = force === true && mailView.querySelector("[data-compose-inline]")
+  if (inlineCompose) {
+    inlineCompose.remove()
+    return
+  }
   mailView.innerHTML =
     '<div class="flex flex-col items-center justify-center h-full text-center" data-mail-view-empty>' +
       '<div class="space-y-4 animate-fade-in">' +
@@ -13824,6 +13855,8 @@ function composeViewPreference(kind) {
   var key = kind === "reply" ? "default_reply_compose_view" : "default_new_compose_view"
   var view = window.RavenSettings ? RavenSettings.get(key) : null
   if (!view && window.RavenSettings) view = RavenSettings.get("default_compose_view")
+  // "thread" (below the open conversation) only exists for replies; new mail has nothing to sit under.
+  if (view === "thread") return kind === "reply" ? view : "dialog"
   return view === "pane" || view === "full" ? view : "dialog"
 }
 
@@ -13842,6 +13875,8 @@ function _continueEditingDraft(emailId) {
 	.then(function (draft) {
 	  var vals = _composeValsFromDraft(draft)
 	  var view = composeViewPreference(vals.compose_mode === "reply" || vals.compose_mode === "forward" ? "reply" : "new")
+	  // A draft reopened from the list has no conversation under it to reply below.
+	  if (view === "thread") view = "pane"
 	  var fullWidth = view === "full"
 
       if (view === "pane" || view === "full") {
@@ -14727,6 +14762,7 @@ function _openComposePrefill(vals, mode) {
     return true
   }
   var view = composeViewPreference(mode === "new" ? "new" : "reply")
+  if (view === "thread" && openInlineCompose(vals, mode)) return true
   if ((view === "pane" || view === "full") && document.getElementById("mail-list") && document.getElementById("mail-view")) {
     fetch("/compose/pane").then(function (r) { return r.text() }).then(function (html) {
       writeComposePane(html, vals, view === "full", view === "full")
@@ -16356,8 +16392,8 @@ function expandToPane(fullWidth, instantFullWidth) {
   }).catch(function () {})
 }
 
-function writeComposePane(html, vals, fullWidth, instantFullWidth) {
-  var mailView = document.getElementById("mail-view")
+function writeComposePane(html, vals, fullWidth, instantFullWidth, host) {
+  var mailView = host || document.getElementById("mail-view")
   if (!mailView) return
 
   mailView.innerHTML = html
@@ -16391,6 +16427,37 @@ function writeComposePane(html, vals, fullWidth, instantFullWidth) {
       expandComposeFullWidth()
     }
   }
+}
+
+// openInlineCompose opens a reply below the open conversation, in the pane
+// editor mounted at the end of the thread instead of replacing the message
+// view. Returns false when no conversation is shown, so the caller falls back.
+function openInlineCompose(vals, mode) {
+  var content = document.querySelector("#mail-view .mail-view-content")
+  if (!content) return false
+  var host = document.createElement("div")
+  host.setAttribute("data-compose-inline", "")
+  content.appendChild(host)
+  fetch("/compose/pane").then(function (r) { return r.text() }).then(function (html) {
+    if (!host.isConnected) return
+    writeComposePane(html, vals, false, false, host)
+    var title = host.querySelector("[data-compose-pane] h2")
+    if (title) title.textContent = mode === "forward" ? "Forward" : (mode === "reply-all" ? "Reply all" : "Reply")
+    writeComposePrefill(document.getElementById("compose-pane-form"), vals, "compose-pane-", mode)
+    if (host.scrollIntoView) host.scrollIntoView({ block: "nearest" })
+  }).catch(function () { host.remove() })
+  return true
+}
+
+// An inline reply that asks for the full view moves its editor (state and all)
+// into the message view first, so it expands like a pane opened there.
+function _moveInlineComposeToPane() {
+  var host = document.querySelector("#mail-view [data-compose-inline]")
+  var pane = host && host.querySelector("[data-compose-pane]")
+  if (!pane) return
+  document.getElementById("mail-view").replaceChildren(pane)
+  _composeActive = true
+  _updateComposeBtn(true)
 }
 
 function collapseToDialog() {
@@ -16483,6 +16550,7 @@ function isStackedComposeLayout() {
 }
 
 function expandComposeFullWidth() {
+  _moveInlineComposeToPane()
   var mailList = document.querySelector("#main-content > #mail-list")
   var resizeHandles = document.querySelectorAll('[data-panel="maillist"]')
   if (!mailList || mailList._animating) return

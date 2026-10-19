@@ -26,6 +26,7 @@ const (
 	EventContactBackfill       EventType = "contact-backfill"
 	EventCalendarSync          EventType = "calendar-sync"
 	EventCalendarChanged       EventType = "calendar-changed"
+	EventCalendarReminder      EventType = "calendar-reminder"
 )
 
 type Event struct {
