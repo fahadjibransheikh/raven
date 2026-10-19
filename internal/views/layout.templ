@@ -76,6 +76,7 @@ templ Layout(accounts []models.Account, activeFolder string, emails []models.Ema
 						@MailView(selectedEmail, selectedThread)
 					}
 				</div>
+				@PhoneTabBar("mail")
 			</div>
 			<div id="app-pane-dialogs"></div>
 			@ComposeDialog(accounts)
@@ -208,6 +209,7 @@ templ MailShell(accounts []models.Account, activeFolder string, emails []models.
 				@MailView(selectedEmail, selectedThread)
 			}
 		</div>
+		@PhoneTabBar("mail")
 	</div>
 	@MailCardLayoutScript()
 }
@@ -307,6 +309,7 @@ templ ContactsShell(accounts []models.Account, contacts []models.Contact, select
 		@ContactsSidebar(accounts, "contacts", uiSettingGet(uiSettings, "sidebar_width", "240px"), uiSettings, filters)
 		@ResizeHandle("sidebar")
 		@ContactsPage(contacts, selected, selectedProfile, showNew, syncQueued, filters, totalCount, uiSettingGet(uiSettings, "contacts_list_width", "30%"), accounts)
+		@PhoneTabBar("contacts")
 	</div>
 }
 

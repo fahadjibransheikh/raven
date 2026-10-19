@@ -5714,14 +5714,19 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function setSidebarAppNavMode(mode) {
-    var group = document.querySelector("[data-sidebar-app-nav]")
-    if (group) {
+    // The sidebar footer switcher and the phone tab bar; the tab bar styles itself from aria-current.
+    var groups = document.querySelectorAll("[data-sidebar-app-nav]")
+    for (var g = 0; g < groups.length; g++) {
+      var group = groups[g]
+      var tabBar = group.hasAttribute("data-phone-tab-bar")
       var buttons = group.querySelectorAll("[data-sidebar-app-button]")
       for (var i = 0; i < buttons.length; i++) {
         var isActive = buttons[i].dataset.sidebarAppButton === mode
-        buttons[i].classList.toggle("text-sidebar-accent-foreground", isActive)
-        buttons[i].classList.toggle("text-sidebar-foreground", !isActive && !buttons[i].disabled)
-        buttons[i].classList.toggle("hover:text-sidebar-accent-foreground", !isActive && !buttons[i].disabled)
+        if (!tabBar) {
+          buttons[i].classList.toggle("text-sidebar-accent-foreground", isActive)
+          buttons[i].classList.toggle("text-sidebar-foreground", !isActive && !buttons[i].disabled)
+          buttons[i].classList.toggle("hover:text-sidebar-accent-foreground", !isActive && !buttons[i].disabled)
+        }
         if (isActive) buttons[i].setAttribute("aria-current", "true")
         else buttons[i].removeAttribute("aria-current")
       }
