@@ -4147,6 +4147,12 @@ document.addEventListener("DOMContentLoaded", function () {
       withMailListForFolder(data.folder_id, data.folder_role || "", function (vml) { vml.onNewEmail() })
     })
 
+    source.addEventListener("calendar-reminder", function (e) {
+      var data
+      try { data = JSON.parse(e.data) } catch (_) { return }
+      showBrowserTabCalendarReminder(data)
+    })
+
     source.addEventListener("send-result", function (e) {
       var data
       try { data = JSON.parse(e.data) } catch (_) { return }
@@ -4841,6 +4847,23 @@ document.addEventListener("DOMContentLoaded", function () {
     })
   }
 
+  // Web Push delivers meeting reminders itself; this covers the browser-tab and
+  // desktop-app paths. Shown even while Raven has focus: a reminder is about
+  // something outside the window.
+  function showBrowserTabCalendarReminder(data) {
+    if (!data || !data.title) return
+    if (!notificationsEnabled()) return
+    if (_notificationActiveMethod !== "browser_tab") return
+    if (!browserNotificationsSupported() || currentNotificationPermission() !== "granted") return
+    deliverNotification(String(data.title), {
+      body: String(data.body || ""),
+      tag: "raven-calendar-" + (data.event_id || ""),
+      icon: "/assets/logo.png",
+      badge: "/assets/logo.png",
+      data: { url: /^\/(?!\/)/.test(String(data.url || "")) ? String(data.url) : "/calendar" },
+    })
+  }
+
   function deliverNotification(title, options) {
     var native = tauriNotifications()
     if (native) {
@@ -4851,7 +4874,9 @@ document.addEventListener("DOMContentLoaded", function () {
     var notification = new Notification(title, options)
     notification.onclick = function () {
       window.focus()
-      if (notification.data && notification.data.folderID) {
+      if (notification.data && notification.data.url) {
+        window.location.href = notification.data.url
+      } else if (notification.data && notification.data.folderID) {
         window.location.href = "/folder/" + encodeURIComponent(notification.data.folderID)
       }
       notification.close()

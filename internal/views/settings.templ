@@ -660,6 +660,26 @@ templ SettingsAdvancedTab(uiSettings map[string]string) {
 					</button>
 				</div>
 			</div>
+			<div class="settings-row border-t border-border/60 pt-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+				<div class="min-w-0">
+					<h4 class="text-sm font-medium text-foreground">Meeting reminders</h4>
+					<p class="text-xs text-muted-foreground mt-1 leading-relaxed">Notify this long before a timed calendar event starts. Uses the notification settings above; events you declined and all-day events are skipped.</p>
+				</div>
+				<div class="w-full sm:w-44 shrink-0" data-calendar-reminder-picker>
+					@selectbox.SelectBox(selectbox.Props{Class: "settings-select"}) {
+						@selectbox.Trigger(selectbox.TriggerProps{Name: "calendar_reminder_minutes", Class: "bg-background", DisableClear: true}) {
+							@selectbox.Value(selectbox.ValueProps{Placeholder: "10 minutes"}) {
+								{ calendarReminderSettingLabel(uiSettingGet(uiSettings, "calendar_reminder_minutes", "10")) }
+							}
+						}
+						@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
+							for _, v := range calendarReminderSettingValues {
+								@selectbox.Item(selectbox.ItemProps{Value: v, Selected: uiSettingGet(uiSettings, "calendar_reminder_minutes", "10") == v}) { { calendarReminderSettingLabel(v) } }
+							}
+						}
+					}
+				</div>
+			</div>
 			<div class="flex flex-col gap-4 rounded-lg border border-border/60 bg-background/40 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
 				<div class="min-w-0">
 					<h4 class="text-sm font-medium text-foreground">Email links</h4>

@@ -15,7 +15,7 @@ history.
   The managed-mode per-user conversion maps gofer's shared versions 105/106/107 to
   Raven's 119/120/121.
 - v122, together with storage layout step 2, renames the old `gofer_*` tables.
-- New migrations continue from v122 in Raven's own numbering.
+- New migrations continue from v122 in Raven's own numbering. v123 adds `message_timers`, v124 sets the inline compose default, v125 adds `calendar_reminders`.
 - `schema.sql` (fresh installs) must end in the same state as the migration chain; a
   test compares the two.
 
@@ -68,7 +68,7 @@ Reported by the user from the Mac app; not yet investigated.
 | # | Issue | Notes |
 |---|---|---|
 | C1 | Google Meet links don't open | "Join meeting" in the event dialog does nothing for a Google Meet event. Start at `internal/calendar/meeting.go` (`MeetingJoinURL`, `GoogleMeetJoinURLFromDescription`) and how the dialog opens the link in the desktop app. |
-| C2 | No reminder before a meeting starts | Raven sends no notification when a meeting is about to start. Needs a reminder lead time and delivery through the existing desktop and web push notifications. |
+| C2 | No reminder before a meeting starts | Built (2026-10-19). The message-timer worker (30 s, single-user and managed) announces timed events starting within `calendar_reminder_minutes` (Off/5/10/15, default 10), once per occurrence (`calendar_reminders`, schema v125). It skips all-day, cancelled and declined events and hidden calendars, and never announces an event that already started. Delivery: `calendar-reminder` SSE event for browser-tab/desktop, Web Push for the rest; clicking opens `/calendar`. Providers' own per-event reminder times are not cached, so the one setting applies to every event. |
 | C3 | Agenda view is confusing | The agenda panel next to the 3-day view repeats every event as a large card with the date on the right, the same account address on every card and an icon per row. All-day events repeat daily. Rework it: group by day, one compact line per event, collapse repeated all-day events, drop the per-card account line. |
 
 ## Compose (reported 2026-10-19)

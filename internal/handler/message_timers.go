@@ -82,7 +82,8 @@ func (h *Handler) publishTimerMutation(ctx context.Context, accountID string) {
 	h.publishMutation(accountID, folderID)
 }
 
-// StartMessageTimerWorker wakes snoozed threads and fires follow-up reminders.
+// StartMessageTimerWorker wakes snoozed threads, fires follow-up reminders and
+// announces meetings that are about to start.
 func (h *Handler) StartMessageTimerWorker(ctx context.Context) {
 	if h.ownedMailbox != nil {
 		h.ownedMailbox.StartMessageTimerWorker(ctx)
@@ -118,6 +119,7 @@ func (h *Handler) runMessageTimers(ctx context.Context, now time.Time) {
 	publish := h.syncer.Events().Publish
 	if h.userStorage == nil {
 		h.runMessageTimersIn(ctx, h.db, "", now, publish)
+		runCalendarRemindersIn(ctx, h.db, now, publish)
 		return
 	}
 	// shortcut: opens every owner's store each tick; fine for a handful of users, move to the account service schedule if that grows.
@@ -133,6 +135,7 @@ func (h *Handler) runMessageTimers(ctx context.Context, now time.Time) {
 		for _, owner := range owners {
 			if err := h.userStorage.WithExistingUser(ctx, owner, func(db *storage.DB) error {
 				h.runMessageTimersIn(ctx, db, owner, now, publish)
+				runCalendarRemindersIn(ctx, db, now, publish)
 				return nil
 			}); err != nil && !errors.Is(err, storage.ErrUserStoreOwner) && ctx.Err() == nil {
 				log.Printf("message timers %s: %v", owner, err)

@@ -367,7 +367,7 @@ func TestUserStorageMigrationPreflightAcceptsMainSchemaAndKeepsHistoricalClaimsU
 func TestUserStorageMigrationPreflightRejectsUnknownVersionsAndFalseUpgradeMarkers(t *testing.T) {
 	for _, query := range []string{
 		`DELETE FROM schema_version; INSERT INTO schema_version(version) VALUES(118)`,
-		`DELETE FROM schema_version; INSERT INTO schema_version(version) VALUES(125)`,
+		`DELETE FROM schema_version; INSERT INTO schema_version(version) VALUES(126)`,
 		`ALTER TABLE calendar_response_requests DROP COLUMN claim_id`,
 		`DELETE FROM schema_version; INSERT INTO schema_version(version) VALUES(120); ALTER TABLE web_push_subscriptions DROP COLUMN revision`,
 		`DELETE FROM schema_version; INSERT INTO schema_version(version) VALUES(120); ALTER TABLE calendar_response_requests DROP COLUMN claim_id; ALTER TABLE calendar_response_requests ADD COLUMN claim_id TEXT`,

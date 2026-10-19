@@ -1101,6 +1101,20 @@ func undoSendSettingLabel(value string) string {
 	}
 }
 
+// calendarReminderSettingValues must match the lead times handler.calendarReminderLead accepts.
+var calendarReminderSettingValues = []string{"0", "5", "10", "15"}
+
+func calendarReminderSettingLabel(value string) string {
+	switch value {
+	case "0":
+		return "Off"
+	case "5", "15":
+		return value + " minutes"
+	default:
+		return "10 minutes"
+	}
+}
+
 func autoMarkReadSettingLabel(value string) string {
 	switch value {
 	case "0":
