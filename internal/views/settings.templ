@@ -108,13 +108,13 @@ templ SettingsComposeDisplayTab(uiSettings map[string]string, signatureData []mo
 					@selectbox.SelectBox(selectbox.Props{Class: "settings-select"}) {
 						@selectbox.Trigger(selectbox.TriggerProps{Name: "default_new_compose_view", Class: "bg-background", DisableClear: true}) {
 							@selectbox.Value(selectbox.ValueProps{Placeholder: "Dialog"}) {
-								{ defaultComposeViewSettingLabel(uiSettingGet(uiSettings, "default_new_compose_view", uiSettingGet(uiSettings, "default_compose_view", "pane"))) }
+								{ defaultComposeViewSettingLabel(uiSettingGet(uiSettings, "default_new_compose_view", uiSettingGet(uiSettings, "default_compose_view", "dialog"))) }
 							}
 						}
 						@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
-							@selectbox.Item(selectbox.ItemProps{Value: "dialog", Selected: uiSettingGet(uiSettings, "default_new_compose_view", uiSettingGet(uiSettings, "default_compose_view", "pane")) == "dialog"}) { Dialog }
-							@selectbox.Item(selectbox.ItemProps{Value: "pane", Selected: uiSettingGet(uiSettings, "default_new_compose_view", uiSettingGet(uiSettings, "default_compose_view", "pane")) == "pane"}) { Inline, one pane }
-							@selectbox.Item(selectbox.ItemProps{Value: "full", Selected: uiSettingGet(uiSettings, "default_new_compose_view", uiSettingGet(uiSettings, "default_compose_view", "pane")) == "full"}) { Inline, expanded }
+							@selectbox.Item(selectbox.ItemProps{Value: "dialog", Selected: uiSettingGet(uiSettings, "default_new_compose_view", uiSettingGet(uiSettings, "default_compose_view", "dialog")) == "dialog"}) { Dialog }
+							@selectbox.Item(selectbox.ItemProps{Value: "pane", Selected: uiSettingGet(uiSettings, "default_new_compose_view", uiSettingGet(uiSettings, "default_compose_view", "dialog")) == "pane"}) { Inline, one pane }
+							@selectbox.Item(selectbox.ItemProps{Value: "full", Selected: uiSettingGet(uiSettings, "default_new_compose_view", uiSettingGet(uiSettings, "default_compose_view", "dialog")) == "full"}) { Inline, expanded }
 						}
 					}
 				</div>
@@ -128,13 +128,14 @@ templ SettingsComposeDisplayTab(uiSettings map[string]string, signatureData []mo
 					@selectbox.SelectBox(selectbox.Props{Class: "settings-select"}) {
 						@selectbox.Trigger(selectbox.TriggerProps{Name: "default_reply_compose_view", Class: "bg-background", DisableClear: true}) {
 							@selectbox.Value(selectbox.ValueProps{Placeholder: "Dialog"}) {
-								{ defaultComposeViewSettingLabel(uiSettingGet(uiSettings, "default_reply_compose_view", uiSettingGet(uiSettings, "default_compose_view", "pane"))) }
+								{ defaultComposeViewSettingLabel(uiSettingGet(uiSettings, "default_reply_compose_view", uiSettingGet(uiSettings, "default_compose_view", "dialog"))) }
 							}
 						}
 						@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
-							@selectbox.Item(selectbox.ItemProps{Value: "dialog", Selected: uiSettingGet(uiSettings, "default_reply_compose_view", uiSettingGet(uiSettings, "default_compose_view", "pane")) == "dialog"}) { Dialog }
-							@selectbox.Item(selectbox.ItemProps{Value: "pane", Selected: uiSettingGet(uiSettings, "default_reply_compose_view", uiSettingGet(uiSettings, "default_compose_view", "pane")) == "pane"}) { Inline, one pane }
-							@selectbox.Item(selectbox.ItemProps{Value: "full", Selected: uiSettingGet(uiSettings, "default_reply_compose_view", uiSettingGet(uiSettings, "default_compose_view", "pane")) == "full"}) { Inline, expanded }
+							@selectbox.Item(selectbox.ItemProps{Value: "thread", Selected: uiSettingGet(uiSettings, "default_reply_compose_view", uiSettingGet(uiSettings, "default_compose_view", "dialog")) == "thread"}) { Inline, below the message }
+							@selectbox.Item(selectbox.ItemProps{Value: "dialog", Selected: uiSettingGet(uiSettings, "default_reply_compose_view", uiSettingGet(uiSettings, "default_compose_view", "dialog")) == "dialog"}) { Dialog }
+							@selectbox.Item(selectbox.ItemProps{Value: "pane", Selected: uiSettingGet(uiSettings, "default_reply_compose_view", uiSettingGet(uiSettings, "default_compose_view", "dialog")) == "pane"}) { Inline, one pane }
+							@selectbox.Item(selectbox.ItemProps{Value: "full", Selected: uiSettingGet(uiSettings, "default_reply_compose_view", uiSettingGet(uiSettings, "default_compose_view", "dialog")) == "full"}) { Inline, expanded }
 						}
 					}
 				</div>

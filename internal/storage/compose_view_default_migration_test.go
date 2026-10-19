@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestMigrateV123ToV124MovesOnlyStoredDialogComposeToInline(t *testing.T) {
+func TestMigrateV123ToV124MovesDefaultRepliesBelowTheConversation(t *testing.T) {
 	db, err := New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatal(err)
@@ -19,13 +19,12 @@ func TestMigrateV123ToV124MovesOnlyStoredDialogComposeToInline(t *testing.T) {
 		want   map[string]string
 	}{
 		"dialog": {`{"default_compose_view":"dialog","default_new_compose_view":"dialog","default_reply_compose_view":"dialog","theme":"light"}`,
-			map[string]string{"default_compose_view": "pane", "default_new_compose_view": "pane", "default_reply_compose_view": "pane", "theme": "light"}},
-		"mixed": {`{"default_new_compose_view":"full","default_reply_compose_view":"dialog"}`,
-			map[string]string{"default_new_compose_view": "full", "default_reply_compose_view": "pane"}},
-		"legacy": {`{"default_compose_view":"dialog"}`, map[string]string{"default_compose_view": "pane"}},
-		"chosen": {`{"default_new_compose_view":"full","default_reply_compose_view":"pane"}`,
-			map[string]string{"default_new_compose_view": "full", "default_reply_compose_view": "pane"}},
-		"unset": {`{"theme":"dark"}`, map[string]string{"theme": "dark", "default_new_compose_view": ""}},
+			map[string]string{"default_compose_view": "dialog", "default_new_compose_view": "dialog", "default_reply_compose_view": "thread", "theme": "light"}},
+		"new-pane":    {`{"default_new_compose_view":"pane","default_reply_compose_view":"dialog"}`, map[string]string{"default_new_compose_view": "pane", "default_reply_compose_view": "thread"}},
+		"legacy":      {`{"default_compose_view":"dialog"}`, map[string]string{"default_compose_view": "dialog", "default_reply_compose_view": "thread"}},
+		"legacy-pane": {`{"default_compose_view":"pane"}`, map[string]string{"default_compose_view": "pane", "default_reply_compose_view": ""}},
+		"chosen":      {`{"default_new_compose_view":"full","default_reply_compose_view":"pane"}`, map[string]string{"default_new_compose_view": "full", "default_reply_compose_view": "pane"}},
+		"unset":       {`{"theme":"dark"}`, map[string]string{"theme": "dark", "default_reply_compose_view": "thread"}},
 	}
 	for id, tc := range cases {
 		if _, err := db.Write().ExecContext(ctx, `INSERT INTO users (id, username, username_normalized, name) VALUES (?, ?, ?, ?)`, id, id, id, id); err != nil {
@@ -71,7 +70,7 @@ func TestMigrateV123ToV124MovesOnlyStoredDialogComposeToInline(t *testing.T) {
 	}
 
 	// A later boot must not touch a choice made after the migration.
-	if err := db.SetSetting(ctx, "dialog", "ui_settings", `{"default_new_compose_view":"dialog"}`); err != nil {
+	if err := db.SetSetting(ctx, "dialog", "ui_settings", `{"default_reply_compose_view":"dialog"}`); err != nil {
 		t.Fatal(err)
 	}
 	if err := db.migrate(); err != nil {
@@ -79,21 +78,19 @@ func TestMigrateV123ToV124MovesOnlyStoredDialogComposeToInline(t *testing.T) {
 	}
 	var raw string
 	_ = db.Read().QueryRowContext(ctx, `SELECT value FROM app_settings WHERE user_id = 'dialog'`).Scan(&raw)
-	if raw != `{"default_new_compose_view":"dialog"}` {
+	if raw != `{"default_reply_compose_view":"dialog"}` {
 		t.Fatalf("re-run changed a post-migration choice: %s", raw)
 	}
 }
 
-func TestNewUsersDefaultToInlineCompose(t *testing.T) {
+func TestNewUsersReplyBelowTheConversationAndComposeInADialog(t *testing.T) {
 	db, err := New(filepath.Join(t.TempDir(), "raven.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	settings := db.GetUISettings(t.Context(), "nobody")
-	for _, key := range []string{"default_new_compose_view", "default_reply_compose_view"} {
-		if settings[key] != "pane" {
-			t.Errorf("%s = %q, want pane", key, settings[key])
-		}
+	if settings["default_new_compose_view"] != "dialog" || settings["default_reply_compose_view"] != "thread" {
+		t.Fatalf("new = %q, reply = %q; want dialog, thread", settings["default_new_compose_view"], settings["default_reply_compose_view"])
 	}
 }

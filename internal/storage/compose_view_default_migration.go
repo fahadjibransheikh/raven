@@ -6,11 +6,14 @@ import (
 	"fmt"
 )
 
-// migrateV123ToV124 moves users whose saved compose view is the old "dialog"
-// default onto the new inline default ("pane"). The client saves its whole
-// settings cache, so a stored "dialog" is indistinguishable from "never changed"
-// and is treated as default, once, as migrateV98ToV99 did for the list width.
-// Rolling back means setting the three keys back to "dialog".
+// migrateV123ToV124 moves users whose replies open in the old "dialog" default
+// onto the new default, "thread" (the reply opens below the conversation). The
+// client saves its whole settings cache, so a stored "dialog" is
+// indistinguishable from "never changed" and is treated as default, once, as
+// migrateV98ToV99 did for the list width. The reply view resolves like
+// GetUISettings: its own key, else the legacy default_compose_view. New mail and
+// the legacy key are left alone. Rolling back means setting
+// default_reply_compose_view back to "dialog".
 func migrateV123ToV124(db *sql.DB) error {
 	tx, err := db.Begin()
 	if err != nil {
@@ -45,17 +48,16 @@ func migrateV123ToV124(db *sql.DB) error {
 			if json.Unmarshal([]byte(r.value), &settings) != nil {
 				continue // unreadable rows already fall back to defaults; leave them
 			}
-			changed := false
-			for _, key := range []string{"default_compose_view", "default_new_compose_view", "default_reply_compose_view"} {
-				var view string
-				if json.Unmarshal(settings[key], &view) == nil && view == "dialog" {
-					settings[key] = json.RawMessage(`"pane"`)
-					changed = true
-				}
+			var reply, legacy string
+			_ = json.Unmarshal(settings["default_reply_compose_view"], &reply)
+			_ = json.Unmarshal(settings["default_compose_view"], &legacy)
+			if reply == "" {
+				reply = legacy
 			}
-			if !changed {
+			if reply != "" && reply != "dialog" {
 				continue
 			}
+			settings["default_reply_compose_view"] = json.RawMessage(`"thread"`)
 			updated, err := json.Marshal(settings)
 			if err != nil {
 				return fmt.Errorf("encode ui settings: %w", err)
