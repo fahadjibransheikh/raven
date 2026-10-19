@@ -1448,6 +1448,8 @@ document.addEventListener("DOMContentLoaded", function () {
     window.clearMailSelection = clearMailSelection
     window.clearActiveMailSelection = clearActiveMailSelection
     window.applyOptimisticMailRemove = applyOptimisticRemove
+    window.applyOptimisticMailRead = applyOptimisticRead
+    window.applyOptimisticMailUnread = applyOptimisticUnread
     window.performMailAction = performMailAction
     // Top-level single-message actions (archiveThread, deleteMessage, ...) call this; without the
     // export they threw a ReferenceError after the server call succeeded and "restored" the row.
@@ -6285,25 +6287,37 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
+  function setMessageReadUI(emailId, isRead) {
+    var readButtons = document.querySelectorAll('[data-read-email="' + emailId + '"]')
+    for (var i = 0; i < readButtons.length; i++) setReadButtonIcon(readButtons[i], isRead)
+    syncThreadReadButtons()
+  }
+
+  // Optimistic like the bulk path: the row flips before the POST returns, so a slow local
+  // write (the desktop DB has one write connection) no longer leaves opened mail unread.
   function markRead(emailId, trigger) {
+    if (window.applyOptimisticMailRead) window.applyOptimisticMailRead(emailId)
+    setMessageReadUI(emailId, true)
+    var row = trigger && trigger.closest ? trigger.closest(".mail-list-item") : null
+    var link = row ? row.querySelector("a") : null
+    if (link) link.classList.remove("font-semibold")
+
     fetch("/api/messages/" + emailId + "/read?state=read", { method: "POST" })
-      .then(function (r) { return r.json() })
+      .then(function (r) {
+        if (!r.ok) throw new Error("mark read failed: " + r.status)
+        return r.json()
+      })
       .then(function (data) {
-        if (!data.is_read) return
-        var readButtons = document.querySelectorAll('[data-read-email="' + emailId + '"]')
-        for (var i = 0; i < readButtons.length; i++) setReadButtonIcon(readButtons[i], true)
-        syncThreadReadButtons()
-        var row = trigger && trigger.closest ? trigger.closest(".mail-list-item") : null
-        if (row) {
-          var link = row.querySelector("a")
-          if (link) {
-            link.classList.remove("font-semibold")
-          }
-        }
+        if (!data.is_read) throw new Error("mark read not applied")
         invalidateMailListItem(emailId)
         refreshSidebarUnread()
       })
-      .catch(function () {})
+      .catch(function (err) {
+        console.warn(err)
+        if (window.applyOptimisticMailUnread) window.applyOptimisticMailUnread(emailId)
+        setMessageReadUI(emailId, false)
+        if (link) link.classList.add("font-semibold")
+      })
   }
 
   function textFrom(root, selector) {
