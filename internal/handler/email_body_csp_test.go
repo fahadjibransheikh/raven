@@ -82,6 +82,9 @@ func TestEmailBodyLinksAreOpenedByTheParent(t *testing.T) {
 	if !strings.Contains(body, "emailLinkClick") || strings.Contains(body, "'_blank'") {
 		t.Errorf("link script must hand clicks to the parent, not open popups itself: %q", body)
 	}
+	if !strings.Contains(body, "mismatch:a.getAttribute('data-link-mismatch')") {
+		t.Errorf("link script must pass the sanitizer's link-mismatch flag to the parent: %q", body)
+	}
 	if !strings.Contains(body, "emailKeydown") {
 		t.Errorf("frame must forward keystrokes so shortcuts survive focus in the message: %q", body)
 	}

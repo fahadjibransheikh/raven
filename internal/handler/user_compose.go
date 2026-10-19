@@ -76,6 +76,14 @@ func (h *Handler) userComposeHandler(selectHandler func(*Handler) http.HandlerFu
 				response.header.Set("X-Raven-Mail-Delivery", "delayed")
 			}
 		}
+		for id, delay := range state.wakeAfter {
+			owner, id := state.owner, id
+			time.AfterFunc(delay, func() {
+				if err := h.userIMAP.WakeMutations(context.Background(), owner, id); err != nil {
+					log.Printf("user compose undo window closed; queue wake %s: %v", id, err)
+				}
+			})
+		}
 		for key, values := range response.header {
 			w.Header()[key] = append([]string(nil), values...)
 		}

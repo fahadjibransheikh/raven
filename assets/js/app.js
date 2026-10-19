@@ -1448,6 +1448,8 @@ document.addEventListener("DOMContentLoaded", function () {
     window.clearMailSelection = clearMailSelection
     window.clearActiveMailSelection = clearActiveMailSelection
     window.applyOptimisticMailRemove = applyOptimisticRemove
+    window.applyOptimisticMailRead = applyOptimisticRead
+    window.applyOptimisticMailUnread = applyOptimisticUnread
     window.performMailAction = performMailAction
     // Top-level single-message actions (archiveThread, deleteMessage, ...) call this; without the
     // export they threw a ReferenceError after the server call succeeded and "restored" the row.
@@ -4140,6 +4142,7 @@ document.addEventListener("DOMContentLoaded", function () {
       if (!data || !data.folder_id) return
 
       refreshSidebarUnread()
+      showMailCodeToast(data)
       showBrowserTabNewMailNotification(data)
       withMailListForFolder(data.folder_id, data.folder_role || "", function (vml) { vml.onNewEmail() })
     })
@@ -4784,6 +4787,31 @@ document.addEventListener("DOMContentLoaded", function () {
     })
   }
 
+  // A new message carries a sign-in code: offer a one-click copy while the app is open.
+  function showMailCodeToast(data) {
+    if (!data.code || Number(data.unread_count || 0) <= 0) return
+    var role = String(data.folder_role || "")
+    if (role === "sent" || role === "drafts" || role === "trash" || role === "junk" || role === "archive") return
+    var code = String(data.code)
+    var toast = showRavenToast({
+      id: "mail-code-toast",
+      title: "Code " + code,
+      description: String(data.from_name || data.from_email || ""),
+      variant: "default", icon: "info", position: "bottom-right", duration: 20000, dismissible: true,
+      secondaryActionLabel: "Copy",
+      onSecondaryAction: function () {
+        var button = toast.querySelector("[data-raven-toast-secondary]")
+        var clipboard = navigator.clipboard
+        var copied = clipboard && clipboard.writeText ? clipboard.writeText(code) : Promise.reject(new Error("no clipboard"))
+        copied.then(function () {
+          if (button) button.textContent = "Copied"
+        }, function () {
+          if (button) button.textContent = "Couldn't copy"
+        })
+      },
+    })
+  }
+
   function showBrowserTabNewMailNotification(data) {
     if (!notificationsEnabled()) return
     if (_notificationActiveMethod !== "browser_tab") return
@@ -4801,6 +4829,7 @@ document.addEventListener("DOMContentLoaded", function () {
     var folderName = String(data.folder_name || "Inbox")
     var title = unreadCount === 1 ? sender : unreadCount + " new messages"
     var body = unreadCount === 1 ? subject : sender + ": " + subject
+    if (data.code) body = "Code " + data.code + " \u00b7 " + body
     var icon = data.avatar_url || data.icon || "/assets/logo.png"
 
     deliverNotification(title, {
@@ -6286,25 +6315,37 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
+  function setMessageReadUI(emailId, isRead) {
+    var readButtons = document.querySelectorAll('[data-read-email="' + emailId + '"]')
+    for (var i = 0; i < readButtons.length; i++) setReadButtonIcon(readButtons[i], isRead)
+    syncThreadReadButtons()
+  }
+
+  // Optimistic like the bulk path: the row flips before the POST returns, so a slow local
+  // write (the desktop DB has one write connection) no longer leaves opened mail unread.
   function markRead(emailId, trigger) {
+    if (window.applyOptimisticMailRead) window.applyOptimisticMailRead(emailId)
+    setMessageReadUI(emailId, true)
+    var row = trigger && trigger.closest ? trigger.closest(".mail-list-item") : null
+    var link = row ? row.querySelector("a") : null
+    if (link) link.classList.remove("font-semibold")
+
     fetch("/api/messages/" + emailId + "/read?state=read", { method: "POST" })
-      .then(function (r) { return r.json() })
+      .then(function (r) {
+        if (!r.ok) throw new Error("mark read failed: " + r.status)
+        return r.json()
+      })
       .then(function (data) {
-        if (!data.is_read) return
-        var readButtons = document.querySelectorAll('[data-read-email="' + emailId + '"]')
-        for (var i = 0; i < readButtons.length; i++) setReadButtonIcon(readButtons[i], true)
-        syncThreadReadButtons()
-        var row = trigger && trigger.closest ? trigger.closest(".mail-list-item") : null
-        if (row) {
-          var link = row.querySelector("a")
-          if (link) {
-            link.classList.remove("font-semibold")
-          }
-        }
+        if (!data.is_read) throw new Error("mark read not applied")
         invalidateMailListItem(emailId)
         refreshSidebarUnread()
       })
-      .catch(function () {})
+      .catch(function (err) {
+        console.warn(err)
+        if (window.applyOptimisticMailUnread) window.applyOptimisticMailUnread(emailId)
+        setMessageReadUI(emailId, false)
+        if (link) link.classList.add("font-semibold")
+      })
   }
 
   function textFrom(root, selector) {
@@ -6699,7 +6740,8 @@ function recoverComposeOutgoingSend(summary) {
     if (!draftField || String(draftField.value || "").trim() !== String(summary.draft_id).trim()) continue
     var fromPane = forms[i].id === "compose-pane-form"
     if (summary.status === "pending" || summary.status === "sending") {
-      _composeSendState = { formId: forms[i].id, fromPane: fromPane, sendID: summary.id }
+      var prevState = _composeSendState && _composeSendState.sendID === summary.id ? _composeSendState : null
+      _composeSendState = { formId: forms[i].id, fromPane: fromPane, sendID: summary.id, sendKey: prevState ? prevState.sendKey : undefined }
       forms[i].dataset.composeOutgoingStatus = outgoingSendStatusLabel(summary)
       _setComposeSending(forms[i], true)
       if (summary.status === "pending" && (Number(summary.attempt_count) > 0 || summary.is_scheduled)) {
@@ -12553,8 +12595,10 @@ function finishComposeSendSuccess(state) {
   if (!state) return
   if (state.sendID) stopOutgoingSendPolling(state.sendID)
   var form = document.getElementById(state.formId)
-  if (form) _setComposeSending(form, false)
   _composeSendState = null
+  // The dialog was hidden during the undo window and may since hold a new message: leave it be.
+  if (state.sendKey && (!form || form.dataset.composeSendKey !== state.sendKey)) return
+  if (form) _setComposeSending(form, false)
   setTimeout(function () {
     if (state.fromPane) {
       setMailViewEmpty(true)
@@ -14027,6 +14071,7 @@ function _sendComposeNow(form, fromPane) {
   }).then(function (data) {
     if (data && data.send_id && _composeSendState) {
       _composeSendState.sendID = data.send_id
+      if (Number(data.undo_seconds) > 0) showUndoSendToast(form, _composeSendState, Number(data.undo_seconds))
       startOutgoingSendPolling(data.send_id)
       fetchOutgoingSendStatus(data.send_id).catch(function () {})
     }
@@ -14038,6 +14083,59 @@ function _sendComposeNow(form, fromPane) {
     delete form.dataset.composeSendKey
     form.dataset.composeDirty = "true"
     showSendStatus("failed", err && err.message ? err.message : "Failed to connect to server")
+  })
+}
+
+// Undo send: the server holds the message for undo_seconds. The dialog closes at once but
+// keeps its contents until the send completes, so Undo can reopen it unchanged.
+function showUndoSendToast(form, state, seconds) {
+  state.sendKey = form.dataset.composeSendKey
+  if (!state.fromPane && window.tui && window.tui.dialog) {
+    window.tui.dialog.close("compose-dialog")
+    _updateComposeBtn(false)
+  }
+  _sendStatusToast = showRavenToast({
+    id: "compose-status-toast",
+    title: "Sending",
+    description: "Sending in " + seconds + " seconds",
+    variant: "info", icon: "info", position: "bottom-right", duration: seconds * 1000, dismissible: true,
+    secondaryActionLabel: "Undo",
+    onSecondaryAction: function () {
+      dismissRavenToast(_sendStatusToast)
+      undoComposeSend(state)
+    },
+  })
+}
+
+function undoComposeSend(state) {
+  stopOutgoingSendPolling(state.sendID)
+  fetch("/api/outgoing-sends/" + encodeURIComponent(state.sendID) + "/cancel", { method: "POST" }).then(function (r) {
+    if (r.status === 409) {
+      showSendStatus("sending", "Too late to undo: the message is already sending.")
+      startOutgoingSendPolling(state.sendID)
+      return
+    }
+    if (!r.ok) throw new Error("cancel failed: " + r.status)
+    if (_composeSendState && _composeSendState.sendID === state.sendID) _composeSendState = null
+    var form = document.getElementById(state.formId)
+    if (!form || form.dataset.composeSendKey !== state.sendKey) {
+      // shortcut: a compose opened during the undo window reused the dialog form, so the
+      // canceled text can't be put back; restore it from the send's message_json if this bites.
+      showSendStatus("canceled", "The message was not sent.")
+      return
+    }
+    _setComposeSending(form, false)
+    delete form.dataset.composeSendKey
+    form.dataset.composeDirty = "true"
+    hideSendStatus()
+    if (!state.fromPane && window.tui && window.tui.dialog) {
+      window.tui.dialog.open("compose-dialog")
+      _updateComposeBtn(true)
+    }
+  }).catch(function (err) {
+    console.warn(err)
+    showSendStatus("failed", "Could not undo the send.")
+    startOutgoingSendPolling(state.sendID)
   })
 }
 
@@ -15613,7 +15711,18 @@ window.addEventListener("message", function (e) {
   if (e.data.type === "emailLinkClick") {
     // The sandboxed message frame cannot open popups; open its links here.
     // Only web and mail links are opened.
-    if (/^(https?:|mailto:)/i.test(String(e.data.href || ""))) window.open(String(e.data.href), "_blank", "noopener,noreferrer")
+    var linkHref = String(e.data.href || "")
+    if (!/^(https?:|mailto:)/i.test(linkHref)) return
+    var openLink = function () { window.open(linkHref, "_blank", "noopener,noreferrer") }
+    // The sanitizer flags a link whose shown address is another site's; ask first.
+    var mismatch = String(e.data.mismatch || "")
+    if (!mismatch) {
+      openLink()
+      return
+    }
+    ravenConfirm("Open this link?", "This link goes to " + mismatch + ", not the address shown. Open it anyway?", "Open link").then(function (ok) {
+      if (ok) openLink()
+    })
     return
   }
   if (e.data.type === "emailKeydown") {

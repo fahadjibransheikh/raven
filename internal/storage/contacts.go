@@ -2809,3 +2809,27 @@ func (db *DB) UpsertObservedContactsForMessage(ctx context.Context, accountID, f
 		}
 	}
 }
+
+// ListObservedSenderDomains returns, per email host, how many messages the user has
+// observed from or to it. Suppressed (user-deleted) observations are skipped.
+func (db *DB) ListObservedSenderDomains(ctx context.Context, userID string) (map[string]int, error) {
+	rows, err := db.Read().QueryContext(ctx, `
+		SELECT substr(normalized_email, instr(normalized_email, '@') + 1), SUM(message_count)
+		FROM contact_observations
+		WHERE user_id = ? AND is_suppressed = 0 AND instr(normalized_email, '@') > 0
+		GROUP BY 1`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	domains := map[string]int{}
+	for rows.Next() {
+		var domain string
+		var count int
+		if err := rows.Scan(&domain, &count); err != nil {
+			return nil, err
+		}
+		domains[domain] = count
+	}
+	return domains, rows.Err()
+}

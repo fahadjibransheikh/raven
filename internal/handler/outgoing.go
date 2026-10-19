@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"net/mail"
+	"strconv"
 	"strings"
 	"time"
 
@@ -228,6 +229,18 @@ func (h *Handler) outgoingEnvelopeFrom(ctx context.Context, accountID string, ms
 		return account.Email
 	}
 	return msg.FromEmail
+}
+
+// undoSendDelay is how long /compose holds a message before it may be sent.
+// Unknown values fall back to the 10 s default: MergeUISettings stores any string.
+func undoSendDelay(settings map[string]string) time.Duration {
+	switch v := settings["undo_send_seconds"]; v {
+	case "0", "5", "10", "20", "30":
+		n, _ := strconv.Atoi(v)
+		return time.Duration(n) * time.Second
+	default:
+		return 10 * time.Second
+	}
 }
 
 func (h *Handler) signalOutgoingWorker() {
