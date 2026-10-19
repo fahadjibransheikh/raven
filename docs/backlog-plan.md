@@ -1,6 +1,6 @@
 # Feature backlog 1–6: plan
 
-Status: in progress, 2026-10-19. Scope chosen by the user: backlog items 1–6 from
+Status: done, 2026-10-19 (PRs #28–#33 merged). Scope chosen by the user: backlog items 1–6 from
 `docs/schema-and-history.md`. Mail rules (7) and smart tabs (8) are left for later.
 
 One branch and one PR per feature group, each from `main`. No merges and no deploys

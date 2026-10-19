@@ -48,15 +48,15 @@ From a comparison with Bytemail's marketing page (unverified). Build in Raven.
 
 | # | Feature | Decision | Notes |
 |---|---|---|---|
-| 1 | Undo send (5–30 s) + undo archive/trash/move | Build | Reuse the scheduled-send path: delayed send + cancel toast. |
-| 2 | Snooze until a time | Build | Shares a timer/wake-up queue with 1 and 3. |
-| 3 | Follow-up reminders (no reply by a date) | Build | Same queue; build 1–3 as one feature. |
-| 4 | "Copy code" for sign-in codes in notifications | Build | Small; Web Push + desktop notification action. |
-| 5 | Tracker stripping (pixels when images load, `utm_` etc. in links) | Build | Hooks into the sanitizer and image relay. |
-| 6 | Link mismatch and look-alike sender warnings | Build | Local only; moderate. |
+| 1 | Undo send (5–30 s) + undo archive/trash/move | Built (#32, 2026-10-19) | Undo send holds sends for `undo_send_seconds` (default 10 s). Undo for archive/trash/move already existed. |
+| 2 | Snooze until a time | Built (#33, 2026-10-19) | Local only (`message_timers`, schema v123); a Snoozed view; other clients still show the mail. |
+| 3 | Follow-up reminders (no reply by a date) | Built (#33, 2026-10-19) | Same timers and worker as snooze. |
+| 4 | "Copy code" for sign-in codes in notifications | Built (#31, 2026-10-19) | Code in the notification text, an in-app Copy toast and a chip in the message view. No notification action buttons (Safari, iOS PWA and Tauri lack them). |
+| 5 | Tracker stripping (pixels when images load, `utm_` etc. in links) | Built (#29, 2026-10-19) | In the sanitizer: tracking query params and pixel-sized images. |
+| 6 | Link mismatch and look-alike sender warnings | Built (#29, #30, 2026-10-19) | Confirm before opening a mismatched link; banner for look-alike senders. No Reply-To check (not stored). |
 | 7 | Mail rules (match → move/archive/read/trash) | Build, later | Larger: rules UI plus sync hooks for IMAP, Gmail and Outlook. |
 | 8 | Smart tabs + "To Reply" | Build tabs later; defer "To Reply" | Gmail categories can feed tabs; IMAP needs a classifier. "To Reply" leans on AI. |
 | – | Reply templates, mute thread, Subscriptions list | Low priority | |
 | – | AI summaries/rewrite/suggested replies | Skip | Needs an LLM provider and keys; conflicts with local-first. |
 
-Order: 1–3 together, then 4 and 5, then 6, then 7 and 8.
+Items 1–6 shipped on 2026-10-19 (plan: `docs/backlog-plan.md`). Next: 7 and 8.
