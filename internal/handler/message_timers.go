@@ -88,7 +88,7 @@ func (h *Handler) StartMessageTimerWorker(ctx context.Context) {
 		h.ownedMailbox.StartMessageTimerWorker(ctx)
 		return
 	}
-	go func() {
+	loop := func(ctx context.Context) {
 		ticker := time.NewTicker(messageTimerTick)
 		defer ticker.Stop()
 		for {
@@ -99,15 +99,25 @@ func (h *Handler) StartMessageTimerWorker(ctx context.Context) {
 			case <-ticker.C:
 			}
 		}
-	}()
+	}
+	if h.userIMAP != nil {
+		// Registered so shutdown waits for it before user stores close.
+		if err := h.userIMAP.StartBackgroundService(ctx, loop); err != nil && ctx.Err() == nil {
+			log.Printf("message timers: start: %v", err)
+		}
+		return
+	}
+	go loop(ctx)
 }
 
 func (h *Handler) runMessageTimers(ctx context.Context, now time.Time) {
+	if h.syncer == nil {
+		return
+	}
+	// Managed mode shares this bus with the user IMAP service.
+	publish := h.syncer.Events().Publish
 	if h.userStorage == nil {
-		if h.syncer == nil {
-			return
-		}
-		h.runMessageTimersIn(ctx, h.db, "", now, h.syncer.Events().Publish)
+		h.runMessageTimersIn(ctx, h.db, "", now, publish)
 		return
 	}
 	// shortcut: opens every owner's store each tick; fine for a handful of users, move to the account service schedule if that grows.
@@ -122,7 +132,7 @@ func (h *Handler) runMessageTimers(ctx context.Context, now time.Time) {
 		}
 		for _, owner := range owners {
 			if err := h.userStorage.WithExistingUser(ctx, owner, func(db *storage.DB) error {
-				h.runMessageTimersIn(ctx, db, owner, now, h.userIMAP.Events().Publish)
+				h.runMessageTimersIn(ctx, db, owner, now, publish)
 				return nil
 			}); err != nil && !errors.Is(err, storage.ErrUserStoreOwner) && ctx.Err() == nil {
 				log.Printf("message timers %s: %v", owner, err)

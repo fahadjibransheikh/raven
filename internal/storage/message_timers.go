@@ -47,6 +47,13 @@ func migrateV122ToV123(db *sql.DB) error {
 	return tx.Commit()
 }
 
+// timerSQLTime stores timer times as UTC "YYYY-MM-DD HH:MM:SS" text, which
+// sorts as text and parses with SQLite's datetime(). messages.date_received
+// holds mixed formats, so comparisons with it go through datetime().
+func timerSQLTime(t time.Time) string {
+	return t.UTC().Format(time.DateTime)
+}
+
 type MessageTimer struct {
 	ID        int64
 	AccountID string
@@ -77,7 +84,7 @@ func (db *DB) SetMessageTimer(ctx context.Context, userID string, messageID int6
 		VALUES (?, ?, ?, ?, ?, ?)
 		ON CONFLICT (account_id, thread_key, kind) DO UPDATE SET
 			message_id = excluded.message_id, due_at = excluded.due_at, created_at = excluded.created_at
-		RETURNING id`, timer.AccountID, timer.ThreadKey, messageID, kind, timer.DueAt, timer.CreatedAt).Scan(&timer.ID); err != nil {
+		RETURNING id`, timer.AccountID, timer.ThreadKey, messageID, kind, timerSQLTime(timer.DueAt), timerSQLTime(timer.CreatedAt)).Scan(&timer.ID); err != nil {
 		return MessageTimer{}, err
 	}
 	if kind == MessageTimerSnooze {
@@ -116,7 +123,7 @@ func (db *DB) deleteMessageTimer(ctx context.Context, accountID, threadKey, kind
 func (db *DB) DueMessageTimers(ctx context.Context, now time.Time, limit int) ([]MessageTimer, error) {
 	rows, err := db.Read().QueryContext(ctx, `
 		SELECT id, account_id, thread_key, message_id, kind, due_at, created_at
-		FROM message_timers WHERE due_at <= ? ORDER BY due_at LIMIT ?`, now.UTC(), limit)
+		FROM message_timers WHERE due_at <= ? ORDER BY due_at LIMIT ?`, timerSQLTime(now), limit)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +142,7 @@ func (db *DB) DueMessageTimers(ctx context.Context, now time.Time, limit int) ([
 // FinishMessageTimer deletes a due timer by id, so a timer replaced after it
 // was listed is left alone.
 func (db *DB) FinishMessageTimer(ctx context.Context, timer MessageTimer) (bool, error) {
-	result, err := db.Write().ExecContext(ctx, `DELETE FROM message_timers WHERE id = ? AND due_at = ?`, timer.ID, timer.DueAt)
+	result, err := db.Write().ExecContext(ctx, `DELETE FROM message_timers WHERE id = ? AND due_at = ?`, timer.ID, timerSQLTime(timer.DueAt))
 	if err != nil {
 		return false, err
 	}
@@ -154,9 +161,9 @@ func (db *DB) ThreadRepliedSince(ctx context.Context, accountID, threadKey strin
 		SELECT EXISTS (
 			SELECT 1 FROM messages m JOIN accounts a ON a.id = m.account_id
 			WHERE m.account_id = ? AND COALESCE(NULLIF(m.thread_id, ''), printf('msg:%d', m.id)) = ?
-			  AND m.date_received > ? AND lower(m.from_email) <> lower(a.email_address)
+			  AND datetime(m.date_received) > datetime(?) AND lower(m.from_email) <> lower(a.email_address)
 			  AND lower(m.from_email) NOT IN (SELECT lower(email) FROM account_identities WHERE account_id = a.id))`,
-		accountID, threadKey, since.UTC()).Scan(&replied)
+		accountID, threadKey, timerSQLTime(since)).Scan(&replied)
 	return replied == 1, err
 }
 
@@ -170,7 +177,7 @@ func (db *DB) RepliedSnoozes(ctx context.Context, limit int) ([]MessageTimer, er
 		WHERE t.kind = 'snooze' AND EXISTS (
 			SELECT 1 FROM messages m
 			WHERE m.account_id = t.account_id AND COALESCE(NULLIF(m.thread_id, ''), printf('msg:%d', m.id)) = t.thread_key
-			  AND m.date_received > t.created_at AND lower(m.from_email) <> lower(a.email_address)
+			  AND datetime(m.date_received) > datetime(t.created_at) AND lower(m.from_email) <> lower(a.email_address)
 			  AND lower(m.from_email) NOT IN (SELECT lower(email) FROM account_identities WHERE account_id = a.id))
 		LIMIT ?`, limit)
 	if err != nil {

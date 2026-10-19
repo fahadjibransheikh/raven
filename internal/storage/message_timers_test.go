@@ -152,6 +152,14 @@ func TestFollowUpDoesNotHideAndReplyDetection(t *testing.T) {
 	if replied, _ := db.ThreadRepliedSince(ctx, "acc", timer.ThreadKey, created); replied {
 		t.Fatal("own message counted as a reply")
 	}
+	// Same day, earlier, written in RFC 3339 form: text comparison would call it newer.
+	if _, err := db.Write().ExecContext(ctx, `INSERT INTO messages (id, account_id, internet_message_id, thread_id, subject, from_email, date_received)
+		VALUES (12, 'acc', '<early@x>', 't1', 's', 'them@example.org', '2026-01-01T11:00:00Z')`); err != nil {
+		t.Fatal(err)
+	}
+	if replied, _ := db.ThreadRepliedSince(ctx, "acc", timer.ThreadKey, created); replied {
+		t.Fatal("earlier RFC 3339 message counted as a reply")
+	}
 	if _, err := db.Write().ExecContext(ctx, `INSERT INTO messages (id, account_id, internet_message_id, thread_id, subject, from_email, date_received)
 		VALUES (11, 'acc', '<reply@x>', 't1', 's', 'them@example.org', '2026-01-01 14:00:00')`); err != nil {
 		t.Fatal(err)
