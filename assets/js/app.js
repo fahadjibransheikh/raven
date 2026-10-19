@@ -4139,6 +4139,7 @@ document.addEventListener("DOMContentLoaded", function () {
       if (!data || !data.folder_id) return
 
       refreshSidebarUnread()
+      showMailCodeToast(data)
       showBrowserTabNewMailNotification(data)
       withMailListForFolder(data.folder_id, data.folder_role || "", function (vml) { vml.onNewEmail() })
     })
@@ -4783,6 +4784,31 @@ document.addEventListener("DOMContentLoaded", function () {
     })
   }
 
+  // A new message carries a sign-in code: offer a one-click copy while the app is open.
+  function showMailCodeToast(data) {
+    if (!data.code || Number(data.unread_count || 0) <= 0) return
+    var role = String(data.folder_role || "")
+    if (role === "sent" || role === "drafts" || role === "trash" || role === "junk" || role === "archive") return
+    var code = String(data.code)
+    var toast = showRavenToast({
+      id: "mail-code-toast",
+      title: "Code " + code,
+      description: String(data.from_name || data.from_email || ""),
+      variant: "default", icon: "info", position: "bottom-right", duration: 20000, dismissible: true,
+      secondaryActionLabel: "Copy",
+      onSecondaryAction: function () {
+        var button = toast.querySelector("[data-raven-toast-secondary]")
+        var clipboard = navigator.clipboard
+        var copied = clipboard && clipboard.writeText ? clipboard.writeText(code) : Promise.reject(new Error("no clipboard"))
+        copied.then(function () {
+          if (button) button.textContent = "Copied"
+        }, function () {
+          if (button) button.textContent = "Couldn't copy"
+        })
+      },
+    })
+  }
+
   function showBrowserTabNewMailNotification(data) {
     if (!notificationsEnabled()) return
     if (_notificationActiveMethod !== "browser_tab") return
@@ -4800,6 +4826,7 @@ document.addEventListener("DOMContentLoaded", function () {
     var folderName = String(data.folder_name || "Inbox")
     var title = unreadCount === 1 ? sender : unreadCount + " new messages"
     var body = unreadCount === 1 ? subject : sender + ": " + subject
+    if (data.code) body = "Code " + data.code + " \u00b7 " + body
     var icon = data.avatar_url || data.icon || "/assets/logo.png"
 
     deliverNotification(title, {

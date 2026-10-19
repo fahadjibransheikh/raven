@@ -14,6 +14,7 @@ import (
 	avatarresolver "github.com/fahadjibransheikh/raven/internal/avatar"
 	"github.com/fahadjibransheikh/raven/internal/config"
 	"github.com/fahadjibransheikh/raven/internal/mail/imap"
+	"github.com/fahadjibransheikh/raven/internal/mail/message"
 	"github.com/fahadjibransheikh/raven/internal/models"
 	"github.com/fahadjibransheikh/raven/internal/providerquota"
 	"github.com/fahadjibransheikh/raven/internal/providers"
@@ -1276,6 +1277,10 @@ func (o *SyncOrchestrator) publishNewMail(ctx context.Context, accountID, folder
 		payload["subject"] = summary.Latest.Subject
 		payload["from_name"] = summary.Latest.FromName
 		payload["from_email"] = summary.Latest.FromEmail
+		// IMAP sync only fetches envelopes, so Snippet is the subject here; no body is read on the sync path.
+		if code := message.ExtractSignInCode(summary.Latest.Subject, summary.Latest.Snippet); code != "" {
+			payload["code"] = code
+		}
 		if avatarURL := o.imapSenderAvatarURL(ctx, summary.Latest.FromEmail); avatarURL != "" {
 			payload["avatar_url"] = avatarURL
 		}

@@ -251,10 +251,16 @@ func newMailNotificationText(payload map[string]any, unreadCount int) (string, s
 		folder = "Inbox"
 	}
 
-	if unreadCount == 1 {
-		return sender, subject
+	// The code leads so a collapsed notification still shows it.
+	codePrefix := ""
+	if code := strings.TrimSpace(stringPayload(payload, "code")); code != "" {
+		codePrefix = "Code " + code + " · "
 	}
-	return strconv.Itoa(unreadCount) + " new messages", sender + ": " + subject + " - " + folder
+
+	if unreadCount == 1 {
+		return sender, codePrefix + subject
+	}
+	return strconv.Itoa(unreadCount) + " new messages", codePrefix + sender + ": " + subject + " - " + folder
 }
 
 func newMailNotificationIcon(payload map[string]any) string {
