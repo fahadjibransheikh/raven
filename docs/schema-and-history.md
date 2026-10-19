@@ -70,3 +70,9 @@ Reported by the user from the Mac app; not yet investigated.
 | C1 | Google Meet links don't open | "Join meeting" in the event dialog does nothing for a Google Meet event. Start at `internal/calendar/meeting.go` (`MeetingJoinURL`, `GoogleMeetJoinURLFromDescription`) and how the dialog opens the link in the desktop app. |
 | C2 | No reminder before a meeting starts | Raven sends no notification when a meeting is about to start. Needs a reminder lead time and delivery through the existing desktop and web push notifications. |
 | C3 | Agenda view is confusing | The agenda panel next to the 3-day view repeats every event as a large card with the date on the right, the same account address on every card and an icon per row. All-day events repeat daily. Rework it: group by day, one compact line per event, collapse repeated all-day events, drop the per-card account line. |
+
+## Compose (reported 2026-10-19)
+
+| # | Issue | Notes |
+|---|---|---|
+| M1 | Compose should open inline by default | New mail and replies should open in the message pane ("Inline, one pane", setting value `pane`), with a way to expand to the full view. Today both defaults are `dialog` (`default_compose_view` in `internal/storage/repository.go`; `default_new_compose_view` / `default_reply_compose_view` fall back to it). Change the default for new users and for existing users who never picked one, and check the pane's expand control. |
