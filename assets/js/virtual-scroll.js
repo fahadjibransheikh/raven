@@ -380,6 +380,13 @@ class VirtualMailList {
       this.visibleRows.clear()
       this.rowByIndex.clear()
       var syncing = this.syncState && this.syncState.active
+      var firstRun = !syncing && this.container.hasAttribute("data-no-accounts") && document.getElementById("mail-first-run-template")
+      if (firstRun) {
+        // MailListFirstRun in maillist.templ: one source for the server and client empty list.
+        this.itemsContainer.replaceChildren(firstRun.content.cloneNode(true))
+        this.animateExitingRows(stale ? stale.rows : null, new Set(), 180, "cubic-bezier(0.2, 0, 0, 1)", 14, 18)
+        return
+      }
       var syncCount = syncing ? this.syncCountLabel() : ""
       var empty = this.emptyStateCopy()
       var subtitle = syncing
@@ -2001,7 +2008,7 @@ class VirtualMailList {
   // otherwise the text names the folder (role comes from the sidebar link, or is the unified folder id).
   emptyStateCopy() {
     if (this.container && this.container.hasAttribute("data-no-accounts")) {
-      return { title: "No accounts yet", text: "Add an email account to start reading mail.", ctaHref: "/settings/accounts", ctaLabel: "Add account" }
+      return { title: "Add your first account", text: "Raven keeps your mail on the computer it runs on.", ctaHref: "/settings/accounts", ctaLabel: "Add account" }
     }
     var base = this.emptyFilters()
     var current = this.filters || base

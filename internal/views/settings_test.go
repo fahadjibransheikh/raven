@@ -924,15 +924,15 @@ func TestChooseAccountTypeDialogOffersOnlyConfiguredOAuthProviders(t *testing.T)
 	const gmail, outlook = `"gmail-account-dialog"`, `"outlook-account-dialog"`
 
 	both := render(true, true)
-	if !strings.Contains(both, gmail) || !strings.Contains(both, outlook) || strings.Contains(both, "isn't set up") {
+	if !strings.Contains(both, gmail) || !strings.Contains(both, outlook) || strings.Contains(both, "not available yet") {
 		t.Fatal("chooser hides a configured OAuth provider")
 	}
 	noGoogle := render(false, true)
-	if strings.Contains(noGoogle, gmail) || !strings.Contains(noGoogle, outlook) || !strings.Contains(noGoogle, "Google sign-in isn't set up on this Raven.") {
+	if strings.Contains(noGoogle, gmail) || !strings.Contains(noGoogle, outlook) || !strings.Contains(noGoogle, "GOOGLE_OAUTH_CLIENT_ID") {
 		t.Fatal("chooser without Google should drop Gmail, keep Outlook, and say why")
 	}
 	noMicrosoft := render(true, false)
-	if strings.Contains(noMicrosoft, outlook) || !strings.Contains(noMicrosoft, gmail) || !strings.Contains(noMicrosoft, "Microsoft sign-in isn't set up on this Raven.") {
+	if strings.Contains(noMicrosoft, outlook) || !strings.Contains(noMicrosoft, gmail) || !strings.Contains(noMicrosoft, "MICROSOFT_OAUTH_CLIENT_ID") {
 		t.Fatal("chooser without Microsoft should drop Outlook, keep Gmail, and say why")
 	}
 	for name, html := range map[string]string{"google off": noGoogle, "microsoft off": noMicrosoft} {

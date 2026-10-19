@@ -667,6 +667,13 @@ templ FilterCalendar(id string, name string, value *time.Time) {
 }
 
 templ MailListEmails(accounts []models.Account, emails []models.Email, folderID string, selectedEmail *models.Email, totalCount int, scrollCount int, windowStart int, senderDisplayMode string, viewMode string, navigationMode string) {
+	if len(accounts) == 0 {
+		// virtual-scroll.js renders the empty list itself and clears #mail-list-scroll on start,
+		// so the first-run markup it clones lives beside the scroller, not in it.
+		<template id="mail-first-run-template">
+			@MailListFirstRun()
+		</template>
+	}
 	<div
 		id="mail-list-scroll"
 		class="h-full overflow-y-auto px-2 py-2"
@@ -1163,17 +1170,35 @@ templ MailListTableItem(email models.Email, position int, selectedEmail *models.
 }
 
 templ MailListEmpty(accounts []models.Account, folderID string) {
-	<div class="flex flex-col items-center justify-center py-20 px-4 text-center">
-		<div class="size-12 rounded-xl flex items-center justify-center mb-3 border">
-			@icon.Inbox(icon.Props{Class: "size-5 text-subtle-foreground"})
-		</div>
-		if len(accounts) == 0 {
-			<h3 class="font-medium text-sm mb-1">No accounts yet</h3>
-			<p class="text-xs text-muted-foreground">Add an email account to start reading mail.</p>
-			<a href="/settings/accounts" class="mt-4 inline-flex h-8 items-center rounded-md border border-border px-3 text-xs font-semibold text-foreground hover:bg-accent">Add account</a>
-		} else {
+	if len(accounts) == 0 {
+		@MailListFirstRun()
+	} else {
+		<div class="flex flex-col items-center justify-center py-20 px-4 text-center">
+			<div class="size-12 rounded-xl flex items-center justify-center mb-3 border">
+				@icon.Inbox(icon.Props{Class: "size-5 text-subtle-foreground"})
+			</div>
 			<h3 class="font-medium text-sm mb-1">No emails</h3>
 			<p class="text-xs text-muted-foreground">{ mailListEmptyText(accounts, folderID) }</p>
+		</div>
+	}
+}
+
+// MailListFirstRun is the list pane before any account exists: Raven's first screen for a new
+// user, so it states the local-first promise and opens the provider picker directly
+// (ChooseAccountTypeDialog is on every mail page).
+templ MailListFirstRun() {
+	<div class="mail-first-run flex flex-col items-start px-6 py-12 max-w-sm" data-mail-first-run>
+		<img src={ AssetURL("/assets/logo.svg") } alt="" class="size-10 mb-5"/>
+		<h3 class="text-base font-semibold tracking-tight text-foreground mb-2">Add your first account</h3>
+		<p class="text-sm leading-relaxed text-muted-foreground">Raven keeps your mail on the computer it runs on and connects straight to your provider. No Raven server sits in between.</p>
+		<p class="mt-2 text-sm leading-relaxed text-muted-foreground">Passwords are stored encrypted, and you can add more accounts later.</p>
+		@dialog.Trigger(dialog.TriggerProps{For: "choose-account-type-dialog"}) {
+			@button.Button(button.Props{
+				Class: "mt-6 bg-primary text-primary-foreground hover:bg-primary/90",
+			}) {
+				@icon.Plus(icon.Props{Class: "size-4"})
+				Add account
+			}
 		}
 	</div>
 }
