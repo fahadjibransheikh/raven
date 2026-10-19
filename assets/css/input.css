@@ -2802,12 +2802,6 @@ aside[data-app-sidebar] nav a.py-1\.5 {
   color: color-mix(in srgb, var(--color-primary) 35%, var(--color-foreground));
 }
 
-/* Dark agenda cards need a visible lift above their normal card surface. */
-.dark [data-calendar-agenda-event]:is([data-calendar-response-state=""], [data-calendar-response-state="accepted"]):hover {
-  background-color: color-mix(in srgb, var(--color-foreground) 8%, var(--color-card));
-  border-color: color-mix(in srgb, var(--color-foreground) 20%, var(--color-border));
-}
-
 /* RSVP has distinct surfaces and readable labels, using only theme colors.
    Pending is hollow, Maybe is hatched, and Declined recedes from the grid. */
 [data-calendar-event-trigger][data-calendar-response-state="pending"] {
@@ -2894,7 +2888,7 @@ aside[data-app-sidebar] nav a.py-1\.5 {
   transition-timing-function: var(--default-transition-timing-function, cubic-bezier(0.4, 0, 0.2, 1));
 }
 
-[data-calendar-event-trigger] .calendar-event-response-indicator {
+[data-calendar-event-trigger] .calendar-event-response-indicator[data-calendar-response-compact="true"] {
   background-color: var(--calendar-response-label, transparent);
   color: var(--calendar-response-label-text, var(--color-muted-foreground));
   padding: 3px 6px;
@@ -2923,6 +2917,52 @@ aside[data-app-sidebar] nav a.py-1\.5 {
 
 :root [data-calendar-event-trigger][data-calendar-response-state="declined"] .text-primary {
   color: var(--color-muted-foreground);
+}
+
+/* Agenda rows are flat list lines. The RSVP rules above recolour a whole trigger for the
+   grid pills; here the reply status is only the quiet italic label, so undo them. Specificity
+   is one step above those rules (and the hover variant) on purpose. */
+:root [data-calendar-agenda-event][data-calendar-event-trigger]:is([data-calendar-response-state]) {
+  --calendar-response-content-surface: transparent;
+  background-color: transparent;
+  background-image: none;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+:root [data-calendar-agenda-event][data-calendar-event-trigger]:is([data-calendar-response-state]):is(:hover, :focus-visible) {
+  --calendar-response-content-surface: transparent;
+  background-color: color-mix(in srgb, var(--color-accent) 50%, transparent);
+}
+
+:root [data-calendar-agenda-event][data-calendar-event-trigger]:is([data-calendar-response-state]):focus-visible {
+  box-shadow: 0 0 0 2px var(--color-ring);
+}
+
+/* Time marks, set by the page script: over, under way, and next to start. */
+[data-calendar-agenda-event][data-agenda-state="past"] {
+  opacity: 0.55;
+}
+
+[data-calendar-agenda-event]:is([data-agenda-state="now"], [data-agenda-state="next"])::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.375rem;
+  bottom: 0.375rem;
+  width: 2px;
+  border-radius: 1px;
+  background-color: var(--color-primary);
+}
+
+[data-calendar-agenda-event][data-agenda-state="now"] [data-calendar-agenda-time] {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+[data-calendar-agenda-event][data-agenda-state="next"] [data-calendar-agenda-time] {
+  color: var(--color-foreground);
+  font-weight: 600;
 }
 
 /* Match the other app skeletons without animating borders, grids, or controls. */

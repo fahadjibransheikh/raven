@@ -8812,6 +8812,39 @@ document.addEventListener("change", function (event) {
   saveCalendarVisibility(sourceID, state)
 })
 
+// Marks agenda rows by time: "past" (over), "now" (under way) and "next" (the first still to
+// start). Only when the view shows today; elsewhere nothing is past or next. The page stays
+// open as time passes, so this also runs every minute.
+var _calendarAgendaTimer = null
+function updateCalendarAgendaTime() {
+  var calendar = document.getElementById("calendar-main")
+  var rows = Array.from(document.querySelectorAll("[data-calendar-agenda-event]"))
+  if (rows.length && !_calendarAgendaTimer) _calendarAgendaTimer = setInterval(updateCalendarAgendaTime, 60000)
+  var today = calendar && calendar.dataset.calendarTodayDate
+  var showsToday = !!today && !!calendar.querySelector('[data-calendar-day="' + today + '"]')
+  var now = Date.now()
+  var nextStart = Infinity
+  var states = rows.map(function (row) {
+    if (!showsToday) return ""
+    var d = row.dataset
+    if (d.calendarEventAllDay === "true") return d.calendarEventEndDate && d.calendarEventEndDate <= today ? "past" : ""
+    var start = Date.parse(d.calendarEventStart)
+    var end = Date.parse(d.calendarEventEnd)
+    if (isNaN(start)) return ""
+    if (isNaN(end) || end <= start ? start < now : end <= now) return "past"
+    if (start <= now) return "now"
+    if (!row.hidden && start < nextStart) nextStart = start
+    return "upcoming"
+  })
+  rows.forEach(function (row, index) {
+    var state = states[index]
+    if (state === "upcoming") state = !row.hidden && Date.parse(row.dataset.calendarEventStart) === nextStart ? "next" : ""
+    if (state) row.setAttribute("data-agenda-state", state)
+    else row.removeAttribute("data-agenda-state")
+    if (state === "now") row.setAttribute("aria-current", "time")
+    else row.removeAttribute("aria-current")
+  })
+}
 function initializeCalendarDaySelection() {
   rememberCalendarPillGeometry(document.getElementById("calendar-main"))
   initializeCalendarVisibility()
@@ -8840,6 +8873,12 @@ function initializeCalendarDaySelection() {
     event.hidden = !show
     if (show) visible++
   })
+  // A day with nothing showing loses its heading; with one day selected the panel title already names it.
+  agenda.querySelectorAll("[data-calendar-agenda-day]").forEach(function (group) {
+    group.hidden = !group.querySelector("[data-calendar-agenda-event]:not([hidden])")
+    group.querySelector("[data-calendar-agenda-day-heading]").hidden = !!selected
+  })
+  updateCalendarAgendaTime()
   agenda.querySelector("#calendar-agenda-heading").textContent = selected ? selected.dataset.calendarDayTitle : "All events"
   agenda.querySelector("[data-calendar-agenda-context]").textContent = selected ?
     visible + (visible === 1 ? " event" : " events") : calendar.dataset.calendarMonthLabel
