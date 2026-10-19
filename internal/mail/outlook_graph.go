@@ -673,6 +673,7 @@ func (o *SyncOrchestrator) syncOutlookGraphFolder(ctx context.Context, accountID
 		endpoint = outlookGraphMessagesDeltaEndpoint(graphFolder.ID, o.imapScope == nil)
 	}
 
+	newMailMark := o.newMailMark(ctx)
 	eventTotal := 0
 	totalEstimated := true
 	folderName := displayName(folder.RemoteID, folder.Role)
@@ -699,6 +700,10 @@ func (o *SyncOrchestrator) syncOutlookGraphFolder(ctx context.Context, accountID
 			}
 		}
 		o.publishEvent(Event{Type: EventSyncComplete, AccountID: accountID, FolderID: folder.ID, FolderRole: folder.Role, Payload: o.folderSyncProgressPayload(o.outlookPersistContext(ctx), accountID, folderName, "graph", payload)})
+		// A full baseline re-reads the whole folder, so only delta passes announce mail.
+		if syncErr == nil && !full && folder.Role == "inbox" {
+			o.publishNewProviderMail(o.outlookPersistContext(ctx), accountID, newMailMark)
+		}
 	}()
 
 	fetched := startedCurrent
