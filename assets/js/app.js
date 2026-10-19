@@ -15553,7 +15553,18 @@ window.addEventListener("message", function (e) {
   if (e.data.type === "emailLinkClick") {
     // The sandboxed message frame cannot open popups; open its links here.
     // Only web and mail links are opened.
-    if (/^(https?:|mailto:)/i.test(String(e.data.href || ""))) window.open(String(e.data.href), "_blank", "noopener,noreferrer")
+    var linkHref = String(e.data.href || "")
+    if (!/^(https?:|mailto:)/i.test(linkHref)) return
+    var openLink = function () { window.open(linkHref, "_blank", "noopener,noreferrer") }
+    // The sanitizer flags a link whose shown address is another site's; ask first.
+    var mismatch = String(e.data.mismatch || "")
+    if (!mismatch) {
+      openLink()
+      return
+    }
+    ravenConfirm("Open this link?", "This link goes to " + mismatch + ", not the address shown. Open it anyway?", "Open link").then(function (ok) {
+      if (ok) openLink()
+    })
     return
   }
   if (e.data.type === "emailKeydown") {
