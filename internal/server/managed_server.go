@@ -158,6 +158,7 @@ func newManagedApplication(parent context.Context, path string, maxOpen int) (re
 		return nil, err
 	}
 	app.mailbox.StartAuthenticationEventRetentionWorker(ctx)
+	app.mailbox.StartMessageTimerWorker(ctx)
 	app.auth.StartSessionCleanup(ctx)
 	app.flows.StartCleanup(ctx)
 	app.notifications.Start(ctx)

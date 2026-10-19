@@ -598,6 +598,7 @@ templ SidebarFolderTree(accounts []models.Account, activeFolder string, uiSettin
 		if scheduledCount > 0 {
 			@SidebarScheduledFolder(activeFolder, scheduledCount)
 		}
+		@SidebarSnoozedFolder(activeFolder)
 		if uiSettingGet(uiSettings, "unified_folders_enabled", "true") != "false" {
 			@SidebarUnifiedSection(accounts, activeFolder, uiSettings, filters)
 		}
@@ -617,6 +618,18 @@ templ SidebarScheduledFolder(activeFolder string, scheduledCount int) {
 			Icon:     "calendar-clock",
 			Role:     "scheduled",
 			Unread:   scheduledCount,
+			IsSystem: true,
+		}, activeFolder, "")
+	</div>
+}
+
+templ SidebarSnoozedFolder(activeFolder string) {
+	<div class="mb-2">
+		@SidebarFolderLink(models.Folder{
+			ID:       "snoozed",
+			Name:     "Snoozed",
+			Icon:     "alarm-clock",
+			Role:     "snoozed",
 			IsSystem: true,
 		}, activeFolder, "")
 	</div>
@@ -910,6 +923,8 @@ templ SidebarFolderIcon(iconName string) {
 			@icon.File(icon.Props{Class: "size-4"})
 		case "calendar-clock":
 			@icon.CalendarClock(icon.Props{Class: "size-4"})
+		case "alarm-clock":
+			@icon.AlarmClock(icon.Props{Class: "size-4"})
 		case "archive":
 			@icon.Archive(icon.Props{Class: "size-4"})
 		case "alert-circle":

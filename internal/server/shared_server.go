@@ -173,6 +173,7 @@ func RunShared() {
 	h.StartContactSync(ctx)
 	h.StartCalendarSync(ctx)
 	h.StartOutgoingSendWorker(ctx)
+	h.StartMessageTimerWorker(ctx)
 	h.StartMessageMutationWorker(ctx)
 	h.StartMailRetentionWorker(ctx)
 	h.StartAuthenticationEventRetentionWorker(ctx)

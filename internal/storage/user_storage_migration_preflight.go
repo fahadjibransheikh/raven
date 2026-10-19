@@ -137,10 +137,11 @@ const (
 	migrationVersionPushRevision       = 120 // upstream 106: adds web_push_subscriptions.revision
 	migrationVersionResponseClaim      = 121 // upstream 107: adds calendar_response_requests.claim_id
 	migrationVersionRenamed            = 122 // Raven only: totp_credentials' column default (see legacy_rename.go)
+	migrationVersionMessageTimers      = 123 // Raven only: adds message_timers (see message_timers.go)
 )
 
 func migrationSharedVersionSupported(version int) bool {
-	return version == migrationVersionBeforePushRevision || version == migrationVersionPushRevision || version == migrationVersionResponseClaim || version == migrationVersionRenamed
+	return version == migrationVersionBeforePushRevision || version == migrationVersionPushRevision || version == migrationVersionResponseClaim || version == migrationVersionRenamed || version == migrationVersionMessageTimers
 }
 
 // These recognized shared schemas differ only in the explicitly handled push
@@ -463,6 +464,9 @@ func requireSharedMigrationTables(ctx context.Context, present map[string]bool, 
 		if !present[name] {
 			if name == "web_push_subscriptions" && version == migrationVersionBeforePushRevision {
 				continue // Same recognized historical absence as migrateV119ToV120.
+			}
+			if name == "message_timers" && version < migrationVersionMessageTimers {
+				continue // Added by migrateV122ToV123; an older source has no timers to copy.
 			}
 			return migrationSourceError(name, "required shared table is missing")
 		}

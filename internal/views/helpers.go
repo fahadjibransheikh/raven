@@ -576,7 +576,7 @@ func unifiedSidebarLabels(accounts []models.Account) []models.Label {
 
 func sidebarTagBaseFolder(activeFolder string) string {
 	folder := strings.TrimSpace(activeFolder)
-	if folder == "" || folder == "scheduled" {
+	if folder == "" || folder == "scheduled" || folder == "snoozed" {
 		return "inbox"
 	}
 	return folder
@@ -1208,10 +1208,10 @@ func folderEmptyLabel(folder models.Folder) string {
 }
 
 // folderMarkAllReadAvailable reports whether a sidebar folder can offer
-// "Mark all as read". Starred (a flag, not a folder) and Scheduled (local
-// queue) have no provider-side folder to mark.
+// "Mark all as read". Starred (a flag, not a folder), Scheduled (local
+// queue) and Snoozed (local timers) have no provider-side folder to mark.
 func folderMarkAllReadAvailable(folder models.Folder) bool {
-	return folder.ID != "" && folder.ID != "starred" && folder.ID != "scheduled"
+	return folder.ID != "" && folder.ID != "starred" && folder.ID != "scheduled" && folder.ID != "snoozed"
 }
 
 // AssetURL appends the content-hash version so a changed asset gets a new URL
