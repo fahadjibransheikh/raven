@@ -250,7 +250,7 @@ templ MailViewContent(email *models.Email, thread []models.ThreadItem, newestFir
 						<div class="flex items-center gap-2 mb-6">
 							@icon.MessagesSquare(icon.Props{Class: "size-3.5 text-subtle-foreground"})
 							<span class="text-xs font-medium text-subtle-foreground">{ fmt.Sprintf("%d messages in this thread", len(thread)) }</span>
-							<span class="text-xs text-subtle-foreground">|</span>
+							<span class="text-xs text-subtle-foreground" aria-hidden="true">·</span>
 							<button type="button" data-thread-expand-all class="flex items-center gap-1.5 text-xs text-subtle-foreground hover:text-foreground transition-colors cursor-pointer">
 								@icon.ChevronsUpDown(icon.Props{Class: "size-3.5"})
 								<span data-thread-expand-all-label>Expand all</span>
@@ -271,12 +271,12 @@ templ MailViewContent(email *models.Email, thread []models.ThreadItem, newestFir
 										<span class="hidden group-open:inline">Hide email</span>
 									</span>
 									<span class="group-open:hidden">
-										<span class="text-subtle-foreground">|</span>
-										<button type="button" data-thread-show-exclusive class="ml-1 text-subtle-foreground hover:text-foreground transition-colors cursor-pointer">Show and hide others</button>
+										<span class="text-subtle-foreground" aria-hidden="true">·</span>
+										<button type="button" data-thread-show-exclusive class="ml-1 text-subtle-foreground hover:text-foreground transition-colors cursor-pointer">Show only this</button>
 									</span>
 									<span class="hidden group-open:inline">
-										<span class="text-subtle-foreground">|</span>
-										<button type="button" data-thread-hide-others class="ml-1 text-subtle-foreground hover:text-foreground transition-colors cursor-pointer">Hide all others</button>
+										<span class="text-subtle-foreground" aria-hidden="true">·</span>
+										<button type="button" data-thread-hide-others class="ml-1 text-subtle-foreground hover:text-foreground transition-colors cursor-pointer">Collapse the rest</button>
 									</span>
 								</summary>
 								<div class="thread-details-content mt-3">
@@ -320,7 +320,7 @@ templ MailViewThreadItemSender(email *models.Email, item *models.ThreadItem, isT
 					<span class={ "text-xs px-1.5 py-0.5 rounded font-medium shrink-0", label.Color }>{ label.Name }</span>
 				}
 				if item.ID == email.ID {
-					<span class="text-xs font-medium text-primary-text bg-primary/10 px-1.5 py-0.5 rounded shrink-0">Current</span>
+					<span class="text-xs font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">Current</span>
 				}
 			</div>
 			<div class="text-xs text-subtle-foreground mt-0.5">

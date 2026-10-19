@@ -642,7 +642,7 @@ func (s *AccountStore) createAccountWithID(ctx context.Context, userID, id strin
 	}
 
 	initials := extractInitials(req.DisplayName)
-	color := generateColor(id)
+	color := s.nextAccountColor(ctx, userID, id)
 
 	query := `INSERT INTO accounts (id, user_id, provider, provider_account_id, email_address, display_name, color, initials,
 		  imap_host, imap_port, imap_tls_mode,
@@ -1546,13 +1546,50 @@ func firstRune(s string) string {
 	return ""
 }
 
+// accountColors are the default account colours, far enough apart in hue to tell
+// accounts apart by their row bar alone.
+var accountColors = []string{"#3b82f6", "#8b5cf6", "#ec4899", "#f97316", "#14b8a6", "#eab308"}
+
 func generateColor(id string) string {
-	colors := []string{"#3b82f6", "#8b5cf6", "#ec4899", "#f97316", "#14b8a6", "#6366f1"}
 	h := 0
 	for _, c := range id {
 		h = h*31 + int(c)
 	}
-	return colors[abs(h)%len(colors)]
+	return accountColors[abs(h)%len(accountColors)]
+}
+
+// pickAccountColor gives a new account the first default colour none of the user's
+// accounts use yet, so two accounts don't share one; once all are taken it hashes.
+func pickAccountColor(used []string, id string) string {
+	taken := make(map[string]bool, len(used))
+	for _, color := range used {
+		taken[strings.ToLower(strings.TrimSpace(color))] = true
+	}
+	for _, color := range accountColors {
+		if !taken[color] {
+			return color
+		}
+	}
+	return generateColor(id)
+}
+
+func (s *AccountStore) nextAccountColor(ctx context.Context, userID, id string) string {
+	rows, err := s.db.Read().QueryContext(ctx, `SELECT color FROM accounts WHERE user_id = ?`, userID)
+	if err != nil {
+		return generateColor(id)
+	}
+	defer rows.Close()
+	var used []string
+	for rows.Next() {
+		var color string
+		if rows.Scan(&color) == nil {
+			used = append(used, color)
+		}
+	}
+	if rows.Err() != nil {
+		return generateColor(id)
+	}
+	return pickAccountColor(used, id)
 }
 
 func abs(n int) int {

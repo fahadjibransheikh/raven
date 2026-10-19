@@ -443,7 +443,7 @@ func MailViewContent(email *models.Email, thread []models.ThreadItem, newestFirs
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "</span> <span class=\"text-xs text-subtle-foreground\">|</span> <button type=\"button\" data-thread-expand-all class=\"flex items-center gap-1.5 text-xs text-subtle-foreground hover:text-foreground transition-colors cursor-pointer\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "</span> <span class=\"text-xs text-subtle-foreground\" aria-hidden=\"true\">·</span> <button type=\"button\" data-thread-expand-all class=\"flex items-center gap-1.5 text-xs text-subtle-foreground hover:text-foreground transition-colors cursor-pointer\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -504,7 +504,7 @@ func MailViewContent(email *models.Email, thread []models.ThreadItem, newestFirs
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<span class=\"group-open:hidden\">Show email</span> <span class=\"hidden group-open:inline\">Hide email</span></span> <span class=\"group-open:hidden\"><span class=\"text-subtle-foreground\">|</span> <button type=\"button\" data-thread-show-exclusive class=\"ml-1 text-subtle-foreground hover:text-foreground transition-colors cursor-pointer\">Show and hide others</button></span> <span class=\"hidden group-open:inline\"><span class=\"text-subtle-foreground\">|</span> <button type=\"button\" data-thread-hide-others class=\"ml-1 text-subtle-foreground hover:text-foreground transition-colors cursor-pointer\">Hide all others</button></span></summary><div class=\"thread-details-content mt-3\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<span class=\"group-open:hidden\">Show email</span> <span class=\"hidden group-open:inline\">Hide email</span></span> <span class=\"group-open:hidden\"><span class=\"text-subtle-foreground\" aria-hidden=\"true\">·</span> <button type=\"button\" data-thread-show-exclusive class=\"ml-1 text-subtle-foreground hover:text-foreground transition-colors cursor-pointer\">Show only this</button></span> <span class=\"hidden group-open:inline\"><span class=\"text-subtle-foreground\" aria-hidden=\"true\">·</span> <button type=\"button\" data-thread-hide-others class=\"ml-1 text-subtle-foreground hover:text-foreground transition-colors cursor-pointer\">Collapse the rest</button></span></summary><div class=\"thread-details-content mt-3\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -720,7 +720,7 @@ func MailViewThreadItemSender(email *models.Email, item *models.ThreadItem, isTa
 			}
 		}
 		if item.ID == email.ID {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "<span class=\"text-xs font-medium text-primary-text bg-primary/10 px-1.5 py-0.5 rounded shrink-0\">Current</span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "<span class=\"text-xs font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0\">Current</span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

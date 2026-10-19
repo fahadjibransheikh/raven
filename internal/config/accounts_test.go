@@ -742,3 +742,15 @@ func TestCreateAccountReportsAnAlreadyConnectedMailbox(t *testing.T) {
 		t.Fatalf("second CreateAccount() error = %v, want ErrMailboxExists", err)
 	}
 }
+
+func TestPickAccountColorAvoidsUsedColors(t *testing.T) {
+	if got := pickAccountColor(nil, "a1"); got != accountColors[0] {
+		t.Fatalf("first account = %q, want %q", got, accountColors[0])
+	}
+	if got := pickAccountColor([]string{" #3B82F6 ", "#8b5cf6"}, "a3"); got != accountColors[2] {
+		t.Fatalf("third account = %q, want %q", got, accountColors[2])
+	}
+	if got := pickAccountColor(accountColors, "a7"); got != generateColor("a7") {
+		t.Fatalf("all taken = %q, want hashed %q", got, generateColor("a7"))
+	}
+}
