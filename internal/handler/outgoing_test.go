@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -835,5 +836,82 @@ func TestHandleComposeDraftFailsWhenTheBodyCannotBeStored(t *testing.T) {
 	h.handleComposeDraft(rec, req)
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d body = %s, want 500 so the UI does not show Saved", rec.Code, rec.Body.String())
+	}
+}
+
+func TestHandleComposeHoldsSendForUndoWindow(t *testing.T) {
+	cases := []struct {
+		setting string
+		want    time.Duration
+	}{
+		{"", 10 * time.Second},
+		{"0", 0},
+		{"30", 30 * time.Second},
+		{"999", 10 * time.Second},
+	}
+	for _, tc := range cases {
+		t.Run(tc.setting, func(t *testing.T) {
+			h, db := newAccountOwnershipTestHandler(t)
+			if tc.setting != "" {
+				if err := db.MergeUISettings(t.Context(), "owner", map[string]string{"undo_send_seconds": tc.setting}); err != nil {
+					t.Fatalf("MergeUISettings() error = %v", err)
+				}
+			}
+			form := url.Values{"account_id": {"victim-account"}, "to": {"recipient@example.com"}, "subject": {"Undo me"}, "body": {"body"}}
+			req := httptest.NewRequest(http.MethodPost, "/compose", strings.NewReader(form.Encode()))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			req = req.WithContext(auth.ContextWithUser(req.Context(), &auth.User{ID: "owner", Username: "owner"}))
+			rec := httptest.NewRecorder()
+			before := time.Now().UTC()
+			h.handleCompose(rec, req)
+			if rec.Code != http.StatusAccepted {
+				t.Fatalf("status = %d body = %q", rec.Code, rec.Body.String())
+			}
+			var response map[string]string
+			if err := json.NewDecoder(rec.Body).Decode(&response); err != nil {
+				t.Fatalf("decode response: %v", err)
+			}
+			if response["undo_seconds"] != strconv.Itoa(int(tc.want/time.Second)) {
+				t.Fatalf("undo_seconds = %q, want %v", response["undo_seconds"], tc.want)
+			}
+			queued, err := db.GetOutgoingSend(t.Context(), response["send_id"])
+			if err != nil {
+				t.Fatalf("GetOutgoingSend() error = %v", err)
+			}
+			if got := queued.SendAfter.Sub(before); got < tc.want-time.Second || got > tc.want+2*time.Second {
+				t.Fatalf("send_after - now = %v, want about %v", got, tc.want)
+			}
+			if queued.IsScheduled {
+				t.Fatal("undo-held send is marked scheduled")
+			}
+		})
+	}
+}
+
+func TestUndoSendCancelInsideWindowKeepsWorkerFromSending(t *testing.T) {
+	h, db := newAccountOwnershipTestHandler(t)
+	form := url.Values{"account_id": {"victim-account"}, "to": {"recipient@example.com"}, "subject": {"Undo me"}, "body": {"body"}}
+	req := httptest.NewRequest(http.MethodPost, "/compose", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req = req.WithContext(auth.ContextWithUser(req.Context(), &auth.User{ID: "owner", Username: "owner"}))
+	rec := httptest.NewRecorder()
+	h.handleCompose(rec, req)
+	var response map[string]string
+	if err := json.NewDecoder(rec.Body).Decode(&response); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+
+	if claimed, err := db.ClaimDueOutgoingSends(t.Context(), time.Now().UTC(), 10); err != nil || len(claimed) != 0 {
+		t.Fatalf("claimed inside undo window = %d, err = %v", len(claimed), err)
+	}
+	cancel := httptest.NewRequest(http.MethodPost, "/api/outgoing-sends/"+response["send_id"]+"/cancel", nil)
+	cancel.SetPathValue("id", response["send_id"])
+	rec = httptest.NewRecorder()
+	h.handleOutgoingSendCancel(rec, outgoingStatusRequest(cancel, "owner"))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("cancel status = %d body = %q", rec.Code, rec.Body.String())
+	}
+	if claimed, err := db.ClaimDueOutgoingSends(t.Context(), time.Now().UTC().Add(time.Minute), 10); err != nil || len(claimed) != 0 {
+		t.Fatalf("claimed after cancel = %d, err = %v", len(claimed), err)
 	}
 }

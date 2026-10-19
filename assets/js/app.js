@@ -6698,7 +6698,8 @@ function recoverComposeOutgoingSend(summary) {
     if (!draftField || String(draftField.value || "").trim() !== String(summary.draft_id).trim()) continue
     var fromPane = forms[i].id === "compose-pane-form"
     if (summary.status === "pending" || summary.status === "sending") {
-      _composeSendState = { formId: forms[i].id, fromPane: fromPane, sendID: summary.id }
+      var prevState = _composeSendState && _composeSendState.sendID === summary.id ? _composeSendState : null
+      _composeSendState = { formId: forms[i].id, fromPane: fromPane, sendID: summary.id, sendKey: prevState ? prevState.sendKey : undefined }
       forms[i].dataset.composeOutgoingStatus = outgoingSendStatusLabel(summary)
       _setComposeSending(forms[i], true)
       if (summary.status === "pending" && (Number(summary.attempt_count) > 0 || summary.is_scheduled)) {
@@ -12552,8 +12553,10 @@ function finishComposeSendSuccess(state) {
   if (!state) return
   if (state.sendID) stopOutgoingSendPolling(state.sendID)
   var form = document.getElementById(state.formId)
-  if (form) _setComposeSending(form, false)
   _composeSendState = null
+  // The dialog was hidden during the undo window and may since hold a new message: leave it be.
+  if (state.sendKey && (!form || form.dataset.composeSendKey !== state.sendKey)) return
+  if (form) _setComposeSending(form, false)
   setTimeout(function () {
     if (state.fromPane) {
       setMailViewEmpty(true)
@@ -14026,6 +14029,7 @@ function _sendComposeNow(form, fromPane) {
   }).then(function (data) {
     if (data && data.send_id && _composeSendState) {
       _composeSendState.sendID = data.send_id
+      if (Number(data.undo_seconds) > 0) showUndoSendToast(form, _composeSendState, Number(data.undo_seconds))
       startOutgoingSendPolling(data.send_id)
       fetchOutgoingSendStatus(data.send_id).catch(function () {})
     }
@@ -14037,6 +14041,59 @@ function _sendComposeNow(form, fromPane) {
     delete form.dataset.composeSendKey
     form.dataset.composeDirty = "true"
     showSendStatus("failed", err && err.message ? err.message : "Failed to connect to server")
+  })
+}
+
+// Undo send: the server holds the message for undo_seconds. The dialog closes at once but
+// keeps its contents until the send completes, so Undo can reopen it unchanged.
+function showUndoSendToast(form, state, seconds) {
+  state.sendKey = form.dataset.composeSendKey
+  if (!state.fromPane && window.tui && window.tui.dialog) {
+    window.tui.dialog.close("compose-dialog")
+    _updateComposeBtn(false)
+  }
+  _sendStatusToast = showRavenToast({
+    id: "compose-status-toast",
+    title: "Sending",
+    description: "Sending in " + seconds + " seconds",
+    variant: "info", icon: "info", position: "bottom-right", duration: seconds * 1000, dismissible: true,
+    secondaryActionLabel: "Undo",
+    onSecondaryAction: function () {
+      dismissRavenToast(_sendStatusToast)
+      undoComposeSend(state)
+    },
+  })
+}
+
+function undoComposeSend(state) {
+  stopOutgoingSendPolling(state.sendID)
+  fetch("/api/outgoing-sends/" + encodeURIComponent(state.sendID) + "/cancel", { method: "POST" }).then(function (r) {
+    if (r.status === 409) {
+      showSendStatus("sending", "Too late to undo: the message is already sending.")
+      startOutgoingSendPolling(state.sendID)
+      return
+    }
+    if (!r.ok) throw new Error("cancel failed: " + r.status)
+    if (_composeSendState && _composeSendState.sendID === state.sendID) _composeSendState = null
+    var form = document.getElementById(state.formId)
+    if (!form || form.dataset.composeSendKey !== state.sendKey) {
+      // shortcut: a compose opened during the undo window reused the dialog form, so the
+      // canceled text can't be put back; restore it from the send's message_json if this bites.
+      showSendStatus("canceled", "The message was not sent.")
+      return
+    }
+    _setComposeSending(form, false)
+    delete form.dataset.composeSendKey
+    form.dataset.composeDirty = "true"
+    hideSendStatus()
+    if (!state.fromPane && window.tui && window.tui.dialog) {
+      window.tui.dialog.open("compose-dialog")
+      _updateComposeBtn(true)
+    }
+  }).catch(function (err) {
+    console.warn(err)
+    showSendStatus("failed", "Could not undo the send.")
+    startOutgoingSendPolling(state.sendID)
   })
 }
 

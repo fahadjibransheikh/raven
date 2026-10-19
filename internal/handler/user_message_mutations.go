@@ -26,6 +26,7 @@ type userMessageMutationState struct {
 	events      []mail.Event
 	checked     map[string]bool
 	wake        map[string]bool
+	wakeAfter   map[string]time.Duration
 	credentials bool
 }
 

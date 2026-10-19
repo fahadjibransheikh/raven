@@ -107,7 +107,8 @@ func newUserStorageFixtureServices(t *testing.T, enableIMAP bool, oauth *mailaut
 			t.Fatal(err)
 		}
 		if err := routing.WithUser(t.Context(), owner, func(db *storage.DB) error {
-			if err := db.SetUISettings(t.Context(), owner, map[string]string{"theme": owner, "contacts_auto_create_observed": "false", "desktop_notifications": "true", "notification_mode": "web_push"}); err != nil {
+			// Sends go out at once here; the undo-send window has its own tests in handler and server.
+			if err := db.SetUISettings(t.Context(), owner, map[string]string{"theme": owner, "contacts_auto_create_observed": "false", "desktop_notifications": "true", "notification_mode": "web_push", "undo_send_seconds": "0"}); err != nil {
 				return err
 			}
 			if _, err := db.SaveContact(t.Context(), owner, models.Contact{ID: "same-contact-id", Name: owner + " private contact", Email: owner + "-contact@example.com"}); err != nil {
