@@ -757,6 +757,7 @@ func (h *Handler) handleEmailPartial(w http.ResponseWriter, r *http.Request) {
 			}
 			_ = h.db.FillThreadListUnsubscribe(ctx, thread)
 		}
+		fillSenderWarnings(ctx, h.db, userID, email, thread)
 		newestFirst := views.ThreadNewestFirst(h.db.GetUISettings(ctx, userID))
 		if newestFirst {
 			slices.Reverse(thread)
