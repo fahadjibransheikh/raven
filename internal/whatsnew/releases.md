@@ -7,6 +7,22 @@ Then an optional hero line, then "### New", "### Improved", "### Fixed" or
 replaces it with the real version number. GitHub release notes use the same text.
 -->
 
+## 1.1.3 | 2026-10-19 | Clearer mail list
+The mail list is easier to scan: unread mail stands out, sent mail shows who you wrote to, and you can see when mail last synced.
+
+### Improved
+- Unread messages now have a bold sender and subject instead of differing only by colour, and screen readers say "Unread".
+- Sent and Drafts show who you wrote to, such as "To Ana +2", instead of your own name.
+- The bottom of the mail list shows when mail last synced.
+- Table view gives the Subject column the most room by default. Column widths you set yourself are kept.
+- Message previews skip the rows of dashes and underscores that newsletters use as dividers.
+- A new account gets a colour none of your other accounts use.
+- Sidebar and list text is a little larger and more even, and Apply stands out in the filters.
+- The star button can be reached with the keyboard and is named for screen readers.
+
+### Fixed
+- On a phone, the Compose button above the mail list did nothing. It now opens a new message.
+
 ## 1.1.2 | 2026-10-19 | Undo send, snooze and safer links
 Take back a message after sending, snooze mail until later, and get warned about disguised links and senders.
 
