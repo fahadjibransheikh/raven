@@ -1626,4 +1626,12 @@ CREATE TABLE IF NOT EXISTS message_timers (
 );
 CREATE INDEX IF NOT EXISTS idx_message_timers_due ON message_timers(due_at);
 
-INSERT OR REPLACE INTO schema_version (version) VALUES (124);
+CREATE TABLE IF NOT EXISTS calendar_reminders (
+    source_id TEXT NOT NULL REFERENCES calendar_sources(id) ON DELETE CASCADE,
+    remote_id TEXT NOT NULL,
+    start_at DATETIME NOT NULL,
+    sent_at DATETIME NOT NULL,
+    PRIMARY KEY (source_id, remote_id, start_at)
+);
+
+INSERT OR REPLACE INTO schema_version (version) VALUES (125);

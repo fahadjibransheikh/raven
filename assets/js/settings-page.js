@@ -92,6 +92,10 @@
     if (undoSend && typeof RavenSettings !== 'undefined') {
       RavenSettings.set('undo_send_seconds', undoSend.value);
     }
+    var calendarReminder = e.target.closest('input[name="calendar_reminder_minutes"]');
+    if (calendarReminder && typeof RavenSettings !== 'undefined') {
+      RavenSettings.set('calendar_reminder_minutes', calendarReminder.value);
+    }
     var openNextAfterRemove = e.target.closest('[data-open-next-after-remove-setting]');
     if (openNextAfterRemove && typeof RavenSettings !== 'undefined') {
       RavenSettings.set('open_next_after_remove', openNextAfterRemove.checked ? 'true' : 'false');

@@ -8354,6 +8354,7 @@ func defaultUISettings() map[string]string {
 		"unified_folder_trash_enabled":      "true",
 		"auto_mark_read_after":              "0",
 		"undo_send_seconds":                 "10",
+		"calendar_reminder_minutes":         "10",
 		"open_next_after_remove":            "true",
 		"load_remote_images":                "false",
 		"translation_button_enabled":        "true",
