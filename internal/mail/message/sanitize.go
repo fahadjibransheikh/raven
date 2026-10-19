@@ -376,6 +376,34 @@ func nodeText(n *html.Node, b *strings.Builder) {
 // flagLinkMismatch marks a link whose visible text names one site while its
 // href goes to another, so the reader can be asked before following it. The
 // attribute is never accepted from input (cleanAttrs drops it); it is set here.
+// linkRedirectors are click-tracking and link-protection hosts that wrap
+// almost every newsletter or corporate link, so a different host there is not
+// a sign of a disguised link. They only redirect; hosts where anyone can
+// publish a page (Substack, Google, social shorteners) are left out on purpose,
+// and a URL that merely mentions the shown site (evil.example/paypal.com)
+// still warns. A host matches its own entry or any subdomain of one.
+// shortcut: hand-kept list; extend it when a common sender keeps triggering the prompt.
+var linkRedirectors = map[string]bool{
+	"list-manage.com": true, "sendgrid.net": true, "mandrillapp.com": true, "hubspotlinks.com": true,
+	"klclick.com": true, "klclick1.com": true, "klclick2.com": true, "rs6.net": true, "awstrack.me": true,
+	"pstmrk.it": true, "mjt.lu": true, "createsend1.com": true, "sendibt3.com": true, "sendibm1.com": true,
+	"safelinks.protection.outlook.com": true, "urldefense.com": true, "urldefense.proofpoint.com": true,
+	"mimecastprotect.com": true, "protect-eu.mimecast.com": true, "protect-us.mimecast.com": true,
+}
+
+func isLinkRedirector(host string) bool {
+	for {
+		if linkRedirectors[host] {
+			return true
+		}
+		dot := strings.IndexByte(host, '.')
+		if dot < 0 {
+			return false
+		}
+		host = host[dot+1:]
+	}
+}
+
 func flagLinkMismatch(a *html.Node) {
 	var href string
 	for _, at := range a.Attr {
@@ -393,7 +421,7 @@ func flagLinkMismatch(a *html.Node) {
 	var text strings.Builder
 	nodeText(a, &text)
 	shown, target := shownHost(text.String()), strings.ToLower(u.Hostname())
-	if shown == "" || registrableDomain(shown) == registrableDomain(target) {
+	if shown == "" || registrableDomain(shown) == registrableDomain(target) || isLinkRedirector(target) {
 		return
 	}
 	a.Attr = append(a.Attr, html.Attribute{Key: "data-link-mismatch", Val: target})

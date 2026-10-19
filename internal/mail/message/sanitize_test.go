@@ -798,6 +798,14 @@ func TestSanitizeHTMLFlagsLinkMismatch(t *testing.T) {
 		{"mailto", `<a href="mailto:a@evil.example">paypal.com</a>`, ""},
 		{"no text", `<a href="https://evil.example/x"><img src="cid:a@b"></a>`, ""},
 		{"forged attribute is replaced", `<a href="https://paypal.com/x" data-link-mismatch="evil">paypal.com</a>`, ""},
+		{"newsletter click tracking", `<a href="https://shop.us5.list-manage.com/track/click?u=1">shop.example</a>`, ""},
+		{"esp tracking subdomain", `<a href="https://u123.ct.sendgrid.net/ls/click?upn=x">example.org</a>`, ""},
+		{"outlook safe links", `<a href="https://eur01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fpaypal.com">paypal.com</a>`, ""},
+		{"proofpoint", `<a href="https://urldefense.com/v3/__https://paypal.com__;!!x">paypal.com</a>`, ""},
+		{"other outlook.com host still warns", `<a href="https://evil.outlook.com/x">paypal.com</a>`, "evil.outlook.com"},
+		{"lookalike of a redirector still warns", `<a href="https://list-manage.com.evil.example/x">paypal.com</a>`, "list-manage.com.evil.example"},
+		{"url that only mentions the shown site still warns", `<a href="https://evil.example/paypal.com/login">paypal.com</a>`, "evil.example"},
+		{"page host still warns", `<a href="https://phish.substack.com/p/x">paypal.com</a>`, "phish.substack.com"},
 	} {
 		out := SanitizeHTML([]byte(tc.in))
 		if got := anchorAttr(t, out, "data-link-mismatch"); got != tc.want {
