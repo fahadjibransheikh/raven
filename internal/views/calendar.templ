@@ -372,36 +372,37 @@ templ CalendarAgendaPane(month CalendarMonthData) {
 						}
 					</p>
 				</div>
-				<div id="calendar-agenda-list" hidden?={ len(agendaEvents) == 0 } class="min-h-0 flex-1 overflow-y-auto p-5">
-					<div class="space-y-2">
-						for _, event := range month.Events {
-							<button type="button" hidden?={ event.SourceHidden } data-calendar-source-id={ event.SourceID } data-calendar-source-hidden={ strconv.FormatBool(event.SourceHidden) } data-calendar-response-state={ calendarEventResponseState(event) } data-calendar-agenda-event data-calendar-event-all-day={ strconv.FormatBool(event.AllDay) } data-calendar-event-start-date={ event.StartDate } data-calendar-event-end-date={ event.EndDate } data-calendar-event-start={ calendarEventTimestamp(event.StartAt) } data-calendar-event-end={ calendarEventTimestamp(event.EndAt) } class="group relative w-full rounded-xl border border-border bg-card px-3.5 py-3 text-left shadow-sm transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={ "Open event: " + calendarEventResponseSummary(event) } aria-haspopup="dialog" aria-controls="calendar-event-details-content" hx-get={ calendarEventDetailsURL(event.ID) } hx-target="#app-pane-dialogs" hx-swap="innerHTML" hx-sync="#app-pane-dialogs:replace" hx-disabled-elt="this" data-calendar-event-trigger>
-								<div class="flex items-start gap-3">
-									<div class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-										if event.AllDay {
-											@icon.CalendarDays(icon.Props{Class: "size-4"})
-										} else {
-											@icon.Clock3(icon.Props{Class: "size-4"})
-										}
-									</div>
-									<div class="min-w-0 flex-1">
-										<div class="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
-											<div class="flex min-w-0 items-center gap-2">
+				{{ agenda := calendarAgendaGroups(month) }}
+				<div id="calendar-agenda-list" hidden?={ len(agendaEvents) == 0 } class="min-h-0 flex-1 overflow-y-auto px-3 py-4">
+					<div class="flex flex-col gap-5">
+						for _, day := range agenda.Days {
+							<section data-calendar-agenda-day aria-labelledby={ "calendar-agenda-day-" + day.Key }>
+								<h3 id={ "calendar-agenda-day-" + day.Key } data-calendar-agenda-day-heading class="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{ day.Label }</h3>
+								for _, row := range day.Rows {
+									{{ event := row.Event }}
+									<button type="button" hidden?={ event.SourceHidden } data-calendar-source-id={ event.SourceID } data-calendar-source-hidden={ strconv.FormatBool(event.SourceHidden) } data-calendar-response-state={ calendarEventResponseState(event) } data-calendar-agenda-event data-calendar-event-all-day={ strconv.FormatBool(event.AllDay) } data-calendar-event-start-date={ row.StartDate } data-calendar-event-end-date={ row.EndDate } data-calendar-event-start={ calendarEventTimestamp(event.StartAt) } data-calendar-event-end={ calendarEventTimestamp(event.EndAt) } class="group relative flex w-full items-baseline gap-3 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={ "Open event: " + calendarAgendaRowLabel(row) } aria-haspopup="dialog" aria-controls="calendar-event-details-content" hx-get={ calendarEventDetailsURL(event.ID) } hx-target="#app-pane-dialogs" hx-swap="innerHTML" hx-sync="#app-pane-dialogs:replace" hx-disabled-elt="this" data-calendar-event-trigger>
+										<span data-calendar-agenda-time class="w-[5.5rem] shrink-0 text-xs tabular-nums text-muted-foreground">{ row.TimeLabel }</span>
+										<span class="min-w-0 flex-1">
+											<span class="flex items-center gap-2">
 												<span class="size-2 shrink-0 rounded-full" style={ calendarEventColorStyle(event) }></span>
-												<h3 class="truncate text-sm font-bold text-foreground" data-calendar-event-summary>{ calendarEventSummary(event) }</h3>
-											</div>
-											<span class="shrink-0 text-[11px] font-semibold text-primary">{ calendarEventAgendaDateLabel(event, month.Month.Location()) }</span>
-										</div>
-										<div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-											<p class="text-xs text-muted-foreground">{ calendarEventAgendaTimeLabel(event, month.Month.Location()) }</p>
-											@CalendarEventResponseIndicator(event, false)
-										</div>
-										if event.SourceName != "" || event.Location != "" {
-											<p class="mt-1 truncate text-[11px] text-muted-foreground/75">{ calendarEventMeta(event) }</p>
-										}
-									</div>
-								</div>
-							</button>
+												<span class="truncate text-sm font-medium text-foreground" data-calendar-event-summary>{ calendarEventSummary(event) }</span>
+												if row.SpanLabel != "" {
+													<span class="shrink-0 text-xs text-muted-foreground">{ row.SpanLabel }</span>
+												}
+											</span>
+											{{ meta := calendarAgendaMeta(event, agenda.MultiSource) }}
+											if meta != "" || calendarAgendaResponseVisible(event) {
+												<span class="mt-0.5 flex items-center gap-2 pl-4 text-xs text-muted-foreground">
+													@CalendarEventResponseIndicator(event, false)
+													if meta != "" {
+														<span class="truncate">{ meta }</span>
+													}
+												</span>
+											}
+										</span>
+									</button>
+								}
+							</section>
 						}
 					</div>
 				</div>

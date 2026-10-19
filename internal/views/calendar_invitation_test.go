@@ -107,6 +107,12 @@ func TestCalendarInvitationIndicatorsShowReadableStatus(t *testing.T) {
 					}
 					return
 				}
+				if !compact && test.response == "accepted" {
+					if strings.TrimSpace(markup) != "" {
+						t.Fatal("agenda rows leave the normal Accepted state unlabelled")
+					}
+					return
+				}
 				label := test.full
 				if compact {
 					label = test.compact

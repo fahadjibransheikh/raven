@@ -69,7 +69,7 @@ Reported by the user from the Mac app; not yet investigated.
 |---|---|---|
 | C1 | Google Meet links don't open | "Join meeting" in the event dialog does nothing for a Google Meet event. Start at `internal/calendar/meeting.go` (`MeetingJoinURL`, `GoogleMeetJoinURLFromDescription`) and how the dialog opens the link in the desktop app. |
 | C2 | No reminder before a meeting starts | Raven sends no notification when a meeting is about to start. Needs a reminder lead time and delivery through the existing desktop and web push notifications. |
-| C3 | Agenda view is confusing | The agenda panel next to the 3-day view repeats every event as a large card with the date on the right, the same account address on every card and an icon per row. All-day events repeat daily. Rework it: group by day, one compact line per event, collapse repeated all-day events, drop the per-card account line. |
+| C3 | Agenda view is confusing (reworked in the `agenda-redesign` PR: day groups, compact rows, repeated all-day events merged into one span row, account shown only with several calendars, past/now/next marks, quiet "Awaiting response") | The agenda panel next to the 3-day view repeats every event as a large card with the date on the right, the same account address on every card and an icon per row. All-day events repeat daily. Rework it: group by day, one compact line per event, collapse repeated all-day events, drop the per-card account line. |
 
 ## Compose (reported 2026-10-19)
 
