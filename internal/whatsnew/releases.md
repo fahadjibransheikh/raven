@@ -7,6 +7,24 @@ Then an optional hero line, then "### New", "### Improved", "### Fixed" or
 replaces it with the real version number. GitHub release notes use the same text.
 -->
 
+## 1.1.2 | 2026-10-19 | Undo send, snooze and safer links
+Take back a message after sending, snooze mail until later, and get warned about disguised links and senders.
+
+### New
+- Undo send: after you press Send, Raven waits 10 seconds and offers Undo, which reopens the message. Choose 5 to 30 seconds, or Off, in Settings.
+- Snooze a conversation until later today, tomorrow, the weekend, next week or a time you pick. It leaves your inbox, waits under Snoozed in the sidebar and comes back with a notification. Use the alarm-clock button or press B. Snoozing happens in Raven only, so other mail apps still show the message.
+- Follow-up reminders: Raven can remind you about a message on a date you choose, only if nobody has replied by then.
+- When new mail has a sign-in or verification code, the notification shows the code first and Raven offers a Copy button. The open message shows the code with its own copy button.
+- A warning appears above a message when the sender looks like someone you know but isn't, such as a look-alike domain or a name that shows a different address.
+
+### Improved
+- Links in emails no longer carry tracking tags such as utm_, and invisible tracking pixels are removed.
+- If a link's text shows one web address but it leads somewhere else, Raven asks before opening it. Newsletter links and links protected by Microsoft 365, Proofpoint or Mimecast open as before.
+
+### Fixed
+- Gmail and Outlook accounts never showed new-mail notifications. They now notify like other accounts.
+- On Mac, an email you opened could stay marked unread for 2 to 3 seconds. It now shows as read straight away.
+
 ## 1.1.1 | 2026-10-16 | Widget, search and Outlook fixes
 A tidier Mac widget, more exact search and faster Outlook accounts.
 

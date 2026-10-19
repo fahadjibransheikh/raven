@@ -1,6 +1,6 @@
 [package]
 name = "raven-desktop"
-version = "1.1.1"
+version = "1.1.2"
 description = "Native desktop wrapper for the Raven email client"
 edition = "2021"
 rust-version = "1.90"
