@@ -21,8 +21,8 @@ async function setup() {
   }
   const opened = []
   w.open = function () { opened.push(Array.prototype.slice.call(arguments)) }
-  const send = function (source, href) {
-    w.dispatchEvent(new w.MessageEvent("message", { data: { type: "emailLinkClick", href: href }, source: source.contentWindow }))
+  const send = function (source, href, mismatch) {
+    w.dispatchEvent(new w.MessageEvent("message", { data: { type: "emailLinkClick", href: href, mismatch: mismatch }, source: source.contentWindow }))
   }
   return { w, opened, send, frame: w.document.querySelector("[data-email-body-frame]"), other: w.document.getElementById("other") }
 }
@@ -44,6 +44,55 @@ test("other schemes and foreign senders never open a window", async () => {
   send(frame, "/api/inline-content/1/x")
   send(other, "https://example.com/")
   assert.equal(opened.length, 0)
+})
+
+test("a link flagged as a mismatch opens only after the reader confirms", async () => {
+  const { w, opened, send, frame } = await setup()
+  const asked = []
+  let answer
+  w.ravenConfirm = function (title, text, label) {
+    asked.push([title, text, label])
+    return new Promise(function (resolve) { answer = resolve })
+  }
+  send(frame, "https://evil.example/x", "evil.example")
+  assert.equal(asked.length, 1)
+  assert.match(asked[0][1], /This link goes to evil\.example, not the address shown\. Open it anyway\?/)
+  assert.equal(opened.length, 0)
+  answer(true)
+  await new Promise(function (resolve) { setTimeout(resolve, 0) })
+  assert.deepEqual(opened.map(function (o) { return o[0] }), ["https://evil.example/x"])
+})
+
+test("a declined mismatch warning never opens the link, and unflagged links skip the question", async () => {
+  const { w, opened, send, frame } = await setup()
+  let asked = 0
+  w.ravenConfirm = function () { asked++; return Promise.resolve(false) }
+  send(frame, "https://evil.example/x", "evil.example")
+  send(frame, "javascript:alert(1)", "evil.example")
+  await new Promise(function (resolve) { setTimeout(resolve, 0) })
+  assert.equal(opened.length, 0)
+  assert.equal(asked, 1)
+  send(frame, "https://example.com/ok", "")
+  send(frame, "https://example.com/ok2")
+  assert.equal(asked, 1)
+  assert.equal(opened.length, 2)
+})
+
+test("the frame script passes a link's mismatch flag to the parent", async () => {
+  const src = fs.readFileSync(path.join(__dirname, "..", "..", "internal", "handler", "handler.go"), "utf8")
+  const script = /func emailExternalLinksScript\(\) \[\]byte \{\s*return \[\]byte\(`<script>([\s\S]*?)<\/script>`\)/.exec(src)[1]
+  const dom = new JSDOM('<!doctype html><body><a id="m" href="https://evil.example/x" data-link-mismatch="evil.example">paypal.com</a><a id="n" href="https://example.com/">x</a></body>', { runScripts: "outside-only" })
+  const w = dom.window
+  const posted = []
+  w.addEventListener("message", function (e) { posted.push(e.data) })
+  w.eval(script)
+  w.document.getElementById("m").dispatchEvent(new w.MouseEvent("click", { bubbles: true, cancelable: true }))
+  w.document.getElementById("n").dispatchEvent(new w.MouseEvent("click", { bubbles: true, cancelable: true }))
+  await new Promise(function (resolve) { setTimeout(resolve, 20) })
+  assert.deepEqual(posted.map(function (d) { return [d.type, d.href, d.mismatch] }), [
+    ["emailLinkClick", "https://evil.example/x", "evil.example"],
+    ["emailLinkClick", "https://example.com/", ""],
+  ])
 })
 
 test("keystrokes from a message frame are replayed on the page, from real frames only", async () => {
