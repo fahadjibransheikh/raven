@@ -1047,6 +1047,20 @@ func mailListPaginationRangeLabel(windowStart int, itemCount int, totalCount int
 	return fmt.Sprintf("%d-%d of %d", start, end, totalCount)
 }
 
+// undoSendSettingValues must match the delays handler.undoSendDelay accepts.
+var undoSendSettingValues = []string{"0", "5", "10", "20", "30"}
+
+func undoSendSettingLabel(value string) string {
+	switch value {
+	case "0":
+		return "Off"
+	case "5", "10", "20", "30":
+		return value + " seconds"
+	default:
+		return "10 seconds"
+	}
+}
+
 func autoMarkReadSettingLabel(value string) string {
 	switch value {
 	case "0":

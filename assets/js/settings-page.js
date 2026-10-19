@@ -88,6 +88,10 @@
     if (autoMarkRead && typeof RavenSettings !== 'undefined') {
       RavenSettings.set('auto_mark_read_after', autoMarkRead.value);
     }
+    var undoSend = e.target.closest('input[name="undo_send_seconds"]');
+    if (undoSend && typeof RavenSettings !== 'undefined') {
+      RavenSettings.set('undo_send_seconds', undoSend.value);
+    }
     var openNextAfterRemove = e.target.closest('[data-open-next-after-remove-setting]');
     if (openNextAfterRemove && typeof RavenSettings !== 'undefined') {
       RavenSettings.set('open_next_after_remove', openNextAfterRemove.checked ? 'true' : 'false');

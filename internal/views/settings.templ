@@ -139,6 +139,26 @@ templ SettingsComposeDisplayTab(uiSettings map[string]string, signatureData []mo
 					}
 				</div>
 			</div>
+			<div class="settings-row border-t border-border/60 pt-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+				<div class="min-w-0">
+					<h4 class="text-sm font-medium text-foreground">Undo send</h4>
+					<p class="text-xs text-muted-foreground mt-1">Hold sent messages this long so you can take them back.</p>
+				</div>
+				<div class="w-full sm:w-44 shrink-0" data-undo-send-picker>
+					@selectbox.SelectBox(selectbox.Props{Class: "settings-select"}) {
+						@selectbox.Trigger(selectbox.TriggerProps{Name: "undo_send_seconds", Class: "bg-background", DisableClear: true}) {
+							@selectbox.Value(selectbox.ValueProps{Placeholder: "10 seconds"}) {
+								{ undoSendSettingLabel(uiSettingGet(uiSettings, "undo_send_seconds", "10")) }
+							}
+						}
+						@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
+							for _, v := range undoSendSettingValues {
+								@selectbox.Item(selectbox.ItemProps{Value: v, Selected: uiSettingGet(uiSettings, "undo_send_seconds", "10") == v}) { { undoSendSettingLabel(v) } }
+							}
+						}
+					}
+				</div>
+			</div>
 			<div class="settings-row border-t border-border/60 pt-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 				<div class="min-w-0">
 					<span id="compose-autosave-enabled-label" class="text-sm font-medium text-foreground">Autosave drafts</span>
