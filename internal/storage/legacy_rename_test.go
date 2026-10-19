@@ -88,7 +88,7 @@ INSERT INTO totp_credentials(id,user_id,encrypted_seed,key_version,issuer,enable
 	if err := db.Read().QueryRow(`SELECT (SELECT MAX(version) FROM schema_version), (SELECT sql FROM sqlite_schema WHERE name='totp_credentials')`).Scan(&version, &definition); err != nil {
 		t.Fatal(err)
 	}
-	if version != 122 || strings.Contains(definition, legacyProductName) || !strings.Contains(definition, "DEFAULT 'Raven'") {
+	if version != CurrentSchemaVersion || strings.Contains(definition, legacyProductName) || !strings.Contains(definition, "DEFAULT 'Raven'") {
 		t.Fatalf("version %d, definition:\n%s", version, definition)
 	}
 	rows, err := db.Read().Query(`SELECT id, user_id, hex(encrypted_seed), key_version, issuer, enabled, created_at, last_accepted_step, revoked_at FROM totp_credentials ORDER BY id`)

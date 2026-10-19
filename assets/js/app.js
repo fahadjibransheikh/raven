@@ -2301,6 +2301,7 @@ document.addEventListener("DOMContentLoaded", function () {
       { id: "delete", label: "Delete", group: "Message", palette: true, needsMessage: true, match: ["delete", "#"], keys: ["#", "Del"], run: function () { if (requireKeyboardMailSelection()) performMailSelectionAction("delete") } },
       { id: "star", label: "Star / unstar", group: "Message", palette: true, needsMessage: true, match: ["s"], keys: ["s"], run: function () { if (requireKeyboardMailSelection()) performMailSelectionAction("star") } },
       { id: "move", label: "Move to\u2026", group: "Message", palette: true, needsMessage: true, match: ["v"], keys: ["v"], run: function () { if (requireKeyboardMailSelection()) performMailSelectionAction("move") } },
+      { id: "snooze", label: "Snooze\u2026", group: "Message", palette: true, needsMessage: true, match: ["b"], keys: ["b"], run: function () { if (requireKeyboardMailSelection()) pickSnoozeForMessage(selectedMailIdForKeyboard()) } },
       { id: "label", label: "Label\u2026", group: "Message", palette: true, needsMessage: true, match: ["l"], keys: ["l"], run: labelKeyboardSelectedMail },
       { id: "read", label: "Mark read / unread", group: "Message", palette: true, needsMessage: true, match: ["u"], keys: ["u"], run: toggleKeyboardSelectedRead },
       // The list's More menu offers one or the other depending on whether this is a spam folder.
@@ -15134,6 +15135,136 @@ function openNextMailAfterRemoval(removedIds) {
   if (typeof vml.syncSelectionClasses === "function") vml.syncSelectionClasses(vml.itemsContainer || vml.container)
   anchor.click()
   return true
+}
+
+// Snooze and follow-up times use the viewer's local clock. Snoozing hides the
+// thread from the inbox until then; a follow-up only reminds if nobody replies.
+function snoozePresetTime(preset, now) {
+  var t = new Date(now.getTime())
+  if (preset === "later") {
+    t.setHours(t.getHours() + 3, 0, 0, 0)
+    return t
+  }
+  t.setHours(8, 0, 0, 0)
+  if (preset === "tomorrow") {
+    t.setDate(t.getDate() + 1)
+  } else if (preset === "weekend") {
+    t.setDate(t.getDate() + ((6 - t.getDay() + 7) % 7 || 7))
+  } else if (preset === "next-week") {
+    t.setDate(t.getDate() + ((1 - t.getDay() + 7) % 7 || 7))
+  } else {
+    return null
+  }
+  return t
+}
+
+function formatSnoozeTime(t) {
+  return t.toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
+}
+
+// Accepts "YYYY-MM-DD HH:MM" (or a "T" separator) in local time.
+function parseSnoozeInput(text) {
+  var m = /^\s*(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{1,2}):(\d{2}))?\s*$/.exec(text || "")
+  if (!m) return null
+  var t = new Date(+m[1], +m[2] - 1, +m[3], m[4] ? +m[4] : 8, m[5] ? +m[5] : 0)
+  return isNaN(t.getTime()) || t <= new Date() ? null : t
+}
+
+function pickSnoozeTime(title) {
+  var suggestion = snoozePresetTime("tomorrow", new Date())
+  var pad = function (n) { return (n < 10 ? "0" : "") + n }
+  var value = suggestion.getFullYear() + "-" + pad(suggestion.getMonth() + 1) + "-" + pad(suggestion.getDate()) + " 08:00"
+  return window.ravenPrompt(title, "Date and time, as YYYY-MM-DD HH:MM.", { value: value, confirmLabel: "Save" }).then(function (text) {
+    if (text === null) return null
+    var t = parseSnoozeInput(text)
+    if (!t) showMailActionError("That time didn't work", "Use a future date like " + value + ".")
+    return t
+  })
+}
+
+function refreshMailListAfterTimer() {
+  var container = document.getElementById("mail-list-scroll")
+  var vml = container && container._virtualMailList
+  if (vml && typeof vml.refreshCurrentFolder === "function") Promise.resolve(vml.refreshCurrentFolder({ noAnimation: true })).catch(function () {})
+  if (typeof refreshSidebarUnread === "function") refreshSidebarUnread()
+}
+
+function setMessageTimer(emailId, kind, until) {
+  return fetch("/api/messages/" + encodeURIComponent(emailId) + "/" + kind, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ until: until.toISOString().replace(/\.\d{3}Z$/, "Z") })
+  }).then(function (r) {
+    if (!r.ok) throw new Error(kind + " failed: " + r.status)
+    return r.json()
+  })
+}
+
+function clearMessageTimer(emailId, kind) {
+  return fetch("/api/messages/" + encodeURIComponent(emailId) + "/" + kind, { method: "DELETE" }).then(function (r) {
+    if (!r.ok) throw new Error("clear " + kind + " failed: " + r.status)
+    return r.json()
+  })
+}
+
+function snoozeThread(emailId, preset) {
+  var when = preset === "custom" ? pickSnoozeTime("Snooze until") : Promise.resolve(snoozePresetTime(preset, new Date()))
+  return when.then(function (until) {
+    if (!until) return
+    return setMessageTimer(emailId, "snooze", until).then(function () {
+      refreshMailListAfterTimer()
+      var toast = showRavenToast({
+        id: "mail-undo-toast", title: "Snoozed until " + formatSnoozeTime(until),
+        variant: "success", icon: "success", position: "bottom-right", duration: 7000, dismissible: true,
+        secondaryActionLabel: "Undo",
+        onSecondaryAction: function () {
+          dismissRavenToast(toast)
+          clearMessageTimer(emailId, "snooze").then(refreshMailListAfterTimer).catch(function () { showMailActionError("Could not undo the snooze", "Try again.") })
+        },
+      })
+    }).catch(function (err) {
+      console.warn(err)
+      showMailActionError("Could not snooze the message", "Try again.")
+    })
+  })
+}
+
+function unsnoozeThread(emailId) {
+  return clearMessageTimer(emailId, "snooze").then(function (data) {
+    refreshMailListAfterTimer()
+    showRavenToast({ id: "mail-undo-toast", title: data && data.cleared ? "Back in your inbox" : "This message isn't snoozed", variant: "success", icon: "success", position: "bottom-right", duration: 5000, dismissible: true })
+  }).catch(function () { showMailActionError("Could not unsnooze the message", "Try again.") })
+}
+
+function followUpThread(emailId, days) {
+  var when = days === "custom" ? pickSnoozeTime("Remind me if no reply by") : Promise.resolve(snoozePresetTime("tomorrow", new Date(Date.now() + (Number(days) - 1) * 86400000)))
+  return when.then(function (until) {
+    if (!until) return
+    return setMessageTimer(emailId, "follow-up", until).then(function () {
+      var toast = showRavenToast({
+        id: "mail-undo-toast", title: "Reminder set for " + formatSnoozeTime(until), description: "Only if nobody replies first.",
+        variant: "success", icon: "success", position: "bottom-right", duration: 7000, dismissible: true,
+        secondaryActionLabel: "Undo",
+        onSecondaryAction: function () {
+          dismissRavenToast(toast)
+          clearMessageTimer(emailId, "follow-up").catch(function () { showMailActionError("Could not remove the reminder", "Try again.") })
+        },
+      })
+    }).catch(function (err) {
+      console.warn(err)
+      showMailActionError("Could not set the reminder", "Try again.")
+    })
+  })
+}
+
+// The "b" shortcut and the palette offer the same presets as the toolbar menu.
+function pickSnoozeForMessage(emailId) {
+  if (!emailId || !window.RavenPalette || !window.RavenPalette.pick) return
+  var item = function (label, preset) { return { label: label, run: function () { snoozeThread(emailId, preset) } } }
+  window.RavenPalette.pick("Snooze until\u2026", [
+    item("Later today", "later"), item("Tomorrow", "tomorrow"), item("This weekend", "weekend"),
+    item("Next week", "next-week"), item("Pick a date and time\u2026", "custom")
+  ])
 }
 
 function archiveThread(emailId) {

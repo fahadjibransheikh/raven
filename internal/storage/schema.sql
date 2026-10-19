@@ -1614,4 +1614,16 @@ CREATE TABLE IF NOT EXISTS raven_calendar_carryover (
     PRIMARY KEY (account_id, remote_id)
 );
 
-INSERT OR REPLACE INTO schema_version (version) VALUES (122);
+CREATE TABLE IF NOT EXISTS message_timers (
+    id INTEGER PRIMARY KEY,
+    account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    thread_key TEXT NOT NULL,
+    message_id INTEGER NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('snooze', 'followup')),
+    due_at DATETIME NOT NULL,
+    created_at DATETIME NOT NULL,
+    UNIQUE (account_id, thread_key, kind)
+);
+CREATE INDEX IF NOT EXISTS idx_message_timers_due ON message_timers(due_at);
+
+INSERT OR REPLACE INTO schema_version (version) VALUES (123);

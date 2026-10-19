@@ -641,6 +641,46 @@ func readLabel(email *models.Email, thread []models.ThreadItem) string {
 	return threadAwareLabel("Mark as read", "Mark thread as read", email)
 }
 
+// MailViewSnoozeMenu hides the thread from the inbox until a time, or sets a
+// reminder that fires only if nobody replies. Both are local to Raven.
+templ MailViewSnoozeMenu(email *models.Email) {
+	@dropdown.Dropdown() {
+		@dropdown.Trigger() {
+			@button.Button(button.Props{
+				Variant:    button.VariantGhost,
+				Size:       button.SizeIcon,
+				Class:      "h-8 w-8 text-subtle-foreground hover:text-foreground hover:bg-row-hover",
+				Attributes: templ.Attributes{"aria-label": withShortcut("Snooze or remind", "snooze"), "title": withShortcut("Snooze or remind", "snooze"), "aria-keyshortcuts": shortcutKeys["snooze"], "data-mail-snooze-menu": email.ID},
+			}) {
+				@icon.AlarmClock(icon.Props{Class: "size-4"})
+			}
+		}
+		@dropdown.Content() {
+			@dropdown.Label() {
+				Snooze until
+			}
+			for _, preset := range snoozePresets {
+				@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"data-on-click": onAction("snoozeThread", email.ID, preset.Value)}}) {
+					{ preset.Label }
+				}
+			}
+			@dropdown.Separator()
+			@dropdown.Label() {
+				Remind me if no reply
+			}
+			for _, preset := range followUpPresets {
+				@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"data-on-click": onAction("followUpThread", email.ID, preset.Value)}}) {
+					{ preset.Label }
+				}
+			}
+			@dropdown.Separator()
+			@dropdown.Item(dropdown.ItemProps{Attributes: templ.Attributes{"data-on-click": onAction("unsnoozeThread", email.ID)}}) {
+				Unsnooze
+			}
+		}
+	}
+}
+
 templ MailViewHeader(email *models.Email, thread []models.ThreadItem) {
 	<div class="mail-view-toolbar flex items-center justify-between px-6 py-2.5">
 		<div class="mail-view-actions flex items-center gap-1 min-w-0">
@@ -666,6 +706,7 @@ templ MailViewHeader(email *models.Email, thread []models.ThreadItem) {
 					{ withShortcut(threadAwareLabel("Archive", "Archive thread", email), "archive") }
 				}
 			}
+			@MailViewSnoozeMenu(email)
 			@tooltip.Tooltip() {
 				@tooltip.Trigger() {
 					@button.Button(button.Props{

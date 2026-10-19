@@ -182,12 +182,26 @@ func isStarredFolder(folderID string) bool {
 
 func isUnifiedFolderID(folderID string) bool {
 	switch folderID {
-	case "inbox", "starred", "sent", "drafts", "scheduled", "archive", "spam", "trash":
+	case "inbox", "starred", "sent", "drafts", "scheduled", "snoozed", "archive", "spam", "trash":
 		return true
 	default:
 		return false
 	}
 }
+
+// isVirtualMailFolder is true for unified views that are not backed by
+// provider folders of one role: a flag (starred) or local state (scheduled, snoozed).
+func isVirtualMailFolder(folderID string) bool {
+	return folderID == "starred" || folderID == "scheduled" || folderID == "snoozed"
+}
+
+// snoozedMailWhere selects inbox copies of snoozed threads. It expects m and mfs
+// in scope and binds the user ID.
+const snoozedMailWhere = `JOIN message_timers mt ON mt.kind = 'snooze' AND mt.account_id = m.account_id
+			   AND mt.thread_key = COALESCE(NULLIF(m.thread_id, ''), printf('msg:%d', m.id))
+			 JOIN folders sf ON sf.id = mfs.folder_id AND sf.role = 'inbox'
+			 JOIN accounts a ON m.account_id = a.id
+			 WHERE a.user_id = ? AND mfs.is_deleted = 0`
 
 func unifiedFolderRolePredicate(alias, folderID string) (string, []any) {
 	column := "role"
@@ -212,7 +226,7 @@ func unifiedFolderAccountSettingKey(folderID, accountID string) string {
 }
 
 func (db *DB) unifiedFolderAccountFilter(ctx context.Context, userID, folderID, accountAlias string) (string, []any, error) {
-	if folderID == "scheduled" {
+	if folderID == "scheduled" || folderID == "snoozed" {
 		return "", nil, nil
 	}
 	// Settings use the same reader pool, so load them before opening the cursor.
@@ -4422,7 +4436,7 @@ func (db *DB) refreshFolderThreadKeys(ctx context.Context, folderID string, thre
 	for _, id := range soloIDs {
 		insertArgs = append(insertArgs, id)
 	}
-	insertArgs = append(insertArgs, folderID)
+	insertArgs = append(insertArgs, folderID, folderID)
 	_, err = tx.ExecContext(ctx, `WITH base AS (
 			SELECT m.id, m.account_id, m.date_received, m.has_attachments,
 			       mfs.is_read, mfs.is_starred,
@@ -4443,6 +4457,7 @@ func (db *DB) refreshFolderThreadKeys(ctx context.Context, folderID string, thre
 			       MIN(is_read) AS thread_is_read, MAX(is_starred) AS thread_is_starred,
 			       MAX(has_attachments) AS thread_has_attachments
 			FROM base
+			WHERE NOT EXISTS (`+snoozedInInboxPredicate+`)
 			GROUP BY thread_key
 		)
 		INSERT OR REPLACE INTO folder_thread_state (
@@ -4476,6 +4491,12 @@ func (db *DB) RefreshAccountFolderThreadState(ctx context.Context, accountID str
 	return nil
 }
 
+// snoozedInInboxPredicate matches a snoozed thread when the folder (the next
+// bound argument) is an inbox. Snoozed threads leave folder_thread_state there,
+// so every list and count built on it hides them.
+const snoozedInInboxPredicate = `SELECT 1 FROM message_timers t JOIN folders sf ON sf.id = ?
+	WHERE sf.role = 'inbox' AND t.kind = 'snooze' AND t.account_id = sf.account_id AND t.thread_key = base.thread_key`
+
 func (db *DB) refreshFolderThreadStateTx(ctx context.Context, tx *sql.Tx, folderID string) error {
 	if _, err := tx.ExecContext(ctx, `DELETE FROM folder_thread_state WHERE folder_id = ?`, folderID); err != nil {
 		return err
@@ -4493,6 +4514,7 @@ func (db *DB) refreshFolderThreadStateTx(ctx context.Context, tx *sql.Tx, folder
 			       MIN(is_read) AS thread_is_read, MAX(is_starred) AS thread_is_starred,
 			       MAX(has_attachments) AS thread_has_attachments
 			FROM base
+			WHERE NOT EXISTS (`+snoozedInInboxPredicate+`)
 			GROUP BY thread_key
 		)
 		INSERT OR REPLACE INTO folder_thread_state (
@@ -4502,7 +4524,7 @@ func (db *DB) refreshFolderThreadStateTx(ctx context.Context, tx *sql.Tx, folder
 		SELECT ?, b.thread_key, b.id, b.account_id, b.date_received,
 		       g.thread_count, g.thread_is_read, g.thread_is_starred, g.thread_has_attachments, CURRENT_TIMESTAMP
 		FROM grouped g
-		JOIN base b ON b.thread_key = g.thread_key AND b.row_key = g.row_key`, folderID, folderID)
+		JOIN base b ON b.thread_key = g.thread_key AND b.row_key = g.row_key`, folderID, folderID, folderID)
 	return err
 }
 
@@ -4956,6 +4978,10 @@ func (db *DB) GetFolderEmailCountFilteredForUser(ctx context.Context, userID, fo
 			 JOIN accounts a ON m.account_id = a.id
 			 WHERE a.user_id = ? AND os.is_scheduled = 1 AND os.status = ? AND mfs.is_deleted = 0`
 		args = []any{userID, OutgoingSendPending}
+	} else if folderID == "snoozed" {
+		where = snoozedMailWhere
+		filterSQL = filterSQL.inSnoozedView()
+		args = []any{userID}
 	} else {
 		accountFilter, accountArgs, err := db.unifiedFolderAccountFilter(ctx, userID, folderID, "a")
 		if err != nil {
@@ -5031,7 +5057,7 @@ func (db *DB) GetFolderEmailCountFiltered(ctx context.Context, folderID string, 
 }
 
 func (db *DB) GetFolderEmailCountUnfilteredForUser(ctx context.Context, userID, folderID string) (int, error) {
-	if folderID != "starred" && folderID != "scheduled" {
+	if !isVirtualMailFolder(folderID) {
 		return db.getUnifiedFolderLocalThreadCount(ctx, userID, folderID)
 	}
 	fromWhere, args, err := db.unifiedMailListFromWhere(ctx, userID, folderID)
@@ -5118,7 +5144,7 @@ func (db *DB) GetEmailsRangeFilteredForUserWithTotal(ctx context.Context, userID
 
 	totalCount := knownTotal
 	var err error
-	if emailFiltersEmpty(filters) && folderID != "starred" && folderID != "scheduled" {
+	if emailFiltersEmpty(filters) && !isVirtualMailFolder(folderID) {
 		totalCount, err = db.getUnifiedFolderLocalThreadCount(ctx, userID, folderID)
 		if err != nil {
 			return nil, err
@@ -5219,6 +5245,16 @@ func (db *DB) GetEmailsRangeFilteredWithTotal(ctx context.Context, folderID stri
 		NextCursor:        nextCursor,
 		HasMore:           hasMore,
 	}, nil
+}
+
+const notSnoozedInInboxClause = `NOT EXISTS (SELECT 1 FROM message_timers t JOIN folders sf ON sf.id = mfs.folder_id
+			WHERE sf.role = 'inbox' AND t.kind = 'snooze' AND t.account_id = m.account_id
+			  AND t.thread_key = COALESCE(NULLIF(m.thread_id, ''), printf('msg:%d', m.id)))`
+
+// inSnoozedView drops the snooze exclusion, which would otherwise empty the Snoozed view.
+func (p emailFilterParts) inSnoozedView() emailFilterParts {
+	p.cteClause = strings.Replace(p.cteClause, " AND "+notSnoozedInInboxClause, "", 1)
+	return p
 }
 
 type emailFilterParts struct {
@@ -5341,6 +5377,11 @@ func emailFilterSQL(ctx context.Context, filters models.EmailFilters) emailFilte
 		outerParts = append(outerParts, "thread_count > 1")
 	} else if filters.NoThreads {
 		outerParts = append(outerParts, "thread_count = 1")
+	}
+	// Filtered inbox views skip folder_thread_state, so they hide snoozed threads
+	// themselves. Searches still find them.
+	if filters.Query == "" && filters.Body == "" {
+		cteParts = append(cteParts, notSnoozedInInboxClause)
 	}
 	if filters.HasTags {
 		cteParts = append(cteParts, "EXISTS (SELECT 1 FROM message_labels ml WHERE ml.message_id = m.id)")
@@ -5843,7 +5884,7 @@ func (db *DB) getEmailByIDForFolder(ctx context.Context, id, folderID, userID st
 	if err != nil {
 		return nil, err
 	}
-	if info == nil && isUnifiedFolderID(folderID) && folderID != "starred" && folderID != "scheduled" {
+	if info == nil && isUnifiedFolderID(folderID) && !isVirtualMailFolder(folderID) {
 		rolePredicate, roleArgs := unifiedFolderRolePredicate("f", folderID)
 		info, err = db.getMessageMutationInfo(ctx, messageID, rolePredicate, roleArgs, userID, false)
 		if err != nil {
@@ -5947,6 +5988,11 @@ func (db *DB) unifiedMailListFromWhere(ctx context.Context, userID, folderID str
 			JOIN accounts a ON m.account_id = a.id
 			WHERE a.user_id = ? AND os.is_scheduled = 1 AND os.status = ? AND mfs.is_deleted = 0`, []any{userID, OutgoingSendPending}, nil
 	}
+	if folderID == "snoozed" {
+		return `FROM messages m
+			JOIN message_folder_state mfs ON m.id = mfs.message_id
+			` + snoozedMailWhere, []any{userID}, nil
+	}
 	accountFilter, accountArgs, err := db.unifiedFolderAccountFilter(ctx, userID, folderID, "a")
 	if err != nil {
 		return "", nil, err
@@ -5977,7 +6023,7 @@ func accountMailListFromWhere(folderID string) (string, []any) {
 }
 
 func (db *DB) listEmailsUnfilteredForUser(ctx context.Context, userID, folderID string, offset, limit int) ([]models.Email, error) {
-	if folderID != "starred" && folderID != "scheduled" {
+	if !isVirtualMailFolder(folderID) {
 		if err := db.ensureFolderThreadStateForUserRole(ctx, userID, folderID); err != nil {
 			return nil, err
 		}
@@ -6140,6 +6186,10 @@ func (db *DB) listEmailsFilteredForUser(ctx context.Context, userID, folderID st
 			 JOIN accounts a ON m.account_id = a.id
 			 WHERE a.user_id = ? AND os.is_scheduled = 1 AND os.status = ? AND mfs.is_deleted = 0`
 		args = []any{userID, OutgoingSendPending}
+	} else if folderID == "snoozed" {
+		where = snoozedMailWhere
+		filterSQL = filterSQL.inSnoozedView()
+		args = []any{userID}
 	} else {
 		accountFilter, accountArgs, err := db.unifiedFolderAccountFilter(ctx, userID, folderID, "a")
 		if err != nil {
@@ -6364,7 +6414,7 @@ func (db *DB) findEmailPosition(ctx context.Context, folderID, emailID string) (
 				 SELECT COALESCE(NULLIF(m.thread_id, ''), printf('msg:%d', m.id)) AS thread_key, MAX(m.date_received) AS latest
 				 FROM message_folder_state mfs
 				 JOIN messages m ON mfs.message_id = m.id
-				 WHERE mfs.folder_id = ? AND mfs.is_deleted = 0
+				 WHERE mfs.folder_id = ? AND mfs.is_deleted = 0 AND `+notSnoozedInInboxClause+`
 				 GROUP BY thread_key
 			)
 			SELECT COUNT(*) FROM visible WHERE latest > (SELECT latest FROM visible WHERE thread_key = (SELECT thread_key FROM selected))`
@@ -6399,6 +6449,9 @@ func (db *DB) findEmailPositionForUser(ctx context.Context, userID, folderID, em
 			 JOIN accounts a ON m.account_id = a.id
 			 WHERE a.user_id = ? AND os.is_scheduled = 1 AND os.status = ? AND mfs.is_deleted = 0`
 		args = []any{msgID, userID, OutgoingSendPending}
+	} else if folderID == "snoozed" {
+		where = snoozedMailWhere
+		args = []any{msgID, userID}
 	} else {
 		accountFilter, accountArgs, err := db.unifiedFolderAccountFilter(ctx, userID, folderID, "a")
 		if err != nil {
@@ -6407,7 +6460,7 @@ func (db *DB) findEmailPositionForUser(ctx context.Context, userID, folderID, em
 		rolePredicate, roleArgs := unifiedFolderRolePredicate("f", folderID)
 		where = `JOIN folders f ON mfs.folder_id = f.id
 			 JOIN accounts a ON f.account_id = a.id
-			 WHERE a.user_id = ? AND ` + rolePredicate + ` AND mfs.is_deleted = 0` + accountFilter
+			 WHERE a.user_id = ? AND ` + rolePredicate + ` AND mfs.is_deleted = 0 AND ` + notSnoozedInInboxClause + accountFilter
 		args = append([]any{msgID, userID}, roleArgs...)
 		args = append(args, accountArgs...)
 	}
@@ -7363,7 +7416,7 @@ func (db *DB) GetMessageMutationInfoForFolder(ctx context.Context, messageID int
 		return info, err
 	}
 
-	if isUnifiedFolderID(folderID) && folderID != "starred" && folderID != "scheduled" {
+	if isUnifiedFolderID(folderID) && !isVirtualMailFolder(folderID) {
 		rolePredicate, roleArgs := unifiedFolderRolePredicate("f", folderID)
 		info, err = db.getMessageMutationInfo(ctx, messageID, rolePredicate, roleArgs, "", false)
 		if err != nil || info != nil {
@@ -7389,7 +7442,7 @@ func (db *DB) GetMessageMutationInfoForFolderForUser(ctx context.Context, messag
 		return info, err
 	}
 
-	if isUnifiedFolderID(folderID) && folderID != "starred" && folderID != "scheduled" {
+	if isUnifiedFolderID(folderID) && !isVirtualMailFolder(folderID) {
 		rolePredicate, roleArgs := unifiedFolderRolePredicate("f", folderID)
 		info, err = db.getMessageMutationInfo(ctx, messageID, rolePredicate, roleArgs, userID, false)
 		if err != nil || info != nil {
@@ -7511,7 +7564,7 @@ func (db *DB) GetThreadMutationInfosForFolder(ctx context.Context, accountID, th
 		return infos, err
 	}
 
-	if isUnifiedFolderID(folderID) && folderID != "starred" && folderID != "scheduled" {
+	if isUnifiedFolderID(folderID) && !isVirtualMailFolder(folderID) {
 		rolePredicate, roleArgs := unifiedFolderRolePredicate("f", folderID)
 		return db.getThreadMutationInfos(ctx, accountID, threadID, rolePredicate, roleArgs, "")
 	}
@@ -7533,7 +7586,7 @@ func (db *DB) GetThreadMutationInfosForFolderForUser(ctx context.Context, accoun
 		return infos, err
 	}
 
-	if isUnifiedFolderID(folderID) && folderID != "starred" && folderID != "scheduled" {
+	if isUnifiedFolderID(folderID) && !isVirtualMailFolder(folderID) {
 		rolePredicate, roleArgs := unifiedFolderRolePredicate("f", folderID)
 		return db.getThreadMutationInfos(ctx, accountID, threadID, rolePredicate, roleArgs, userID)
 	}

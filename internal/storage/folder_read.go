@@ -54,7 +54,7 @@ func (db *DB) folderReadTargets(ctx context.Context, userID, folderID string) (o
 	args := []any{userID}
 	unified := isUnifiedFolderID(folderID)
 	if unified {
-		if folderID == "starred" || folderID == "scheduled" {
+		if isVirtualMailFolder(folderID) {
 			return nil, nil, ErrFolderReadUnsupported
 		}
 		rolePredicate, roleArgs := unifiedFolderRolePredicate("f", folderID)
