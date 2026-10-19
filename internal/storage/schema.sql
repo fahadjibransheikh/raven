@@ -1626,4 +1626,4 @@ CREATE TABLE IF NOT EXISTS message_timers (
 );
 CREATE INDEX IF NOT EXISTS idx_message_timers_due ON message_timers(due_at);
 
-INSERT OR REPLACE INTO schema_version (version) VALUES (123);
+INSERT OR REPLACE INTO schema_version (version) VALUES (124);

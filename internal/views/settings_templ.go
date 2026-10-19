@@ -277,9 +277,9 @@ func SettingsComposeDisplayTab(uiSettings map[string]string, signatureData []mod
 					}
 					ctx = templ.InitializeContext(ctx)
 					var templ_7745c5c3_Var9 string
-					templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(defaultComposeViewSettingLabel(uiSettingGet(uiSettings, "default_new_compose_view", uiSettingGet(uiSettings, "default_compose_view", "dialog"))))
+					templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(defaultComposeViewSettingLabel(uiSettingGet(uiSettings, "default_new_compose_view", uiSettingGet(uiSettings, "default_compose_view", "pane"))))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/settings.templ`, Line: 111, Col: 154}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/settings.templ`, Line: 111, Col: 152}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 					if templ_7745c5c3_Err != nil {
@@ -331,7 +331,7 @@ func SettingsComposeDisplayTab(uiSettings map[string]string, signatureData []mod
 					}
 					return nil
 				})
-				templ_7745c5c3_Err = selectbox.Item(selectbox.ItemProps{Value: "dialog", Selected: uiSettingGet(uiSettings, "default_new_compose_view", uiSettingGet(uiSettings, "default_compose_view", "dialog")) == "dialog"}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var11), templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = selectbox.Item(selectbox.ItemProps{Value: "dialog", Selected: uiSettingGet(uiSettings, "default_new_compose_view", uiSettingGet(uiSettings, "default_compose_view", "pane")) == "dialog"}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var11), templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -357,7 +357,7 @@ func SettingsComposeDisplayTab(uiSettings map[string]string, signatureData []mod
 					}
 					return nil
 				})
-				templ_7745c5c3_Err = selectbox.Item(selectbox.ItemProps{Value: "pane", Selected: uiSettingGet(uiSettings, "default_new_compose_view", uiSettingGet(uiSettings, "default_compose_view", "dialog")) == "pane"}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var12), templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = selectbox.Item(selectbox.ItemProps{Value: "pane", Selected: uiSettingGet(uiSettings, "default_new_compose_view", uiSettingGet(uiSettings, "default_compose_view", "pane")) == "pane"}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var12), templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -383,7 +383,7 @@ func SettingsComposeDisplayTab(uiSettings map[string]string, signatureData []mod
 					}
 					return nil
 				})
-				templ_7745c5c3_Err = selectbox.Item(selectbox.ItemProps{Value: "full", Selected: uiSettingGet(uiSettings, "default_new_compose_view", uiSettingGet(uiSettings, "default_compose_view", "dialog")) == "full"}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var13), templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = selectbox.Item(selectbox.ItemProps{Value: "full", Selected: uiSettingGet(uiSettings, "default_new_compose_view", uiSettingGet(uiSettings, "default_compose_view", "pane")) == "full"}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var13), templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -440,9 +440,9 @@ func SettingsComposeDisplayTab(uiSettings map[string]string, signatureData []mod
 					}
 					ctx = templ.InitializeContext(ctx)
 					var templ_7745c5c3_Var17 string
-					templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(defaultComposeViewSettingLabel(uiSettingGet(uiSettings, "default_reply_compose_view", uiSettingGet(uiSettings, "default_compose_view", "dialog"))))
+					templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(defaultComposeViewSettingLabel(uiSettingGet(uiSettings, "default_reply_compose_view", uiSettingGet(uiSettings, "default_compose_view", "pane"))))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/settings.templ`, Line: 131, Col: 156}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/settings.templ`, Line: 131, Col: 154}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 					if templ_7745c5c3_Err != nil {
@@ -494,7 +494,7 @@ func SettingsComposeDisplayTab(uiSettings map[string]string, signatureData []mod
 					}
 					return nil
 				})
-				templ_7745c5c3_Err = selectbox.Item(selectbox.ItemProps{Value: "dialog", Selected: uiSettingGet(uiSettings, "default_reply_compose_view", uiSettingGet(uiSettings, "default_compose_view", "dialog")) == "dialog"}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var19), templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = selectbox.Item(selectbox.ItemProps{Value: "dialog", Selected: uiSettingGet(uiSettings, "default_reply_compose_view", uiSettingGet(uiSettings, "default_compose_view", "pane")) == "dialog"}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var19), templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -520,7 +520,7 @@ func SettingsComposeDisplayTab(uiSettings map[string]string, signatureData []mod
 					}
 					return nil
 				})
-				templ_7745c5c3_Err = selectbox.Item(selectbox.ItemProps{Value: "pane", Selected: uiSettingGet(uiSettings, "default_reply_compose_view", uiSettingGet(uiSettings, "default_compose_view", "dialog")) == "pane"}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var20), templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = selectbox.Item(selectbox.ItemProps{Value: "pane", Selected: uiSettingGet(uiSettings, "default_reply_compose_view", uiSettingGet(uiSettings, "default_compose_view", "pane")) == "pane"}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var20), templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -546,7 +546,7 @@ func SettingsComposeDisplayTab(uiSettings map[string]string, signatureData []mod
 					}
 					return nil
 				})
-				templ_7745c5c3_Err = selectbox.Item(selectbox.ItemProps{Value: "full", Selected: uiSettingGet(uiSettings, "default_reply_compose_view", uiSettingGet(uiSettings, "default_compose_view", "dialog")) == "full"}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var21), templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = selectbox.Item(selectbox.ItemProps{Value: "full", Selected: uiSettingGet(uiSettings, "default_reply_compose_view", uiSettingGet(uiSettings, "default_compose_view", "pane")) == "full"}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var21), templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
