@@ -246,4 +246,15 @@ func TestCalendarWithNoSourcesAsksToConnectOne(t *testing.T) {
 	if !strings.Contains(html, "Events appear here once a calendar is connected.") {
 		t.Fatal("agenda should explain that no calendar is connected")
 	}
+	// Nothing to add an event to: New event is off and says why, and the timeline zoom is hidden.
+	if !regexp.MustCompile(`<button[^>]*disabled[^>]*title="Connect a calendar to create events"[^>]*data-calendar-create-trigger`).MatchString(html) {
+		t.Fatal("New event should be disabled with a reason while no calendar is connected")
+	}
+	var sidebar bytes.Buffer
+	if err := CalendarSidebarContent(nil, false).Render(t.Context(), &sidebar); err != nil {
+		t.Fatal(err)
+	}
+	if !regexp.MustCompile(`<button[^>]*disabled[^>]*title="Connect a calendar to create events"[^>]*data-calendar-create-trigger`).MatchString(sidebar.String()) {
+		t.Fatal("sidebar New event should be disabled with a reason while no calendar is connected")
+	}
 }
