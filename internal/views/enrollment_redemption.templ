@@ -53,7 +53,7 @@ templ InvitationEnrollmentPage(data InvitationEnrollmentData) {
 								} else {
 									aria-describedby="enrollment-token-help"
 								}
-								class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 aria-[invalid=true]:border-destructive aria-[invalid=true]:ring-destructive/20"
+								class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring aria-[invalid=true]:border-destructive aria-[invalid=true]:ring-destructive/20"
 							/>
 							<p id="enrollment-token-help" class="text-xs leading-relaxed text-muted-foreground"><span class="font-semibold text-foreground">Required for both options below.</span> Enter the invitation token before choosing how to sign in.</p>
 						</div>
@@ -69,7 +69,7 @@ templ InvitationEnrollmentPage(data InvitationEnrollmentData) {
 								maxlength="256"
 								required
 								aria-describedby="enrollment-password-help"
-								class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
+								class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring"
 							/>
 							<p id="enrollment-password-help" class="text-xs text-muted-foreground">Use at least 15 characters. Spaces and Unicode are supported.</p>
 						</div>
@@ -83,7 +83,7 @@ templ InvitationEnrollmentPage(data InvitationEnrollmentData) {
 								minlength="15"
 								maxlength="256"
 								required
-								class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
+								class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring"
 							/>
 						</div>
 						@button.Button(button.Props{Type: button.TypeSubmit, FullWidth: true}) {
@@ -157,7 +157,7 @@ templ CredentialRedemptionPage(data CredentialRedemptionData) {
 									aria-invalid="true"
 									aria-describedby="redemption-error"
 								}
-								class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 aria-[invalid=true]:border-destructive aria-[invalid=true]:ring-destructive/20"
+								class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring aria-[invalid=true]:border-destructive aria-[invalid=true]:ring-destructive/20"
 							/>
 						</div>
 						<div class="space-y-2">
@@ -171,7 +171,7 @@ templ CredentialRedemptionPage(data CredentialRedemptionData) {
 								maxlength="256"
 								required
 								aria-describedby="redemption-password-help"
-								class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
+								class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring"
 							/>
 							<p id="redemption-password-help" class="text-xs text-muted-foreground">Use at least 15 characters. Spaces and Unicode are supported.</p>
 						</div>
@@ -185,7 +185,7 @@ templ CredentialRedemptionPage(data CredentialRedemptionData) {
 								minlength="15"
 								maxlength="256"
 								required
-								class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
+								class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring"
 							/>
 						</div>
 						@button.Button(button.Props{Type: button.TypeSubmit, FullWidth: true}) {

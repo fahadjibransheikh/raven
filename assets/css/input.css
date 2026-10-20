@@ -3698,7 +3698,33 @@ html[data-platform="other"] .hint-other {
 }
 
 :root {
-  --ring-width: 1px;
+  --ring-width: 2px;
+}
+
+/* SkipToMain (layout.templ): off screen until keyboard focus reaches it. */
+.skip-to-main {
+  position: fixed;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 100;
+  padding: 0.5rem 0.75rem;
+  border-radius: calc(var(--radius) - 2px);
+  background: var(--foreground);
+  color: var(--background);
+  font-size: 0.875rem;
+  font-weight: 500;
+  transform: translateY(-200%);
+}
+
+.skip-to-main:focus {
+  transform: none;
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* The skip link focuses the main region itself; a ring around the whole pane is noise. */
+#main-content:focus {
+  outline: none;
 }
 
 .focus-visible\:ring-\[3px\]:focus-visible,

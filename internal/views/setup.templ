@@ -137,7 +137,7 @@ templ SetupTokenPage(data SetupTokenData) {
 									aria-invalid="true"
 									aria-describedby="setup-token-error"
 								}
-								class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 aria-[invalid=true]:border-destructive aria-[invalid=true]:ring-destructive/20"
+								class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring aria-[invalid=true]:border-destructive aria-[invalid=true]:ring-destructive/20"
 							/>
 						</div>
 						@button.Button(button.Props{Type: button.TypeSubmit, FullWidth: true}) {
@@ -255,14 +255,14 @@ templ SetupOwnerPage(data SetupOwnerData) {
 						<div class="space-y-4">
 							<div class="space-y-2">
 								<label for="owner-name" class="text-sm font-medium">Display name</label>
-								<input id="owner-name" name="name" type="text" value={ data.Form.Name } autocomplete="name" maxlength="100" required aria-invalid={ fmt.Sprintf("%t", data.Form.Errors["name"] != "") } aria-describedby={ setupOwnerDescription("", "owner-name-error", data.Form.Errors["name"] != "") } class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50 aria-[invalid=true]:border-destructive"/>
+								<input id="owner-name" name="name" type="text" value={ data.Form.Name } autocomplete="name" maxlength="100" required aria-invalid={ fmt.Sprintf("%t", data.Form.Errors["name"] != "") } aria-describedby={ setupOwnerDescription("", "owner-name-error", data.Form.Errors["name"] != "") } class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring aria-[invalid=true]:border-destructive"/>
 								if data.Form.Errors["name"] != "" {
 									<p id="owner-name-error" role="alert" class="text-sm text-destructive">{ data.Form.Errors["name"] }</p>
 								}
 							</div>
 							<div class="space-y-2">
 								<label for="owner-username" class="text-sm font-medium">Username</label>
-								<input id="owner-username" name="username" type="text" value={ data.Form.Username } autocomplete="username" autocapitalize="none" spellcheck="false" minlength="3" maxlength="32" required aria-invalid={ fmt.Sprintf("%t", data.Form.Errors["username"] != "") } aria-describedby={ setupOwnerDescription("owner-username-help", "owner-username-error", data.Form.Errors["username"] != "") } class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50 aria-[invalid=true]:border-destructive"/>
+								<input id="owner-username" name="username" type="text" value={ data.Form.Username } autocomplete="username" autocapitalize="none" spellcheck="false" minlength="3" maxlength="32" required aria-invalid={ fmt.Sprintf("%t", data.Form.Errors["username"] != "") } aria-describedby={ setupOwnerDescription("owner-username-help", "owner-username-error", data.Form.Errors["username"] != "") } class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring aria-[invalid=true]:border-destructive"/>
 								<p id="owner-username-help" class="text-xs text-muted-foreground">3–32 ASCII letters, numbers, periods, underscores, or hyphens.</p>
 								if data.Form.Errors["username"] != "" {
 									<p id="owner-username-error" role="alert" class="text-sm text-destructive">{ data.Form.Errors["username"] }</p>
@@ -321,7 +321,7 @@ templ SetupPasswordPage(data SetupPasswordData) {
 						}
 						<div class="space-y-2">
 							<label for="owner-password" class="text-sm font-medium">Password</label>
-							<input id="owner-password" name="password" type="password" autocomplete="new-password" minlength="15" maxlength="256" required autofocus aria-invalid={ fmt.Sprintf("%t", data.Errors["password"] != "") } aria-describedby={ setupOwnerDescription("owner-password-help", "owner-password-error", data.Errors["password"] != "") } class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50 aria-[invalid=true]:border-destructive"/>
+							<input id="owner-password" name="password" type="password" autocomplete="new-password" minlength="15" maxlength="256" required autofocus aria-invalid={ fmt.Sprintf("%t", data.Errors["password"] != "") } aria-describedby={ setupOwnerDescription("owner-password-help", "owner-password-error", data.Errors["password"] != "") } class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring aria-[invalid=true]:border-destructive"/>
 							<p id="owner-password-help" class="text-xs text-muted-foreground">At least 15 characters. Common, compromised, and owner-specific passwords are rejected.</p>
 							if data.Errors["password"] != "" {
 								<p id="owner-password-error" role="alert" class="text-sm text-destructive">{ data.Errors["password"] }</p>
@@ -329,7 +329,7 @@ templ SetupPasswordPage(data SetupPasswordData) {
 						</div>
 						<div class="space-y-2">
 							<label for="owner-password-confirmation" class="text-sm font-medium">Confirm password</label>
-							<input id="owner-password-confirmation" name="password_confirmation" type="password" autocomplete="new-password" minlength="15" maxlength="256" required aria-invalid={ fmt.Sprintf("%t", data.Errors["confirmation"] != "") } aria-describedby={ setupOwnerDescription("", "owner-password-confirmation-error", data.Errors["confirmation"] != "") } class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50 aria-[invalid=true]:border-destructive"/>
+							<input id="owner-password-confirmation" name="password_confirmation" type="password" autocomplete="new-password" minlength="15" maxlength="256" required aria-invalid={ fmt.Sprintf("%t", data.Errors["confirmation"] != "") } aria-describedby={ setupOwnerDescription("", "owner-password-confirmation-error", data.Errors["confirmation"] != "") } class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring aria-[invalid=true]:border-destructive"/>
 							if data.Errors["confirmation"] != "" {
 								<p id="owner-password-confirmation-error" role="alert" class="text-sm text-destructive">{ data.Errors["confirmation"] }</p>
 							}
@@ -418,7 +418,7 @@ templ SetupMFAPage(data SetupMFAData) {
 								}
 								<div class="space-y-2">
 									<label for="setup-mfa-code" class="text-sm font-medium">2. Enter the current six-digit code</label>
-									<input id="setup-mfa-code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" minlength="6" maxlength="6" required autofocus aria-invalid={ fmt.Sprintf("%t", data.Errors["code"] != "") } aria-describedby={ setupOwnerDescription("setup-mfa-code-help", "setup-mfa-code-error", data.Errors["code"] != "") } class="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-center font-mono text-lg tracking-[0.35em] outline-none focus-visible:ring-2 focus-visible:ring-ring/50 aria-[invalid=true]:border-destructive"/>
+									<input id="setup-mfa-code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" minlength="6" maxlength="6" required autofocus aria-invalid={ fmt.Sprintf("%t", data.Errors["code"] != "") } aria-describedby={ setupOwnerDescription("setup-mfa-code-help", "setup-mfa-code-error", data.Errors["code"] != "") } class="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-center font-mono text-lg tracking-[0.35em] outline-none focus-visible:ring-2 focus-visible:ring-ring aria-[invalid=true]:border-destructive"/>
 									<p id="setup-mfa-code-help" class="text-xs text-muted-foreground">Codes from the immediately previous or next 30-second window are accepted for small clock differences.</p>
 									if data.Errors["code"] != "" {
 										<p id="setup-mfa-code-error" role="alert" class="text-sm text-destructive">{ data.Errors["code"] }</p>

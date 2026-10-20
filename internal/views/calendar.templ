@@ -36,6 +36,7 @@ templ CalendarLayout(accounts []models.Account, month CalendarMonthData, uiSetti
 			<script src={ AssetURL("/assets/js/actions.js") }></script>
 		</head>
 		<body class="bg-background text-foreground antialiased" data-ui-settings={ uiSettingsJSON(uiSettings) }>
+			@SkipToMain()
 			@CalendarShell(accounts, month, uiSettings)
 			<div id="app-pane-dialogs"></div>
 			@ComposeDialog(accounts)
@@ -161,7 +162,7 @@ templ CalendarSidebarContent(accounts []models.Account, loading bool) {
 }
 
 templ CalendarPage(month CalendarMonthData, uiSettings map[string]string) {
-	<div id="main-content" class="flex flex-1 min-w-0 bg-background">
+	<div id="main-content" role="main" tabindex="-1" class="flex flex-1 min-w-0 bg-background">
 		@CalendarMainPane(month, uiSettings)
 		@ResizeHandle("maillist")
 		@CalendarAgendaPane(month)

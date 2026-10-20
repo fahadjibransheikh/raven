@@ -89,7 +89,7 @@ func Button(props ...Props) templ.Component {
 			var templ_7745c5c3_Var2 = []any{utils.TwMerge(
 				"inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors",
 				"disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0",
-				"outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
+				"outline-none focus-visible:border-ring focus-visible:ring-ring focus-visible:ring-[3px]",
 				"aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
 				"cursor-pointer",
 				p.variantClasses(),
@@ -198,7 +198,7 @@ func Button(props ...Props) templ.Component {
 			var templ_7745c5c3_Var7 = []any{utils.TwMerge(
 				"inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors",
 				"disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0",
-				"outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
+				"outline-none focus-visible:border-ring focus-visible:ring-ring focus-visible:ring-[3px]",
 				"aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
 				"cursor-pointer",
 				p.variantClasses(),

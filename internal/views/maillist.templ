@@ -964,7 +964,8 @@ templ MailListCardItem(accounts []models.Account, email models.Email, position i
 			<div class="mail-list-card-zone mail-list-card-zone-rail-middle" data-mail-card-zone="railMiddle">
 				if len(accounts) > 1 {
 					<span data-mail-card-field="accountMarker" class="inline-flex items-center justify-center shrink-0">
-						<span class="account-color-marker mail-list-account-bar shrink-0" style={ accountColorStyle(email.AccountColor) }></span>
+						<span class="account-color-marker mail-list-account-bar shrink-0" style={ accountColorStyle(email.AccountColor) } title={ mailListAccountDisplay(accounts, email.AccountID) }></span>
+						<span class="sr-only">{ mailListAccountDisplay(accounts, email.AccountID) }, </span>
 					</span>
 				} else {
 					<span data-mail-card-field="accountMarker" hidden></span>
