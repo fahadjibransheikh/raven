@@ -83,10 +83,10 @@ func TestUserContactSuppressionHTTPBulkRollbackThenOwnedClearAndProviderIsolatio
 	if response := f.request("bob", "POST", path+"/same-delete-profile/clear", ""); response.Code != 404 {
 		t.Fatal("foreign suppression cleared", response.Code)
 	}
-	if response := f.request("alice", "POST", path+"/same-delete-profile/clear", ""); response.Code != 200 || !strings.Contains(response.Body.String(), "No suppressed contacts.") {
+	if response := f.request("alice", "POST", path+"/same-delete-profile/clear", ""); response.Code != 200 || !strings.Contains(response.Body.String(), "No addresses yet.") {
 		t.Fatal("clear one", response.Code, response.Body.String())
 	}
-	if response := f.request("alice", "POST", path+"/clear", ""); response.Code != 200 || !strings.Contains(response.Body.String(), "No suppressed contacts.") {
+	if response := f.request("alice", "POST", path+"/clear", ""); response.Code != 200 || !strings.Contains(response.Body.String(), "No addresses yet.") {
 		t.Fatal("empty clear all", response.Code, response.Body.String())
 	}
 	for _, table := range []string{"contact_profiles", "contact_observations", "contact_activity_events"} {
