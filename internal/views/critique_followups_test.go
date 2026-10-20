@@ -14,7 +14,9 @@ func TestUnreadFilterHiddenInSentAndDrafts(t *testing.T) {
 		if err := MailListToolbar(nil, folder, "cards", models.EmailFilters{}).Render(t.Context(), &out); err != nil {
 			t.Fatal(err)
 		}
-		if got := strings.Contains(out.String(), "data-mail-unread-toggle"); got != want {
+		html := out.String()
+		tag := html[strings.LastIndex(html[:strings.Index(html, "data-mail-unread-toggle")], "<button"):strings.Index(html, "data-mail-unread-toggle")]
+		if got := !strings.Contains(tag, "hidden"); got != want {
 			t.Errorf("%s: unread toggle shown = %v, want %v", folder, got, want)
 		}
 	}
@@ -23,7 +25,8 @@ func TestUnreadFilterHiddenInSentAndDrafts(t *testing.T) {
 	if err := MailListToolbar(nil, "sent", "cards", models.EmailFilters{Unread: true}).Render(t.Context(), &out); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out.String(), "data-mail-unread-toggle") {
+	html := out.String()
+	if tag := html[strings.LastIndex(html[:strings.Index(html, "data-mail-unread-toggle")], "<button"):strings.Index(html, "data-mail-unread-toggle")]; strings.Contains(tag, "hidden") {
 		t.Error("an active Unread filter must stay visible to turn it off")
 	}
 }

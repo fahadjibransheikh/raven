@@ -2697,7 +2697,8 @@ document.addEventListener("DOMContentLoaded", function () {
       }
       var search = document.querySelector("[data-mail-search-input]")
       // The box shows the committed query and stays editable, so it holds the whole plain query.
-      filters.query = search ? (search.value || "").trim() : committedQuery
+      // Operators still being typed (from:, subject: ...) apply on Enter, not as search text.
+      filters.query = search ? withoutSearchOperators(search.value) : committedQuery
       if (!advanced) filters.participant = committedParticipant
       return filters
     }
@@ -3414,6 +3415,12 @@ document.addEventListener("DOMContentLoaded", function () {
         return true
       }
       return false
+    }
+
+    var SEARCH_OPERATOR = /^(q|query|text|contact|participant|from|to|cc|bcc|recipients?|subject|subj|body|attachment|attach|filename|tag|account|account[-_]id|after|before|from[-_]?domain|domain|is|has):/i
+
+    function withoutSearchOperators(text) {
+      return splitSearchTokens((text || "").trim()).filter(function (token) { return !SEARCH_OPERATOR.test(token) }).join(" ")
     }
 
     function commitSearchInput(input) {
@@ -5609,6 +5616,13 @@ document.addEventListener("DOMContentLoaded", function () {
           htmx.ajax("GET", "/folder/" + folderID + "/full" + target.search, {target: "#main-content", swap: "outerHTML"})
         }
       } else {
+        // The toolbar isn't re-rendered here; match MailListToolbar's rule for Unread
+        // (hidden in Sent and Drafts unless the filter is on).
+        var unreadToggle = document.querySelector("[data-mail-unread-toggle]")
+        if (unreadToggle) {
+          var role = (link.dataset.folderRole || folderID || "").toLowerCase()
+          unreadToggle.hidden = (role === "sent" || role === "drafts") && unreadToggle.getAttribute("aria-pressed") !== "true"
+        }
         virtualMailList.switchFolder(folderID).then(function () {
           applyActiveFolderSyncState()
           scheduleSyncRefresh(virtualMailList, { noAnimation: true })

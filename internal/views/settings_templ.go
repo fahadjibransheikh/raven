@@ -3232,7 +3232,7 @@ func SettingsContactsTab(accounts []models.Account, uiSettings map[string]string
 			templ_7745c5c3_Var155 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 149, "<div class=\"mt-6 space-y-6\"><div class=\"settings-card bg-card rounded-lg border p-6 space-y-5\"><div><h3 class=\"text-sm font-semibold text-muted-foreground mb-1\">Local contacts</h3><p class=\"text-xs text-muted-foreground\">Control how Raven builds and maintains your local address book from mail you already have.</p></div><div class=\"settings-row border-t border-border/60 pt-5 space-y-5\"><div class=\"flex items-start justify-between gap-6\"><div class=\"min-w-0\"><span id=\"contacts-auto-create-observed-label\" class=\"text-sm font-medium text-foreground\">Auto-create observed contacts</span><p class=\"text-xs text-muted-foreground mt-1 leading-relaxed\">Create local contacts from selected discovery sources. Disable this if you only want manually saved contacts.</p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 149, "<div class=\"mt-6 space-y-6\"><div class=\"settings-card bg-card rounded-lg border p-6 space-y-5\"><div><h3 class=\"text-sm font-semibold text-muted-foreground mb-1\">Local contacts</h3><p class=\"text-xs text-muted-foreground\">Control how Raven builds and maintains your local address book from mail you already have.</p></div><div class=\"settings-row border-t border-border/60 pt-5 space-y-5\"><div class=\"flex items-start justify-between gap-6\"><div class=\"min-w-0\"><span id=\"contacts-auto-create-observed-label\" class=\"text-sm font-medium text-foreground\">Add people from your mail</span><p class=\"text-xs text-muted-foreground mt-1 leading-relaxed\">Create contacts for the people you exchange mail with. Turn this off if you only want contacts you save yourself.</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -3279,7 +3279,7 @@ func SettingsContactsTab(accounts []models.Account, uiSettings map[string]string
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 154, "\"><div class=\"space-y-4\"><div class=\"min-w-0\"><h4 class=\"text-sm font-medium text-foreground\">Discovery sources</h4><p class=\"text-xs text-muted-foreground mt-1 leading-relaxed\">Choose which mail participants should be eligible for automatic contact creation.</p></div><div class=\"space-y-3\"><div class=\"flex items-start justify-between gap-6\"><div class=\"min-w-0\"><span id=\"contacts-observed-senders-label\" class=\"text-sm font-medium text-foreground\">Senders</span><p class=\"text-xs text-muted-foreground mt-1\">Create contacts from message From addresses.</p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 154, "\"><div class=\"space-y-4\"><div class=\"min-w-0\"><h4 class=\"text-sm font-medium text-foreground\">Who to add</h4><p class=\"text-xs text-muted-foreground mt-1 leading-relaxed\">Choose whose addresses Raven adds automatically.</p></div><div class=\"space-y-3\"><div class=\"flex items-start justify-between gap-6\"><div class=\"min-w-0\"><span id=\"contacts-observed-senders-label\" class=\"text-sm font-medium text-foreground\">Senders</span><p class=\"text-xs text-muted-foreground mt-1\">Create contacts from message From addresses.</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -3305,7 +3305,7 @@ func SettingsContactsTab(accounts []models.Account, uiSettings map[string]string
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 156, "</div></div></div><div class=\"flex items-start justify-between gap-6 border-t border-border/60 pt-5\"><div class=\"min-w-0\"><span id=\"contacts-prevent-recreate-deleted-label\" class=\"text-sm font-medium text-foreground\">Do not recreate deleted contacts</span><p class=\"text-xs text-muted-foreground mt-1 leading-relaxed\">When an observed contact is deleted, keep it suppressed so future mail from the same address does not add it back automatically.</p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 156, "</div></div></div><div class=\"flex items-start justify-between gap-6 border-t border-border/60 pt-5\"><div class=\"min-w-0\"><span id=\"contacts-prevent-recreate-deleted-label\" class=\"text-sm font-medium text-foreground\">Do not recreate deleted contacts</span><p class=\"text-xs text-muted-foreground mt-1 leading-relaxed\">When you delete a contact Raven added from mail, new mail from that address won't add it back.</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -3318,7 +3318,7 @@ func SettingsContactsTab(accounts []models.Account, uiSettings map[string]string
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 157, "</div><div class=\"flex items-start justify-between gap-6 border-t border-border/60 pt-5\"><div class=\"min-w-0\"><h4 class=\"text-sm font-medium text-foreground\">Delete discovered contacts</h4><p class=\"text-xs text-muted-foreground mt-1 leading-relaxed\">Remove contacts that were created by discovery. Manually saved contacts are kept.</p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 157, "</div><div class=\"flex items-start justify-between gap-6 border-t border-border/60 pt-5\"><div class=\"min-w-0\"><h4 class=\"text-sm font-medium text-foreground\">Delete contacts added from mail</h4><p class=\"text-xs text-muted-foreground mt-1 leading-relaxed\">Remove the contacts Raven added from your mail. Contacts you saved yourself are kept.</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -3342,7 +3342,7 @@ func SettingsContactsTab(accounts []models.Account, uiSettings map[string]string
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 159, "Delete discovered</button>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 159, "Delete contacts</button>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -3404,7 +3404,7 @@ func SettingsContactsTab(accounts []models.Account, uiSettings map[string]string
 							}()
 						}
 						ctx = templ.InitializeContext(ctx)
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 161, "Delete discovered contacts ")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 161, "Delete contacts added from mail ")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -3430,7 +3430,7 @@ func SettingsContactsTab(accounts []models.Account, uiSettings map[string]string
 							}()
 						}
 						ctx = templ.InitializeContext(ctx)
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 163, "Remove contacts Raven created through discovery. Manually saved contacts will be kept. ")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 163, "Remove the contacts Raven added from your mail. Contacts you saved yourself are kept. ")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -3446,7 +3446,7 @@ func SettingsContactsTab(accounts []models.Account, uiSettings map[string]string
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 164, " <div class=\"rounded-lg border border-destructive/15 bg-destructive/5 p-3 text-sm text-muted-foreground\">This action deletes all discovered contacts. Deleted addresses may be suppressed from automatic recreation depending on your contact settings.</div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 164, " <div class=\"rounded-lg border border-destructive/15 bg-destructive/5 p-3 text-sm text-muted-foreground\">This deletes every contact Raven added from mail. If \"Do not recreate deleted contacts\" is on, they won't be added again.</div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -3492,7 +3492,7 @@ func SettingsContactsTab(accounts []models.Account, uiSettings map[string]string
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 167, "Delete discovered</button></form>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 167, "Delete contacts</button></form>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -3883,7 +3883,7 @@ func SettingsSuppressedContacts(contacts []models.Contact, totalCount int) templ
 			templ_7745c5c3_Var180 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 195, "<div id=\"contacts-suppressed-settings\" class=\"settings-row border-t border-border/60 pt-5\"><div class=\"flex items-start justify-between gap-6\"><div class=\"min-w-0\"><div class=\"flex items-center gap-2\"><h4 class=\"text-sm font-medium text-foreground\">Suppressed contacts</h4><span class=\"rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 195, "<div id=\"contacts-suppressed-settings\" class=\"settings-row border-t border-border/60 pt-5\"><div class=\"flex items-start justify-between gap-6\"><div class=\"min-w-0\"><div class=\"flex items-center gap-2\"><h4 class=\"text-sm font-medium text-foreground\">Addresses Raven won't re-add</h4><span class=\"rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -3896,7 +3896,7 @@ func SettingsSuppressedContacts(contacts []models.Contact, totalCount int) templ
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 196, "</span></div><p class=\"text-xs text-muted-foreground mt-1 leading-relaxed\">Deleted discovered contacts that should not be recreated automatically.</p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 196, "</span></div><p class=\"text-xs text-muted-foreground mt-1 leading-relaxed\">Contacts you deleted that new mail won't add back.</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -3982,7 +3982,7 @@ func SettingsSuppressedContacts(contacts []models.Contact, totalCount int) templ
 							}()
 						}
 						ctx = templ.InitializeContext(ctx)
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 200, "Suppressed contacts ")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 200, "Addresses Raven won't re-add ")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -4008,7 +4008,7 @@ func SettingsSuppressedContacts(contacts []models.Contact, totalCount int) templ
 							}()
 						}
 						ctx = templ.InitializeContext(ctx)
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 202, "These addresses are allowed to stay deleted and will not be recreated by discovery. ")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 202, "These addresses stay deleted: new mail from them won't add them back. ")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -4037,12 +4037,12 @@ func SettingsSuppressedContacts(contacts []models.Contact, totalCount int) templ
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 204, " suppressed contacts</div><p class=\"text-xs text-muted-foreground mt-0.5\">Remove one address or clear the full suppression list.</p></div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 204, " addresses</div><p class=\"text-xs text-muted-foreground mt-0.5\">Remove one address, or clear the whole list.</p></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if totalCount > 0 {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 205, "<form hx-post=\"/api/settings/contacts/suppressed/clear\" hx-target=\"#contacts-suppressed-settings\" hx-swap=\"outerHTML\" data-confirm=\"Clear all suppressed contacts? These addresses may be rediscovered later.\"><button type=\"submit\" class=\"inline-flex shrink-0 items-center gap-1.5 rounded-md border border-destructive/30 px-3 py-2 text-xs font-semibold text-destructive hover:bg-destructive/10\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 205, "<form hx-post=\"/api/settings/contacts/suppressed/clear\" hx-target=\"#contacts-suppressed-settings\" hx-swap=\"outerHTML\" data-confirm=\"Clear the whole list? New mail from these addresses may add them back.\"><button type=\"submit\" class=\"inline-flex shrink-0 items-center gap-1.5 rounded-md border border-destructive/30 px-3 py-2 text-xs font-semibold text-destructive hover:bg-destructive/10\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -4060,7 +4060,7 @@ func SettingsSuppressedContacts(contacts []models.Contact, totalCount int) templ
 					return templ_7745c5c3_Err
 				}
 				if totalCount == 0 {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 208, "<div class=\"rounded-lg border border-dashed border-border bg-background/40 p-6 text-center text-sm text-muted-foreground\">No suppressed contacts.</div>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 208, "<div class=\"rounded-lg border border-dashed border-border bg-background/40 p-6 text-center text-sm text-muted-foreground\">No addresses yet.</div>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -4149,7 +4149,7 @@ func SettingsSuppressedContacts(contacts []models.Contact, totalCount int) templ
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 217, " suppressed contacts.</div>")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 217, " addresses.</div>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}

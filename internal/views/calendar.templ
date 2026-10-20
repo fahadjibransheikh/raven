@@ -95,16 +95,10 @@ templ CalendarSidebarContent(accounts []models.Account, loading bool) {
 		</div>
 		<hr class="divider-etched mx-4"/>
 		<nav class="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 pt-3 pb-3">
-			<div class="px-2.5 pb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-sidebar-foreground/45">Connected accounts</div>
 			if len(configuredAccounts) == 0 && len(calendarUnselectedAccounts(accounts)) == 0 {
-				<div class="rounded-md border border-sidebar-border/60 bg-sidebar-accent/20 px-2.5 py-3 text-xs leading-relaxed text-sidebar-foreground/55">
-					<p>No calendar accounts configured yet.</p>
-					<a href="/settings/accounts" class="mt-2 inline-flex items-center gap-1.5 font-semibold text-sidebar-primary hover:text-sidebar-accent-foreground">
-						Open account setup
-						@icon.ChevronRight(icon.Props{Class: "size-3"})
-					</a>
-				</div>
+				// Nothing to list: the main pane's "Connect a calendar" panel says so once.
 			} else {
+				<div class="px-2.5 pb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-sidebar-foreground/45">Connected accounts</div>
 				for _, account := range configuredAccounts {
 					<div class="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-sidebar-foreground/70">
 						<div class="account-color-marker size-2.5 shrink-0" style={ accountColorStyle(account.Color) }></div>
@@ -238,7 +232,7 @@ templ CalendarMainContent(month CalendarMonthData) {
 						<a href={ calendarViewURL(view, month.DateKey) } hx-get={ calendarViewURL(view, month.DateKey) } hx-target="#main-content" hx-select="#main-content" hx-swap="outerHTML" hx-sync="#main-content:replace" hx-push-url={ calendarViewURL(view, month.DateKey) } class={ calendarViewSwitchClass(month.View == view) } aria-current={ calendarViewCurrent(month.View == view) } data-calendar-view-switch={ view } data-calendar-key={ view }>{ calendarViewLabel(view) }</a>
 					}
 				</nav>
-				<button type="button" data-calendar-agenda-toggle data-calendar-key="agenda" class="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-background px-2.5 text-xs font-semibold text-foreground shadow-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden">
+				<button type="button" data-calendar-agenda-toggle data-calendar-key="agenda" hidden?={ !month.HasSources } class="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-background px-2.5 text-xs font-semibold text-foreground shadow-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden">
 					@icon.List(icon.Props{Class: "size-3.5"})
 					Agenda
 				</button>
@@ -317,7 +311,7 @@ continuesAfter := event.AllDay && event.EndDate > day.Date.AddDate(0, 0, 1).Form
 				</div>
 			}
 		</div>
-		<footer class="flex shrink-0 flex-wrap items-center justify-between gap-2 px-4 py-2 text-xs text-muted-foreground sm:px-5" data-calendar-layout-footer>
+		<footer class="flex shrink-0 flex-wrap items-center justify-between gap-2 px-4 py-2 text-xs text-muted-foreground sm:px-5" data-calendar-layout-footer hidden?={ !month.HasSources && !month.Loading }>
 			<div class="flex flex-wrap items-center gap-x-4 gap-y-1" role="group" aria-label="Calendar legend">
 				<span class="inline-flex items-center gap-1.5"><span class="size-2 rounded-full bg-primary"></span>Today</span>
 				@CalendarEventResponseLegend()
@@ -438,7 +432,7 @@ templ CalendarMainPartial(month CalendarMonthData) {
 // with "Nothing is scheduled" read as a working calendar with no events. The grid stays in
 // the page, hidden, for the calendar scripts.
 templ CalendarConnectEmpty() {
-	<div class="flex min-h-0 flex-1 flex-col items-start justify-center px-6 py-12 sm:px-10" data-calendar-connect-empty>
+	<div class="flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-12 sm:px-10" data-calendar-connect-empty>
 		<div class="max-w-sm">
 			@icon.CalendarDays(icon.Props{Class: "size-6 text-muted-foreground mb-4"})
 			<h2 class="text-base font-semibold tracking-tight text-foreground mb-2">Connect a calendar</h2>
