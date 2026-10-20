@@ -948,12 +948,13 @@ templ SidebarFooter(activeApp string) {
 			</div>
 			<a
 				href="/settings/accounts"
-				class="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 rounded-md text-subtle-foreground hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/60 transition-colors text-sm"
+				title="Settings"
+				class="ml-auto flex shrink-0 items-center gap-2 px-2 py-1.5 rounded-md text-subtle-foreground hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/60 transition-colors text-sm"
 			>
 				<span class="flex size-4 shrink-0 items-center justify-center">
 					@icon.Settings(icon.Props{Class: "size-4"})
 				</span>
-				<span class="truncate">Settings</span>
+				<span class="sr-only">Settings</span>
 			</a>
 			@popover.Root(popover.RootProps{Class: "shrink-0"}) {
 				@popover.Trigger() {

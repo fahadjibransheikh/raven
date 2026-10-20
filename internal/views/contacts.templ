@@ -1504,7 +1504,7 @@ templ ContactListTableRow(contact models.Contact, filters models.ContactFilters,
 			data-contact-list-item={ contact.ID }
 			data-active={ fmt.Sprintf("%t", selected != nil && selected.ID == contact.ID) }
 			class={
-				"contact-list-item mail-list-table-grid grid items-center gap-3 px-3.5 py-1.5 rounded-md cursor-pointer transition-all duration-150 group text-xs",
+				"contact-list-item mail-list-table-grid grid items-center gap-3 px-3.5 py-0 rounded-md cursor-pointer transition-all duration-150 group text-xs",
 				templ.KV("envelope-active", selected != nil && selected.ID == contact.ID),
 				templ.KV("envelope", selected == nil || selected.ID != contact.ID),
 			}
@@ -1515,8 +1515,8 @@ templ ContactListTableRow(contact models.Contact, filters models.ContactFilters,
 					@ContactAvatar(contact, "size-6 rounded-full text-xs font-semibold", "")
 				</div>
 				<div class="min-w-0">
-					<div class="truncate font-semibold text-foreground" data-contact-name>{ contact.Name }</div>
-					<div class="truncate text-xs text-muted-foreground" data-contact-email>{ contact.Email }</div>
+					<div class="truncate font-semibold leading-4 text-foreground" data-contact-name>{ contact.Name }</div>
+					<div class="truncate text-xs leading-4 text-muted-foreground" data-contact-email>{ contact.Email }</div>
 				</div>
 			</div>
 			<div class="truncate text-xs text-muted-foreground">

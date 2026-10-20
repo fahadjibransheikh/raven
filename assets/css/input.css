@@ -97,6 +97,10 @@
   html.dark {
     color-scheme: dark;
   }
+  /* Controls without their own focus style get the accent ring, not the browser's blue. */
+  :focus-visible {
+    outline-color: var(--ring);
+  }
   * {
     @apply border-border;
     scrollbar-width: thin;
@@ -4082,6 +4086,13 @@ html[data-phone] .mail-view-toolbar button,
 html[data-phone] .mail-list-toolbar button,
 html[data-phone] .mail-list-header button {
   min-width: 2.5rem;
+  min-height: 2.75rem;
+}
+
+html[data-phone] [data-phone-nav-toggle],
+html[data-phone] [data-calendar-create-trigger],
+html[data-phone] [data-calendar-agenda-toggle] {
+  min-width: 2.75rem;
   min-height: 2.75rem;
 }
 
