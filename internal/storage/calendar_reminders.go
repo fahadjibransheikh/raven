@@ -47,6 +47,9 @@ type CalendarReminder struct {
 	Summary   string
 	Location  string
 	StartAt   time.Time
+	// Description and OnlineMeetingJSON are read so the reminder can carry a join link.
+	Description       string
+	OnlineMeetingJSON string
 }
 
 // UpcomingCalendarReminders returns timed occurrences that start after now and
@@ -56,7 +59,7 @@ type CalendarReminder struct {
 func (db *DB) UpcomingCalendarReminders(ctx context.Context, now time.Time, horizon time.Duration, limit int) ([]CalendarReminder, error) {
 	rows, err := db.Read().QueryContext(ctx, `
 		SELECT event.id, event.user_id, source.account_id, event.source_id, event.remote_id,
-		       event.summary, event.location, event.start_at
+		       event.summary, event.location, event.start_at, event.description, event.online_meeting_json
 		FROM calendar_events event
 		JOIN calendar_sources source ON source.id = event.source_id
 		JOIN accounts account ON account.id = source.account_id
@@ -80,7 +83,7 @@ func (db *DB) UpcomingCalendarReminders(ctx context.Context, now time.Time, hori
 	for rows.Next() {
 		var r CalendarReminder
 		var start sqliteNullTime
-		if err := rows.Scan(&r.EventID, &r.UserID, &r.AccountID, &r.SourceID, &r.RemoteID, &r.Summary, &r.Location, &start); err != nil {
+		if err := rows.Scan(&r.EventID, &r.UserID, &r.AccountID, &r.SourceID, &r.RemoteID, &r.Summary, &r.Location, &start, &r.Description, &r.OnlineMeetingJSON); err != nil {
 			return nil, err
 		}
 		r.StartAt = start.Time

@@ -4178,6 +4178,7 @@ document.addEventListener("DOMContentLoaded", function () {
     source.addEventListener("calendar-reminder", function (e) {
       var data
       try { data = JSON.parse(e.data) } catch (_) { return }
+      showCalendarReminderCard(data)
       showBrowserTabCalendarReminder(data)
     })
 
@@ -4878,6 +4879,42 @@ document.addEventListener("DOMContentLoaded", function () {
   // Web Push delivers meeting reminders itself; this covers the browser-tab and
   // desktop-app paths. Shown even while Raven has focus: a reminder is about
   // something outside the window.
+  function calendarReminderJoinURL(data) {
+    var url = String((data && data.join_url) || "")
+    return /^https?:\/\//i.test(url) ? url : ""
+  }
+
+  // The reminder card stays in Raven's window until dismissed, or until 15 minutes after the
+  // meeting starts. It is shown however notifications are delivered: the desktop app's
+  // native notifications can't stay on screen or be clicked, so this is where Join lives.
+  function showCalendarReminderCard(data) {
+    if (!data || !data.title) return
+    var joinURL = calendarReminderJoinURL(data)
+    var start = Date.parse(data.start_at || "")
+    var until = isNaN(start) ? 30 * 60000 : start + 15 * 60000 - Date.now()
+    if (until <= 0) return
+    var toast = showRavenToast({
+      id: "calendar-reminder-" + String(data.event_id || ""),
+      title: String(data.title),
+      description: String(data.body || ""),
+      icon: "info",
+      position: "bottom-right",
+      duration: 0,
+      dismissible: true,
+      actionLabel: joinURL ? "Join meeting" : "",
+      actionHref: joinURL,
+      secondaryActionLabel: "Open calendar",
+      onSecondaryAction: function () {
+        dismissRavenToast(toast)
+        window.location.href = "/calendar"
+      },
+    })
+    if (toast) {
+      toast.setAttribute("role", "alert")
+      toast._ravenToastTimer = setTimeout(function () { dismissRavenToast(toast) }, until)
+    }
+  }
+
   function showBrowserTabCalendarReminder(data) {
     if (!data || !data.title) return
     if (!notificationsEnabled()) return
@@ -4888,7 +4925,12 @@ document.addEventListener("DOMContentLoaded", function () {
       tag: "raven-calendar-" + (data.event_id || ""),
       icon: "/assets/logo.png",
       badge: "/assets/logo.png",
-      data: { url: /^\/(?!\/)/.test(String(data.url || "")) ? String(data.url) : "/calendar" },
+      // A meeting reminder stays until dismissed; clicking it opens the meeting.
+      requireInteraction: true,
+      data: {
+        url: /^\/(?!\/)/.test(String(data.url || "")) ? String(data.url) : "/calendar",
+        joinURL: calendarReminderJoinURL(data),
+      },
     })
   }
 
@@ -4901,6 +4943,11 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     var notification = new Notification(title, options)
     notification.onclick = function () {
+      if (notification.data && notification.data.joinURL) {
+        window.open(notification.data.joinURL, "_blank", "noopener")
+        notification.close()
+        return
+      }
       window.focus()
       if (notification.data && notification.data.url) {
         window.location.href = notification.data.url
@@ -4909,7 +4956,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }
       notification.close()
     }
-    setTimeout(function () { notification.close() }, 12000)
+    if (!options.requireInteraction) setTimeout(function () { notification.close() }, 12000)
   }
 
   window.ravenNotifications = { request: requestNotificationPermission, deliver: deliverNotification }
@@ -7142,7 +7189,8 @@ function showRavenToast(opts) {
   var actionHTML = ""
   if (opts.actionLabel || opts.secondaryActionLabel) {
     actionHTML = '<div class="mt-2 flex items-center gap-3 text-xs font-semibold">'
-    if (opts.actionLabel) actionHTML += '<span class="underline underline-offset-2">' + _escapeComposeHTML(opts.actionLabel) + '</span>'
+    if (opts.actionLabel && opts.actionHref) actionHTML += '<a class="raven-toast-link" href="' + _escapeComposeHTML(opts.actionHref) + '" target="_blank" rel="noopener noreferrer" data-raven-toast-link>' + _escapeComposeHTML(opts.actionLabel) + '</a>'
+    else if (opts.actionLabel) actionHTML += '<span class="underline underline-offset-2">' + _escapeComposeHTML(opts.actionLabel) + '</span>'
     if (opts.secondaryActionLabel) actionHTML += '<button type="button" class="text-xs font-semibold underline underline-offset-2 opacity-80 hover:opacity-100 disabled:opacity-50" data-raven-toast-secondary' + (opts.secondaryActionDisabled ? ' disabled aria-disabled="true"' : '') + '>' + _escapeComposeHTML(opts.secondaryActionLabel) + '</button>'
     actionHTML += '</div>'
   }
@@ -7185,7 +7233,7 @@ function showRavenToast(opts) {
       card.style.cursor = "pointer"
       card.addEventListener("click", function (e) {
         if (e.target && e.target.closest && e.target.closest("[data-tui-toast-dismiss]")) return
-        if (e.target && e.target.closest && e.target.closest("[data-raven-toast-secondary]")) return
+        if (e.target && e.target.closest && e.target.closest("[data-raven-toast-secondary], [data-raven-toast-link]")) return
         opts.onClick(e)
       })
       card.addEventListener("keydown", function (e) {

@@ -118,3 +118,29 @@ func TestCalendarRemindersStayQuietForEventsThatStartedWhileTheServerWasDown(t *
 		t.Fatalf("events = %#v", events)
 	}
 }
+
+func TestCalendarReminderCarriesTheMeetingJoinLink(t *testing.T) {
+	_, db := newAccountOwnershipTestHandler(t)
+	now := time.Date(2026, 10, 20, 9, 0, 0, 0, time.UTC)
+	meet := reminderEvent("meet", "Standup", now.Add(5*time.Minute))
+	meet.OnlineMeetingJSON = `{"joinUrl":"https://meet.google.com/abc-defg-hij"}`
+	described := reminderEvent("described", "Teams sync", now.Add(6*time.Minute))
+	described.Description = "Join: https://teams.microsoft.com/l/meetup-join/19%3ameeting_x/0"
+	unsafe := reminderEvent("unsafe", "Bad link", now.Add(7*time.Minute))
+	unsafe.OnlineMeetingJSON = `{"joinUrl":"javascript:alert(1)"}`
+	seedReminderEvents(t, db, now, meet, described, unsafe)
+
+	links := map[string]any{}
+	for _, e := range collectReminders(t, db, now) {
+		links[e.Payload["title"].(string)] = e.Payload["join_url"]
+	}
+	if links["Standup"] != "https://meet.google.com/abc-defg-hij" {
+		t.Errorf("Standup join_url = %#v", links["Standup"])
+	}
+	if link, _ := links["Teams sync"].(string); link == "" {
+		t.Errorf("a join link in the description should be found, got %#v", links["Teams sync"])
+	}
+	if links["Bad link"] != "" {
+		t.Errorf("an unsafe link must not be offered, got %#v", links["Bad link"])
+	}
+}

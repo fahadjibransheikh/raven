@@ -193,6 +193,9 @@ func (s *Service) handleCalendarReminder(ctx context.Context, event mail.Event) 
 		"body":  stringPayload(event.Payload, "body"),
 		"tag":   "raven-calendar-" + stringPayload(event.Payload, "event_id"),
 		"url":   stringPayload(event.Payload, "url"),
+		// A meeting reminder stays until dismissed and can open the meeting.
+		"require_interaction": true,
+		"join_url":            stringPayload(event.Payload, "join_url"),
 	}
 	s.sendWebPush(ctx, event.UserID, event.AccountID, payloadData, calendarReminderPushTTL)
 }

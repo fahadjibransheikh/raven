@@ -693,6 +693,22 @@
   color: var(--accent-foreground);
 }
 
+/* A toast's link action, e.g. Join meeting on a reminder: the one primary thing to do. */
+.raven-toast-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0 0.75rem;
+  border-radius: calc(var(--radius) * 0.75);
+  background: var(--primary);
+  color: var(--primary-foreground);
+  text-decoration: none;
+}
+
+.raven-toast-link:hover {
+  background: color-mix(in srgb, var(--primary) 90%, transparent);
+}
+
 @keyframes compose-recipient-chip-in {
   from { opacity: 0; transform: translateY(2px) scale(0.96); }
   to { opacity: 1; transform: translateY(0) scale(1); }
