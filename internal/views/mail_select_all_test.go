@@ -50,7 +50,7 @@ func TestMailRowsCarryReadStateForSelectByState(t *testing.T) {
 			if view == "cards" {
 				err = MailListCardItem(nil, email, 0, nil, "name").Render(context.Background(), &out)
 			} else {
-				err = MailListTableItem(email, 0, nil, "name").Render(context.Background(), &out)
+				err = MailListTableItem(nil, email, 0, nil, "name").Render(context.Background(), &out)
 			}
 			if err != nil {
 				t.Fatal(err)

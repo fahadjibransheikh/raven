@@ -1674,12 +1674,12 @@ templ ContactReadOnlyView(contact models.Contact, profile *models.ContactProfile
 }
 
 templ ContactReadOnlyContactInfo(contact models.Contact) {
-	<section class="rounded-lg border border-ink/10 bg-ink/[0.02]">
-		<div class="flex items-center gap-2 border-b border-ink/10 px-4 py-3">
+	<section class="border-t border-ink/10 pt-2 first:border-t-0 first:pt-0">
+		<div class="flex items-center gap-2 py-2">
 			@icon.IdCard(icon.Props{Class: "size-3.5 text-ink/40"})
 			<h2 class="text-xs font-semibold text-ink/45">Contact</h2>
 		</div>
-		<div class="grid gap-x-6 px-4 lg:grid-cols-2">
+		<div class="grid gap-x-6 lg:grid-cols-2">
 			@ContactReadOnlyTextField("Name", contact.Name)
 			@ContactReadOnlyLinkedField("Email", contact.Email, contact.EmailLabel, "mailto:")
 			@ContactReadOnlyListField("Additional emails", contact.AdditionalEmails, contact.AdditionalEmailLabels, "alternate", "mailto:")
@@ -1695,8 +1695,10 @@ templ ContactReadOnlyContactInfo(contact models.Contact) {
 templ ContactReadOnlySyncInfo(contact models.Contact, profile *models.ContactProfile, syncQueued bool, accounts []models.Account) {
 	{{ originLabel := contactReadOnlyOriginLabel(contact, profile, accounts) }}
 	{{ targetLabels := contactReadOnlyMirrorLabels(&contact, profile, accounts) }}
-	<section class="rounded-lg border border-ink/10 bg-ink/[0.02]">
-		<div class="flex flex-wrap items-center justify-between gap-3 border-b border-ink/10 px-4 py-3">
+	// A contact that doesn't sync anywhere has nothing to show here; Edit is where sync is turned on.
+	if contactProfileSyncEnabled(profile) || strings.TrimSpace(contact.SyncError) != "" || contactSyncOperationActive(contact, syncQueued) {
+	<section class="border-t border-ink/10 pt-2 first:border-t-0 first:pt-0">
+		<div class="flex flex-wrap items-center justify-between gap-3 py-2">
 			<div class="flex flex-wrap items-center gap-2">
 				@icon.Route(icon.Props{Class: "size-3.5 text-ink/40"})
 				<h2 class="text-xs font-semibold text-ink/55">Raven Sync</h2>
@@ -1713,7 +1715,7 @@ templ ContactReadOnlySyncInfo(contact models.Contact, profile *models.ContactPro
 				Sync now
 			}
 		</div>
-		<div class="grid gap-x-6 px-4 lg:grid-cols-2">
+		<div class="grid gap-x-6 lg:grid-cols-2">
 			@ContactReadOnlyPillListField("Sync locations", targetLabels)
 			@ContactReadOnlyTextField("Origin", originLabel)
 			@ContactReadOnlySyncStatusField(contactReadOnlySyncStatus(contact, syncQueued))
@@ -1721,15 +1723,16 @@ templ ContactReadOnlySyncInfo(contact models.Contact, profile *models.ContactPro
 			@ContactReadOnlyLongField("Sync error", contact.SyncError)
 		</div>
 	</section>
+	}
 }
 
 templ ContactReadOnlyActivityInfo(contact models.Contact) {
-	<section class="rounded-lg border border-ink/10 bg-ink/[0.02]">
-		<div class="flex items-center gap-2 border-b border-ink/10 px-4 py-3">
+	<section class="border-t border-ink/10 pt-2 first:border-t-0 first:pt-0">
+		<div class="flex items-center gap-2 py-2">
 			@icon.Activity(icon.Props{Class: "size-3.5 text-ink/40"})
 			<h2 class="text-xs font-semibold text-ink/45">Activity</h2>
 		</div>
-		<div class="grid gap-x-6 px-4 sm:grid-cols-2 xl:grid-cols-4">
+		<div class="grid gap-x-6 sm:grid-cols-2 xl:grid-cols-4">
 			@ContactReadOnlyTextField("Messages", fmt.Sprintf("%d", contact.MessageCount))
 			@ContactReadOnlyTextField("Last seen", contact.LastSeenAt)
 			@ContactReadOnlyTextField("Added to Raven", contact.CreatedAt)
@@ -1739,55 +1742,67 @@ templ ContactReadOnlyActivityInfo(contact models.Contact) {
 }
 
 templ ContactReadOnlyTextField(label string, value string) {
-	<div class="min-w-0 border-b border-ink/10 py-3 last:border-b-0 lg:[&:nth-last-child(-n+2)]:border-b-0 xl:last:border-b-0">
-		<div class="text-xs font-semibold text-ink/35">{ label }</div>
-		<div class={ "mt-1 min-h-5 truncate text-sm font-medium " + contactReadOnlyValueClass(value) }>{ contactReadOnlyValue(value) }</div>
-	</div>
+	// Empty fields are left out: a column of "Empty" rows is noise, not information.
+	if strings.TrimSpace(value) != "" {
+		<div class="min-w-0 border-b border-ink/10 py-3 last:border-b-0 lg:[&:nth-last-child(-n+2)]:border-b-0 xl:last:border-b-0">
+			<div class="text-xs font-semibold text-ink/35">{ label }</div>
+			<div class={ "mt-1 min-h-5 truncate text-sm font-medium " + contactReadOnlyValueClass(value) }>{ contactReadOnlyValue(value) }</div>
+		</div>
+	}
 }
 
 templ ContactReadOnlyLongField(label string, value string) {
-	<div class="min-w-0 border-b border-ink/10 py-3 last:border-b-0 lg:[&:nth-last-child(-n+2)]:border-b-0 xl:last:border-b-0">
-		<div class="text-xs font-semibold text-ink/35">{ label }</div>
-		<div class={ "mt-1 min-h-5 whitespace-pre-wrap text-sm leading-relaxed " + contactReadOnlyValueClass(value) }>{ contactReadOnlyValue(value) }</div>
-	</div>
+	// Empty fields are left out: a column of "Empty" rows is noise, not information.
+	if strings.TrimSpace(value) != "" {
+		<div class="min-w-0 border-b border-ink/10 py-3 last:border-b-0 lg:[&:nth-last-child(-n+2)]:border-b-0 xl:last:border-b-0">
+			<div class="text-xs font-semibold text-ink/35">{ label }</div>
+			<div class={ "mt-1 min-h-5 whitespace-pre-wrap text-sm leading-relaxed " + contactReadOnlyValueClass(value) }>{ contactReadOnlyValue(value) }</div>
+		</div>
+	}
 }
 
 templ ContactReadOnlyLinkedField(label string, value string, valueLabel string, hrefPrefix string) {
-	<div class="min-w-0 border-b border-ink/10 py-3 last:border-b-0 lg:[&:nth-last-child(-n+2)]:border-b-0 xl:last:border-b-0">
-		<div class="text-xs font-semibold text-ink/35">{ label }</div>
-		if strings.TrimSpace(value) != "" {
-			<div class="mt-1 flex min-h-5 min-w-0 flex-wrap items-center gap-2">
-				<a href={ hrefPrefix + value } class="min-w-0 truncate text-sm font-medium text-ink hover:text-ink/70">{ value }</a>
-				if contactReadOnlyLabelDisplay(valueLabel) != "" {
-					<span class="rounded border border-ink/10 bg-ink/[0.04] px-1.5 py-0.5 text-xs font-semibold text-ink/40">{ contactReadOnlyLabelDisplay(valueLabel) }</span>
-				}
-			</div>
-		} else {
-			<div class="mt-1 min-h-5 text-sm font-medium text-ink/30">Empty</div>
-		}
-	</div>
+	// Empty fields are left out: a column of "Empty" rows is noise, not information.
+	if strings.TrimSpace(value) != "" {
+		<div class="min-w-0 border-b border-ink/10 py-3 last:border-b-0 lg:[&:nth-last-child(-n+2)]:border-b-0 xl:last:border-b-0">
+			<div class="text-xs font-semibold text-ink/35">{ label }</div>
+			if strings.TrimSpace(value) != "" {
+				<div class="mt-1 flex min-h-5 min-w-0 flex-wrap items-center gap-2">
+					<a href={ hrefPrefix + value } class="min-w-0 truncate text-sm font-medium text-ink hover:text-ink/70">{ value }</a>
+					if contactReadOnlyLabelDisplay(valueLabel) != "" {
+						<span class="rounded border border-ink/10 bg-ink/[0.04] px-1.5 py-0.5 text-xs font-semibold text-ink/40">{ contactReadOnlyLabelDisplay(valueLabel) }</span>
+					}
+				</div>
+			} else {
+				<div class="mt-1 min-h-5 text-sm font-medium text-ink/30">Empty</div>
+			}
+		</div>
+	}
 }
 
 templ ContactReadOnlyListField(label string, values []string, labels []string, fallbackLabel string, hrefPrefix string) {
-	<div class="min-w-0 border-b border-ink/10 py-3 last:border-b-0 lg:[&:nth-last-child(-n+2)]:border-b-0 xl:last:border-b-0">
-		<div class="text-xs font-semibold text-ink/35">{ label }</div>
-		if contactReadOnlyHasValues(values) {
-			<div class="mt-1 space-y-1.5">
-				for i, value := range values {
-					if strings.TrimSpace(value) != "" {
-						<div class="flex min-w-0 flex-wrap items-center gap-2">
-							<a href={ hrefPrefix + value } class="min-w-0 truncate text-sm font-medium text-ink hover:text-ink/70">{ value }</a>
-							if contactReadOnlyLabelDisplay(contactReadOnlyLabelAt(labels, i, fallbackLabel)) != "" {
-								<span class="rounded border border-ink/10 bg-ink/[0.04] px-1.5 py-0.5 text-xs font-semibold text-ink/40">{ contactReadOnlyLabelDisplay(contactReadOnlyLabelAt(labels, i, fallbackLabel)) }</span>
-							}
-						</div>
+	// Empty fields are left out: a column of "Empty" rows is noise, not information.
+	if contactReadOnlyHasValues(values) {
+		<div class="min-w-0 border-b border-ink/10 py-3 last:border-b-0 lg:[&:nth-last-child(-n+2)]:border-b-0 xl:last:border-b-0">
+			<div class="text-xs font-semibold text-ink/35">{ label }</div>
+			if contactReadOnlyHasValues(values) {
+				<div class="mt-1 space-y-1.5">
+					for i, value := range values {
+						if strings.TrimSpace(value) != "" {
+							<div class="flex min-w-0 flex-wrap items-center gap-2">
+								<a href={ hrefPrefix + value } class="min-w-0 truncate text-sm font-medium text-ink hover:text-ink/70">{ value }</a>
+								if contactReadOnlyLabelDisplay(contactReadOnlyLabelAt(labels, i, fallbackLabel)) != "" {
+									<span class="rounded border border-ink/10 bg-ink/[0.04] px-1.5 py-0.5 text-xs font-semibold text-ink/40">{ contactReadOnlyLabelDisplay(contactReadOnlyLabelAt(labels, i, fallbackLabel)) }</span>
+								}
+							</div>
+						}
 					}
-				}
-			</div>
-		} else {
-			<div class="mt-1 min-h-5 text-sm font-medium text-ink/30">Empty</div>
-		}
-	</div>
+				</div>
+			} else {
+				<div class="mt-1 min-h-5 text-sm font-medium text-ink/30">Empty</div>
+			}
+		</div>
+	}
 }
 
 templ ContactReadOnlyPillListField(label string, values []string) {

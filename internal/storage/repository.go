@@ -861,10 +861,16 @@ func parseSQLiteDateTime(raw string) (time.Time, bool) {
 	if raw == "" {
 		return time.Time{}, false
 	}
+	// time.Time.String() can end in a monotonic clock reading (" m=+12.34"); it isn't part of the date.
+	if i := strings.Index(raw, " m="); i > 0 {
+		raw = raw[:i]
+	}
 	layouts := []string{
 		time.RFC3339Nano,
 		time.RFC3339,
 		"2006-01-02 15:04:05.999999999 -0700 -0700",
+		// time.Time.String(), which the SQLite driver writes for a time.Time value ("+0000 UTC").
+		"2006-01-02 15:04:05.999999999 -0700 MST",
 		"2006-01-02 15:04:05 -0700 -0700",
 		"2006-01-02 15:04:05.999999999Z07:00",
 		"2006-01-02 15:04:05.999999999",
