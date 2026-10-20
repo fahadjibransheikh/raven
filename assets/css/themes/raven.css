@@ -54,8 +54,10 @@
 
 :root.dark,
 [data-theme].dark {
-  --raven-pink: #ff5fa3;
-  --primary-text: #ff7ab4;
+  /* Calmer than the old #ff5fa3: same hue, less saturation. Label #161618 on it is 6.0:1,
+     and the text variant on the page is 6.9:1. */
+  --raven-pink: #e1709f;
+  --primary-text: #e481aa;
   --primary-foreground: #161618;
   --background: #161618;
   --foreground: #ececee;

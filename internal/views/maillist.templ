@@ -1236,7 +1236,7 @@ templ MailListThreadSubItems(items []models.ThreadItem, senderDisplayMode string
 						<span class="account-color-marker size-2.5 shrink-0" style={ accountColorStyle(item.AccountColor) }></span>
 					</div>
 					<div data-mail-table-cell="thread">
-						@ContactAvatar(item.From, "size-5 rounded-full text-[9px] font-semibold shrink-0 mt-0.5", contactAvatarListFallback(item.IsRead))
+						@ContactAvatar(item.From, "size-5 rounded-full text-[11px] font-semibold shrink-0 mt-0.5", contactAvatarListFallback(item.IsRead))
 					</div>
 					<div class="flex-1 min-w-0">
 						<div class="flex items-center justify-between gap-2">

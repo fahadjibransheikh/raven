@@ -44,7 +44,7 @@ templ CalendarDeliveryStatus(data CalendarDeliveryData) {
 				}
 			</div>
 			if data.HasEmailDelivery {
-				<p class="mt-2 text-[11px] leading-relaxed text-muted-foreground">Sent means the mail server accepted the invitation—not that the guest accepted it.</p>
+				<p class="mt-2 text-xs leading-relaxed text-muted-foreground">Sent means the mail server accepted the invitation—not that the guest accepted it.</p>
 			}
 		}
 		if data.Error != "" {

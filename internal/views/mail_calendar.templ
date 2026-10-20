@@ -14,7 +14,7 @@ templ MailCalendarFooter(emailID string, events []MailCalendarEventData) {
 					<div class="flex items-start gap-3">
 						@icon.CalendarDays(icon.Props{Class: "mt-0.5 size-5 shrink-0 text-ink/50"})
 						<div class="min-w-0 flex-1">
-							<p class="text-[11px] font-medium text-ink/50">{ event.Kind }</p>
+							<p class="text-xs font-medium text-ink/50">{ event.Kind }</p>
 							<h2 class="font-semibold break-words">{ event.Summary }</h2>
 						</div>
 						<button type="button" class="shrink-0 text-xs text-ink/50 hover:text-ink" hx-get={ "/api/mail/" + emailID + "/calendar?refresh=1" } hx-target="closest [data-mail-calendar-footer]" hx-swap="innerHTML" hx-sync="closest [data-mail-calendar-footer]:replace" hx-disabled-elt="this" aria-label="Refresh event information">Refresh</button>

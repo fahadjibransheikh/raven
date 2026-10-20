@@ -66,7 +66,7 @@ templ CalendarResponseForm(data CalendarResponseData) {
 				</div>
 			}
 		</div>
-		<p class="text-[11px] leading-4 text-muted-foreground" data-calendar-response-progress role="status" aria-live="polite">
+		<p class="text-xs leading-4 text-muted-foreground" data-calendar-response-progress role="status" aria-live="polite">
 			if data.Delivery == "email" {
 				Your response will be emailed to the organizer using this account, then saved to the calendar.
 			} else if data.Scope == "series" {

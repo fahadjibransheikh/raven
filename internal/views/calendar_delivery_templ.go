@@ -200,7 +200,7 @@ func CalendarDeliveryStatus(data CalendarDeliveryData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if data.HasEmailDelivery {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<p class=\"mt-2 text-[11px] leading-relaxed text-muted-foreground\">Sent means the mail server accepted the invitation—not that the guest accepted it.</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<p class=\"mt-2 text-xs leading-relaxed text-muted-foreground\">Sent means the mail server accepted the invitation—not that the guest accepted it.</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

@@ -5670,7 +5670,7 @@ func MailListThreadSubItems(items []models.ThreadItem, senderDisplayMode string)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = ContactAvatar(item.From, "size-5 rounded-full text-[9px] font-semibold shrink-0 mt-0.5", contactAvatarListFallback(item.IsRead)).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = ContactAvatar(item.From, "size-5 rounded-full text-[11px] font-semibold shrink-0 mt-0.5", contactAvatarListFallback(item.IsRead)).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
