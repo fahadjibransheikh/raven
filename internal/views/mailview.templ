@@ -637,6 +637,14 @@ func deleteLabel(email *models.Email) string {
 	return threadAwareLabel("Delete", "Delete thread", email)
 }
 
+// mailViewStarLabel names what the star button does next.
+func mailViewStarLabel(email *models.Email, thread []models.ThreadItem) string {
+	if mailViewStarred(email, thread) {
+		return "Unstar"
+	}
+	return "Star"
+}
+
 func readLabel(email *models.Email, thread []models.ThreadItem) string {
 	if mailViewRead(email, thread) {
 		return threadAwareLabel("Mark as unread", "Mark thread as unread", email)
@@ -772,7 +780,7 @@ templ MailViewHeader(email *models.Email, thread []models.ThreadItem) {
 						Variant:    button.VariantGhost,
 						Size:       button.SizeIcon,
 						Class:      "h-8 w-8",
-						Attributes: mergeAttributes(mailViewStarAttributes(email), templ.Attributes{"aria-label": withShortcut("Star", "star"), "aria-keyshortcuts": shortcutKeys["star"]}),
+						Attributes: mergeAttributes(mailViewStarAttributes(email), templ.Attributes{"aria-label": withShortcut(mailViewStarLabel(email, thread), "star"), "aria-pressed": fmt.Sprintf("%t", mailViewStarred(email, thread)), "aria-keyshortcuts": shortcutKeys["star"]}),
 					}) {
 						if mailViewStarred(email, thread) {
 							@icon.Star(icon.Props{Class: "size-4 text-warning fill-warning drop-shadow-[0_1px_1px_rgba(180,120,0,0.3)]"})
@@ -785,7 +793,7 @@ templ MailViewHeader(email *models.Email, thread []models.ThreadItem) {
 					Position:  tooltip.PositionBottom,
 					ShowArrow: true,
 				}) {
-					{ withShortcut("Star", "star") }
+					{ withShortcut(mailViewStarLabel(email, thread), "star") }
 				}
 			}
 			@tooltip.Tooltip() {

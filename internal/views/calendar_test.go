@@ -246,15 +246,18 @@ func TestCalendarWithNoSourcesAsksToConnectOne(t *testing.T) {
 	if !strings.Contains(html, "Events appear here once a calendar is connected.") {
 		t.Fatal("agenda should explain that no calendar is connected")
 	}
-	// Nothing to add an event to: New event is off and says why, and the timeline zoom is hidden.
-	if !regexp.MustCompile(`<button[^>]*disabled[^>]*title="Connect a calendar to create events"[^>]*data-calendar-create-trigger`).MatchString(html) {
-		t.Fatal("New event should be disabled with a reason while no calendar is connected")
+	// Nothing to add an event to or page through: New event and the date controls are hidden;
+	// the Connect card is the only action.
+	trigger := strings.Index(html, "data-calendar-create-trigger")
+	group := strings.LastIndex(html[:trigger], `<div class="flex shrink-0 items-center gap-1.5"`)
+	if trigger < 0 || group < 0 || !strings.Contains(html[group:group+strings.Index(html[group:], ">")], "hidden") {
+		t.Fatal("New event and the date controls should be hidden while no calendar is connected")
 	}
 	var sidebar bytes.Buffer
 	if err := CalendarSidebarContent(nil, false).Render(t.Context(), &sidebar); err != nil {
 		t.Fatal(err)
 	}
-	if !regexp.MustCompile(`<button[^>]*disabled[^>]*title="Connect a calendar to create events"[^>]*data-calendar-create-trigger`).MatchString(sidebar.String()) {
-		t.Fatal("sidebar New event should be disabled with a reason while no calendar is connected")
+	if !regexp.MustCompile(`<button[^>]*hidden[^>]*data-calendar-create-trigger`).MatchString(sidebar.String()) {
+		t.Fatal("sidebar New event should be hidden while no calendar is connected")
 	}
 }

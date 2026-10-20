@@ -23,3 +23,20 @@ test("marking read flips the button label and its tooltip", () => {
   assert.equal(button.getAttribute("aria-label"), "Mark as read (U)")
   w.close()
 })
+
+test("starring flips the star's label, tooltip and pressed state", () => {
+  const dom = new JSDOM('<!doctype html><body><span data-tui-popover-trigger><button data-star-email="m1" aria-pressed="false" aria-label="Star (S)"><svg class="size-4"></svg></button></span><div data-tui-popover-content>Star (S)</div></body>', { runScripts: "outside-only" })
+  const w = dom.window
+  w.EventSource = function () { this.addEventListener = function () {}; this.close = function () {} }
+  w.matchMedia = function () { return { matches: false, addEventListener: function () {}, addListener: function () {} } }
+  w.fetch = function () { return new Promise(function () {}) }
+  w.eval(appJS)
+  const button = w.document.querySelector("button")
+  w.setStarButtonIcon(button, true)
+  assert.equal(button.getAttribute("aria-label"), "Unstar (S)")
+  assert.equal(button.getAttribute("aria-pressed"), "true")
+  assert.equal(w.document.querySelector("[data-tui-popover-content]").textContent, "Unstar (S)")
+  w.setStarButtonIcon(button, false)
+  assert.equal(button.getAttribute("aria-label"), "Star (S)")
+  w.close()
+})

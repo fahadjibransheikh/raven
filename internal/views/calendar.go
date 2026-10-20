@@ -493,10 +493,3 @@ func calendarAccountProviderLabel(account models.Account) string {
 	}
 }
 
-// calendarCreateTitle explains why New event is off while no calendar is connected.
-func calendarCreateTitle(hasCalendar bool) string {
-	if hasCalendar {
-		return "New event"
-	}
-	return "Connect a calendar to create events"
-}
