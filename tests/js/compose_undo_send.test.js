@@ -7,11 +7,20 @@ const { JSDOM } = require("jsdom")
 
 const appJS = fs.readFileSync(path.join(__dirname, "..", "..", "assets", "js", "app.js"), "utf8")
 
-async function setup(cancelStatus) {
-  const html = '<!doctype html><body><button id="sidebar-compose-btn"></button>' +
-    '<div id="compose-dialog" data-tui-dialog><dialog data-tui-dialog-content open>' +
-    '<form id="compose-form" data-compose-dirty="true"><input name="subject" value="Hello"><button data-compose-send>Send</button></form>' +
-    "</dialog></div></body>"
+const dialogHTML = '<!doctype html><body><button id="sidebar-compose-btn"></button>' +
+  '<div id="compose-dialog" data-tui-dialog><dialog data-tui-dialog-content open>' +
+  '<form id="compose-form" data-compose-dirty="true"><input name="subject" value="Hello"><button data-compose-send>Send</button></form>' +
+  "</dialog></div></body>"
+
+const paneForm = '<div data-compose-pane><form id="compose-pane-form" data-compose-dirty="true"><input name="subject" value="Re: Hi"><button data-compose-send>Send</button></form></div>'
+// An inline reply sits at the end of the open conversation (openInlineCompose).
+const inlineHTML = '<!doctype html><body><button id="sidebar-compose-btn"></button><div id="main-content"><div id="mail-view">' +
+  '<div class="mail-view-content"><p id="thread">Thread</p><div data-compose-inline>' + paneForm + "</div></div></div></div></body>"
+// A pane replaces the message view.
+const paneHTML = '<!doctype html><body><button id="sidebar-compose-btn"></button><div id="main-content"><div id="mail-view">' + paneForm + "</div></div></body>"
+
+async function setup(cancelStatus, html) {
+  html = html || dialogHTML
   const dom = new JSDOM(html, { runScripts: "outside-only", pretendToBeVisual: true })
   const w = dom.window
   const calls = []
@@ -35,7 +44,7 @@ async function setup(cancelStatus) {
   if (w.document.readyState === "loading") {
     await new Promise(function (resolve) { w.document.addEventListener("DOMContentLoaded", resolve) })
   }
-  return { w, calls, dialog, form: w.document.getElementById("compose-form") }
+  return { w, calls, dialog, form: w.document.getElementById("compose-form") || w.document.getElementById("compose-pane-form") }
 }
 
 const tick = function () { return new Promise(function (r) { setTimeout(r, 20) }) }
@@ -65,5 +74,49 @@ test("Undo after the worker claimed the send leaves the dialog closed", async ()
   await tick()
   assert.deepEqual(t.dialog, ["close compose-dialog"])
   assert.match(t.w.document.body.textContent, /Too late to undo/)
+  t.w.close()
+})
+
+test("An inline reply leaves the conversation at once and comes back unchanged on Undo", async () => {
+  const t = await setup(200, inlineHTML)
+  t.w._sendComposeNow(t.form, true)
+  await tick()
+  const doc = t.w.document
+  assert.equal(doc.getElementById("compose-pane-form"), null, "editor is off the page during the undo window")
+  assert.ok(doc.getElementById("thread"), "the conversation stays in view")
+  assert.match(doc.body.textContent, /Message sent/)
+  doc.querySelector("[data-raven-toast-secondary]").click()
+  await tick()
+  const form = doc.getElementById("compose-pane-form")
+  assert.ok(form, "editor is back")
+  assert.equal(form.closest("[data-compose-inline]").parentNode.className, "mail-view-content")
+  assert.equal(form.querySelector('[name="subject"]').value, "Re: Hi")
+  assert.equal(form.dataset.composeSending, "false")
+  t.w.close()
+})
+
+test("A pane closes to the empty message view and is restored on Undo", async () => {
+  const t = await setup(200, paneHTML)
+  t.w._sendComposeNow(t.form, true)
+  await tick()
+  const doc = t.w.document
+  assert.equal(doc.getElementById("compose-pane-form"), null)
+  assert.ok(doc.querySelector("#mail-view [data-mail-view-empty]"), "message view shows its empty state")
+  doc.querySelector("[data-raven-toast-secondary]").click()
+  await tick()
+  assert.ok(doc.querySelector("#mail-view > [data-compose-pane] #compose-pane-form"))
+  assert.equal(doc.querySelector("#mail-view [data-mail-view-empty]"), null)
+  t.w.close()
+})
+
+test("A failed send brings the put-away editor back so it can be retried", async () => {
+  const t = await setup(200, inlineHTML)
+  t.w._sendComposeNow(t.form, true)
+  await tick()
+  assert.equal(t.w.document.getElementById("compose-pane-form"), null, "editor put away during the undo window")
+  t.w.handleComposeSendResult("failed", { send_id: "s1" })
+  const form = t.w.document.getElementById("compose-pane-form")
+  assert.ok(form, "editor restored after failure")
+  assert.equal(form.dataset.composeDirty, "true")
   t.w.close()
 })
