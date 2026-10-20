@@ -678,7 +678,8 @@ function editWizardGo(step, immediate) {
 	_editWizStep = step;
 	track.style.transform = 'translateX(-' + (step * (100 / 6)) + '%)';
 	root.querySelectorAll('[data-account-wizard-step]').forEach(function(item) {
-		item.dataset.active = String(+item.dataset.accountWizardStep === step);
+		// A rail item can stand for several slides (Server covers incoming and outgoing).
+		item.dataset.active = String(+item.dataset.accountWizardStep === step || (item.dataset.accountWizardAlsoSteps || '').split(',').indexOf(String(step)) !== -1);
 	});
 	root.querySelectorAll('[data-wizard-section-steps]').forEach(function(section) {
 		var steps = (section.dataset.wizardSectionSteps || '').split(',');

@@ -2737,10 +2737,9 @@ templ AccountWizardEmailSection(goFn string, accountID string, enabled bool, dis
 			@AccountWizardSectionSwitch(goFn, accountID, "email", enabled, disabled, persist, false, nil)
 		</div>
 		<div class="account-wizard-substeps">
-			@AccountWizardSubStep(goFn, 0, "1.a", "Account details", "Name and email", false, true)
-			@AccountWizardSubStep(goFn, 1, "1.b", "Incoming", "IMAP settings", false, false)
-			@AccountWizardSubStep(goFn, 2, "1.c", "Outgoing", "SMTP settings", false, false)
-			@AccountWizardSubStep(goFn, 3, "1.d", finalStep, "Check the connection", false, false)
+			@AccountWizardSubStep(goFn, 0, "Account", "Name and email", "", false, true)
+			@AccountWizardSubStep(goFn, 1, "Server", "Incoming (IMAP) and outgoing (SMTP) settings", "2", false, false)
+			@AccountWizardSubStep(goFn, 3, finalStep, "Check the connection", "", false, false)
 		</div>
 	</div>
 }
@@ -2755,18 +2754,18 @@ templ AccountWizardProviderAPIEmailSection(goFn string, accountID string, provid
 			@AccountWizardSectionSwitch(goFn, accountID, "email", enabled, false, persist, false, nil)
 		</div>
 		<div class="account-wizard-substeps">
-			@AccountWizardSubStep(goFn, 0, "1.a", "Account details", "Name and email", false, true)
-			@AccountWizardSubStep(goFn, 1, "1.b", "Mail sync", providerAPIMailTransportLabel(provider), false, false)
-			@AccountWizardSubStep(goFn, 2, "1.c", "Sending", providerAPIMailTransportLabel(provider), false, false)
-			@AccountWizardSubStep(goFn, 3, "1.d", "Test and save", "Check the connection", false, false)
+			@AccountWizardSubStep(goFn, 0, "Account", "Name and email", "", false, true)
+			@AccountWizardSubStep(goFn, 1, "Mail sync and sending", providerAPIMailTransportLabel(provider), "2", false, false)
+			@AccountWizardSubStep(goFn, 3, "Test and save", "Check the connection", "", false, false)
 		</div>
 	</div>
 }
 
-templ AccountWizardSubStep(goFn string, step int, index string, title string, description string, disabled bool, active bool) {
-	// Sub-steps are one line each (the description moves to the tooltip) so the rail stays short.
-	<button type="button" data-on-click={ onAction(goFn, step) } data-account-wizard-action={ goFn } data-account-wizard-target-step={ strconv.Itoa(step) } class="account-wizard-step" data-account-wizard-step={ strconv.Itoa(step) } data-active={ strconv.FormatBool(active) } disabled?={ disabled } title={ description }>
-		<span class="account-wizard-index">{ index }</span>
+templ AccountWizardSubStep(goFn string, step int, title string, description string, alsoSteps string, disabled bool, active bool) {
+	// Sub-steps are one line each (the description moves to the tooltip) and marked by a dot,
+	// so the rail reads Account, Server, Test. alsoSteps lists further slides the item covers.
+	<button type="button" data-on-click={ onAction(goFn, step) } data-account-wizard-action={ goFn } data-account-wizard-target-step={ strconv.Itoa(step) } class="account-wizard-step" data-account-wizard-step={ strconv.Itoa(step) } data-account-wizard-also-steps={ alsoSteps } data-active={ strconv.FormatBool(active) } disabled?={ disabled } title={ description }>
+		<span class="account-wizard-index account-wizard-dot" aria-hidden="true"></span>
 		<span class="min-w-0"><span class="block text-xs font-semibold">{ title }</span></span>
 	</button>
 }

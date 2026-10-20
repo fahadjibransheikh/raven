@@ -2696,8 +2696,8 @@ document.addEventListener("DOMContentLoaded", function () {
         filters.sortOrder = (sortForm.querySelector('[name="sort_order"]') || {}).value || "desc"
       }
       var search = document.querySelector("[data-mail-search-input]")
-      var pendingQuery = search ? (search.value || "").trim() : ""
-      filters.query = [committedQuery, pendingQuery].filter(Boolean).join(" ")
+      // The box shows the committed query and stays editable, so it holds the whole plain query.
+      filters.query = search ? (search.value || "").trim() : committedQuery
       if (!advanced) filters.participant = committedParticipant
       return filters
     }
@@ -2888,8 +2888,6 @@ document.addEventListener("DOMContentLoaded", function () {
     function activePillDefs(filters) {
       filters = filters || emptyFilters()
       var pills = []
-      var query = (filters.query || committedQuery || "").trim()
-      if (query) pills.push({ name: "q", label: "Search", value: query })
       if (filters.unread) pills.push({ name: "unread", label: "Status", value: "Unread" })
       if (filters.read) pills.push({ name: "read", label: "Status", value: "Read" })
       if (filters.starred) pills.push({ name: "starred", label: "Starred" })
@@ -3118,7 +3116,8 @@ document.addEventListener("DOMContentLoaded", function () {
       var search = document.querySelector("[data-mail-search-input]")
       if (search) {
         search.dataset.mailCommittedQuery = committedQuery
-        search.value = ""
+        // Leave the box alone while someone is typing in it.
+        if (document.activeElement !== search) search.value = committedQuery
       }
       setFilterTriState("status", filters.unread ? "unread" : (filters.read ? "read" : ""))
       setFilterTriState("attachments", filters.attachments ? "yes" : (filters.noAttachments ? "no" : ""))
@@ -3426,6 +3425,8 @@ document.addEventListener("DOMContentLoaded", function () {
       }
       var tokens = splitSearchTokens(raw)
       var plain = []
+      // The box held the whole query, so it replaces the committed one.
+      committedQuery = ""
       for (var i = 0; i < tokens.length; i++) {
         var token = tokens[i]
         var idx = token.indexOf(":")
@@ -3444,7 +3445,9 @@ document.addEventListener("DOMContentLoaded", function () {
         plain.push(token)
       }
       if (plain.length) committedQuery = committedQuery ? (committedQuery + " " + plain.join(" ")) : plain.join(" ")
-      input.value = ""
+      // Keyword tokens moved into filters; the plain words stay in the box to edit.
+      input.value = committedQuery
+      input.dataset.mailCommittedQuery = committedQuery
       syncAdvancedFilterCount()
       applyCurrentFilters()
       return true
@@ -3497,7 +3500,7 @@ document.addEventListener("DOMContentLoaded", function () {
       committedParticipant = virtualMailList && virtualMailList.filters ? (virtualMailList.filters.participant || "").trim() : committedParticipant
       if (search) {
         search.dataset.mailCommittedQuery = committedQuery
-        search.value = ""
+        search.value = committedQuery
         search.placeholder = "Search mail"
       }
       renderActivePills()
