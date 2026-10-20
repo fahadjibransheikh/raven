@@ -156,7 +156,7 @@
       if (typeof RavenSettings !== 'undefined') {
         RavenSettings.set('theme', mode.dataset.mode);
       }
-      var isDark = mode.dataset.mode === 'dark';
+      var isDark = mode.dataset.mode === 'system' ? document.documentElement.classList.contains('dark') : mode.dataset.mode === 'dark';
       document.querySelectorAll('[data-theme-preview]').forEach(function(el) {
         el.classList.toggle('dark', isDark && el.getAttribute('data-theme') !== 'express');
       });

@@ -23,12 +23,18 @@ var RavenSettings;
 
   function applyTheme(theme) {
     var html = document.documentElement;
-    if (theme === "dark") {
-      html.classList.add("dark");
-    } else {
-      html.classList.remove("dark");
-    }
+    html.setAttribute("data-theme-mode", theme === "light" || theme === "system" ? theme : "dark");
+    var dark = theme === "system"
+      ? !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches)
+      : theme === "dark";
+    html.classList.toggle("dark", dark);
   }
+
+  // actions.js flips the dark class when the OS changes; refresh what depends on it.
+  document.addEventListener("raven:system-theme-change", function () {
+    applyAppIcon();
+    if (typeof applyEmailBodyTheme === "function") applyEmailBodyTheme();
+  });
 
   function applyThemeStyle(style) {
     var html = document.documentElement;

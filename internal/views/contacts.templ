@@ -248,6 +248,9 @@ func contactReadOnlyLabelDisplay(label string) string {
 	if label == "" {
 		return ""
 	}
+	if strings.EqualFold(label, "observed") {
+		return "From mail"
+	}
 	return strings.Title(label)
 }
 
@@ -597,7 +600,7 @@ func contactSourceLabel(source string, isManual bool, accounts []models.Account)
 	}
 	switch source {
 	case "observed":
-		return "Observed"
+		return "From mail"
 	case "manual":
 		return "Manual"
 	case "synced":
@@ -849,7 +852,7 @@ func contactCardKindLabel(card models.ContactCard) string {
 	case "local":
 		return "Local card"
 	case "observed":
-		return "Observed from mail"
+		return "From mail"
 	case "provider":
 		if card.Provider != "" {
 			return strings.Title(card.Provider) + " card"
@@ -915,7 +918,7 @@ func contactFieldSourceLabel(source string) string {
 	case source == "manual":
 		return "Manual"
 	case source == "observed":
-		return "Observed"
+		return "From mail"
 	case strings.HasPrefix(source, "synced:"):
 		return "Synced"
 	case source == "":
@@ -1396,7 +1399,7 @@ templ ContactsListPane(contacts []models.Contact, selected *models.Contact, filt
 						@icon.BookUser(icon.Props{Class: "size-5"})
 					</div>
 					<h3 class="font-semibold text-sm mb-1">No contacts yet</h3>
-					<p class="text-xs text-muted-foreground">Observed contacts will appear as mail is synced, or you can add one manually.</p>
+					<p class="text-xs text-muted-foreground">People you email will appear here as mail syncs, or you can add one manually.</p>
 				</div>
 			} else if contactViewMode(filters.View) == "table" {
 				@ContactListTableHeader()
@@ -1986,7 +1989,7 @@ templ ContactEditorHeader(contact *models.Contact, profile *models.ContactProfil
 					</div>
 					<div class="mt-1 text-sm text-ink/45">
 						if contact != nil {
-							Contact entry
+							{ contactSourceLabel(contact.Source, contact.IsManual, accounts) }
 						} else {
 							Add a local contact for compose autocomplete.
 						}
@@ -2672,7 +2675,7 @@ templ ContactRecentActivityHeader(contact models.Contact) {
 
 templ ContactRecentActivityLoader(contact models.Contact) {
 	<div
-		class="w-full rounded-lg border border-ink/10 bg-ink/[0.025] p-4"
+		class="w-full"
 		hx-get={ templ.URL(contactRecentActivityURL(contact.ID)) }
 		hx-trigger="load"
 		hx-target="this"
@@ -2681,7 +2684,7 @@ templ ContactRecentActivityLoader(contact models.Contact) {
 		data-contact-recent-activity-loading
 	>
 		@ContactRecentActivityHeader(contact)
-		<div class="overflow-hidden rounded-md border border-ink/10 bg-paper/35">
+		<div class="overflow-hidden border-y border-ink/10">
 			for i := 0; i < 4; i++ {
 				<div class="border-b border-ink/10 px-3 py-2.5 last:border-b-0">
 					<div class="flex items-start justify-between gap-3">
@@ -2699,12 +2702,12 @@ templ ContactRecentActivityLoader(contact models.Contact) {
 }
 
 templ ContactRecentActivity(contact models.Contact, emails []models.Email) {
-	<div class="w-full rounded-lg border border-ink/10 bg-ink/[0.025] p-4">
+	<div class="w-full">
 		@ContactRecentActivityHeader(contact)
 		if len(emails) == 0 {
 			<div class="rounded-md border border-dashed border-ink/10 px-3 py-4 text-sm text-ink/40">No recent emails found for this contact.</div>
 		} else {
-			<div class="divide-y divide-ink/10 overflow-hidden rounded-md border border-ink/10 bg-paper/35">
+			<div class="divide-y divide-ink/10 overflow-hidden border-y border-ink/10">
 				for _, email := range emails {
 					<a href={ contactActivityHref(email) } class="group flex items-start gap-3 px-3 py-2.5 transition-colors hover:bg-ink/[0.035]">
 						<div class="min-w-0 flex-1">

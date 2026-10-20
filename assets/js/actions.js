@@ -17,6 +17,21 @@
 //
 // <form data-confirm="Are you sure?"> is handled by raven.js, which asks in its own dialog.
 ;(function () {
+  // Color mode "System" (data-theme-mode on <html>) follows the OS. This file loads in
+  // <head>, so the dark class is set before first paint and kept in step with the OS.
+  var root = document.documentElement
+  if (root.getAttribute("data-theme-mode") === "system" && window.matchMedia) {
+    var query = window.matchMedia("(prefers-color-scheme: dark)")
+    root.classList.toggle("dark", query.matches)
+    query.addEventListener("change", function (e) {
+      if (root.getAttribute("data-theme-mode") !== "system") return
+      root.classList.toggle("dark", e.matches)
+      document.dispatchEvent(new CustomEvent("raven:system-theme-change"))
+    })
+  }
+})()
+
+;(function () {
   var actionNames = [
     "addAccountTest.run",
     "applyMailDiscoveryCandidate",

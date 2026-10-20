@@ -6500,7 +6500,7 @@ document.addEventListener("DOMContentLoaded", function () {
               avatarHTML +
               '<div class="min-w-0 pt-0.5">' +
                 '<h1 class="min-w-0 truncate text-[22px] font-semibold leading-7 tracking-tight text-foreground">' + name + '</h1>' +
-                '<div class="mt-1 text-sm text-subtle-foreground">Contact entry</div>' +
+                '<div class="mt-1 text-sm text-subtle-foreground">&nbsp;</div>' +
               '</div>' +
             '</div>' +
             '<div class="flex flex-wrap items-center gap-2 xl:justify-end" aria-hidden="true">' +
@@ -16164,7 +16164,8 @@ function allowRemoteContent(emailId, mode) {
 }
 
 function getEmailBodyBaseTheme() {
-  if (window.RavenSettings && RavenSettings.get("theme")) return RavenSettings.get("theme")
+  var theme = window.RavenSettings && RavenSettings.get("theme")
+  if (theme === "dark" || theme === "light") return theme
   return document.documentElement.classList.contains("dark") ? "dark" : "light"
 }
 
