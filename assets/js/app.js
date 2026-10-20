@@ -2720,7 +2720,8 @@ document.addEventListener("DOMContentLoaded", function () {
         (filters.threadsOnly ? 1 : 0) + (filters.noThreads ? 1 : 0) + (filters.participant ? 1 : 0) + (filters.from ? 1 : 0) + (filters.to ? 1 : 0) +
         (filters.recipientType ? 1 : 0) + (filters.recipientDomain ? 1 : 0) + (filters.subject ? 1 : 0) + (filters.body ? 1 : 0) + (filters.fromDomain ? 1 : 0) +
         (filters.attachment ? 1 : 0) + (filters.attachmentType ? 1 : 0) + (filters.minSizeMB ? 1 : 0) + (filters.maxSizeMB ? 1 : 0) + (filters.tag ? 1 : 0) + (filters.accountId ? 1 : 0) +
-        (filters.query ? 1 : 0) + (filters.afterDate ? 1 : 0) + (filters.beforeDate ? 1 : 0)
+        (filters.afterDate ? 1 : 0) + (filters.beforeDate ? 1 : 0)
+      // The search text isn't counted: it is already visible in the search box.
       var button = document.querySelector("[data-mail-filter-button]")
       var badge = document.querySelector("[data-mail-filter-count]")
       if (button) {
@@ -3423,6 +3424,12 @@ document.addEventListener("DOMContentLoaded", function () {
       return splitSearchTokens((text || "").trim()).filter(function (token) { return !SEARCH_OPERATOR.test(token) }).join(" ")
     }
 
+    // from:, subject: ... only apply on Enter, so say so while one is being typed.
+    function syncSearchEnterHint(input) {
+      var hint = document.querySelector("[data-mail-search-enter-hint]")
+      if (hint) hint.hidden = withoutSearchOperators(input.value) === splitSearchTokens((input.value || "").trim()).join(" ")
+    }
+
     function commitSearchInput(input) {
       var raw = (input && input.value ? input.value : "").trim()
       if (!raw) return false
@@ -3454,6 +3461,7 @@ document.addEventListener("DOMContentLoaded", function () {
       if (plain.length) committedQuery = committedQuery ? (committedQuery + " " + plain.join(" ")) : plain.join(" ")
       // Keyword tokens moved into filters; the plain words stay in the box to edit.
       input.value = committedQuery
+      syncSearchEnterHint(input)
       input.dataset.mailCommittedQuery = committedQuery
       syncAdvancedFilterCount()
       applyCurrentFilters()
@@ -3667,6 +3675,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     document.addEventListener("input", function (e) {
       if (e.target && e.target.matches && e.target.matches("[data-mail-search-input]")) {
+        syncSearchEnterHint(e.target)
         if (searchTimer) clearTimeout(searchTimer)
         searchTimer = setTimeout(function () {
           searchTimer = null
@@ -5664,11 +5673,13 @@ document.addEventListener("DOMContentLoaded", function () {
         }
       } else {
         // The toolbar isn't re-rendered here; match MailListToolbar's rule for Unread
-        // (hidden in Sent and Drafts unless the filter is on).
+        // (hidden in Sent and Drafts, where everything is read, so a filter left on is dropped).
         var unreadToggle = document.querySelector("[data-mail-unread-toggle]")
         if (unreadToggle) {
           var role = (link.dataset.folderRole || folderID || "").toLowerCase()
-          unreadToggle.hidden = (role === "sent" || role === "drafts") && unreadToggle.getAttribute("aria-pressed") !== "true"
+          var outgoing = role === "sent" || role === "drafts"
+          if (outgoing && unreadToggle.getAttribute("aria-pressed") === "true") unreadToggle.click()
+          unreadToggle.hidden = outgoing
         }
         virtualMailList.switchFolder(folderID).then(function () {
           applyActiveFolderSyncState()
@@ -15275,6 +15286,20 @@ function setReadButtonIcon(button, isRead) {
   button.dataset.isRead = isRead ? "true" : "false"
   var svg = button.querySelector('svg')
   if (svg) svg.innerHTML = isRead ? MAIL_READ_ICON : MAIL_UNREAD_ICON
+  // The label and tooltip name the next action, so they flip with the icon
+  // (opening a message marks it read after the toolbar was rendered).
+  var relabel = function (text) {
+    return String(text || "").replace(/Mark (thread )?as (un)?read/, function (_, thread) {
+      return "Mark " + (thread || "") + "as " + (isRead ? "unread" : "read")
+    })
+  }
+  if (button.hasAttribute("aria-label")) button.setAttribute("aria-label", relabel(button.getAttribute("aria-label")))
+  var trigger = button.closest ? button.closest("[data-tui-popover-trigger]") : null
+  var tip = trigger && trigger.nextElementSibling
+  if (tip && tip.hasAttribute("data-tui-popover-content")) {
+    var walker = document.createTreeWalker(tip, NodeFilter.SHOW_TEXT)
+    while (walker.nextNode()) walker.currentNode.nodeValue = relabel(walker.currentNode.nodeValue)
+  }
 }
 
 // The reader's thread read toggle shows the thread as read only when every message is read.

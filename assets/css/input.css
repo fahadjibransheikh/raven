@@ -3939,6 +3939,16 @@ html[data-platform="other"] .hint-other {
     padding: 0.25rem max(0.5rem, env(safe-area-inset-right)) env(safe-area-inset-bottom) max(0.5rem, env(safe-area-inset-left));
   }
 
+  /* Toasts sit above the tab bar (or the reader's bottom toolbar) instead of covering it. */
+  html[data-phone] [data-tui-toast][data-position^="bottom"] {
+    bottom: calc(3.5rem + env(safe-area-inset-bottom)) !important;
+  }
+
+  /* Room after the last row so the compose button doesn't cover its preview. */
+  html[data-phone] #mail-list-scroll {
+    padding-bottom: 5rem;
+  }
+
   /* The reader is a full-screen detail view with its own bottom toolbar. */
   html[data-phone-pane="view"] .phone-tab-bar {
     display: none;
@@ -4063,8 +4073,9 @@ html[data-platform="other"] .hint-other {
     display: none;
   }
 
-  /* Desktop-only controls: table view, the card layout editor, and compose pane width. */
+  /* Desktop-only controls: table view (mail and contacts), the card layout editor, and compose pane width. */
   html[data-phone] [data-mail-list-view-toggle],
+  html[data-phone] :has(> [data-contact-list-view-button]),
   html[data-phone] [data-mail-card-layout-dialog-open],
   html[data-phone] #pane-btns-normal,
   html[data-phone] #pane-btns-full {
@@ -4121,8 +4132,31 @@ html[data-phone] [data-phone-drawer] button {
 html[data-phone] [data-phone-drawer] button {
   min-width: 2.75rem;
 }
+html[data-phone] [data-phone-drawer] a[title="Settings"] {
+  min-width: 2.75rem;
+  justify-content: center;
+}
 html[data-phone] [data-phone-drawer] [data-sidebar-app-nav] {
   display: none;
+}
+
+/* Phone calendar header: the period title wraps instead of clipping, and its controls are
+   44px targets (the view switch grows to fill its row). */
+html[data-phone] #calendar-main > header h1 {
+  overflow: visible;
+  white-space: normal;
+}
+html[data-phone] #calendar-main > header :is(a, button) {
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+}
+html[data-phone] #calendar-main > header div:has(> [data-calendar-navigate]) {
+  height: auto;
+}
+html[data-phone] [data-calendar-view-nav] {
+  flex: 1 1 auto;
+  width: auto;
+  height: 2.75rem;
 }
 
 html[data-phone] .mail-view-toolbar .mail-view-actions {

@@ -563,10 +563,18 @@ func TestSidebarAppSwitcherLivesInFooterWithCurrentApp(t *testing.T) {
 
 func TestSidebarHeaderHasQuietComposeAndNoAppTabs(t *testing.T) {
 	var buf bytes.Buffer
-	if err := SidebarHeader(nil, "mail").Render(context.Background(), &buf); err != nil {
+	if err := SidebarHeader([]models.Account{{ID: "a1"}}, "mail").Render(context.Background(), &buf); err != nil {
 		t.Fatalf("SidebarHeader.Render() error = %v", err)
 	}
 	html := buf.String()
+	// Before the first account there is nothing to write from or sync.
+	var empty bytes.Buffer
+	if err := SidebarHeader(nil, "mail").Render(context.Background(), &empty); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(empty.String(), `id="sidebar-compose-btn"`) {
+		t.Fatalf("header without accounts should have no compose: %s", empty.String())
+	}
 	if !strings.Contains(html, `id="sidebar-compose-btn"`) || !strings.Contains(html, `aria-label="Compose (C)"`) || !strings.Contains(html, `data-on-click='["openNewCompose"]'`) {
 		t.Fatalf("header missing compose icon button: %s", html)
 	}

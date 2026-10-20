@@ -432,14 +432,13 @@ templ SettingsComposeDisplayTab(uiSettings map[string]string, signatureData []mo
 
 templ SettingsAppearanceTab(uiSettings map[string]string) {
 		<div class="mt-6 space-y-6">
-			<div class="settings-card bg-card rounded-lg border p-6 space-y-6">
-				<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+			<div class="settings-card bg-card rounded-lg border p-6">
+				<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 					<div>
-						<h3 class="text-sm font-semibold text-foreground mb-1">Accent</h3>
-						<p class="text-xs text-muted-foreground">Choose the accent used for buttons, the unread dot and links. The layout is the same for every choice.</p>
+						<h3 class="text-sm font-semibold text-foreground mb-1">Color mode</h3>
+						<p class="text-xs text-muted-foreground">Light, dark, or follow this device's setting.</p>
 					</div>
-					<div class="space-y-1 sm:text-right" data-mode-picker>
-						<h4 class="text-sm font-semibold text-foreground">Color mode</h4>
+					<div data-mode-picker>
 						<div class="inline-flex rounded-lg border border-border bg-background p-0.5 gap-0.5">
 							<button
 								type="button"
@@ -480,6 +479,12 @@ templ SettingsAppearanceTab(uiSettings map[string]string) {
 							</button>
 						</div>
 					</div>
+				</div>
+			</div>
+			<div class="settings-card bg-card rounded-lg border p-6 space-y-6">
+				<div>
+					<h3 class="text-sm font-semibold text-foreground mb-1">Accent</h3>
+					<p class="text-xs text-muted-foreground">Choose the accent used for buttons, the unread dot and links. The layout is the same for every choice.</p>
 				</div>
 				<div class="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-2xl" data-theme-picker>
 					<label class="relative flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors hover:bg-row-hover border-border has-[:checked]:border-primary has-[:checked]:ring-2 has-[:checked]:ring-primary/20">
@@ -1460,6 +1465,18 @@ templ SettingsAccountCard(account models.Account) {
 						@AccountServiceIndicator(account, "email", "Email", "Fetches mail and keeps folders up to date.", account.EmailSyncEnabled)
 						@AccountServiceIndicator(account, "contacts", "Contacts", accountContactSyncStatusDescription(account), account.ContactSyncEnabled)
 						@AccountServiceIndicator(account, "calendar", "Calendar", accountCalendarSyncStatusDescription(account), account.CalendarSyncEnabled)
+						if !account.CalendarSyncEnabled {
+							<button
+								type="button"
+								data-edit-start-step="5"
+								class="text-xs font-medium text-primary underline-offset-4 hover:underline"
+								hx-get={ fmt.Sprintf("/api/accounts/%s/edit", account.ID) }
+								hx-target="#edit-account-container"
+								hx-swap="innerHTML"
+							>
+								Set up
+							</button>
+						}
 					</div>
 					<span class="inline-flex shrink-0 items-center gap-1 rounded-md border border-border/70 bg-muted/35 px-2 py-0.5 text-xs font-semibold text-muted-foreground">
 						@AccountProviderIcon(account.Provider, "size-3.5 shrink-0")
@@ -2266,7 +2283,7 @@ templ ChooseAccountTypeDialog() {
 						<svg class="size-4 text-muted-foreground group-hover:text-foreground transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
 					</button>
 				} else {
-					@AccountProviderUnavailable("gmail", "Gmail", "Needs a Google OAuth client on the Raven server: set GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET, then restart Raven. Until then, add Gmail as IMAP / SMTP with an app password.")
+					@AccountProviderUnavailable("gmail", "Gmail", "Google sign-in isn't set up on this Raven yet. Until then, add Gmail as IMAP / SMTP with an app password.", "Create a Google OAuth client, set GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET on the server, then restart Raven.")
 				}
 				if oauth.microsoft {
 					<button type="button" data-on-click='["ravenSwitchDialog","choose-account-type-dialog","outlook-account-dialog"]' class="w-full group flex items-center gap-4 p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-accent/50 transition-all duration-200 text-left">
@@ -2280,7 +2297,7 @@ templ ChooseAccountTypeDialog() {
 						<svg class="size-4 text-muted-foreground group-hover:text-foreground transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
 					</button>
 				} else {
-					@AccountProviderUnavailable("outlook", "Outlook", "Needs a Microsoft app registration on the Raven server: set MICROSOFT_OAUTH_CLIENT_ID and MICROSOFT_OAUTH_CLIENT_SECRET, then restart Raven.")
+					@AccountProviderUnavailable("outlook", "Outlook", "Microsoft sign-in isn't set up on this Raven yet.", "Register a Microsoft app, set MICROSOFT_OAUTH_CLIENT_ID and MICROSOFT_OAUTH_CLIENT_SECRET on the server, then restart Raven.")
 				}
 			</div>
 		}
@@ -2289,7 +2306,7 @@ templ ChooseAccountTypeDialog() {
 
 // AccountProviderUnavailable stands in for a provider button when this Raven has no OAuth client
 // for it: the card says what is missing and what to do instead, rather than a dead end.
-templ AccountProviderUnavailable(provider string, name string, reason string) {
+templ AccountProviderUnavailable(provider string, name string, reason string, adminSetup string) {
 	<div class="w-full flex items-start gap-4 p-4 rounded-lg border border-dashed border-border text-left" aria-disabled="true">
 		<div class="flex items-center justify-center w-10 h-10 shrink-0 rounded-lg bg-accent text-muted-foreground opacity-60">
 			@AccountProviderIcon(provider, "size-5")
@@ -2297,6 +2314,10 @@ templ AccountProviderUnavailable(provider string, name string, reason string) {
 		<div class="flex-1 min-w-0">
 			<div class="text-sm font-medium text-muted-foreground">{ name } <span class="font-normal">· not available yet</span></div>
 			<p class="text-xs leading-relaxed text-muted-foreground mt-0.5">{ reason }</p>
+			<details class="mt-1 text-xs text-muted-foreground">
+				<summary class="cursor-pointer underline-offset-4 hover:underline">For whoever runs Raven</summary>
+				<p class="mt-1 leading-relaxed">{ adminSetup }</p>
+			</details>
 		</div>
 	</div>
 }

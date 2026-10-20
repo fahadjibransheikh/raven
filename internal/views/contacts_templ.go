@@ -2742,7 +2742,7 @@ func ContactsListPane(contacts []models.Contact, selected *models.Contact, filte
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 100, "</div><h3 class=\"font-semibold text-sm mb-1\">No contacts yet</h3><p class=\"text-xs text-muted-foreground\">People you email will appear here as mail syncs, or you can add one manually.</p></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 100, "</div><h3 class=\"font-semibold text-sm mb-1\">No contacts yet</h3><p class=\"text-xs text-muted-foreground\">People you exchange mail with appear here once an account syncs. You can also add a contact yourself.</p></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

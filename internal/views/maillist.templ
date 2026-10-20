@@ -73,7 +73,9 @@ templ MailListHeader(accounts []models.Account, activeFolder string, totalCount 
 						class="h-9 w-full pl-8 pr-3 rounded-md text-sm bg-background border border-input outline-none focus:ring-2 focus:ring-ring"
 						data-mail-search-input
 						autocomplete="off"
+						aria-describedby="mail-search-enter-hint"
 					/>
+					<span id="mail-search-enter-hint" data-mail-search-enter-hint hidden class="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">Press Enter to filter</span>
 				</div>
 				<div class="mail-list-search-actions">
 					@MailFiltersPopover(accounts)
@@ -279,9 +281,10 @@ templ MailListToolbar(accounts []models.Account, activeFolder string, viewMode s
 		@dropdown.Dropdown() {
 			@dropdown.Trigger() {
 				@button.Button(button.Props{
-					Variant: button.VariantGhost,
-					Size:    button.SizeIcon,
-					Class:   "h-7 w-7",
+					Variant:    button.VariantGhost,
+					Size:       button.SizeIcon,
+					Class:      "h-7 w-7",
+					Attributes: templ.Attributes{"aria-label": "More actions"},
 				}) {
 					@icon.EllipsisVertical(icon.Props{Class: "size-3.5"})
 				}
@@ -1179,8 +1182,7 @@ templ MailListEmpty(accounts []models.Account, folderID string) {
 			<div class="size-12 rounded-xl flex items-center justify-center mb-3 border">
 				@icon.Inbox(icon.Props{Class: "size-5 text-subtle-foreground"})
 			</div>
-			<h3 class="font-medium text-sm mb-1">No emails</h3>
-			<p class="text-xs text-muted-foreground">{ mailListEmptyText(accounts, folderID) }</p>
+			<h3 class="font-medium text-sm">{ mailListEmptyText(accounts, folderID) }</h3>
 		</div>
 	}
 }
@@ -1202,6 +1204,7 @@ templ MailListFirstRun() {
 				Add account
 			}
 		}
+		<a href="/settings/accounts" class="mt-3 text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground">Open settings</a>
 	</div>
 }
 
