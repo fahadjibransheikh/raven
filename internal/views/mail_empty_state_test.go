@@ -20,7 +20,9 @@ func renderEmptyList(t *testing.T, accounts []models.Account, folderID string) s
 
 func TestEmptyMailListWithNoAccountsOffersAddAccount(t *testing.T) {
 	html := renderEmptyList(t, nil, "inbox")
-	for _, want := range []string{"No accounts yet", `href="/settings/accounts"`, "Add account", "data-no-accounts"} {
+	// The first run opens the provider picker directly, states the local-first promise, and
+	// ships a template so virtual-scroll.js renders the same markup.
+	for _, want := range []string{"Add your first account", "No Raven server sits in between", `choose-account-type-dialog`, "Add account", "data-no-accounts", `id="mail-first-run-template"`} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("zero-account empty state missing %q: %s", want, html)
 		}
