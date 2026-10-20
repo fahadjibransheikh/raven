@@ -1,7 +1,7 @@
 // A calendar-reminder event on the SSE stream becomes a notification through the
 // active browser-tab/desktop path, and clicking it follows the notification's url.
 // Web Push is delivered by the server, so the page must not show a second copy.
-const { test } = require("node:test")
+const { test, after } = require("node:test")
 const assert = require("node:assert/strict")
 const fs = require("node:fs")
 const path = require("node:path")
@@ -9,10 +9,14 @@ const { JSDOM } = require("jsdom")
 
 const appJS = fs.readFileSync(path.join(__dirname, "..", "..", "assets", "js", "app.js"), "utf8")
 const wait = (ms) => new Promise((r) => setTimeout(r, ms))
+// Reminder cards keep a dismiss timer; closing the windows clears it so the run can exit.
+const windows = []
+after(() => windows.forEach((w) => w.close()))
 
 async function setup(settings, permission) {
   const dom = new JSDOM("<!doctype html><body></body>", { url: "http://127.0.0.1:8090/", runScripts: "outside-only", pretendToBeVisual: true })
   const w = dom.window
+  windows.push(w)
   const sources = []
   w.EventSource = function () { const l = {}; this.listeners = l; this.addEventListener = function (t, fn) { l[t] = fn }; this.close = function () {}; sources.push(this) }
   w.matchMedia = function () { return { matches: true, addEventListener: function () {}, addListener: function () {} } }
@@ -69,4 +73,34 @@ test("a reminder without a title is ignored and an off-site url falls back to th
   assert.equal(t.created.length, 0)
   t.fire({ ...reminder, url: "//evil.example/x" })
   assert.equal(t.created[0].opts.data.url, "/calendar")
+})
+
+test("a reminder shows a card that stays, with Join when the meeting has a link", async () => {
+  const t = await setup({ desktop_notifications: "false" }, "default")
+  t.fire({ ...reminder, start_at: new Date(Date.now() + 5 * 60000).toISOString(), join_url: "https://meet.google.com/abc-defg-hij" })
+  const card = t.w.document.getElementById("calendar-reminder-e1")
+  assert.ok(card, "card shown even with desktop notifications off")
+  assert.equal(card.dataset.tuiToastDuration, "0")
+  const join = card.querySelector("[data-raven-toast-link]")
+  assert.equal(join.getAttribute("href"), "https://meet.google.com/abc-defg-hij")
+  assert.equal(join.getAttribute("target"), "_blank")
+  assert.equal(join.textContent, "Join meeting")
+})
+
+test("a card without a safe link has no Join, and a past meeting shows no card", async () => {
+  const t = await setup({}, "default")
+  t.fire({ ...reminder, event_id: "e3", join_url: "javascript:alert(1)" })
+  assert.equal(t.w.document.querySelector("#calendar-reminder-e3 [data-raven-toast-link]"), null)
+  t.fire({ ...reminder, event_id: "e4", start_at: new Date(Date.now() - 20 * 60000).toISOString() })
+  assert.equal(t.w.document.getElementById("calendar-reminder-e4"), null)
+})
+
+test("the browser notification stays until dismissed and clicking it opens the meeting", async () => {
+  const t = await setup(browserTab, "granted")
+  const opened = []
+  t.w.open = function (url) { opened.push(url) }
+  t.fire({ ...reminder, join_url: "https://meet.google.com/abc-defg-hij" })
+  assert.equal(t.created[0].opts.requireInteraction, true)
+  t.created[0].self.onclick()
+  assert.deepEqual(opened, ["https://meet.google.com/abc-defg-hij"])
 })

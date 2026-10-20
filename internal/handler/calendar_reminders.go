@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fahadjibransheikh/raven/internal/calendar"
 	"github.com/fahadjibransheikh/raven/internal/mail"
 	"github.com/fahadjibransheikh/raven/internal/storage"
 )
@@ -69,6 +70,7 @@ func runCalendarRemindersIn(ctx context.Context, db *storage.DB, now time.Time, 
 			Payload: map[string]any{
 				"event_id": reminder.EventID, "title": title, "body": body,
 				"start_at": reminder.StartAt.UTC().Format(time.RFC3339), "url": "/calendar",
+				"join_url": calendar.MeetingJoinURLWithDescription(reminder.OnlineMeetingJSON, reminder.Description),
 			},
 		})
 	}
