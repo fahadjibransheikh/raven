@@ -1101,10 +1101,14 @@ input[role="switch"] + .raven-switch-track::after {
   overflow: hidden;
 }
 
+/* Hidden once collapsed, so its folders leave the Tab order and the screen-reader tree;
+   the delay lets the collapse animate first. */
 [data-sidebar-account-collapsed="true"] .sidebar-account-folders {
   grid-template-rows: 0fr;
   opacity: 0;
   margin-top: -0.125rem;
+  visibility: hidden;
+  transition: grid-template-rows 240ms ease, opacity 180ms ease, margin 240ms ease, visibility 0s 240ms;
 }
 
 [data-sidebar-account-collapsed="true"] .sidebar-account-chevron {
@@ -1149,6 +1153,8 @@ input[role="switch"] + .raven-switch-track::after {
   grid-template-rows: 0fr;
   opacity: 0;
   margin-top: -0.125rem;
+  visibility: hidden;
+  transition: grid-template-rows 220ms ease, opacity 160ms ease, margin 220ms ease, visibility 0s 220ms;
 }
 
 [data-sidebar-folder-collapsed="true"] > [data-sidebar-folder-row] .sidebar-folder-chevron {
@@ -1519,6 +1525,15 @@ input[role="switch"] + .raven-switch-track::after {
 
 [data-view-mode="table"] {
   padding-top: 0;
+}
+
+/* Row star: a 24px target around its 14px icon (WCAG 2.2 target size). */
+.star-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  min-height: 1.5rem;
 }
 
 .mail-list-table-grid {
@@ -4138,6 +4153,20 @@ html[data-phone] [data-phone-drawer] a[title="Settings"] {
 }
 html[data-phone] [data-phone-drawer] [data-sidebar-app-nav] {
   display: none;
+}
+
+/* Phone: the remaining small controls become 44px targets. */
+html[data-phone] :is([data-mail-search-input], [data-contact-search-input]) {
+  min-height: 2.75rem;
+}
+html[data-phone] :is([aria-label="Filter contacts"], [aria-label="Sort contacts"], .account-action-btn, [data-mode-picker] button, [data-edit-start-step]) {
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+}
+html[data-phone] :is(.mail-first-run a, [data-calendar-connect-empty] a) {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
 }
 
 /* Phone calendar header: the period title wraps instead of clipping, and its controls are

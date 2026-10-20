@@ -655,7 +655,7 @@ var editAccountTest = newEditAccountTest();
 // Each loaded edit dialog starts at its first step with a new test, and
 // remembers its saved settings once its fields have been filled in.
 // A button with data-edit-start-step (e.g. "Set up" next to Calendar Off) opens the edit
-// dialog at that step instead of the first one.
+// dialog at that step instead of the first one; setupEditAccountDialog (settings.js) uses it.
 var _editStartStep = 0;
 document.addEventListener('click', function(e) {
 	var opener = e.target && e.target.closest ? e.target.closest('[data-edit-start-step]') : null;
@@ -666,9 +666,6 @@ ravenOnContent('#edit-account-dialog', function() {
 	_editAccountSavedKey = null;
 	window.setTimeout(editAccountMarkSaved, 300);
 	editAccountTest = newEditAccountTest();
-	var start = _editStartStep;
-	_editStartStep = 0;
-	if (start) window.setTimeout(function() { editWizardGo(start, true); }, 0);
 });
 function editWizardGo(step, immediate) {
 	if (step < 0) step = 0;

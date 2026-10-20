@@ -4905,6 +4905,7 @@ document.addEventListener("DOMContentLoaded", function () {
     var toast = showRavenToast({
       id: "calendar-reminder-" + String(data.event_id || ""),
       title: String(data.title),
+      wrapTitle: true,
       description: String(data.body || ""),
       icon: "info",
       position: "bottom-right",
@@ -7202,7 +7203,7 @@ function showRavenToast(opts) {
     actionHTML = '<div class="mt-2 flex items-center gap-3 text-xs font-semibold">'
     if (opts.actionLabel && opts.actionHref) actionHTML += '<a class="raven-toast-link" href="' + _escapeComposeHTML(opts.actionHref) + '" target="_blank" rel="noopener noreferrer" data-raven-toast-link>' + _escapeComposeHTML(opts.actionLabel) + '</a>'
     else if (opts.actionLabel) actionHTML += '<span class="underline underline-offset-2">' + _escapeComposeHTML(opts.actionLabel) + '</span>'
-    if (opts.secondaryActionLabel) actionHTML += '<button type="button" class="text-xs font-semibold underline underline-offset-2 opacity-80 hover:opacity-100 disabled:opacity-50" data-raven-toast-secondary' + (opts.secondaryActionDisabled ? ' disabled aria-disabled="true"' : '') + '>' + _escapeComposeHTML(opts.secondaryActionLabel) + '</button>'
+    if (opts.secondaryActionLabel) actionHTML += '<button type="button" class="inline-flex min-h-8 items-center text-xs font-semibold underline underline-offset-2 opacity-80 hover:opacity-100 disabled:opacity-50" data-raven-toast-secondary' + (opts.secondaryActionDisabled ? ' disabled aria-disabled="true"' : '') + '>' + _escapeComposeHTML(opts.secondaryActionLabel) + '</button>'
     actionHTML += '</div>'
   }
   var toast = document.createElement("div")
@@ -7220,11 +7221,11 @@ function showRavenToast(opts) {
       (duration > 0 ? '<div class="raven-toast-progress-wrap"><div class="toast-progress raven-toast-progress" data-variant="' + _escapeComposeHTML(opts.variant || "default") + '"></div></div>' : '') +
       _ravenToastIcon(opts.icon || "info") +
       '<span class="flex-1 min-w-0">' +
-        (opts.title ? '<p class="text-sm font-semibold truncate">' + _escapeComposeHTML(opts.title) + '</p>' : '') +
+        (opts.title ? '<p class="text-sm font-semibold ' + (opts.wrapTitle ? 'break-words' : 'truncate') + '">' + _escapeComposeHTML(opts.title) + '</p>' : '') +
         (opts.description ? '<p class="text-sm opacity-90 mt-1">' + _escapeComposeHTML(opts.description) + '</p>' : '') +
         actionHTML +
       '</span>' +
-      (opts.dismissible ? '<button type="button" class="raven-toast-dismiss" aria-label="Close" data-tui-toast-dismiss>x</button>' : '') +
+      (opts.dismissible ? '<button type="button" class="raven-toast-dismiss" aria-label="Close" data-tui-toast-dismiss><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>' : '') +
     '</div>'
   var dismiss = toast.querySelector("[data-tui-toast-dismiss]")
   if (dismiss) dismiss.addEventListener("click", function () { dismissRavenToast(toast) })
@@ -15348,6 +15349,21 @@ function setStarButtonState(emailId, starred) {
   var svg = document.querySelector('[data-star-email="' + emailId + '"] svg')
   if (!svg) return
   svg.setAttribute("class", starred ? "size-4 text-warning fill-warning drop-shadow-[0_1px_1px_rgba(180,120,0,0.3)]" : "size-4 text-subtle-foreground")
+  relabelStarButton(svg.closest("button"), starred)
+}
+
+// The star's label and tooltip name the next action ("Star" / "Unstar"), like the read toggle.
+function relabelStarButton(button, starred) {
+  if (!button) return
+  var relabel = function (text) { return String(text || "").replace(/\b(Un)?star\b/i, starred ? "Unstar" : "Star") }
+  if (button.hasAttribute("aria-pressed")) button.setAttribute("aria-pressed", starred ? "true" : "false")
+  if (button.hasAttribute("aria-label")) button.setAttribute("aria-label", relabel(button.getAttribute("aria-label")))
+  var trigger = button.closest ? button.closest("[data-tui-popover-trigger]") : null
+  var tip = trigger && trigger.nextElementSibling
+  if (tip && tip.hasAttribute("data-tui-popover-content")) {
+    var walker = document.createTreeWalker(tip, NodeFilter.SHOW_TEXT)
+    while (walker.nextNode()) walker.currentNode.nodeValue = relabel(walker.currentNode.nodeValue)
+  }
 }
 
 function setStarButtonIcon(button, starred) {
@@ -15360,6 +15376,7 @@ function setStarButtonIcon(button, starred) {
   } else {
     svg.setAttribute('class', size + ' text-subtle-foreground')
   }
+  relabelStarButton(button, starred)
 }
 
 // The reader's thread star is filled while any message in the open thread is starred.
