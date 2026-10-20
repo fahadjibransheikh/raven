@@ -701,7 +701,7 @@ func AdminSecurityVerificationDialog(data AdminSecurityVerificationData) templ.C
 					}
 					return nil
 				})
-				templ_7745c5c3_Err = dialog.Content(dialog.ContentProps{Class: "sm:max-w-2xl max-h-[calc(100vh-2rem)] overflow-y-auto", DisableModal: true, Attributes: templ.Attributes{"style": "box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.5)"}}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var12), templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = dialog.Content(dialog.ContentProps{Class: "sm:max-w-2xl max-h-[calc(100vh-2rem)] overflow-y-auto", DisableModal: true, Attributes: templ.Attributes{"style": "box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.4)"}}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var12), templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

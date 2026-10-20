@@ -249,7 +249,7 @@ templ AdminSecurityVerificationTrigger(data AdminSecurityVerificationData, label
 templ AdminSecurityVerificationDialog(data AdminSecurityVerificationData) {
 	if data.Required {
 		@dialog.Dialog(dialog.Props{ID: "admin-security-verification-dialog", Open: data.Open}) {
-			@dialog.Content(dialog.ContentProps{Class: "sm:max-w-2xl max-h-[calc(100vh-2rem)] overflow-y-auto", DisableModal: true, Attributes: templ.Attributes{"style": "box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.5)"}}) {
+			@dialog.Content(dialog.ContentProps{Class: "sm:max-w-2xl max-h-[calc(100vh-2rem)] overflow-y-auto", DisableModal: true, Attributes: templ.Attributes{"style": "box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.4)"}}) {
 				@dialog.Header() {
 					@dialog.Title() {
 						{ "Verify administrator session" }

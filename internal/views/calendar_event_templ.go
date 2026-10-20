@@ -832,7 +832,7 @@ func CalendarEventGuests(details CalendarEventDetails) templ.Component {
 		}
 		for _, person := range details.Attendees {
 			response := calendarParticipantResponse(person)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "<li class=\"flex items-center gap-3\"><span class=\"relative flex size-8 shrink-0 items-center justify-center rounded-full bg-foreground/10 text-[11px] font-semibold text-foreground/75\" aria-hidden=\"true\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "<li class=\"flex items-center gap-3\"><span class=\"relative flex size-8 shrink-0 items-center justify-center rounded-full bg-foreground/10 text-xs font-semibold text-foreground/75\" aria-hidden=\"true\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
