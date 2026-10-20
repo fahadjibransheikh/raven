@@ -394,6 +394,8 @@ class VirtualMailList {
         : empty.text
       var cta = !syncing && empty.ctaHref
         ? '<a href="' + empty.ctaHref + '" class="mt-4 inline-flex h-8 items-center rounded-md border border-border px-3 text-xs font-semibold text-foreground hover:bg-accent">' + empty.ctaLabel + '</a>'
+        : !syncing && empty.clearLabel
+        ? '<button type="button" data-mail-clear-search-filters class="mt-4 inline-flex h-8 items-center rounded-md border border-border px-3 text-xs font-semibold text-foreground hover:bg-accent">' + empty.clearLabel + '</button>'
         : ''
       var title = syncing ? 'Syncing folder' : empty.title
       this.itemsContainer.innerHTML =
@@ -2015,7 +2017,7 @@ class VirtualMailList {
     var filtered = Object.keys(base).some(function (key) {
       return key !== "sortBy" && key !== "sortOrder" && current[key] && current[key] !== base[key]
     })
-    if (filtered) return { title: "No results", text: "No messages match your search or filters." }
+    if (filtered) return { title: "No results", text: "No messages match your search or filters.", clearLabel: "Clear search and filters" }
     var role = String(this.folderID || "").toLowerCase()
     var links = document.querySelectorAll('aside a[hx-get^="/folder/"]')
     for (var i = 0; i < links.length; i++) {
@@ -2328,8 +2330,9 @@ class VirtualMailList {
     var countEl = document.getElementById("mail-folder-count")
     if (countEl) {
       countEl.className = "inline-flex h-5 min-w-10 items-center justify-center rounded-full bg-muted px-2 text-xs font-medium text-muted-foreground shadow-[0_1px_2px_rgba(0,0,0,0.06)]"
-      countEl.textContent = String(this.displayTotalCount)
+      // The words matter: the sidebar's number beside the same folder counts unread mail.
       var countLabel = this.displayTotalCount === 1 ? "1 message" : this.displayTotalCount + " messages"
+      countEl.textContent = countLabel
       countEl.title = countLabel
       countEl.setAttribute("aria-label", countLabel)
     }
