@@ -1121,7 +1121,7 @@ templ MailViewBodyByID(emailID string) {
 	</div>
 	<div data-email-translation-shell={ emailID } class="mb-3">
 		<div class="flex items-center justify-end gap-2">
-			<div data-email-translation-button={ emailID } data-translated="false" class="inline-flex h-8 overflow-hidden rounded-md border border-ink/20 bg-ink/[0.07] text-xs font-medium text-muted-foreground shadow-sm transition-colors hover:border-ink/30 hover:bg-ink/[0.11] hover:text-ink data-[translated=true]:border-copper/40 data-[translated=true]:bg-copper/10 data-[translated=true]:text-copper data-[translated=true]:hover:border-copper/50 data-[translated=true]:hover:bg-copper/15">
+			<div data-email-translation-button={ emailID } data-translated="false" class="inline-flex h-8 overflow-hidden rounded-md border border-transparent text-xs font-medium text-muted-foreground transition-colors hover:border-ink/20 hover:bg-ink/[0.07] hover:text-ink data-[translated=true]:border-copper/40 data-[translated=true]:bg-copper/10 data-[translated=true]:text-copper data-[translated=true]:hover:border-copper/50 data-[translated=true]:hover:bg-copper/15">
 					<button type="button" data-translate-email={ emailID } data-translated="false" aria-pressed="false" class="inline-flex h-full items-center gap-1.5 px-2.5 transition-colors data-[translated=true]:text-copper">
 						@icon.Languages(icon.Props{Class: "size-3.5"})
 						<span data-translate-email-label={ emailID }>Translate</span>

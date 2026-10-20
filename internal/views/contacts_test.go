@@ -136,7 +136,7 @@ func TestExistingContactRendersFocusedEditDialog(t *testing.T) {
 		`action="/api/contacts?id=contact-1"`,
 		`Save changes`,
 		`How this contact was first created`,
-		`>Observed<`,
+		`>From mail<`,
 		`>Sync locations<`,
 		`data-tui-selectbox-value="local"`,
 		`name="sync_enabled"`,

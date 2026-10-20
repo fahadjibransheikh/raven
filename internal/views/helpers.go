@@ -668,6 +668,15 @@ func themeClass(settings map[string]string) string {
 	return ""
 }
 
+// themeMode is the stored color mode: "dark", "light" or "system". For "system" the
+// server can't see the OS preference, so actions.js adds the dark class before first paint.
+func themeMode(settings map[string]string) string {
+	if mode := uiSettingGet(settings, "theme", "dark"); mode == "light" || mode == "system" {
+		return mode
+	}
+	return "dark"
+}
+
 // themeStyle returns the accent preset: "raven", "classic" (copper) or
 // "minimal" (mono). Classic and minimal were once full structural themes;
 // stored values still load and now select an accent. Anything else is raven.
@@ -1280,3 +1289,10 @@ func boolParam(b bool) string {
 }
 
 var mailPreviewRuleRun = regexp.MustCompile(`[_=*~#\-]{3,}`)
+
+// mailListOffersUnreadFilter hides Unread in Sent and Drafts, where everything is read,
+// unless the filter is already on and needs turning off.
+func mailListOffersUnreadFilter(accounts []models.Account, folderID string, filters models.EmailFilters) bool {
+	role := mailFolderRole(accounts, folderID)
+	return filters.Unread || (role != "sent" && role != "drafts")
+}

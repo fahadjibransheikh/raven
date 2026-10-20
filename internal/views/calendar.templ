@@ -17,7 +17,7 @@ import (
 
 templ CalendarLayout(accounts []models.Account, month CalendarMonthData, uiSettings map[string]string) {
 	<!DOCTYPE html>
-	<html lang="en" class={ themeClass(uiSettings) } data-theme={ themeStyle(uiSettings) } data-mail-density={ mailListDensity(uiSettings) }>
+	<html lang="en" class={ themeClass(uiSettings) } data-theme-mode={ themeMode(uiSettings) } data-theme={ themeStyle(uiSettings) } data-mail-density={ mailListDensity(uiSettings) }>
 		<head>
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
@@ -97,7 +97,7 @@ templ CalendarSidebarContent(accounts []models.Account, loading bool) {
 		<nav class="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 pt-3 pb-3">
 			<div class="px-2.5 pb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-sidebar-foreground/45">Connected accounts</div>
 			if len(configuredAccounts) == 0 && len(calendarUnselectedAccounts(accounts)) == 0 {
-				<div class="rounded-md border border-sidebar-border/60 bg-sidebar-accent/20 px-2.5 py-3 text-[11px] leading-relaxed text-sidebar-foreground/55">
+				<div class="rounded-md border border-sidebar-border/60 bg-sidebar-accent/20 px-2.5 py-3 text-xs leading-relaxed text-sidebar-foreground/55">
 					<p>No calendar accounts configured yet.</p>
 					<a href="/settings/accounts" class="mt-2 inline-flex items-center gap-1.5 font-semibold text-sidebar-primary hover:text-sidebar-accent-foreground">
 						Open account setup
@@ -110,7 +110,7 @@ templ CalendarSidebarContent(accounts []models.Account, loading bool) {
 						<div class="account-color-marker size-2.5 shrink-0" style={ accountColorStyle(account.Color) }></div>
 						<div class="min-w-0 flex-1">
 							<div class="truncate font-medium">{ calendarAccountDisplayName(account) }</div>
-							<div class="truncate text-[11px] text-sidebar-foreground/50">{ calendarAccountProviderLabel(account) } account</div>
+							<div class="truncate text-xs text-sidebar-foreground/50">{ calendarAccountProviderLabel(account) } account</div>
 						</div>
 					</div>
 					<div class="mb-2 space-y-0.5" role="group" aria-label={ "Calendars for " + calendarAccountDisplayName(account) }>
@@ -146,10 +146,10 @@ templ CalendarSidebarContent(accounts []models.Account, loading bool) {
 					<div class="account-color-marker size-2.5 shrink-0" style={ accountColorStyle(account.Color) }></div>
 					<div class="min-w-0 flex-1">
 						<div class="truncate font-medium">{ calendarAccountDisplayName(account) }</div>
-						<div class="truncate text-[11px] text-sidebar-foreground/50">{ calendarAccountProviderLabel(account) } account</div>
+						<div class="truncate text-xs text-sidebar-foreground/50">{ calendarAccountProviderLabel(account) } account</div>
 					</div>
 				</div>
-				<div class="mb-2 pl-7 pr-2.5 text-[11px] leading-relaxed text-sidebar-foreground/55">
+				<div class="mb-2 pl-7 pr-2.5 text-xs leading-relaxed text-sidebar-foreground/55">
 					<p>No calendars selected.</p>
 					<a href="/settings/accounts" class="mt-1 inline-flex items-center gap-1 font-semibold text-sidebar-primary hover:text-sidebar-accent-foreground">
 						Choose calendars
@@ -246,7 +246,7 @@ templ CalendarMainContent(month CalendarMonthData) {
 		</header>
 		if calendarTimelineDays(month.View) > 0 {
 			<div class="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/10 px-4 py-2 sm:px-5" inert?={ month.Loading } hidden?={ !month.HasSources && !month.Loading }>
-				<p data-calendar-week-scale-status class="text-[11px] text-muted-foreground" aria-live="polite">Fit · Empty hours condensed</p>
+				<p data-calendar-week-scale-status class="text-xs text-muted-foreground" aria-live="polite">Fit · Empty hours condensed</p>
 				<div class="inline-flex items-center gap-1" role="group" aria-label="Week timeline zoom">
 					<button type="button" data-calendar-week-zoom="fit" aria-pressed="true" class="inline-flex h-7 items-center rounded-md border border-border bg-accent px-2.5 text-xs font-semibold transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Fit</button>
 					<div class="inline-flex overflow-hidden rounded-md border border-border bg-background shadow-sm">
@@ -317,7 +317,7 @@ continuesAfter := event.AllDay && event.EndDate > day.Date.AddDate(0, 0, 1).Form
 				</div>
 			}
 		</div>
-		<footer class="flex shrink-0 flex-wrap items-center justify-between gap-2 px-4 py-2 text-[11px] text-muted-foreground sm:px-5" data-calendar-layout-footer>
+		<footer class="flex shrink-0 flex-wrap items-center justify-between gap-2 px-4 py-2 text-xs text-muted-foreground sm:px-5" data-calendar-layout-footer>
 			<div class="flex flex-wrap items-center gap-x-4 gap-y-1" role="group" aria-label="Calendar legend">
 				<span class="inline-flex items-center gap-1.5"><span class="size-2 rounded-full bg-primary"></span>Today</span>
 				@CalendarEventResponseLegend()
