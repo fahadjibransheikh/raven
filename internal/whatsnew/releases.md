@@ -7,6 +7,28 @@ Then an optional hero line, then "### New", "### Improved", "### Fixed" or
 replaces it with the real version number. GitHub release notes use the same text.
 -->
 
+## 1.2.0 | 2026-10-21 | Meeting reminders and a calmer, phone-friendly Raven
+Meeting reminders now stay on screen with a Join button, replies open right below the conversation, and Raven is easier to use on a phone.
+
+### New
+- Meeting reminders: Raven reminds you before a timed event starts. While Raven is open, a card stays on screen with Join meeting and Open calendar until you close it. Choose the reminder time in Settings › Advanced. On a Mac, set Raven to Alerts in System Settings › Notifications so the system notification stays too.
+- Replies and forwards open right below the conversation instead of over it. New messages still open in their own window.
+- On a phone, a bar at the bottom switches between Mail, Calendar and Contacts, and message actions sit at the bottom within thumb reach.
+- Color mode has a System option that follows your computer's light or dark setting.
+
+### Improved
+- After you press Send, the message closes straight away and shows "Message sent" with Undo, instead of keeping you on the message for the undo time.
+- The calendar agenda groups events by day in compact rows, and a calendar with nothing connected shows one clear "Connect a calendar" step.
+- The first screen explains that your mail stays on the computer running Raven and that passwords are stored encrypted.
+- Settings, Contacts and adding an account are simpler: fewer boxes, plainer words, empty contact fields hidden, and Contacts sync off by default for new accounts.
+- A search stays in the search box so you can edit it, and "No results" offers to clear the search and filters.
+- Screen readers and keyboards: every button is named, focus is easier to see, and a "Skip to main content" link comes first.
+- Text sizes are more even and the dark-mode pink is softer. The Translate button now says Google does the translating.
+
+### Fixed
+- Outlook mail stopped syncing after the computer slept. It now reconnects on its own.
+- Join meeting links did nothing in the desktop app. They now open in your browser.
+
 ## 1.1.3 | 2026-10-19 | Clearer mail list
 The mail list is easier to scan: unread mail stands out, sent mail shows who you wrote to, and you can see when mail last synced.
 
