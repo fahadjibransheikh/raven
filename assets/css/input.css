@@ -4281,6 +4281,7 @@ html[data-desktop="macos"] body > div.h-screen {
 .account-wizard-section[data-active="true"] > .account-wizard-section-heading .account-wizard-index,
 .account-wizard-section-heading[data-active="true"] .account-wizard-index,
 .account-wizard-step[data-active="true"] .account-wizard-index { background:var(--primary); color:var(--primary-foreground); }
+.account-wizard-index.account-wizard-dot { height:.5rem; min-width:.5rem; width:.5rem; margin:.3rem .5rem 0; padding:0; border-radius:999px; }
 .account-wizard-viewport { min-height:0; height:100%; overflow:hidden; }
 .account-wizard-viewport > .flex { height:100%; align-items:stretch; }
 .account-wizard-viewport [data-wizard-step] { min-height:0; height:100%; }
@@ -4692,8 +4693,18 @@ html[data-phone] #settings-content .settings-item {
   padding: 0.75rem;
 }
 
-/* First run (MailListFirstRun): with no accounts there is no email to select, so the
-   reader's "Select an email" prompt is blanked rather than pointing at an empty list. */
-#main-content:has([data-mail-first-run]) [data-mail-view-empty] > * {
-  visibility: hidden;
+/* First run (MailListFirstRun): with no accounts there is nothing to read, so the list
+   pane takes the reader's place and the first-run panel sits centred in the whole area. */
+#main-content:has([data-mail-first-run]) #mail-view,
+#main-content:has([data-mail-first-run]) .resize-handle[data-panel="maillist"] {
+  display: none;
+}
+#main-content:has([data-mail-first-run]) #mail-list {
+  flex: 1 1 auto;
+  width: auto !important;
+  border-right: 0;
+}
+.mail-first-run {
+  margin-inline: auto;
+  padding-top: max(3rem, 18vh);
 }
