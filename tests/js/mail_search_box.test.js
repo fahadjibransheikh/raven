@@ -10,6 +10,7 @@ const appJS = fs.readFileSync(path.join(__dirname, "..", "..", "assets", "js", "
 
 async function setup() {
   const html = '<input data-mail-search-input>' +
+    '<form data-mail-advanced-filter-form><input name="from"></form>' +
     '<div id="mail-list-scroll" data-folder-id="f-inbox"></div>'
   const dom = new JSDOM("<!doctype html><body>" + html + "</body>", { runScripts: "outside-only", pretendToBeVisual: true })
   const w = dom.window
@@ -57,4 +58,22 @@ test("editing the query and searching again replaces it instead of appending", a
   await settle()
   assert.equal(t.box.value, "budget q4")
   assert.equal(t.applied[t.applied.length - 1].query, "budget q4")
+})
+
+test("an operator typed before Enter isn't searched as text", async () => {
+  const t = await setup()
+  t.box.value = "budget from:maya@example.net"
+  t.box.dispatchEvent(new t.w.Event("input", { bubbles: true }))
+  await new Promise(function (r) { setTimeout(r, 1200) })
+  assert.equal(t.applied[t.applied.length - 1].query, "budget")
+})
+
+test("Enter turns from: into the From filter and leaves no text query", async () => {
+  const t = await setup()
+  enter(t, "from:maya@example.net")
+  await settle()
+  const last = t.applied[t.applied.length - 1]
+  assert.equal(last.from, "maya@example.net")
+  assert.equal(last.query, "")
+  assert.equal(t.box.value, "")
 })

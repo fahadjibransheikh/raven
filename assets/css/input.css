@@ -4096,6 +4096,19 @@ html[data-phone] [data-calendar-agenda-toggle] {
   min-height: 2.75rem;
 }
 
+/* Phone drawer: every row and button is a 44px target. The bottom tab bar already
+   switches apps, so the drawer drops its own Mail/Contacts/Calendar icons. */
+html[data-phone] [data-phone-drawer] a,
+html[data-phone] [data-phone-drawer] button {
+  min-height: 2.75rem;
+}
+html[data-phone] [data-phone-drawer] button {
+  min-width: 2.75rem;
+}
+html[data-phone] [data-phone-drawer] [data-sidebar-app-nav] {
+  display: none;
+}
+
 html[data-phone] .mail-view-toolbar .mail-view-actions {
   gap: 0;
 }
@@ -4693,16 +4706,28 @@ html[data-phone] #settings-content .settings-item {
   padding: 0.75rem;
 }
 
-/* First run (MailListFirstRun): with no accounts there is nothing to read, so the list
-   pane takes the reader's place and the first-run panel sits centred in the whole area. */
-#main-content:has([data-mail-first-run]) #mail-view,
-#main-content:has([data-mail-first-run]) .resize-handle[data-panel="maillist"] {
+/* First run (MailListFirstRun) and a calendar with nothing connected (CalendarConnectEmpty):
+   there is nothing to read in the second pane, so the first pane takes its place and the
+   panel sits in the whole area. */
+#main-content:has([data-mail-first-run], [data-calendar-connect-empty]) #mail-view,
+#main-content:has([data-mail-first-run], [data-calendar-connect-empty]) .resize-handle[data-panel="maillist"] {
   display: none;
 }
-#main-content:has([data-mail-first-run]) #mail-list {
+#main-content:has([data-mail-first-run], [data-calendar-connect-empty]) #mail-list {
   flex: 1 1 auto;
   width: auto !important;
   border-right: 0;
+}
+/* With no accounts there is no mail to search, sort, sync, snooze or write from yet. */
+body:has([data-mail-first-run]) :is(
+  .mail-list-header,
+  .mail-list-toolbar,
+  .mail-compose-fab,
+  #sidebar-compose-btn,
+  #sidebar-sync-controls,
+  [data-sidebar-folder-menu-row]:has([data-folder-role="snoozed"])
+) {
+  display: none;
 }
 .mail-first-run {
   margin-inline: auto;

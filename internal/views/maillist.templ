@@ -141,9 +141,9 @@ templ MailListToolbar(accounts []models.Account, activeFolder string, viewMode s
 			</button>
 		</div>
 		<div class="mail-list-toolbar-spacer flex-1"></div>
-		if mailListOffersUnreadFilter(accounts, activeFolder, filters) {
-			<button
+		<button
 			type="button"
+			hidden?={ !mailListOffersUnreadFilter(accounts, activeFolder, filters) }
 			data-mail-unread-toggle
 			aria-pressed={ fmt.Sprintf("%t", filters.Unread) }
 			class={
@@ -154,7 +154,6 @@ templ MailListToolbar(accounts []models.Account, activeFolder string, viewMode s
 		>
 			Unread
 		</button>
-		}
 		@dropdown.Dropdown() {
 			@dropdown.Trigger() {
 				<button type="button" class="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground" aria-label="Sort messages" title={ "Sort: " + mailSortLabel(filters) }>
