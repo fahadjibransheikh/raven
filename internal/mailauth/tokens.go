@@ -479,7 +479,10 @@ func refreshTokenForScopes(ctx context.Context, cfg *oauth2.Config, refreshToken
 		token.TokenType = "Bearer"
 	}
 	if result.ExpiresIn > 0 {
-		token.Expiry = time.Now().Add(time.Duration(result.ExpiresIn) * time.Second)
+		// Round(0) drops the monotonic reading so expiry checks use the wall
+		// clock: the monotonic clock stops while a Mac sleeps, which kept
+		// expired Graph tokens looking valid after wake.
+		token.Expiry = time.Now().Add(time.Duration(result.ExpiresIn) * time.Second).Round(0)
 	}
 	token = token.WithExtra(map[string]any{"scope": result.Scope})
 	return token, nil

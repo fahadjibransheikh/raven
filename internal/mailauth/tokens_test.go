@@ -654,6 +654,11 @@ func TestMicrosoftScopedTokensAreReusedUntilExpiryWithoutTouchingStoredToken(t *
 		t.Fatalf("second mail token: %v", err)
 	}
 	mailScope := strings.Join(microsoftGraphMailScopes(), " ")
+	for key, cached := range manager.microsoftTokens.Range {
+		if expiry := cached.(*oauth2.Token).Expiry; expiry != expiry.Round(0) {
+			t.Fatalf("cached token %v expiry carries a monotonic reading, which stops during system sleep", key)
+		}
+	}
 	if second != first || refreshes[mailScope] != 1 {
 		t.Fatalf("mail token reused = %v, mail refreshes = %d, want same token and 1 refresh", second == first, refreshes[mailScope])
 	}
