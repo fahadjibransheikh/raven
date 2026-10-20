@@ -14208,10 +14208,31 @@ function detachComposeForUndo(form, state) {
   } else {
     state.detached = { node: pane }
     pane.remove()
-    setMailViewEmpty(true)
+    var emailID = pane.dataset.composeReplacedEmail
+    if (emailID && window.htmx) {
+      // A reply pane replaced the message it answers: show that message again, as after sending.
+      setMailViewEmpty(true)
+      var reopen = state.reopenRequest = mailViewRequestURL(emailID)
+      Promise.resolve(htmx.ajax("GET", reopen, { target: "#mail-view", swap: "innerHTML" })).then(function () {
+        state.reopenRequest = ""
+        if (_blockedReopenRequest === reopen) _blockedReopenRequest = ""
+      })
+    } else {
+      setMailViewEmpty(true)
+    }
   }
   _updateComposeBtn(false)
 }
+
+// Undo can land before the reopened message arrives; that late swap must not cover the editor.
+// restoreDetachedCompose sets this to the reopen request's path; the next response for it is dropped.
+var _blockedReopenRequest = ""
+document.addEventListener("htmx:beforeSwap", function (event) {
+  var config = event.detail && event.detail.requestConfig
+  if (!_blockedReopenRequest || !config || config.path !== _blockedReopenRequest) return
+  _blockedReopenRequest = ""
+  event.detail.shouldSwap = false
+})
 
 // Returns true when the editor is back on the page. It is not restored over another compose
 // opened meanwhile: the callers then report the outcome without the original text.
@@ -14227,6 +14248,7 @@ function restoreDetachedCompose(state) {
     // The conversation is gone (another message was opened): reopen the editor as a pane.
     var pane = saved.node.matches("[data-compose-pane]") ? saved.node : saved.node.querySelector("[data-compose-pane]")
     if (!pane) return false
+    if (state.reopenRequest) _blockedReopenRequest = state.reopenRequest
     mailView.replaceChildren(pane)
   } else {
     return false
@@ -14821,8 +14843,13 @@ function _openComposePrefill(vals, mode) {
   var view = composeViewPreference(mode === "new" ? "new" : "reply")
   if (view === "thread" && openInlineCompose(vals, mode)) return true
   if ((view === "pane" || view === "full") && document.getElementById("mail-list") && document.getElementById("mail-view")) {
+    // The pane replaces the open message; remember it so undo send can show it again.
+    var openMessage = mode !== "new" && document.querySelector("#mail-view [data-refetch-email]")
+    var replacedEmailID = openMessage ? openMessage.getAttribute("data-refetch-email") : ""
     fetch("/compose/pane").then(function (r) { return r.text() }).then(function (html) {
       writeComposePane(html, vals, view === "full", view === "full")
+      var pane = document.querySelector("#mail-view [data-compose-pane]")
+      if (pane && replacedEmailID) pane.dataset.composeReplacedEmail = replacedEmailID
       writeComposePrefill(document.getElementById("compose-pane-form"), vals, "compose-pane-", mode)
     }).catch(function () {})
     return true

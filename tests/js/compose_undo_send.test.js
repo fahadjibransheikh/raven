@@ -120,3 +120,17 @@ test("A failed send brings the put-away editor back so it can be retried", async
   assert.equal(form.dataset.composeDirty, "true")
   t.w.close()
 })
+
+test("A reply pane shows the message it answered during the undo window", async () => {
+  const html = paneHTML.replace("<div data-compose-pane>", '<div data-compose-pane data-compose-replaced-email="e42">')
+  const t = await setup(200, html)
+  const ajax = []
+  t.w.htmx = { ajax: function (verb, url, opts) { ajax.push(verb + " " + url + " -> " + opts.target); return Promise.resolve() } }
+  t.w._sendComposeNow(t.form, true)
+  await tick()
+  assert.ok(ajax.some(function (a) { return /^GET \/email\/e42/.test(a) && /#mail-view$/.test(a) }), "reopens the replied-to message: " + ajax.join(", "))
+  t.w.document.querySelector("[data-raven-toast-secondary]").click()
+  await tick()
+  assert.ok(t.w.document.querySelector("#mail-view > [data-compose-pane] #compose-pane-form"), "Undo brings the reply back")
+  t.w.close()
+})
