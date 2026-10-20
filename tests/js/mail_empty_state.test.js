@@ -41,3 +41,9 @@ test("empty text is folder-specific", () => {
   assert.equal(copy({ self: { folderID: "sent" } }).text, "No sent messages yet")
   assert.equal(copy({ self: { folderID: "acc-custom" } }).text, "This folder is empty")
 })
+
+test("No results offers to clear the search and filters", () => {
+  const c = copy({ self: { filters: { query: "invoice" } } })
+  assert.equal(c.clearLabel, "Clear search and filters")
+  assert.equal(c.ctaHref, undefined)
+})

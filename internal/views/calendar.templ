@@ -260,7 +260,10 @@ templ CalendarMainContent(month CalendarMonthData) {
 				</div>
 			</div>
 		}
-		<div class={ "min-h-0 flex-1 overflow-auto", templ.KV("flex flex-col p-3 sm:p-5", calendarTimelineDays(month.View) == 0) } data-calendar-surface data-calendar-week-scroll?={ calendarTimelineDays(month.View) > 0 } inert?={ month.Loading }>
+		if !month.HasSources && !month.Loading {
+			@CalendarConnectEmpty()
+		}
+		<div class={ "min-h-0 flex-1 overflow-auto", templ.KV("flex flex-col p-3 sm:p-5", calendarTimelineDays(month.View) == 0) } data-calendar-surface data-calendar-week-scroll?={ calendarTimelineDays(month.View) > 0 } inert?={ month.Loading } hidden?={ !month.HasSources && !month.Loading }>
 			if calendarTimelineDays(month.View) > 0 {
 				@CalendarWeekGrid(month)
 			} else {
@@ -360,14 +363,18 @@ templ CalendarAgendaPane(month CalendarMonthData) {
 						@icon.CalendarDays(icon.Props{Class: "size-5"})
 					</div>
 					<h3 data-calendar-agenda-empty-title class="mt-3 text-sm font-semibold text-foreground">
-						if month.AllSourcesHidden {
+						if !month.HasSources {
+							No calendars connected
+						} else if month.AllSourcesHidden {
 							All calendars are hidden
 						} else {
 							No events
 						}
 					</h3>
 					<p data-calendar-agenda-empty-detail data-calendar-agenda-empty-default={ calendarAgendaEmptyDetail(month.View) } class="mx-auto mt-1 max-w-xs text-xs leading-relaxed text-muted-foreground">
-						if month.AllSourcesHidden {
+						if !month.HasSources {
+							Events appear here once a calendar is connected.
+						} else if month.AllSourcesHidden {
 							Show a calendar in the sidebar to see its events.
 						} else {
 							{ calendarAgendaEmptyDetail(month.View) }
@@ -425,4 +432,18 @@ templ CalendarAppPartial(accounts []models.Account, month CalendarMonthData, uiS
 
 templ CalendarMainPartial(month CalendarMonthData) {
 	@CalendarMainContent(month)
+}
+
+// CalendarConnectEmpty takes the grid's place while no calendar is selected: an empty grid
+// with "Nothing is scheduled" read as a working calendar with no events. The grid stays in
+// the page, hidden, for the calendar scripts.
+templ CalendarConnectEmpty() {
+	<div class="flex min-h-0 flex-1 flex-col items-start justify-center px-6 py-12 sm:px-10" data-calendar-connect-empty>
+		<div class="max-w-sm">
+			@icon.CalendarDays(icon.Props{Class: "size-6 text-muted-foreground mb-4"})
+			<h2 class="text-base font-semibold tracking-tight text-foreground mb-2">Connect a calendar</h2>
+			<p class="text-sm leading-relaxed text-muted-foreground">Raven shows Google, Outlook and CalDAV calendars, including iCloud. Turn on Calendar for an account, then choose which calendars to show.</p>
+			<a href="/settings/accounts" class="mt-6 inline-flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">Open account settings</a>
+		</div>
+	</div>
 }

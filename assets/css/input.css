@@ -4680,3 +4680,9 @@ html[data-phone] #settings-content .settings-row {
 html[data-phone] #settings-content .settings-item {
   padding: 0.75rem;
 }
+
+/* First run (MailListFirstRun): with no accounts there is no email to select, so the
+   reader's "Select an email" prompt is blanked rather than pointing at an empty list. */
+#main-content:has([data-mail-first-run]) [data-mail-view-empty] > * {
+  visibility: hidden;
+}

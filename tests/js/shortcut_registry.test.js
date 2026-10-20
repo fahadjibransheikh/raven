@@ -82,11 +82,12 @@ test("message actions are hidden with no message in play and shown once one is s
   t.w.document.dispatchEvent(new t.w.KeyboardEvent("keydown", { key: "k", ctrlKey: true, bubbles: true, cancelable: true }))
   assert.ok(!groups(t.w).includes("Message actions"))
   assert.ok(!labels(t.w).includes("Reply"))
-  assert.deepEqual(groups(t.w), ["Go to", "App"])
+  // Actions before navigation (raven.js GROUP_ORDER).
+  assert.deepEqual(groups(t.w), ["App", "Go to"])
   t.w.document.querySelector(".raven-palette").close()
   t.w.document.querySelector("#mail-list-scroll a").click()
   t.w.document.dispatchEvent(new t.w.KeyboardEvent("keydown", { key: "k", metaKey: true, bubbles: true, cancelable: true }))
-  assert.deepEqual(groups(t.w), ["Message actions", "Go to", "App"])
+  assert.deepEqual(groups(t.w), ["Message actions", "App", "Go to"])
   for (const l of ["Reply", "Reply all", "Forward", "Archive", "Delete", "Star / unstar", "Mark read / unread", "Move to…", "Label…"]) assert.ok(labels(t.w).includes(l), l)
   const chips = Array.from(t.w.document.querySelectorAll(".raven-palette kbd.kbd"), (k) => k.textContent)
   assert.ok(chips.includes("E") && chips.includes("#") && chips.includes("R"))
@@ -96,8 +97,14 @@ test("go to lists folders inside collapsed account sections plus the app pages",
   const t = await setup()
   t.w.RavenPalette.open()
   const l = labels(t.w)
-  for (const want of ["Inbox — Work", "Archive — Work", "Mail", "Contacts", "Calendar", "Settings"]) assert.ok(l.includes(want), want)
+  // With no query: app pages and actions, but not every account's folders.
+  for (const want of ["Mail", "Contacts", "Calendar", "Settings"]) assert.ok(l.includes(want), want)
   for (const want of ["Compose", "Focus search", "Toggle light / dark", "Keyboard shortcuts", "What's new"]) assert.ok(l.includes(want), want)
+  assert.ok(!l.includes("Inbox — Work"), "account folders wait for a query")
+  // Typing reaches folders inside collapsed account sections.
+  type(t.w, "work")
+  const typed = labels(t.w)
+  for (const want of ["Inbox — Work", "Archive — Work"]) assert.ok(typed.includes(want), want)
 })
 
 test("Enter in the palette runs the registry function, identical to the key", async () => {

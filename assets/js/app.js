@@ -3620,6 +3620,24 @@ document.addEventListener("DOMContentLoaded", function () {
       if (window.tui && window.tui.popover) window.tui.popover.close("mail-filters-popover")
     })
 
+    // "No results" offers this (virtual-scroll.js emptyStateCopy): drop the search and every filter.
+    document.addEventListener("click", function (e) {
+      if (!e.target || !e.target.closest || !e.target.closest("[data-mail-clear-search-filters]")) return
+      e.preventDefault()
+      committedQuery = ""
+      committedParticipant = ""
+      var search = document.querySelector("[data-mail-search-input]")
+      if (search) {
+        search.value = ""
+        search.dataset.mailCommittedQuery = ""
+      }
+      setContactFilterValue("")
+      clearInputs("[data-mail-advanced-filter-form]")
+      syncAdvancedFilterCount()
+      renderActivePills()
+      applyCurrentFilters()
+    })
+
     document.addEventListener("click", function (e) {
       var clear = e.target && e.target.closest && e.target.closest("[data-mail-advanced-filter-clear]")
       if (!clear) return
@@ -5598,13 +5616,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function showMailContentLoading(mainContent, folderLink) {
     var folderName = textFrom(folderLink, ".flex-1") || "Mail"
-    var count = textFrom(folderLink, "[data-folder-unread]")
     mainContent.innerHTML = '<div id="mail-list" class="w-full lg:flex flex-col border-r border-border bg-card h-full overflow-hidden">' +
       '<div class="mail-list-header px-4 py-4 space-y-3">' +
       '<div class="mail-list-title-row flex items-center justify-between">' +
       '<div class="mail-list-title flex items-center gap-2 min-w-0">' +
       '<h2 id="mail-folder-name" class="text-lg font-semibold tracking-tight">' + escapeHTML(folderName) + '</h2>' +
-      (count ? '<span id="mail-folder-count" class="inline-flex h-5 min-w-10 items-center justify-center rounded-full bg-muted px-2 text-xs font-medium text-muted-foreground shadow-[0_1px_2px_rgba(0,0,0,0.06)]">' + escapeHTML(count) + '</span>' : '') +
+      // No count until the list loads: the sidebar number is unread mail, not the folder total.
+      '<span id="mail-folder-count" class="inline-flex h-5 min-w-10 items-center justify-center rounded-full bg-muted px-2 text-xs font-medium text-muted-foreground shadow-[0_1px_2px_rgba(0,0,0,0.06)] animate-pulse"></span>' +
       '</div>' +
       '<div class="h-8 w-8 rounded-md bg-muted/50"></div>' +
       '</div>' +
@@ -8895,8 +8913,10 @@ function initializeCalendarDaySelection() {
   agenda.querySelector("[data-calendar-agenda-empty]").hidden = visible !== 0
   var sources = Array.from(document.querySelectorAll("[data-calendar-visibility]"))
   var allHidden = sources.length > 0 && sources.every(function (input) { return !_calendarSourceIsVisible(input) })
-  agenda.querySelector("[data-calendar-agenda-empty-title]").textContent = allHidden ? "All calendars are hidden" : selected ? "No events for this day" : "No events"
-  agenda.querySelector("[data-calendar-agenda-empty-detail]").textContent = allHidden ?
+  var noSources = calendar.dataset.calendarHasSources === "false"
+  agenda.querySelector("[data-calendar-agenda-empty-title]").textContent = noSources ? "No calendars connected" : allHidden ? "All calendars are hidden" : selected ? "No events for this day" : "No events"
+  agenda.querySelector("[data-calendar-agenda-empty-detail]").textContent = noSources ?
+    "Events appear here once a calendar is connected." : allHidden ?
     "Show a calendar in the sidebar to see its events." : selected ?
     "Nothing is scheduled on this day." :
     agenda.querySelector("[data-calendar-agenda-empty-detail]").dataset.calendarAgendaEmptyDefault

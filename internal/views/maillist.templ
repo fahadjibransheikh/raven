@@ -53,7 +53,7 @@ templ MailListHeader(accounts []models.Account, activeFolder string, totalCount 
 				</button>
 				<h2 id="mail-folder-name" data-mail-folder-default-name={ folderDisplayName(activeFolder) } class="text-lg font-semibold tracking-tight">{ mailListFolderHeading(activeFolder, filters) }</h2>
 				if totalCount >= 0 {
-					<span id="mail-folder-count" class="inline-flex h-5 min-w-10 items-center justify-center rounded-full bg-muted px-2 text-xs font-medium text-muted-foreground" title={ mailFolderCountTitle(totalCount) } aria-label={ mailFolderCountTitle(totalCount) }>{ fmt.Sprintf("%d", totalCount) }</span>
+					<span id="mail-folder-count" class="inline-flex h-5 min-w-10 items-center justify-center rounded-full bg-muted px-2 text-xs font-medium text-muted-foreground" title={ mailFolderCountTitle(totalCount) } aria-label={ mailFolderCountTitle(totalCount) }>{ mailFolderCountTitle(totalCount) }</span>
 				} else {
 					<span id="mail-folder-count" class="inline-flex h-5 min-w-10 items-center justify-center rounded-full bg-muted px-2 text-xs font-medium text-muted-foreground"></span>
 				}

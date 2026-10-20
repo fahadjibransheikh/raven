@@ -2,6 +2,7 @@ package views
 
 import (
 	"bytes"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -49,6 +50,7 @@ func TestCalendarMonthDataBuildsMondayFirstGrid(t *testing.T) {
 
 func TestCalendarMainRendersNavigationAndAgendaState(t *testing.T) {
 	month := NewCalendarMonthData(time.Date(2026, time.September, 17, 12, 0, 0, 0, time.UTC))
+	month.HasSources = true
 	var output bytes.Buffer
 	if err := CalendarPage(month, map[string]string{"calendar_list_width": "50%"}).Render(t.Context(), &output); err != nil {
 		t.Fatalf("CalendarPage.Render() error = %v", err)
@@ -219,5 +221,29 @@ func TestCalendarMonthChipsDropAllDayLabelAndMarkPhoneShell(t *testing.T) {
 	}
 	if label := calendarEventTimeLabel(month.Events[1], location); label != "" {
 		t.Errorf("all-day chip label = %q, want none", label)
+	}
+}
+
+func TestCalendarWithNoSourcesAsksToConnectOne(t *testing.T) {
+	month := NewCalendarMonthData(time.Date(2026, time.September, 17, 12, 0, 0, 0, time.UTC))
+	var output bytes.Buffer
+	if err := CalendarPage(month, map[string]string{}).Render(t.Context(), &output); err != nil {
+		t.Fatalf("CalendarPage.Render() error = %v", err)
+	}
+	html := output.String()
+	for _, expected := range []string{
+		`data-calendar-connect-empty`, `Connect a calendar`, `href="/settings/accounts"`,
+		`data-calendar-surface`, `No calendars connected`,
+	} {
+		if !strings.Contains(html, expected) {
+			t.Fatalf("no-source calendar missing %q", expected)
+		}
+	}
+	// The empty grid stays in the page for the scripts but is hidden.
+	if !strings.Contains(html, "data-calendar-surface") || !regexp.MustCompile(`data-calendar-surface[^>]*hidden`).MatchString(html) {
+		t.Fatal("grid should be hidden while no calendar is connected")
+	}
+	if !strings.Contains(html, "Events appear here once a calendar is connected.") {
+		t.Fatal("agenda should explain that no calendar is connected")
 	}
 }

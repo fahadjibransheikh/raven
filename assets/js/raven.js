@@ -19,7 +19,8 @@
     else window.location.href = href
   }
 
-  var GROUP_ORDER = ["Message actions", "Go to", "App"]
+  // Actions before navigation: Compose and friends must not sit below two dozen folder rows.
+  var GROUP_ORDER = ["Message actions", "App", "Go to"]
 
   // Rows for registry entries (window.RavenShortcuts, app.js). Each row runs the registry's own
   // run(), the same function its key calls. Selection-only entries appear only with a message in play.
@@ -58,7 +59,8 @@
       var key = link.getAttribute("hx-get")
       if (seen[key]) continue
       seen[key] = true
-      out.push({ group: "Go to", label: label, run: (function (el) { return function () { el.click() } })(link) })
+      // Per-account folders only appear once a query is typed (filterItems).
+      out.push({ group: "Go to", label: label, accountFolder: !!groupLabel, run: (function (el) { return function () { el.click() } })(link) })
     }
     return out
   }
@@ -85,6 +87,7 @@
     q = q.trim().toLowerCase().replace(/\s+/g, " ")
     var rows = []
     all.forEach(function (item, i) {
+      if (!q && item.accountFolder) return
       var s = q ? matchScore(item.label, q) : 0
       if (s >= 0) rows.push({ item: item, s: s, i: i, g: GROUP_ORDER.indexOf(item.group) })
     })
