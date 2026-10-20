@@ -27,7 +27,7 @@ func main() {
 			log.Fatal(err)
 		}
 	}
-	if err := views.MailListTableItem(models.Email{ID: "m3", FolderID: "inbox", FolderRole: "inbox"}, 2, nil, "name").Render(context.Background(), os.Stdout); err != nil {
+	if err := views.MailListTableItem(nil, models.Email{ID: "m3", FolderID: "inbox", FolderRole: "inbox"}, 2, nil, "name").Render(context.Background(), os.Stdout); err != nil {
 		log.Fatal(err)
 	}
 	fmt.Print(`</div>`)

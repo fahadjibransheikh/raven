@@ -30,7 +30,7 @@ func TestMailListRowsRenderQuickActions(t *testing.T) {
 				if view == "cards" {
 					err = MailListCardItem(nil, tc.email, 0, nil, "name").Render(context.Background(), &out)
 				} else {
-					err = MailListTableItem(tc.email, 0, nil, "name").Render(context.Background(), &out)
+					err = MailListTableItem(nil, tc.email, 0, nil, "name").Render(context.Background(), &out)
 				}
 				if err != nil {
 					t.Fatalf("Render() error = %v", err)
