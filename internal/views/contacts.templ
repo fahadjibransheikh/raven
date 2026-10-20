@@ -1399,7 +1399,7 @@ templ ContactsListPane(contacts []models.Contact, selected *models.Contact, filt
 						@icon.BookUser(icon.Props{Class: "size-5"})
 					</div>
 					<h3 class="font-semibold text-sm mb-1">No contacts yet</h3>
-					<p class="text-xs text-muted-foreground">People you email will appear here as mail syncs, or you can add one manually.</p>
+					<p class="text-xs text-muted-foreground">People you exchange mail with appear here once an account syncs. You can also add a contact yourself.</p>
 				</div>
 			} else if contactViewMode(filters.View) == "table" {
 				@ContactListTableHeader()

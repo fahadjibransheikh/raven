@@ -326,14 +326,16 @@ templ SidebarHeader(accounts []models.Account, activeApp string) {
 			<div class="flex min-w-0 items-center gap-2.5">
 				<img src="/assets/logo.svg" alt="Raven" class="h-8 w-8 shrink-0 p-1"/>
 				<span class="truncate text-base font-semibold tracking-tight text-sidebar-accent-foreground">Raven</span>
-				@tooltip.Tooltip() {
-					@tooltip.Trigger(tooltip.TriggerProps{Class: "inline-flex shrink-0"}) {
-						<button id="sidebar-compose-btn" type="button" data-on-click='["openNewCompose"]' aria-label="Compose (C)" class="inline-flex size-8 items-center justify-center rounded-md bg-sidebar-accent text-sidebar-accent-foreground transition-colors hover:bg-sidebar-accent/70 disabled:cursor-not-allowed disabled:opacity-60">
-							@icon.SquarePen(icon.Props{Class: "size-4"})
-						</button>
-					}
-					@tooltip.Content(tooltip.ContentProps{Position: tooltip.PositionBottom, ShowArrow: true, Class: "w-fit whitespace-nowrap border-sidebar-border bg-sidebar px-3 py-2 text-left text-xs text-sidebar-foreground shadow-menu [&_[data-tui-popover-arrow]]:!bg-sidebar"}) {
-						<span>Compose (C)</span>
+				if len(accounts) > 0 {
+					@tooltip.Tooltip() {
+						@tooltip.Trigger(tooltip.TriggerProps{Class: "inline-flex shrink-0"}) {
+							<button id="sidebar-compose-btn" type="button" data-on-click='["openNewCompose"]' aria-label="Compose (C)" class="inline-flex size-8 items-center justify-center rounded-md bg-sidebar-accent text-sidebar-accent-foreground transition-colors hover:bg-sidebar-accent/70 disabled:cursor-not-allowed disabled:opacity-60">
+								@icon.SquarePen(icon.Props{Class: "size-4"})
+							</button>
+						}
+						@tooltip.Content(tooltip.ContentProps{Position: tooltip.PositionBottom, ShowArrow: true, Class: "w-fit whitespace-nowrap border-sidebar-border bg-sidebar px-3 py-2 text-left text-xs text-sidebar-foreground shadow-menu [&_[data-tui-popover-arrow]]:!bg-sidebar"}) {
+							<span>Compose (C)</span>
+						}
 					}
 				}
 			</div>
@@ -345,61 +347,17 @@ templ SidebarHeader(accounts []models.Account, activeApp string) {
 }
 
 templ SidebarSyncControls(accounts []models.Account, activeApp string) {
-	<div class="flex items-center gap-1">
-		if activeApp == "calendar" {
-			<div class="flex items-center overflow-hidden rounded-md border border-sidebar-border/70 bg-sidebar-accent/20">
-				@tooltip.Tooltip() {
-					@tooltip.Trigger(tooltip.TriggerProps{Class: "inline-flex shrink-0"}) {
-						if len(calendarConfiguredAccounts(accounts)) > 0 {
-							<button
-								type="button"
-								hx-post="/api/calendar/sync"
-								hx-target="#main-content"
-								hx-swap="outerHTML"
-								hx-sync="#main-content:drop"
-								data-on-htmx-config-request='["configureCalendarSyncRequest","$event"]'
-								data-on-htmx-before-request='["handleCalendarSyncStart","$event"]'
-								data-on-htmx-after-request='["handleCalendarSyncResult","$event"]'
-								data-on-htmx-send-abort='["handleCalendarSyncAbort","$event"]'
-								data-calendar-sync-button
-								class="inline-flex h-8 w-8 items-center justify-center text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:cursor-wait"
-								aria-label="Refresh calendars"
-							>
-								@icon.RefreshCw(icon.Props{Class: "size-4"})
-							</button>
-						} else {
-							<button type="button" disabled class="inline-flex h-8 w-8 items-center justify-center text-sidebar-foreground/45 disabled:cursor-not-allowed" aria-label="No calendars selected">
-								@icon.RefreshCw(icon.Props{Class: "size-4"})
-							</button>
-						}
-					}
-					@tooltip.Content(tooltip.ContentProps{Position: tooltip.PositionBottom, ShowArrow: true, Class: "sidebar-account-error-tooltip w-fit whitespace-nowrap border-sidebar-border bg-sidebar px-3 py-2 text-left text-xs leading-relaxed text-sidebar-foreground shadow-menu [&_[data-tui-popover-arrow]]:!bg-sidebar"}) {
-						if len(calendarConfiguredAccounts(accounts)) > 0 {
-							<span>Refresh calendars for all accounts.</span>
-						} else {
-							<span>Choose calendars in account setup to enable refresh.</span>
-						}
-					}
-				}
-				@popover.Root(popover.RootProps{Class: "shrink-0"}) {
-					@popover.Trigger() {
-						<button
-							type="button"
-							disabled?={ len(calendarConfiguredAccounts(accounts)) == 0 }
-							class="inline-flex h-8 w-7 items-center justify-center rounded-r-md border-l border-sidebar-border/70 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[tui-popover-open=true]:bg-sidebar-accent data-[tui-popover-open=true]:text-sidebar-accent-foreground disabled:cursor-not-allowed disabled:opacity-50"
-							aria-label="Choose account to sync"
-						>
-							@icon.ChevronDown(icon.Props{Class: "size-3.5"})
-						</button>
-					}
-					@popover.Content(popover.ContentProps{Placement: popover.PlacementBottomEnd, Offset: 10, ShowArrow: true, Class: "sidebar-shortcuts-popover w-64 border-sidebar-border bg-sidebar p-2 text-sidebar-foreground shadow-menu [&_[data-tui-popover-arrow]]:!bg-sidebar"}) {
-						<div class="px-2 py-1.5 text-xs font-semibold uppercase text-subtle-foreground">Refresh calendars by account</div>
-						<div class="space-y-1">
-							for _, account := range calendarConfiguredAccounts(accounts) {
+	// Nothing to sync before the first account exists.
+	if len(accounts) > 0 {
+		<div class="flex items-center gap-1">
+			if activeApp == "calendar" {
+				<div class="flex items-center overflow-hidden rounded-md border border-sidebar-border/70 bg-sidebar-accent/20">
+					@tooltip.Tooltip() {
+						@tooltip.Trigger(tooltip.TriggerProps{Class: "inline-flex shrink-0"}) {
+							if len(calendarConfiguredAccounts(accounts)) > 0 {
 								<button
 									type="button"
 									hx-post="/api/calendar/sync"
-									hx-vals={ sidebarCalendarAccountSyncValues(account.ID) }
 									hx-target="#main-content"
 									hx-swap="outerHTML"
 									hx-sync="#main-content:drop"
@@ -408,130 +366,177 @@ templ SidebarSyncControls(accounts []models.Account, activeApp string) {
 									data-on-htmx-after-request='["handleCalendarSyncResult","$event"]'
 									data-on-htmx-send-abort='["handleCalendarSyncAbort","$event"]'
 									data-calendar-sync-button
-									data-calendar-account-sync-button={ account.ID }
-									class="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:cursor-wait"
-									aria-label={ "Refresh calendars for " + calendarAccountDisplayName(account) }
+									class="inline-flex h-8 w-8 items-center justify-center text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:cursor-wait"
+									aria-label="Refresh calendars"
 								>
-									@icon.RefreshCw(icon.Props{Class: "size-3.5 shrink-0"})
-									<span class="min-w-0 flex-1">
-										<span class="block truncate font-medium">{ calendarAccountDisplayName(account) }</span>
-										<span class="block truncate text-xs text-subtle-foreground">{ account.Email }</span>
-									</span>
+									@icon.RefreshCw(icon.Props{Class: "size-4"})
+								</button>
+							} else {
+								<button type="button" disabled class="inline-flex h-8 w-8 items-center justify-center text-sidebar-foreground/45 disabled:cursor-not-allowed" aria-label="No calendars selected">
+									@icon.RefreshCw(icon.Props{Class: "size-4"})
 								</button>
 							}
-						</div>
-					}
-				}
-			</div>
-		} else {
-			<div class="relative flex items-center overflow-hidden rounded-md border border-sidebar-border/70 bg-sidebar-accent/20">
-				if activeApp != "contacts" {
-					@SidebarMailSyncErrorSummaryTooltip(accounts)
-				}
-				@tooltip.Tooltip() {
-					@tooltip.Trigger(tooltip.TriggerProps{Class: "inline-flex shrink-0"}) {
-						if activeApp == "contacts" {
-							<button
-								type="button"
-								hx-post="/api/settings/contacts/accounts/sync"
-								hx-swap="none"
-								data-on-htmx-before-request='["handleContactSidebarSyncStart","$event"]'
-								data-on-htmx-after-request='["handleContactSidebarSyncResult","$event"]'
-								data-contact-sidebar-sync-button
-								class="inline-flex h-8 w-8 items-center justify-center text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[syncing=true]:text-sidebar-accent-foreground"
-								aria-label="Sync all contacts"
-							>
-								@icon.RefreshCw(icon.Props{Class: "size-4"})
-							</button>
-						} else {
-							<button
-								type="button"
-								hx-post="/api/mail/sync"
-								hx-swap="none"
-								data-on-htmx-before-request='["handleMailSidebarSyncStart","$event"]'
-								data-on-htmx-after-request='["handleMailSidebarSyncResult","$event"]'
-								data-mail-sidebar-sync-button
-								class="inline-flex h-8 w-8 items-center justify-center text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[syncing=true]:text-sidebar-accent-foreground"
-								aria-label="Force sync all mail, including IDLE folders"
-							>
-								@icon.RefreshCw(icon.Props{Class: "size-4"})
-							</button>
+						}
+						@tooltip.Content(tooltip.ContentProps{Position: tooltip.PositionBottom, ShowArrow: true, Class: "sidebar-account-error-tooltip w-fit whitespace-nowrap border-sidebar-border bg-sidebar px-3 py-2 text-left text-xs leading-relaxed text-sidebar-foreground shadow-menu [&_[data-tui-popover-arrow]]:!bg-sidebar"}) {
+							if len(calendarConfiguredAccounts(accounts)) > 0 {
+								<span>Refresh calendars for all accounts.</span>
+							} else {
+								<span>Choose calendars in account setup to enable refresh.</span>
+							}
 						}
 					}
-					@tooltip.Content(tooltip.ContentProps{Position: tooltip.PositionBottom, ShowArrow: true, Class: "sidebar-account-error-tooltip w-fit whitespace-nowrap border-sidebar-border bg-sidebar px-3 py-2 text-left text-xs leading-relaxed text-sidebar-foreground shadow-menu [&_[data-tui-popover-arrow]]:!bg-sidebar"}) {
-						if activeApp == "contacts" {
-							<span>Sync contacts.</span>
-						} else {
-							<span data-mail-sidebar-sync-tooltip>Force sync, including IDLE folders.</span>
+					@popover.Root(popover.RootProps{Class: "shrink-0"}) {
+						@popover.Trigger() {
+							<button
+								type="button"
+								disabled?={ len(calendarConfiguredAccounts(accounts)) == 0 }
+								class="inline-flex h-8 w-7 items-center justify-center rounded-r-md border-l border-sidebar-border/70 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[tui-popover-open=true]:bg-sidebar-accent data-[tui-popover-open=true]:text-sidebar-accent-foreground disabled:cursor-not-allowed disabled:opacity-50"
+								aria-label="Choose account to sync"
+							>
+								@icon.ChevronDown(icon.Props{Class: "size-3.5"})
+							</button>
 						}
-					}
-				}
-				@popover.Root(popover.RootProps{Class: "shrink-0"}) {
-					@popover.Trigger() {
-						<button
-							type="button"
-							class="inline-flex h-8 w-7 items-center justify-center rounded-r-md border-l border-sidebar-border/70 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[tui-popover-open=true]:bg-sidebar-accent data-[tui-popover-open=true]:text-sidebar-accent-foreground"
-							aria-label="Choose account to sync"
-						>
-							@icon.ChevronDown(icon.Props{Class: "size-3.5"})
-						</button>
-					}
-					@popover.Content(popover.ContentProps{Placement: popover.PlacementBottomEnd, Offset: 10, ShowArrow: true, Class: "sidebar-shortcuts-popover w-64 border-sidebar-border bg-sidebar p-2 text-sidebar-foreground shadow-menu [&_[data-tui-popover-arrow]]:!bg-sidebar"}) {
-						if activeApp == "contacts" {
-							<div class="px-2 py-1.5 text-xs font-semibold uppercase text-subtle-foreground">Sync individual contact account</div>
+						@popover.Content(popover.ContentProps{Placement: popover.PlacementBottomEnd, Offset: 10, ShowArrow: true, Class: "sidebar-shortcuts-popover w-64 border-sidebar-border bg-sidebar p-2 text-sidebar-foreground shadow-menu [&_[data-tui-popover-arrow]]:!bg-sidebar"}) {
+							<div class="px-2 py-1.5 text-xs font-semibold uppercase text-subtle-foreground">Refresh calendars by account</div>
 							<div class="space-y-1">
-								for _, account := range accounts {
-									if contactSidebarAccountVisible(account) {
-										<button
-											type="button"
-											hx-post="/api/settings/contacts/accounts/sync"
-											hx-vals={ sidebarContactSyncValues(account.ID) }
-											hx-swap="none"
-											data-on-htmx-before-request='["handleContactSidebarSyncStart","$event"]'
-											data-on-htmx-after-request='["handleContactSidebarSyncResult","$event"]'
-											data-contact-account-sync-button={ account.ID }
-											class="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-											aria-label={ "Sync contacts for " + contactSidebarAccountName(account) }
-										>
-											@icon.RefreshCw(icon.Props{Class: "size-3.5 shrink-0"})
-											<span class="min-w-0 flex-1">
-												<span class="block truncate font-medium">{ contactSidebarAccountName(account) }</span>
-												<span class="block truncate text-xs text-subtle-foreground">{ account.Email }</span>
-											</span>
-										</button>
-									}
-								}
-							</div>
-						} else {
-							<div class="px-2 py-1.5 text-xs font-semibold uppercase text-subtle-foreground">Force sync individual account, including IDLE folders</div>
-							<div class="space-y-1">
-								for _, account := range accounts {
-									if account.EmailSyncEnabled && !account.IsDeleting {
-										<button
-											type="button"
-											hx-post={ "/api/mail/sync/accounts/" + account.ID }
-											hx-swap="none"
-											data-on-htmx-before-request='["handleMailSidebarSyncStart","$event"]'
-											data-on-htmx-after-request='["handleMailSidebarSyncResult","$event"]'
-											data-mail-account-sync-button={ account.ID }
-											class="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-											aria-label={ "Force sync " + account.DisplayLabel() + ", including IDLE folders" }
-										>
-											@icon.RefreshCw(icon.Props{Class: "size-3.5 shrink-0"})
-											<span class="min-w-0 flex-1">
-												<span class="block truncate font-medium">{ account.DisplayLabel() }</span>
-												<span class="block truncate text-xs text-subtle-foreground">{ account.Email }</span>
-											</span>
-										</button>
-									}
+								for _, account := range calendarConfiguredAccounts(accounts) {
+									<button
+										type="button"
+										hx-post="/api/calendar/sync"
+										hx-vals={ sidebarCalendarAccountSyncValues(account.ID) }
+										hx-target="#main-content"
+										hx-swap="outerHTML"
+										hx-sync="#main-content:drop"
+										data-on-htmx-config-request='["configureCalendarSyncRequest","$event"]'
+										data-on-htmx-before-request='["handleCalendarSyncStart","$event"]'
+										data-on-htmx-after-request='["handleCalendarSyncResult","$event"]'
+										data-on-htmx-send-abort='["handleCalendarSyncAbort","$event"]'
+										data-calendar-sync-button
+										data-calendar-account-sync-button={ account.ID }
+										class="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:cursor-wait"
+										aria-label={ "Refresh calendars for " + calendarAccountDisplayName(account) }
+									>
+										@icon.RefreshCw(icon.Props{Class: "size-3.5 shrink-0"})
+										<span class="min-w-0 flex-1">
+											<span class="block truncate font-medium">{ calendarAccountDisplayName(account) }</span>
+											<span class="block truncate text-xs text-subtle-foreground">{ account.Email }</span>
+										</span>
+									</button>
 								}
 							</div>
 						}
 					}
-				}
-			</div>
-		}
-	</div>
+				</div>
+			} else {
+				<div class="relative flex items-center overflow-hidden rounded-md border border-sidebar-border/70 bg-sidebar-accent/20">
+					if activeApp != "contacts" {
+						@SidebarMailSyncErrorSummaryTooltip(accounts)
+					}
+					@tooltip.Tooltip() {
+						@tooltip.Trigger(tooltip.TriggerProps{Class: "inline-flex shrink-0"}) {
+							if activeApp == "contacts" {
+								<button
+									type="button"
+									hx-post="/api/settings/contacts/accounts/sync"
+									hx-swap="none"
+									data-on-htmx-before-request='["handleContactSidebarSyncStart","$event"]'
+									data-on-htmx-after-request='["handleContactSidebarSyncResult","$event"]'
+									data-contact-sidebar-sync-button
+									class="inline-flex h-8 w-8 items-center justify-center text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[syncing=true]:text-sidebar-accent-foreground"
+									aria-label="Sync all contacts"
+								>
+									@icon.RefreshCw(icon.Props{Class: "size-4"})
+								</button>
+							} else {
+								<button
+									type="button"
+									hx-post="/api/mail/sync"
+									hx-swap="none"
+									data-on-htmx-before-request='["handleMailSidebarSyncStart","$event"]'
+									data-on-htmx-after-request='["handleMailSidebarSyncResult","$event"]'
+									data-mail-sidebar-sync-button
+									class="inline-flex h-8 w-8 items-center justify-center text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[syncing=true]:text-sidebar-accent-foreground"
+									aria-label="Force sync all mail, including IDLE folders"
+								>
+									@icon.RefreshCw(icon.Props{Class: "size-4"})
+								</button>
+							}
+						}
+						@tooltip.Content(tooltip.ContentProps{Position: tooltip.PositionBottom, ShowArrow: true, Class: "sidebar-account-error-tooltip w-fit whitespace-nowrap border-sidebar-border bg-sidebar px-3 py-2 text-left text-xs leading-relaxed text-sidebar-foreground shadow-menu [&_[data-tui-popover-arrow]]:!bg-sidebar"}) {
+							if activeApp == "contacts" {
+								<span>Sync contacts.</span>
+							} else {
+								<span data-mail-sidebar-sync-tooltip>Force sync, including IDLE folders.</span>
+							}
+						}
+					}
+					@popover.Root(popover.RootProps{Class: "shrink-0"}) {
+						@popover.Trigger() {
+							<button
+								type="button"
+								class="inline-flex h-8 w-7 items-center justify-center rounded-r-md border-l border-sidebar-border/70 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[tui-popover-open=true]:bg-sidebar-accent data-[tui-popover-open=true]:text-sidebar-accent-foreground"
+								aria-label="Choose account to sync"
+							>
+								@icon.ChevronDown(icon.Props{Class: "size-3.5"})
+							</button>
+						}
+						@popover.Content(popover.ContentProps{Placement: popover.PlacementBottomEnd, Offset: 10, ShowArrow: true, Class: "sidebar-shortcuts-popover w-64 border-sidebar-border bg-sidebar p-2 text-sidebar-foreground shadow-menu [&_[data-tui-popover-arrow]]:!bg-sidebar"}) {
+							if activeApp == "contacts" {
+								<div class="px-2 py-1.5 text-xs font-semibold uppercase text-subtle-foreground">Sync individual contact account</div>
+								<div class="space-y-1">
+									for _, account := range accounts {
+										if contactSidebarAccountVisible(account) {
+											<button
+												type="button"
+												hx-post="/api/settings/contacts/accounts/sync"
+												hx-vals={ sidebarContactSyncValues(account.ID) }
+												hx-swap="none"
+												data-on-htmx-before-request='["handleContactSidebarSyncStart","$event"]'
+												data-on-htmx-after-request='["handleContactSidebarSyncResult","$event"]'
+												data-contact-account-sync-button={ account.ID }
+												class="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+												aria-label={ "Sync contacts for " + contactSidebarAccountName(account) }
+											>
+												@icon.RefreshCw(icon.Props{Class: "size-3.5 shrink-0"})
+												<span class="min-w-0 flex-1">
+													<span class="block truncate font-medium">{ contactSidebarAccountName(account) }</span>
+													<span class="block truncate text-xs text-subtle-foreground">{ account.Email }</span>
+												</span>
+											</button>
+										}
+									}
+								</div>
+							} else {
+								<div class="px-2 py-1.5 text-xs font-semibold uppercase text-subtle-foreground">Force sync individual account, including IDLE folders</div>
+								<div class="space-y-1">
+									for _, account := range accounts {
+										if account.EmailSyncEnabled && !account.IsDeleting {
+											<button
+												type="button"
+												hx-post={ "/api/mail/sync/accounts/" + account.ID }
+												hx-swap="none"
+												data-on-htmx-before-request='["handleMailSidebarSyncStart","$event"]'
+												data-on-htmx-after-request='["handleMailSidebarSyncResult","$event"]'
+												data-mail-account-sync-button={ account.ID }
+												class="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+												aria-label={ "Force sync " + account.DisplayLabel() + ", including IDLE folders" }
+											>
+												@icon.RefreshCw(icon.Props{Class: "size-3.5 shrink-0"})
+												<span class="min-w-0 flex-1">
+													<span class="block truncate font-medium">{ account.DisplayLabel() }</span>
+													<span class="block truncate text-xs text-subtle-foreground">{ account.Email }</span>
+												</span>
+											</button>
+										}
+									}
+								</div>
+							}
+						}
+					}
+				</div>
+			}
+		</div>
+	}
 }
 
 func sidebarContactSyncValues(accountID string) string {

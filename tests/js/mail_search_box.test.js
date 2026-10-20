@@ -9,7 +9,8 @@ const { JSDOM } = require("jsdom")
 const appJS = fs.readFileSync(path.join(__dirname, "..", "..", "assets", "js", "app.js"), "utf8")
 
 async function setup() {
-  const html = '<input data-mail-search-input>' +
+  const html = '<input data-mail-search-input><span data-mail-search-enter-hint hidden></span>' +
+    '<button data-mail-filter-button><span data-mail-filter-count class="hidden"></span></button>' +
     '<form data-mail-advanced-filter-form><input name="from"></form>' +
     '<div id="mail-list-scroll" data-folder-id="f-inbox"></div>'
   const dom = new JSDOM("<!doctype html><body>" + html + "</body>", { runScripts: "outside-only", pretendToBeVisual: true })
@@ -76,4 +77,17 @@ test("Enter turns from: into the From filter and leaves no text query", async ()
   assert.equal(last.from, "maya@example.net")
   assert.equal(last.query, "")
   assert.equal(t.box.value, "")
+})
+
+test("typing an operator shows the Enter hint, and plain text doesn't count as a filter", async () => {
+  const t = await setup()
+  const hint = t.w.document.querySelector("[data-mail-search-enter-hint]")
+  t.box.value = "from:maya"
+  t.box.dispatchEvent(new t.w.Event("input", { bubbles: true }))
+  assert.equal(hint.hidden, false)
+  t.box.value = "budget"
+  t.box.dispatchEvent(new t.w.Event("input", { bubbles: true }))
+  assert.equal(hint.hidden, true)
+  await new Promise(function (r) { setTimeout(r, 1200) })
+  assert.ok(t.w.document.querySelector("[data-mail-filter-count]").classList.contains("hidden"))
 })

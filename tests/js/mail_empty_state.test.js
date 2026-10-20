@@ -32,14 +32,15 @@ test("a search with no hits says No results", () => {
 })
 
 test("sort-only filters do not count as a search", () => {
-  assert.equal(copy({ self: { filters: { sortBy: "subject", sortOrder: "asc" } } }).title, "No emails")
+  assert.equal(copy({ self: { filters: { sortBy: "subject", sortOrder: "asc" } } }).title, "Your inbox is empty")
 })
 
-test("empty text is folder-specific", () => {
-  assert.equal(copy({ self: { folderID: "inbox" } }).text, "Your inbox is empty")
-  assert.equal(copy({ self: { folderID: "acc-trash" } }).text, "Trash is empty")
-  assert.equal(copy({ self: { folderID: "sent" } }).text, "No sent messages yet")
-  assert.equal(copy({ self: { folderID: "acc-custom" } }).text, "This folder is empty")
+test("empty text is folder-specific and said once", () => {
+  assert.equal(copy({ self: { folderID: "inbox" } }).title, "Your inbox is empty")
+  assert.equal(copy({ self: { folderID: "acc-trash" } }).title, "Trash is empty")
+  assert.equal(copy({ self: { folderID: "sent" } }).title, "No sent messages yet")
+  assert.equal(copy({ self: { folderID: "acc-custom" } }).title, "This folder is empty")
+  assert.equal(copy({ self: { folderID: "inbox" } }).text, "")
 })
 
 test("No results offers to clear the search and filters", () => {

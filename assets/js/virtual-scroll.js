@@ -407,7 +407,7 @@ class VirtualMailList {
             '</svg>' +
           '</div>' +
           '<h3 class="font-semibold text-sm mb-1">' + title + '</h3>' +
-          '<p class="text-xs text-muted-foreground">' + subtitle + '</p>' + cta +
+          (subtitle ? '<p class="text-xs text-muted-foreground">' + subtitle + '</p>' : '') + cta +
         '</div>'
       this.animateExitingRows(stale ? stale.rows : null, new Set(), 180, "cubic-bezier(0.2, 0, 0, 1)", 14, 18)
       return
@@ -2027,7 +2027,8 @@ class VirtualMailList {
       inbox: "Your inbox is empty", sent: "No sent messages yet", drafts: "No drafts", spam: "No spam", junk: "No spam",
       trash: "Trash is empty", archive: "Nothing archived",
     }[role] || "This folder is empty"
-    return { title: "No emails", text: text }
+    // The folder-specific line is the title; a generic "No emails" above it said the same thing.
+    return { title: text, text: "" }
   }
 
   emptyFilters() {
@@ -2806,7 +2807,7 @@ class VirtualContactsList {
       '<div class="size-12 rounded-xl flex items-center justify-center mb-3 raised">' +
       '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-7 text-muted-foreground/40"><path d="M15 18a3 3 0 1 0-6 0"></path><circle cx="12" cy="10" r="2"></circle><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M8 2v4"></path><path d="M16 2v4"></path></svg>' +
       '</div><h3 class="font-semibold text-sm mb-1">No contacts yet</h3>' +
-      '<p class="text-xs text-muted-foreground">People you email will appear here as mail syncs, or you can add one manually.</p></div>'
+      '<p class="text-xs text-muted-foreground">People you exchange mail with appear here once an account syncs. You can also add a contact yourself.</p></div>'
   }
 
   ensureRowPool() {

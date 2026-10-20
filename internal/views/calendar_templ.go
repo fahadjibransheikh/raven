@@ -3121,7 +3121,7 @@ func CalendarConnectEmpty() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 284, "<h2 class=\"text-base font-semibold tracking-tight text-foreground mb-2\">Connect a calendar</h2><p class=\"text-sm leading-relaxed text-muted-foreground\">Raven shows Google, Outlook and CalDAV calendars, including iCloud. Turn on Calendar for an account, then choose which calendars to show.</p><a href=\"/settings/accounts\" class=\"mt-6 inline-flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2\">Open account settings</a></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 284, "<h2 class=\"text-base font-semibold tracking-tight text-foreground mb-2\">Connect a calendar</h2><p class=\"text-sm leading-relaxed text-muted-foreground\">Raven shows Google, Outlook and CalDAV calendars, including iCloud. Add an account or turn on Calendar for one you have, then choose which calendars to show.</p><a href=\"/settings/accounts\" class=\"mt-6 inline-flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2\">Open account settings</a></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
