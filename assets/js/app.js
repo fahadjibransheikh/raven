@@ -6764,6 +6764,9 @@ function renderOutgoingSendStatuses() {
 
 function recoverComposeOutgoingSend(summary) {
   if (!summary || !summary.draft_id) return
+  if (_composeSendState && _composeSendState.sendID === summary.id && (summary.status === "failed" || summary.status === "ambiguous")) {
+    restoreDetachedCompose(_composeSendState)
+  }
   var forms = document.querySelectorAll("#compose-form, #compose-pane-form")
   for (var i = 0; i < forms.length; i++) {
     var draftField = forms[i].querySelector('input[name="draft_id"]')
@@ -12693,6 +12696,8 @@ function handleComposeSendResult(status, data) {
     if (state.sendID && state.sendID !== data.send_id) return
     state.sendID = data.send_id
   }
+  // A send that fails after its editor was put away for undo brings the editor back to retry.
+  if (status === "failed" || status === "ambiguous") restoreDetachedCompose(state)
   var form = document.getElementById(state.formId)
   if (status === "sent") {
     finishComposeSendSuccess(state)
@@ -14165,18 +14170,21 @@ function _sendComposeNow(form, fromPane) {
   })
 }
 
-// Undo send: the server holds the message for undo_seconds. The dialog closes at once but
-// keeps its contents until the send completes, so Undo can reopen it unchanged.
+// Undo send: the server holds the message for undo_seconds, but the UI treats it as sent at
+// once. The dialog closes and keeps its contents; a pane or inline editor is taken out of the
+// page and kept in memory (detachComposeForUndo). Undo puts either back unchanged.
 function showUndoSendToast(form, state, seconds) {
   state.sendKey = form.dataset.composeSendKey
   if (!state.fromPane && window.tui && window.tui.dialog) {
     window.tui.dialog.close("compose-dialog")
     _updateComposeBtn(false)
+  } else if (state.fromPane) {
+    detachComposeForUndo(form, state)
   }
   _sendStatusToast = showRavenToast({
     id: "compose-status-toast",
-    title: "Sending",
-    description: "Sending in " + seconds + " seconds",
+    title: "Message sent",
+    description: "You can undo for " + seconds + " seconds.",
     variant: "info", icon: "info", position: "bottom-right", duration: seconds * 1000, dismissible: true,
     secondaryActionLabel: "Undo",
     onSecondaryAction: function () {
@@ -14184,6 +14192,49 @@ function showUndoSendToast(form, state, seconds) {
       undoComposeSend(state)
     },
   })
+}
+
+// Takes a sent pane or inline reply out of the page for the undo window, as if it closed after
+// sending. The node keeps its form and state; restoreDetachedCompose puts it back on Undo or
+// when the send fails. A successful send just drops it (finishComposeSendSuccess finds no form).
+function detachComposeForUndo(form, state) {
+  var inline = form.closest("[data-compose-inline]")
+  var pane = form.closest("[data-compose-pane]")
+  if (!pane) return
+  collapseComposeFullWidth()
+  if (inline) {
+    state.detached = { node: inline, thread: inline.parentNode }
+    inline.remove()
+  } else {
+    state.detached = { node: pane }
+    pane.remove()
+    setMailViewEmpty(true)
+  }
+  _updateComposeBtn(false)
+}
+
+// Returns true when the editor is back on the page. It is not restored over another compose
+// opened meanwhile: the callers then report the outcome without the original text.
+function restoreDetachedCompose(state) {
+  var saved = state && state.detached
+  if (!saved) return false
+  state.detached = null
+  if (document.getElementById(state.formId)) return false
+  var mailView = document.getElementById("mail-view")
+  if (saved.thread && saved.thread.isConnected) {
+    saved.thread.appendChild(saved.node)
+  } else if (mailView) {
+    // The conversation is gone (another message was opened): reopen the editor as a pane.
+    var pane = saved.node.matches("[data-compose-pane]") ? saved.node : saved.node.querySelector("[data-compose-pane]")
+    if (!pane) return false
+    mailView.replaceChildren(pane)
+  } else {
+    return false
+  }
+  _composeActive = true
+  _updateComposeBtn(true)
+  if (saved.node.scrollIntoView) saved.node.scrollIntoView({ block: "nearest" })
+  return true
 }
 
 function undoComposeSend(state) {
@@ -14196,6 +14247,7 @@ function undoComposeSend(state) {
     }
     if (!r.ok) throw new Error("cancel failed: " + r.status)
     if (_composeSendState && _composeSendState.sendID === state.sendID) _composeSendState = null
+    restoreDetachedCompose(state)
     var form = document.getElementById(state.formId)
     if (!form || form.dataset.composeSendKey !== state.sendKey) {
       // shortcut: a compose opened during the undo window reused the dialog form, so the
