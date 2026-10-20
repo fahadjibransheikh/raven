@@ -74,3 +74,38 @@ func TestComposeAccountSelfEmailsIncludesIdentities(t *testing.T) {
 		t.Fatalf("self emails = %q", got)
 	}
 }
+
+func TestSettingsAccountIdentitiesFoldsTheAddForm(t *testing.T) {
+	single := AccountIdentitiesData{
+		Account:    models.Account{ID: "a1", Provider: "imap", Email: "me@example.com"},
+		Identities: []models.AccountIdentity{{ID: 1, Email: "me@example.com", Source: "primary", IsDefault: true}},
+	}
+	html := renderIdentities(t, single)
+	if !strings.Contains(html, `<details class="mt-3 group/add" data-identity-add>`) || !strings.Contains(html, "Add a sending address") {
+		t.Fatalf("add form should be folded behind a disclosure: %s", html)
+	}
+	if strings.Contains(html, "data-identity-default") {
+		t.Fatal("a lone address should not carry a Default badge")
+	}
+	single.Error = "That address is already added."
+	if html := renderIdentities(t, single); !strings.Contains(html, `<details class="mt-3 group/add" open data-identity-add>`) {
+		t.Fatalf("an error should leave the add form open: %s", html)
+	}
+}
+
+func TestSettingsAccountsTabHasNoNestedCardOrRepeatedHeading(t *testing.T) {
+	var out bytes.Buffer
+	accounts := []models.Account{{ID: "a1", Provider: "imap", Email: "me@example.com", EmailSyncEnabled: true}}
+	if err := SettingsAccountsTab(accounts).Render(context.Background(), &out); err != nil {
+		t.Fatal(err)
+	}
+	html := out.String()
+	for _, gone := range []string{">Accounts</h3>", "Enabled services", "bg-card rounded-lg border p-6"} {
+		if strings.Contains(html, gone) {
+			t.Fatalf("accounts tab still renders %q", gone)
+		}
+	}
+	if !strings.Contains(html, "Add Account") || !strings.Contains(html, "me@example.com") {
+		t.Fatal("accounts tab lost its account or Add Account")
+	}
+}

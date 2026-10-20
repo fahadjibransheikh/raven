@@ -1014,12 +1014,10 @@ templ SettingsSuppressedContacts(contacts []models.Contact, totalCount int) {
 }
 
 templ SettingsAccountsTab(accounts []models.Account) {
-	<div class="mt-6 bg-card rounded-lg border p-6 space-y-5">
-		<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-			<div class="min-w-0">
-				<h3 class="text-sm font-semibold text-muted-foreground mb-1">Accounts</h3>
-				<p class="text-xs text-muted-foreground leading-relaxed">See which connected services each account provides. Email is available for existing mail accounts; contacts appear when provider sync is enabled.</p>
-			</div>
+	// The page header already names and describes Accounts, so the list sits directly under it
+	// with no card or heading of its own; each account is the only card.
+	<div class="mt-6 space-y-4">
+		<div class="flex justify-end">
 			@dialog.Trigger(dialog.TriggerProps{For: "choose-account-type-dialog"}) {
 				@button.Button(button.Props{
 					Size:    button.SizeSm,
@@ -1443,12 +1441,8 @@ templ SettingsAccountCard(account models.Account) {
 				</div>
 			</div>
 			<div class="mt-4 border-t border-border/60 pt-3">
-				<div class="mb-2 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-					<p class="text-xs font-semibold text-muted-foreground">Enabled services</p>
-					<p class="text-xs text-muted-foreground">Use Edit to enable/disable services.</p>
-				</div>
-				<div class="flex items-end justify-between gap-3">
-					<div class="flex flex-wrap gap-2">
+				<div class="flex items-center justify-between gap-3">
+					<div class="flex flex-wrap items-center gap-x-4 gap-y-1">
 						@AccountServiceIndicator(account, "email", "Email", "Fetches mail and keeps folders up to date.", account.EmailSyncEnabled)
 						@AccountServiceIndicator(account, "contacts", "Contacts", accountContactSyncStatusDescription(account), account.ContactSyncEnabled)
 						@AccountServiceIndicator(account, "calendar", "Calendar", accountCalendarSyncStatusDescription(account), account.CalendarSyncEnabled)
@@ -1784,9 +1778,10 @@ templ SettingsAccountActionsMenu(account models.Account) {
 			title={ description }
 			aria-label={ fmt.Sprintf("%s %s. %s", label, serviceStateLabel(enabled), description) }
 			class={
-				"inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium",
-				templ.KV("border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300", enabled),
-				templ.KV("border-border bg-muted/35 text-muted-foreground", !enabled),
+				// Plain status text, not a bordered chip: these aren't controls (Edit changes them).
+				"inline-flex items-center gap-1.5 text-xs font-medium",
+				templ.KV("text-foreground", enabled),
+				templ.KV("text-muted-foreground", !enabled),
 			}
 		>
 			if service == "email" {
@@ -2699,10 +2694,6 @@ templ AddAccountDialogContent() {
 
 templ AccountWizardAddSidebar() {
 	<aside class="rounded-lg border border-border bg-muted/25 p-2 md:min-h-[28rem]">
-		<div class="mb-2 px-2">
-			<div class="text-xs font-semibold text-muted-foreground">Setup sections</div>
-			<p class="mt-0.5 text-xs leading-snug text-muted-foreground/80">Enable/disable the services you need</p>
-		</div>
 		@AccountWizardEmailSection("wizardGo", "", true, true, false, "Test and create")
 		@AccountWizardTopStep("wizardGo", 4, "2", "Contacts", "Optional sync", true, true, "", "contacts", true, false, templ.Attributes{"data-add-contact-sync-switch": ""})
 		@AccountWizardTopStep("wizardGo", 5, "3", "Calendar", "Provider access", true, true, "", "calendar", false, false, nil)
@@ -2711,10 +2702,6 @@ templ AccountWizardAddSidebar() {
 
 templ AccountWizardEditSidebar(data models.EditAccountData) {
 	<aside class="rounded-lg border border-border bg-muted/25 p-2 md:min-h-[28rem]">
-		<div class="mb-2 px-2">
-			<div class="text-xs font-semibold text-muted-foreground">Settings sections</div>
-			<p class="mt-0.5 text-xs leading-snug text-muted-foreground/80">Enable/disable the services you need</p>
-		</div>
 		if accountEditUsesProviderAPI(data.Provider) {
 			@AccountWizardProviderAPIEmailSection("editWizardGo", data.AccountID, data.Provider, data.EmailSyncEnabled, true)
 		} else {
@@ -2764,9 +2751,10 @@ templ AccountWizardProviderAPIEmailSection(goFn string, accountID string, provid
 }
 
 templ AccountWizardSubStep(goFn string, step int, index string, title string, description string, disabled bool, active bool) {
-	<button type="button" data-on-click={ onAction(goFn, step) } data-account-wizard-action={ goFn } data-account-wizard-target-step={ strconv.Itoa(step) } class="account-wizard-step" data-account-wizard-step={ strconv.Itoa(step) } data-active={ strconv.FormatBool(active) } disabled?={ disabled }>
+	// Sub-steps are one line each (the description moves to the tooltip) so the rail stays short.
+	<button type="button" data-on-click={ onAction(goFn, step) } data-account-wizard-action={ goFn } data-account-wizard-target-step={ strconv.Itoa(step) } class="account-wizard-step" data-account-wizard-step={ strconv.Itoa(step) } data-active={ strconv.FormatBool(active) } disabled?={ disabled } title={ description }>
 		<span class="account-wizard-index">{ index }</span>
-		<span class="min-w-0"><span class="block text-xs font-semibold">{ title }</span><span class="block text-xs text-muted-foreground">{ description }</span></span>
+		<span class="min-w-0"><span class="block text-xs font-semibold">{ title }</span></span>
 	</button>
 }
 
