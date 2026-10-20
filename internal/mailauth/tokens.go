@@ -177,6 +177,12 @@ func (m *Manager) RefreshOAuthTokenForAccount(ctx context.Context, accountID str
 	if err != nil {
 		return "", err
 	}
+	if accountProvider == providers.ProviderOutlook {
+		// Callers refresh after Graph rejected the mail token, so neither the
+		// stored nor the in-memory copy can be trusted.
+		m.microsoftTokens.Delete(microsoftTokenKey(accountID, microsoftGraphMailScopes()))
+		return m.refreshMicrosoftScopes(ctx, record, "mail", microsoftGraphMailScopes())
+	}
 	if record.RefreshToken == "" {
 		return "", fmt.Errorf("no refresh token available for account %s", accountID)
 	}

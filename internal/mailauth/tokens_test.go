@@ -688,4 +688,18 @@ func TestMicrosoftScopedTokensAreReusedUntilExpiryWithoutTouchingStoredToken(t *
 	if refreshes[mailScope] != 3 {
 		t.Fatalf("mail refreshes = %d, want 3 (near-expiry token not reused)", refreshes[mailScope])
 	}
+
+	// A refresh after Graph rejected the token skips the cached copy.
+	cached, err := manager.GetMicrosoftGraphMailTokenForAccount(ctx, "acc")
+	if err != nil {
+		t.Fatalf("cached mail token: %v", err)
+	}
+	expiresIn = 3600
+	refreshed, err := manager.RefreshOAuthTokenForAccount(ctx, "acc")
+	if err != nil {
+		t.Fatalf("RefreshOAuthTokenForAccount() error = %v", err)
+	}
+	if refreshed == cached || refreshes[mailScope] != 5 {
+		t.Fatalf("refreshed token new = %v, mail refreshes = %d, want a new token and 5 refreshes", refreshed != cached, refreshes[mailScope])
+	}
 }

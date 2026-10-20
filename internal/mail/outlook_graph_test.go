@@ -293,6 +293,55 @@ func TestSyncOutlookGraphFoldersImportsNestedFolders(t *testing.T) {
 	}
 }
 
+type staleGraphTestTokens struct{ refreshes *int }
+
+func (staleGraphTestTokens) GetOAuthTokenForAccount(context.Context, string) (string, error) {
+	return "stale-token", nil
+}
+
+func (staleGraphTestTokens) GetMicrosoftGraphMailTokenForAccount(context.Context, string) (string, error) {
+	return "stale-token", nil
+}
+
+func (t staleGraphTestTokens) RefreshOAuthTokenForAccount(context.Context, string) (string, error) {
+	(*t.refreshes)++
+	return "fresh-token", nil
+}
+
+func TestSyncOutlookGraphAccountRefreshesTokenAfterUnauthorized(t *testing.T) {
+	ctx := context.Background()
+	db := newLabelSyncTestDB(t)
+	if _, err := db.Write().ExecContext(ctx, `INSERT INTO accounts (id, user_id, provider, email_address) VALUES ('acc', 'default', ?, 'user@example.com')`, providers.ProviderOutlook); err != nil {
+		t.Fatalf("insert account: %v", err)
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer fresh-token" {
+			http.Error(w, `{"error":{"code":"InvalidAuthenticationToken"}}`, http.StatusUnauthorized)
+			return
+		}
+		if r.URL.Path == "/me/mailFolders" {
+			_ = json.NewEncoder(w).Encode(map[string]any{"value": []map[string]any{}})
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer server.Close()
+
+	previousBaseURL := outlookGraphBaseURL
+	outlookGraphBaseURL = server.URL
+	t.Cleanup(func() { outlookGraphBaseURL = previousBaseURL })
+
+	refreshes := 0
+	orchestrator := NewSyncOrchestrator(db, nil, nil, staleGraphTestTokens{refreshes: &refreshes})
+	if err := orchestrator.syncOutlookGraphAccount(ctx, "acc", true); err != nil {
+		t.Fatalf("syncOutlookGraphAccount() error = %v, want retry with a refreshed token", err)
+	}
+	if refreshes != 1 {
+		t.Fatalf("refreshes = %d, want 1", refreshes)
+	}
+}
+
 func TestSyncOutlookGraphAccountDoesNotFailOnCategoryCatalogError(t *testing.T) {
 	ctx := context.Background()
 	db := newLabelSyncTestDB(t)

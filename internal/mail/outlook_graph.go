@@ -135,6 +135,12 @@ func (o *SyncOrchestrator) syncOutlookGraphAccount(ctx context.Context, accountI
 		o.userGraphToken = token
 	}
 	targets, err := o.syncOutlookGraphFolders(ctx, accountID, token)
+	if providerAPIUnauthorized(err) && o.imapScope == nil {
+		// Per-user syncs retry inside outlookRequest; the shared path retries here.
+		if token, err = o.refreshOAuthTokenForAccount(ctx, accountID); err == nil {
+			targets, err = o.syncOutlookGraphFolders(ctx, accountID, token)
+		}
+	}
 	if err != nil {
 		return err
 	}
