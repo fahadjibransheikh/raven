@@ -438,7 +438,7 @@ func CalendarShell(accounts []models.Account, month CalendarMonthData, uiSetting
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = CalendarSidebar(accounts, uiSettingGet(uiSettings, "sidebar_width", "256px")).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = CalendarSidebar(accounts, uiSettingGet(uiSettings, "sidebar_width", "256px"), uiSettings).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -462,7 +462,7 @@ func CalendarShell(accounts []models.Account, month CalendarMonthData, uiSetting
 	})
 }
 
-func CalendarSidebar(accounts []models.Account, width string) templ.Component {
+func CalendarSidebar(accounts []models.Account, width string, uiSettings map[string]string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -500,7 +500,7 @@ func CalendarSidebar(accounts []models.Account, width string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = SidebarHeader(accounts, "calendar").Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = SidebarHeader(accounts, "calendar", uiSettings).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

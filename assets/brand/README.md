@@ -12,13 +12,14 @@ See `construction.svg` for the circles and tangents.
 
 | File | Use |
 | --- | --- |
-| `logo-raven.*` | Default app icon (Raven pink accent). Same as `assets/logo.svg`. |
+| `logo-raven.*` | Default app icon: white bird, pink wing, black tile. Same as `assets/logo.svg`. |
 | `logo-raven-light.*` | Pink accent on a light tile. |
-| `logo-classic.*` / `logo-classic-light.*` | Classic (copper) accent preset. |
+| `logo-classic.*` / `logo-classic-light.*` | Classic (copper) accent preset; the dark one is a black tile like `logo-raven`. |
 | `logo-minimal-light.*` / `logo-minimal-dark.*` | Minimal accent preset. |
 | `mark-raven.svg`, `mark-classic.svg`, `mark-ink.svg` | Bird only, transparent, for light surfaces. |
 | `mark-white.svg` | Bird only, transparent, for dark surfaces. |
-| `touch-logo-*.png` | 180px square-cornered home-screen icon for each `logo-*` tile (apple-touch-icon). |
+| `touch-logo-*` | 180px square-cornered home-screen icon for each `logo-*` tile (apple-touch-icon). |
+| `app-logo-*.svg` | Each tile on Apple's icon grid (824px tile in a 1024 canvas), the source of the Dock `logo-*.png` and `icon.icns`. |
 
 The SVGs are generated; edit `scripts/logo/generate.py` and rerun it rather than
 editing them by hand. It needs `numpy` and `shapely`:
@@ -28,7 +29,13 @@ pip install numpy shapely
 python3 scripts/logo/generate.py
 ```
 
-PNGs (`assets/logo.png` 512px, `assets/apple-touch-icon.png` and the
-`touch-logo-*.png` iOS home-screen icons here, 180px with square corners,
-`tauri-wrapper/src-tauri/icons/icon.png`, and the 1024px PNGs here)
-are rendered from the SVGs with any SVG renderer (headless Chromium was used).
+Then render the PNGs and the macOS `icon.icns` (needs `rsvg-convert`, from
+`brew install librsvg`):
+
+```sh
+scripts/logo/render.sh
+```
+
+The 1024px `logo-*.png` here are the desktop Dock icons, so they are rendered
+from `app-logo-*.svg` and have a transparent margin; the web uses the
+full-bleed SVGs.

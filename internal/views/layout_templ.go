@@ -892,7 +892,7 @@ func SettingsLayout(accounts []models.Account, syncSettings models.SyncSettings,
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = SettingsSidebar(activeTab, uiSettingGet(uiSettings, "sidebar_width", "240px")).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = SettingsSidebar(activeTab, uiSettingGet(uiSettings, "sidebar_width", "240px"), uiSettings).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -83,13 +83,18 @@ Raven version -- the wrapper always launches whatever binary is sitting in
 
 ## Generate the full icon set
 
-`src-tauri/icons/icon.png` is currently just a copy of `assets/logo.png`.
-Generate the macOS `.icns` (and other sizes Tauri wants) from it:
+`src-tauri/icons/icon.png` is a 1024px render of `assets/logo.svg`.
+Generate the other sizes Tauri wants from it, then restore the committed
+`icon.icns` (`tauri icon` would replace it with a full-bleed one):
 
 ```sh
-cd tauri-wrapper
-tauri icon icons/icon.png       # or: cargo tauri icon icons/icon.png
+cd tauri-wrapper/src-tauri
+cargo tauri icon icons/icon.png && git checkout -- icons/icon.icns
 ```
+
+`icon.icns` is built by `scripts/logo/render.sh` on Apple's icon grid (an
+824px tile in a 1024 canvas), so Raven matches other apps' size in the Dock,
+Cmd-Tab and Finder.
 
 ## Run it
 
@@ -230,8 +235,8 @@ folder as `.env`.
   this wrapper itself -- confirmed against the v2 config docs rather than
   assumed. (You still need Node if you chose the npm install path for the
   Tauri CLI above, but that's global, not per-project.)
-- **No hand-built `.icns`.** Run `tauri icon` (see above) instead of trying
-  to generate the macOS icon set by hand.
+- **`icon.icns` is the one hand-built icon.** `tauri icon` makes the rest;
+  the `.icns` comes from `scripts/logo/render.sh` (see above).
 
 ## Files in this folder
 
@@ -246,8 +251,9 @@ tauri-wrapper/
     build.rs                       <- required tauri-build hook
     tauri.conf.json                <- v2 config: window, externalBin, bundle, updater
     capabilities/default.json      <- permissions for the main window
-    icons/icon.png                 <- copy of ../../assets/logo.png (source
-                                        for `tauri icon`)
+    icons/icon.png                 <- 1024px render of ../../assets/logo.svg
+                                        (source for `tauri icon`)
+    icons/icon.icns                <- macOS icon on Apple's grid (render.sh)
     binaries/                      <- put raven-server-<target-triple> here (gitignored,
                                         build output -- see .gitkeep)
     src/

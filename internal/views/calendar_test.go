@@ -159,7 +159,7 @@ func TestCalendarSidebarActivatesCalendarAppAndShowsProviders(t *testing.T) {
 		{ID: "imap-1", Provider: "imap", Name: "Unconfigured", Email: "imap@example.com", Color: "#64748b"},
 	}
 	var output bytes.Buffer
-	if err := SidebarHeader(accounts, "calendar").Render(t.Context(), &output); err != nil {
+	if err := SidebarHeader(accounts, "calendar", nil).Render(t.Context(), &output); err != nil {
 		t.Fatalf("SidebarHeader.Render() error = %v", err)
 	}
 	if err := CalendarSidebarBody(accounts).Render(t.Context(), &output); err != nil {

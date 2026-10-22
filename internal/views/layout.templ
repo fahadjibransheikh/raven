@@ -149,7 +149,7 @@ templ SettingsLayout(accounts []models.Account, syncSettings models.SyncSettings
 		<body class="bg-background text-foreground antialiased" data-ui-settings={ uiSettingsJSON(uiSettings) }>
 			@SkipToMain()
 			<div id="app-shell" class="flex h-screen overflow-hidden">
-				@SettingsSidebar(activeTab, uiSettingGet(uiSettings, "sidebar_width", "240px"))
+				@SettingsSidebar(activeTab, uiSettingGet(uiSettings, "sidebar_width", "240px"), uiSettings)
 				@ResizeHandle("sidebar")
 				<div id="main-content" role="main" tabindex="-1" class="flex flex-1 min-w-0">
 					@SettingsPage(accounts, syncSettings, activeTab, uiSettings, signatureData)

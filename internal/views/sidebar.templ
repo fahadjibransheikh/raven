@@ -17,7 +17,7 @@ import (
 
 templ Sidebar(accounts []models.Account, activeFolder string, width string, uiSettings map[string]string, scheduledCount int, filters models.EmailFilters) {
 	<aside class="hidden lg:flex flex-col bg-sidebar text-sidebar-foreground h-full overflow-hidden" style={ "width:" + width } data-app-sidebar data-phone-drawer>
-		@SidebarHeader(accounts, "mail")
+		@SidebarHeader(accounts, "mail", uiSettings)
 		@MailSidebarBody(accounts, activeFolder, uiSettings, scheduledCount, filters)
 		@SidebarFooter("mail")
 	</aside>
@@ -25,7 +25,7 @@ templ Sidebar(accounts []models.Account, activeFolder string, width string, uiSe
 
 templ ContactsSidebar(accounts []models.Account, activeFolder string, width string, uiSettings map[string]string, filters models.ContactFilters) {
 	<aside class="hidden lg:flex flex-col bg-sidebar text-sidebar-foreground h-full overflow-hidden" style={ "width:" + width } data-app-sidebar data-phone-drawer>
-		@SidebarHeader(accounts, "contacts")
+		@SidebarHeader(accounts, "contacts", uiSettings)
 		@ContactsSidebarBody(accounts, activeFolder, uiSettings, filters)
 		@SidebarFooter("contacts")
 	</aside>
@@ -239,11 +239,11 @@ func contactSidebarBookName(book models.ContactAddressBook) string {
 	return "Address book"
 }
 
-templ SettingsSidebar(activeTab string, width string) {
+templ SettingsSidebar(activeTab string, width string, uiSettings map[string]string) {
 	<aside class="hidden lg:flex flex-col bg-sidebar text-sidebar-foreground h-full overflow-hidden" style={ "width:" + width } data-phone-drawer>
 		<div class="px-4 pt-5 pb-4">
 			<div class="flex items-center gap-2.5 mb-5">
-				<img src="/assets/logo.svg" alt="Raven" class="h-8 w-8 shrink-0 p-1"/>
+				@SidebarLogo(uiSettings)
 				<span class="text-lg font-semibold tracking-tight text-sidebar-accent-foreground">Settings</span>
 			</div>
 			<a href="/" class="flex items-center justify-center gap-2 w-full h-10 rounded-lg border border-sidebar-border bg-sidebar-accent/35 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors font-semibold text-sm">
@@ -320,11 +320,17 @@ templ SettingsSidebarItemIcon(value string) {
 	}
 }
 
-templ SidebarHeader(accounts []models.Account, activeApp string) {
+// SidebarLogo is the app icon the user chose, in the page's theme;
+// ui-settings.js (applyAppIcon) swaps it live with the tab icon.
+templ SidebarLogo(uiSettings map[string]string) {
+	<img src={ appIconHref(uiSettings) } data-app-icon alt="Raven" class="h-8 w-8 shrink-0 p-1"/>
+}
+
+templ SidebarHeader(accounts []models.Account, activeApp string, uiSettings map[string]string) {
 	<div class="px-4 pt-5 pb-3">
 		<div class="flex items-center justify-between gap-2">
 			<div class="flex min-w-0 items-center gap-2.5">
-				<img src="/assets/logo.svg" alt="Raven" class="h-8 w-8 shrink-0 p-1"/>
+				@SidebarLogo(uiSettings)
 				<span class="truncate text-base font-semibold tracking-tight text-sidebar-accent-foreground">Raven</span>
 				if len(accounts) > 0 {
 					@tooltip.Tooltip() {
