@@ -7,6 +7,17 @@ Then an optional hero line, then "### New", "### Improved", "### Fixed" or
 replaces it with the real version number. GitHub release notes use the same text.
 -->
 
+## 1.2.1 | 2026-10-22 | A sharper app icon, and System mode that follows your Mac
+The Raven icon is now the same size as other apps and has crisper colours, and the System color mode follows your computer again.
+
+### Improved
+- The Raven and Classic icons are now a white bird on a black tile in dark mode, with deeper blacks and brighter colours everywhere.
+- The logo in the sidebar now shows the app icon you picked, in the current light or dark look.
+
+### Fixed
+- On a Mac, Raven's icon in the Dock and the Cmd-Tab switcher was larger than other apps. It is now the same size.
+- In the desktop app, Color mode System could stay light after your computer switched to dark. It now follows your computer.
+
 ## 1.2.0 | 2026-10-21 | Meeting reminders and a calmer, phone-friendly Raven
 Meeting reminders now stay on screen with a Join button, replies open right below the conversation, and Raven is easier to use on a phone.
 
