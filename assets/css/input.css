@@ -3780,16 +3780,6 @@ html[data-platform="other"] .hint-other {
     box-sizing: border-box;
   }
 
-  /* iOS home-screen apps size 100dvh without the home-indicator inset (WebKit bug 292603),
-     leaving a blank band under the tab bar. A fixed shell pinned to all edges fills the screen. */
-  @media (display-mode: standalone) {
-    #app-shell {
-      position: fixed;
-      inset: 0;
-      height: auto;
-    }
-  }
-
   /* Mail shell: the bottom inset moves inside the scrollers (list, reader) so the panes
      run to the screen edge and the last row or reply bar still clears the home indicator.
      Settings, contacts and calendar keep the padding above. */
