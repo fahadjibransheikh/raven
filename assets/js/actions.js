@@ -19,10 +19,12 @@
 ;(function () {
   // Color mode "System" (data-theme-mode on <html>) follows the OS. This file loads in
   // <head>, so the dark class is set before first paint and kept in step with the OS.
+  // The listener is added in every mode: switching to System later, the desktop app
+  // only unpins its appearance then (window_chrome.js), which fires a change.
   var root = document.documentElement
-  if (root.getAttribute("data-theme-mode") === "system" && window.matchMedia) {
+  if (window.matchMedia) {
     var query = window.matchMedia("(prefers-color-scheme: dark)")
-    root.classList.toggle("dark", query.matches)
+    if (root.getAttribute("data-theme-mode") === "system") root.classList.toggle("dark", query.matches)
     query.addEventListener("change", function (e) {
       if (root.getAttribute("data-theme-mode") !== "system") return
       root.classList.toggle("dark", e.matches)

@@ -3,7 +3,9 @@
 //
 // - Every platform: the native title bar follows the page's light/dark theme
 //   (the window config starts dark), so a light Raven no longer sits under a
-//   black bar.
+//   black bar. In System mode the window follows the OS instead: setTheme pins
+//   the app's appearance, and the page's prefers-color-scheme reports the
+//   pinned value, so pinning would stop System mode from ever changing.
 // - macOS: the title bar is an overlay (tauri.conf.json titleBarStyle), so the
 //   page draws a strip the traffic lights sit in; input.css styles it from
 //   html[data-desktop="macos"] and offsets the app shell below it.
@@ -20,16 +22,18 @@
 
   var lastTheme = null;
   function syncTheme() {
-    var theme = root.classList.contains("dark") ? "dark" : "light";
+    var system = root.getAttribute("data-theme-mode") === "system";
+    var theme = system ? "system" : root.classList.contains("dark") ? "dark" : "light";
     var tauriWindow = window.__TAURI__ && window.__TAURI__.window;
     if (theme === lastTheme || !tauriWindow) return;
     lastTheme = theme;
-    tauriWindow.getCurrentWindow().setTheme(theme).catch(function (err) {
+    // null follows the OS.
+    tauriWindow.getCurrentWindow().setTheme(system ? null : theme).catch(function (err) {
       lastTheme = null;
       console.warn("window theme:", err);
     });
   }
-  new MutationObserver(syncTheme).observe(root, { attributes: true, attributeFilter: ["class"] });
+  new MutationObserver(syncTheme).observe(root, { attributes: true, attributeFilter: ["class", "data-theme-mode"] });
 
   function start() {
     syncTheme();
