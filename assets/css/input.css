@@ -3780,6 +3780,19 @@ html[data-platform="other"] .hint-other {
     box-sizing: border-box;
   }
 
+  /* iOS 26 home-screen apps with a translucent status bar report the viewport short by the
+     top inset (WebKit bug 301108), leaving a blank band under the tab bar. Stretching html
+     makes WebKit paint the full screen; the shell follows. min() keeps both at 100dvh when
+     the top inset is 0. Fix from frappe/frappe-ui#1289. */
+  @media (display-mode: standalone) {
+    html {
+      min-height: min(100lvh, calc(100% + env(safe-area-inset-top)));
+    }
+    #app-shell {
+      height: min(100lvh, calc(100dvh + env(safe-area-inset-top)));
+    }
+  }
+
   /* Mail shell: the bottom inset moves inside the scrollers (list, reader) so the panes
      run to the screen edge and the last row or reply bar still clears the home indicator.
      Settings, contacts and calendar keep the padding above. */
