@@ -4674,7 +4674,10 @@ document.addEventListener("DOMContentLoaded", function () {
       }).then(function (res) {
         if (res.ok) return
         return res.text().then(function (message) {
-          throw new Error((message || "").trim() || "Could not send the test notification.")
+          message = (message || "").trim()
+          // A proxy error page (Cloudflare's 502) is HTML, not a message to show.
+          if (/^</.test(message)) message = "Raven could not be reached (HTTP " + res.status + "). Try again in a moment."
+          throw new Error(message || "Could not send the test notification.")
         })
       })
     }
