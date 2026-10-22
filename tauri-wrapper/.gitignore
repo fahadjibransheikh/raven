@@ -9,8 +9,10 @@
 /src-tauri/binaries/*
 !/src-tauri/binaries/.gitkeep
 
-# Generated icon set (produced by `tauri icon`); icon.png (the source) is kept
+# Generated icon set (produced by `tauri icon`); icon.png (the source) is kept,
+# and so is icon.icns, which scripts/logo/render.sh builds on Apple's icon grid
 /src-tauri/icons/*.icns
+!/src-tauri/icons/icon.icns
 /src-tauri/icons/icon.ico
 /src-tauri/icons/*.png
 !/src-tauri/icons/icon.png

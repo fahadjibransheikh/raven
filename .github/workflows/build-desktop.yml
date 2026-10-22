@@ -184,10 +184,12 @@ jobs:
             -ldflags "-s -w -X github.com/fahadjibransheikh/raven/internal/whatsnew.BuildVersion=${APP_VERSION}" \
             -o "tauri-wrapper/src-tauri/binaries/raven-server-${{ matrix.target_triple }}${{ matrix.ext }}" .
 
+      # Keeps the committed icon.icns: tauri icon writes a full-bleed one, which
+      # looks oversized next to other apps in the Dock and Cmd-Tab.
       - name: Regenerate app icon set from the source PNG
         shell: bash
         working-directory: tauri-wrapper/src-tauri
-        run: cargo tauri icon icons/icon.png
+        run: cargo tauri icon icons/icon.png && git checkout -- icons/icon.icns
 
       # tauri.conf.json copies the widget into Raven.app/Contents/PlugIns.
       - name: Build the macOS agenda widget

@@ -14,7 +14,7 @@ function page(stored, { dark = true, tauri } = {}) {
   const settings = Object.assign({ timezone: "UTC", theme: dark ? "dark" : "light" }, stored)
   const dom = new JSDOM(
     '<!doctype html><html class="' + (dark ? "dark" : "") + '"><head><link rel="icon" type="image/svg+xml" href="/assets/brand/logo-raven.svg"><link rel="apple-touch-icon" href="/assets/brand/touch-logo-raven.png"></head>' +
-      "<body data-ui-settings='" + JSON.stringify(settings) + "'></body></html>",
+      "<body data-ui-settings='" + JSON.stringify(settings) + "'><img data-app-icon src=\"/assets/brand/logo-raven.svg\"></body></html>",
     { url: "http://localhost/", runScripts: "outside-only" },
   )
   const w = dom.window
@@ -27,6 +27,7 @@ function page(stored, { dark = true, tauri } = {}) {
     calls,
     icon: () => w.document.querySelector('link[rel="icon"]').getAttribute("href"),
     touch: () => w.document.querySelector('link[rel="apple-touch-icon"]').getAttribute("href"),
+    sidebar: () => w.document.querySelector("img[data-app-icon]").getAttribute("src"),
   }
 }
 
@@ -109,4 +110,13 @@ test("the settings page saves a picked tile through RavenSettings", () => {
   // settings-page.js is not loadable in a bare window (it wires the whole settings page),
   // so check the delegated change handler by source, next to the theme_style one it copies.
   assert.match(settingsPage, /closest\('input\[name="app_icon"\]'\)[\s\S]*?RavenSettings\.set\('app_icon', appIcon\.value\)/)
+})
+
+test("the sidebar logo follows the style and theme, live", () => {
+  const { w, sidebar } = page({ app_icon: "classic" }, { dark: true })
+  assert.equal(sidebar(), "/assets/brand/logo-classic.svg")
+  w.RavenSettings.set("app_icon", "minimal")
+  assert.equal(sidebar(), "/assets/brand/logo-minimal-dark.svg")
+  w.RavenSettings.set("theme", "light")
+  assert.equal(sidebar(), "/assets/brand/logo-minimal-light.svg")
 })

@@ -71,6 +71,9 @@ var RavenSettings;
     _lastAppIcon = key;
     var file = APP_ICONS[style][dark ? 0 : 1];
     setIconLink('link[rel="icon"]', "/assets/brand/" + file + ".svg");
+    document.querySelectorAll("img[data-app-icon]").forEach(function (img) {
+      img.setAttribute("src", "/assets/brand/" + file + ".svg");
+    });
     // What iOS saves on "Add to Home Screen"; a square PNG, as iOS ignores SVG.
     setIconLink('link[rel="apple-touch-icon"]', "/assets/brand/touch-" + file + ".png");
     var tauri = window.__TAURI__;

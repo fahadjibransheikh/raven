@@ -229,12 +229,12 @@ overlay = ('<g fill="none" stroke="#000000" stroke-opacity="0.25" stroke-width="
 # ---------------- colourways ----------------
 # Tile colourways: name: (tile, tile top for a subtle gradient, bird, wing).
 COLORWAYS = {
-    "raven": ("#D6246E", "#E3407F", "#151517", "#FFB3D1"),
-    "raven-light": ("#FBE3EC", "#FDEFF4", "#151517", "#D6246E"),
-    "classic": ("#A8641F", "#BA7530", "#151517", "#F2C890"),
-    "classic-light": ("#F6E8D6", "#FAF1E6", "#151517", "#A8641F"),
-    "minimal-light": ("#EDEBE6", "#F5F4F0", "#151517", "#6A6A72"),
-    "minimal-dark": ("#151517", "#26262A", "#F5F5F5", "#7A7A82"),
+    "raven": ("#0B0B0D", "#161619", "#FFFFFF", "#E8357F"),
+    "raven-light": ("#FBE3EC", "#FDEFF4", "#0B0B0D", "#D6246E"),
+    "classic": ("#0B0B0D", "#161619", "#FFFFFF", "#D18A3F"),
+    "classic-light": ("#F6E8D6", "#FAF1E6", "#0B0B0D", "#A8641F"),
+    "minimal-light": ("#EDEBE6", "#F5F4F0", "#0B0B0D", "#6A6A72"),
+    "minimal-dark": ("#0B0B0D", "#161619", "#FFFFFF", "#7A7A82"),
 }
 DEFAULT = "raven"
 
@@ -254,15 +254,26 @@ def _shapes(bird, wing):
             f'  <path fill="{bird}" fill-rule="evenodd" d="{path(white)}"/>\n')
 
 
-def icon(name):
+def icon(name, macos=False, square=False):
+    """The tile icon. macos: Apple's app icon grid, an 824px tile with a soft
+    shadow centred in the 1024 canvas (a full-bleed tile looks oversized in the
+    Dock and Cmd-Tab). square: no rounded corners, for iOS, which masks it."""
     tile, top, bird, wing = COLORWAYS[name]
     gid = f"raven-bg-{name}"
-    return (SVG_OPEN
-            + f'  <defs><linearGradient id="{gid}" x1="0" y1="0" x2="0" y2="1">'
-            + f'<stop offset="0" stop-color="{top}"/><stop offset="1" stop-color="{tile}"/>'
-            + '</linearGradient></defs>\n'
-            + f'  <rect width="1024" height="1024" rx="229" fill="url(#{gid})"/>\n'
-            + _shapes(bird, wing) + '</svg>\n')
+    defs = (f'<linearGradient id="{gid}" x1="0" y1="0" x2="0" y2="1">'
+            f'<stop offset="0" stop-color="{top}"/><stop offset="1" stop-color="{tile}"/>'
+            '</linearGradient>')
+    body = (f'  <rect width="1024" height="1024" rx="{0 if square else 229}" fill="url(#{gid})"/>\n'
+            + _shapes(bird, wing))
+    if macos:
+        defs += ('<filter id="raven-shadow" x="-10%" y="-10%" width="120%" height="125%">'
+                 '<feDropShadow dx="0" dy="12" stdDeviation="14" flood-opacity="0.3"/></filter>')
+        # The shadow is a separate rect: filtering the tile itself bands its
+        # dark gradient (rsvg quantises filter input).
+        body = (f'  <g transform="translate(100 100) scale({824 / 1024})">\n'
+                f'  <rect width="1024" height="1024" rx="229" fill="{tile}" filter="url(#raven-shadow)"/>\n'
+                + body + '  </g>\n')
+    return SVG_OPEN + f'  <defs>{defs}</defs>\n' + body + '</svg>\n'
 
 
 def glyph(name):
@@ -280,6 +291,8 @@ def main():
     brand = os.path.join(root, "assets", "brand")
     os.makedirs(brand, exist_ok=True)
     files = {f"logo-{n}.svg": icon(n) for n in COLORWAYS}
+    files.update({f"app-logo-{n}.svg": icon(n, macos=True) for n in COLORWAYS})
+    files.update({f"touch-logo-{n}.svg": icon(n, square=True) for n in COLORWAYS})
     files.update({f"mark-{n}.svg": glyph(n) for n in MARKS})
     files["construction.svg"] = construction()
     for name, text in files.items():

@@ -3,6 +3,7 @@ package views
 import (
 	"bytes"
 	"context"
+	"io"
 	"strings"
 	"testing"
 
@@ -563,13 +564,13 @@ func TestSidebarAppSwitcherLivesInFooterWithCurrentApp(t *testing.T) {
 
 func TestSidebarHeaderHasQuietComposeAndNoAppTabs(t *testing.T) {
 	var buf bytes.Buffer
-	if err := SidebarHeader([]models.Account{{ID: "a1"}}, "mail").Render(context.Background(), &buf); err != nil {
+	if err := SidebarHeader([]models.Account{{ID: "a1"}}, "mail", nil).Render(context.Background(), &buf); err != nil {
 		t.Fatalf("SidebarHeader.Render() error = %v", err)
 	}
 	html := buf.String()
 	// Before the first account there is nothing to write from or sync.
 	var empty bytes.Buffer
-	if err := SidebarHeader(nil, "mail").Render(context.Background(), &empty); err != nil {
+	if err := SidebarHeader(nil, "mail", nil).Render(context.Background(), &empty); err != nil {
 		t.Fatal(err)
 	}
 	if strings.Contains(empty.String(), `id="sidebar-compose-btn"`) {
@@ -610,7 +611,7 @@ func TestSidebarAccountSectionsStartCollapsedUnlessExpanded(t *testing.T) {
 
 func TestSettingsSidebarLinksToTheLicenses(t *testing.T) {
 	var out bytes.Buffer
-	if err := SettingsSidebar("accounts", "240px").Render(context.Background(), &out); err != nil {
+	if err := SettingsSidebar("accounts", "240px", nil).Render(context.Background(), &out); err != nil {
 		t.Fatal(err)
 	}
 	html := out.String()
@@ -651,5 +652,31 @@ func TestPhoneNavToggleNamesItsDrawer(t *testing.T) {
 	}
 	if html := buf.String(); !strings.Contains(html, `aria-label="Open settings menu"`) || strings.Contains(html, "Open folders") {
 		t.Fatalf("toggle should carry the given label: %s", html)
+	}
+}
+
+func TestSidebarLogoFollowsChosenAppIcon(t *testing.T) {
+	for _, tc := range []struct {
+		settings map[string]string
+		want     string
+	}{
+		{nil, `src="/assets/brand/logo-raven.svg"`},
+		{map[string]string{"app_icon": "classic", "theme": "dark"}, `src="/assets/brand/logo-classic.svg"`},
+		{map[string]string{"app_icon": "minimal", "theme": "light"}, `src="/assets/brand/logo-minimal-light.svg"`},
+	} {
+		for name, c := range map[string]interface {
+			Render(context.Context, io.Writer) error
+		}{
+			"header":   SidebarHeader(nil, "mail", tc.settings),
+			"settings": SettingsSidebar("accounts", "240px", tc.settings),
+		} {
+			var buf bytes.Buffer
+			if err := c.Render(context.Background(), &buf); err != nil {
+				t.Fatal(err)
+			}
+			if html := buf.String(); !strings.Contains(html, tc.want) || !strings.Contains(html, "data-app-icon") {
+				t.Errorf("%s with %v: want %s and data-app-icon in %s", name, tc.settings, tc.want, html)
+			}
+		}
 	}
 }
