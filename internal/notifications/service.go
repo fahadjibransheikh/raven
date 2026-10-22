@@ -35,6 +35,8 @@ type Service struct {
 var pushHTTPClient = &http.Client{Timeout: 15 * time.Second, Transport: netguard.NewHTTPTransport(nil), CheckRedirect: netguard.CheckRedirect}
 
 func New(db *storage.DB, events *mail.EventBus, vapidPublicKey, vapidPrivateKey, vapidSubject string) *Service {
+	// webpush-go adds "mailto:" itself; a doubled prefix makes Apple reject every push.
+	vapidSubject = strings.TrimPrefix(vapidSubject, "mailto:")
 	return &Service{
 		db:               db,
 		events:           events,
