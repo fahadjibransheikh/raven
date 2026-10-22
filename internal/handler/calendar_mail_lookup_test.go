@@ -17,7 +17,8 @@ import (
 	"github.com/fahadjibransheikh/raven/internal/store"
 )
 
-const mailInvitationICS = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//test//EN\r\nMETHOD:REQUEST\r\nBEGIN:VEVENT\r\nUID:invite-uid@example.com\r\nDTSTAMP:20261001T000000Z\r\nDTSTART:20261020T130000Z\r\nDTEND:20261020T140000Z\r\nSUMMARY:Planning\r\nORGANIZER;CN=Host:mailto:host@example.com\r\nATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE:mailto:one@example.com\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+// Far in the future: invitations that ended over a day ago are not looked up.
+const mailInvitationICS = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//test//EN\r\nMETHOD:REQUEST\r\nBEGIN:VEVENT\r\nUID:invite-uid@example.com\r\nDTSTAMP:20361001T000000Z\r\nDTSTART:20361020T130000Z\r\nDTEND:20361020T140000Z\r\nSUMMARY:Planning\r\nORGANIZER;CN=Host:mailto:host@example.com\r\nATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE:mailto:one@example.com\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
 
 // inviteLookupFixture is an account whose calendar has not cached the event the
 // email invites it to; the provider fake returns it only when asked for a
@@ -34,7 +35,7 @@ func inviteLookupFixture(t *testing.T) (*Handler, *[]time.Time) {
 		t.Fatal(err)
 	}
 	var windows []time.Time
-	start := time.Date(2026, 10, 20, 13, 0, 0, 0, time.UTC)
+	start := time.Date(2036, 10, 20, 13, 0, 0, 0, time.UTC)
 	end := start.Add(time.Hour)
 	h.calendarFetchEvents = func(_ context.Context, source storage.CalendarSource, query calendar.EventQuery) (calendar.EventPage, error) {
 		windows = append(windows, query.WindowStart)
@@ -117,8 +118,8 @@ func TestMailInvitationNotCachedIsLookedUpAndAnswerable(t *testing.T) {
 func TestMailInvitationLookupSkipsFreshSyncAndOtherMail(t *testing.T) {
 	h, windows := inviteLookupFixture(t)
 	other := strings.Replace(mailInvitationICS, "invite-uid@example.com", "elsewhere@example.com", 1)
-	other = strings.Replace(other, "20261020T130000Z", "20271020T130000Z", 1)
-	other = strings.Replace(other, "20261020T140000Z", "20271020T140000Z", 1)
+	other = strings.Replace(other, "20361020T130000Z", "20371020T130000Z", 1)
+	other = strings.Replace(other, "20361020T140000Z", "20371020T140000Z", 1)
 	mailID := storeInviteMail(t, h, other)
 	first := mailFooterBody(t, h, mailID)
 	if len(*windows) != 1 || !strings.Contains(first, "could not be matched") {
