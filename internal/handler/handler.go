@@ -4089,7 +4089,8 @@ func (h *Handler) handleTestPush(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Web Push is not set up for this browser. Turn notifications off and on again to register it.", http.StatusConflict)
 			return
 		}
-		http.Error(w, "Could not send the test notification: "+err.Error(), http.StatusBadGateway)
+		// Not a 5xx: Cloudflare would replace this message with its own HTML error page.
+		http.Error(w, "Could not send the test notification: "+err.Error(), http.StatusUnprocessableEntity)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
